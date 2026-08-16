@@ -475,8 +475,8 @@ The consequence for tweens, stated as a rule a reviewer can apply:
 | B | `core`'s `damp` and anything else marked presentation-only | pixels, colours, camera, audio gain | a save file, a hash, a replay, a checksum, an economy input |
 
 A tween whose curve comes from `EASINGS` is Tier A and is therefore safe to run inside
-`update` and to have write simulation state — which is exactly why tweens are stepped on the
-fixed step (§3.5) rather than on a frame delta. `damp` is the opposite: it is
+`update` and to have write simulation state — which is exactly why `Tweens.step` takes the
+fixed `dt` and is called from `update` rather than being driven by a frame delta. `damp` is the opposite: it is
 frame-rate-independent smoothing and it is Tier B, so the camera-follow story — `damp` in
 `update`, drawn in `render` — produces a value that may only ever reach a pixel. Persisting a
 damped camera position, or feeding one into anything `persist` writes, is the failure this
@@ -853,6 +853,19 @@ graph — canvas, world, audio. `stop()` must cancel the pending rAF handle *and
 interval, and a restarted loop must not end up with two chains. `input`'s "every listener
 returns a disposer" is the same rule; this package's version is that `FrameSource.stop` is
 not optional and is tested by starting and stopping a hundred times.
+
+---
+
+### 6.12 A smoothed value that reaches a save file
+
+`core`'s `damp` is Tier B — it is built on `Math.exp`, which ECMA-262 does not require to be
+correctly rounded, so two engines can disagree in the last bits. That is invisible in a pixel
+and fatal in a checksum. The trap is not writing `damp`; it is that a damped camera position
+or a smoothed meter value is an ordinary number, indistinguishable at the call site from a
+Tier A one, and the day somebody persists the camera "so the view is where you left it" the
+kit acquires a save that fails its own integrity check on a different browser. Tier B values
+go to pixels. If a smoothed value must be restored across a reload, round it at the boundary
+and treat the rounded number as authored data, not as a continuation.
 
 ---
 

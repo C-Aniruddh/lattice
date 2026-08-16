@@ -84,9 +84,9 @@
         "every signature type-checks if pasted into a .ts file",
         "the deliberately-absent section names at least three things and says why"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-architect",
-      "notes": ""
+      "notes": "Argued in a sixth module, frames: the loop must never reach for rAF itself. Refused the saved-at seam with reason — loop has no epoch. Contract with sim: loop credits nothing, clamps at 250ms/pump, drops the excess."
     },
     {
       "id": "A5",
@@ -124,9 +124,9 @@
         "every signature type-checks if pasted into a .ts file",
         "the deliberately-absent section names at least three things and says why"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-architect",
-      "notes": ""
+      "notes": "Bed promoted above the sequencer and argued for: melody wears out at twenty minutes, texture does not. Refused one primitive for both (a note is an event, a drone is a state) but unified their 0-1 parameter vocabulary. Sequencer kept opt-in via createDeck so a game that wants only the drone does not ship it."
     },
     {
       "id": "A7",
@@ -184,9 +184,9 @@
         "every signature type-checks if pasted into a .ts file",
         "the deliberately-absent section names at least three things and says why"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-architect",
-      "notes": ""
+      "notes": "Ships no stylesheet at all, which makes trap 1 structurally unreachable. Corrected its own kit.json invariant: not inside the render callback, since update IS the interval. Modules 5 to 7."
     },
     {
       "id": "A10",

@@ -134,6 +134,7 @@
       ],
       "modules": [
         "clock",
+        "frames",
         "loop",
         "scheduler",
         "tween",
@@ -144,8 +145,10 @@
       ],
       "invariants": [
         "Simulation advances on the wall clock, never on frame deltas \u2014 rAF is 0 Hz in a hidden tab.",
-        "Catch-up is clamped; a tab restored after an hour must not run an hour of ticks in one frame.",
-        "The clock is injected, so every test runs at whatever speed it likes with no timers."
+        "Catch-up is clamped at 250ms per pump and the excess is dropped, not deferred. The loop advances callbacks; sim advances value.",
+        "loop.time deliberately drifts below real time while hidden. Anything that must be truthful about the player's wall clock is a timestamp in state, never a duration accumulated on the fixed step.",
+        "The clock and the frame source are both injected, so every test runs at whatever speed it likes with no timers.",
+        "This package has no epoch and stamps nothing. The calendar is one game-owned function, injected."
       ]
     },
     "input": {
@@ -185,6 +188,7 @@
         "voice",
         "sounds",
         "bus",
+        "bed",
         "music"
       ],
       "exports": [
@@ -192,8 +196,10 @@
       ],
       "invariants": [
         "No AudioContext exists until a user gesture unlocks it.",
-        "Silent, not throwing, where there is no WebAudio \u2014 importing this in a test is free.",
-        "A hard voice ceiling. Summed gains above 1 clip into a click, and twenty voices never sound twenty times better."
+        "Silent, not throwing, where there is no WebAudio. play() in a headless run produces no sound and still reports acceptance \u2014 the policy above is pure and testable, the rendering below is not.",
+        "A hard voice ceiling. Summed gains above 1 clip into a click, and twenty voices never sound twenty times better.",
+        "A layer is one fixed chain of ten numbers, not author-defined routing. The moment routing is author-defined the clipping ceiling can no longer be validated statically.",
+        "This package stores nothing. The mixer returns a versioned snapshot and the game hands it to persist \u2014 there is no edge between two layer-1 packages."
       ]
     },
     "persist": {
@@ -250,19 +256,22 @@
         "draw"
       ],
       "modules": [
+        "overlay",
         "el",
         "panel",
         "toast",
         "roll",
-        "thumb"
+        "thumb",
+        "theme"
       ],
       "exports": [
         "VERSION"
       ],
       "invariants": [
         "No virtual DOM. The whole overlay is a few dozen nodes that change a few times a second.",
-        "The overlay root is pointer-transparent and re-enables per child, and the child rule out-specifies bare classes.",
-        "Anything that is not painting updates on an interval, not inside the frame loop \u2014 a hidden tab must not freeze the HUD."
+        "The package ships no stylesheet at all. The root is inline pointer-events:none and interactivity is granted per node, so the specificity fight that swallows taps on the world has no rule to lose to.",
+        "State updates on the interval cadence, never inside the render callback. If render never runs, every number on screen is still right.",
+        "Anything that is not painting must survive a hidden tab. The loop's update callback IS the interval \u2014 a second setInterval here recreates the poll-races-settle data-loss bug."
       ]
     }
   }

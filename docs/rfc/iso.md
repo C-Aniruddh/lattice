@@ -316,19 +316,18 @@ export declare function footprintFlatness(field: HeightField, f: Footprint): num
 export declare function footprintBase(field: HeightField, f: Footprint): number;
 
 /**
- * The screen point a footprint's label, bubble or confirm control should sit on: the centre
- * of the footprint raised by `heightPx`.
+ * The {@link Anchor} a footprint's label, ring, bubble or confirm control should hang from:
+ * the centre of the footprint, raised by `heightPx`.
  *
  * The **centre**, not the origin corner — on a 3×3 those are most of a building apart, and
- * anchoring UI to the corner is what makes a confirm button appear to belong to the
- * building next door.
+ * anchoring UI to the corner is what makes a confirm button appear to belong to the building
+ * next door.
+ *
+ * Note that it produces an anchor, not a screen point: the attachment point is a property of
+ * the *building*, so it is computed once when the building is placed, not sixty times a
+ * second against a camera that has not moved.
  */
-export declare function footprintAnchor(
-  camera: Camera,
-  f: Footprint,
-  heightPx: number,
-  out: Vec2,
-): Vec2;
+export declare function footprintAnchor(f: Footprint, heightPx: number, out: Anchor): Anchor;
 ```
 
 ### 3.3 `camera` — world ↔ screen
@@ -676,11 +675,106 @@ export declare class ChunkGrid implements MutableTileSource {
 export declare function tileSourceOf(get: (gx: number, gy: number) => number): TileSource;
 ```
 
-### 3.6 `hittest` — screen → what
+### 3.6 `height` — elevation
+
+> **This module is new.** `.lattice/kit.json` lists `iso`'s modules as projection, camera,
+> depth, tilemap, footprint, hittest, path — no `z` anywhere. The demo RFC's line is right:
+> *a valley with no z is a rug with a road painted on it*, and the fix is a module, not a
+> parameter bolted onto an existing one. **Proposed change to `kit.json`: add `height` to
+> `packages.iso.modules`.**
+
+The shape of the answer matters as much as the answer. Elevation here is **a layer over the
+tile map, not a third grid axis** — one number per grid vertex, read through a sampler,
+multiplied into a screen-space `y` shift. That buys the valley, the river bank, the ridge and
+the flatness test, and it costs nothing anywhere else in the package: the projection stays
+linear, the depth sort stays two-dimensional, and a game with flat ground never allocates a
+byte for it.
 
 ```ts
-/** The tile under a screen point. Floors, like {@link worldToTile}. */
+/**
+ * A tile layer read as terrain height, plus the world pixels one height unit is worth.
+ *
+ * Two fields rather than a class, so a game can point one at a {@link TileGrid} it saves, at
+ * a {@link ChunkGrid} it streams, or at `tileSourceOf(seeded noise)` and store nothing at all.
+ */
+export interface HeightField {
+  readonly heights: TileSource;
+  /**
+   * World pixels per height unit. An art constant the game chooses — `TILE_H / 4` is a good
+   * first guess, because four steps of rise per tile is where a 2:1 slope stops reading as a
+   * slope and starts reading as a wall.
+   */
+  readonly stepPx: number;
+}
+
+/**
+ * Height in world pixels at a **fractional** grid position, bilinear between the four corners
+ * the position lies within.
+ *
+ * **Heights live on grid vertices, not tile centres.** `heights.get(gx, gy)` is the elevation
+ * of the *north corner* of tile `(gx, gy)`, so adjacent tiles share their corner values
+ * exactly and their drawn quads cannot leave a seam. Centre-sampled heightfields need an
+ * averaging pass to close those seams, and every game that starts centre-sampled rewrites
+ * this later. Getting the convention wrong costs a day and is invisible until the terrain is
+ * drawn.
+ *
+ * Bilinear rather than nearest because walkers are sampled at fractional positions: a
+ * nearest-neighbour height makes a pilgrim climb a hill in visible steps.
+ */
+export declare function heightAt(field: HeightField, gx: number, gy: number): number;
+
+/**
+ * The steepest rise between any two adjacent corners of tile `(gx, gy)`, in world pixels.
+ *
+ * The terrain half of a movement cost function: `cost = 1 + (slopeAt(...) / stepPx) | 0`
+ * is a complete, deterministic "rough ground is slower" rule in one line, and it is what
+ * makes the demo's ridge route *shorter but harder* rather than merely shorter.
+ */
+export declare function slopeAt(field: HeightField, gx: number, gy: number): number;
+```
+
+### 3.7 `hittest` — screen → what
+
+> **Who owns tap → grid cell.** `iso` does, and this is the sentence that settles it, because
+> the demo RFC is right that it is the seam two packages can each plausibly disown. The split:
+> **`input` owns the event, `iso` owns the geometry, and the composition is `input`'s and is
+> one line.** `input` turns a `PointerEvent` into CSS-pixel coordinates relative to the
+> viewport, decides whether it was a tap or a drag, and then calls `pickTile(camera, sx, sy,
+> out)` — a function that takes two numbers, touches no DOM, and is testable in Node. The
+> inverse split is unbuildable: a `pickTile` in `input` would drag the projection, the camera
+> and the heightfield up a layer, and `iso` cannot own the event because it may not name a DOM
+> global. If a builder finds themselves writing a `pointerToTile(ev, ...)` here, they have the
+> seam the wrong way round.
+
+```ts
+/**
+ * The tile under a screen point, on flat ground. Floors, like {@link worldToTile}.
+ *
+ * This is the function `@lattice/input` calls to turn a tap into a cell.
+ */
 export declare function pickTile(camera: Camera, sx: number, sy: number, out: Tile): Tile;
+
+/**
+ * The tile under a screen point **on a heightfield**, or `false` if the ray leaves the map.
+ *
+ * Needed because the projection is not invertible once terrain has height (trap T11): the
+ * pixel under the cursor is on the ground at one place *and* on the side of the ridge behind
+ * it at another, and `pickTile` will confidently return the first. Marches tiles from the far
+ * end of the screen ray towards the viewer and returns the first whose surface contains the
+ * point — far to near, because the near one is what the player can see and therefore what
+ * they meant.
+ *
+ * @param maxHeightPx The tallest terrain on the map, which bounds how far back the march has
+ *   to start. Pass it, or the march either misses a peak or scans the whole map per tap.
+ */
+export declare function pickTileOnHeights(
+  camera: Camera,
+  sx: number,
+  sy: number,
+  field: HeightField,
+  maxHeightPx: number,
+  out: Tile,
+): boolean;
 
 /**
  * A rectangular volume in a building's local space: offsets and extents in **tiles**,
@@ -735,17 +829,33 @@ export declare function pointInPolygon(
 export declare function pointInTile(camera: Camera, sx: number, sy: number, gx: number, gy: number): boolean;
 ```
 
-### 3.7 `path` — getting there
+### 3.8 `path` — a curve, not a list of nodes
+
+The central claim, restated because it decides every signature below: **a path is a curve to
+be sampled.** `find` produces one, `pathSample` reads a position out of it at an arc length,
+and the caller keeps no state at all. Everything the demo needs — a crowd, an ignition wave, a
+`reach` number — is that one function called with a different argument.
 
 ```ts
 /**
- * Movement cost of entering a tile: a positive integer, or `0` for impassable.
+ * Movement cost of entering a tile: `0` for impassable, otherwise a positive integer weight
+ * where `1` is ordinary ground, `2` is twice as slow, and so on.
+ *
+ * **Weighted, not binary.** Binary walkability cannot say "shorter but rougher", and that
+ * sentence is the demo's entire mid-game decision. The step cost is `weight × STEP_ORTHO` or
+ * `weight × STEP_DIAG`, so a scree tile at weight 3 is exactly three times the road beside
+ * it. Keep weights small — under about 100 — so a route's total stays comfortably inside a
+ * 32-bit integer.
  *
  * Integers, not floats, and this is not a style choice. A* orders its frontier by summed
  * cost; float summation is associative only by luck, so two engines can pop equal-`f` nodes
  * in a different order and produce different — both optimal, both different — paths. A
  * replay that diverges by one tile diverges by everything. Integers make the order total
  * and the path byte-identical everywhere.
+ *
+ * A cost function is the right place to combine layers: terrain type from one `TileGrid`,
+ * slope from a {@link HeightField}, occupancy from another. It is called once per expanded
+ * node, so keep it arithmetic — no allocation, no `Math.pow`.
  */
 export type TileCost = (gx: number, gy: number) => number;
 
@@ -778,14 +888,110 @@ export interface PathOptions {
   readonly bounds?: Readonly<TileRange>;
 }
 
-/** A route, stored as flat integers. `length` is tile count including both endpoints. */
+/**
+ * A route: a polyline through grid space that also knows how long it is.
+ *
+ * Nodes are grid coordinates — integers when they came from {@link PathFinder}, fractional
+ * when the game authored them ({@link Path.push}) — and alongside them the path keeps the
+ * cumulative **world-pixel** arc length to each node. That second array is what makes
+ * {@link pathSample} possible, and it is why `Path` is a class rather than an array of tiles.
+ *
+ * There is no `length`, deliberately: `nodeCount` and `arcLength` are different numbers in
+ * different units, and a game that computes `reach` from the node count instead of the arc
+ * length gets an economy that pays more for a zigzag than for a road.
+ */
 export declare class Path {
   constructor(capacity?: number);
-  readonly length: number;
-  xAt(i: number): number;
-  yAt(i: number): number;
+
+  /** Number of nodes, including both endpoints. `0` for an empty path. */
+  readonly nodeCount: number;
+
+  /**
+   * Total length in **world pixels** — the demo's `reach`, and the domain of every `s`
+   * parameter in this module.
+   *
+   * World pixels rather than tiles, because the grid→world map is not conformal: one grid
+   * unit along `+gx` is 35.8 world pixels, and one grid unit along the `(1,1)` diagonal is
+   * 22.6. A walker advanced at a constant rate in *grid* units visibly speeds up by 58% when
+   * the road turns, which is the "the walkers hitch on the diagonals" bug in §1.
+   */
+  readonly arcLength: number;
+
+  /** Bumped on every mutation. Cache anything derived from the path against this. */
+  readonly version: number;
+
+  /** Grid coordinates of node `i`. @throws RangeError when `i` is out of range. */
+  gxAt(i: number): number;
+  gyAt(i: number): number;
+
+  /** Arc length in world pixels from the start to node `i`. `sAt(nodeCount - 1) === arcLength`. */
+  sAt(i: number): number;
+
+  /**
+   * Append a node, extending {@link Path.arcLength} by the world distance from the previous
+   * one. Fractional coordinates are allowed and are how a game hands in an authored road
+   * spline — the demo's valley road is generated, not searched, and still needs to be sampled.
+   */
+  push(gx: number, gy: number): void;
+
   clear(): void;
 }
+
+/**
+ * The grid position at arc length `sPx` along the path, written into `out`.
+ *
+ * **The most important function in this package**, and the one the demo ranks as the kit's
+ * most-needed gap. Fifty walkers are fifty calls, no per-walker state, nothing allocated,
+ * identical on every replay.
+ *
+ * Takes a **world-pixel** arc length and returns **grid** coordinates, which is not a
+ * mismatch but the point: parameterising by world length is what makes the motion look
+ * uniform, and returning grid coordinates is what lets the result go straight into
+ * {@link Scene.addPoint}, {@link heightAt} and {@link gridToScreen} without a conversion.
+ *
+ * Clamps `sPx` to `[0, arcLength]` rather than wrapping. A caller who wants a loop writes the
+ * modulo themselves and can therefore also write a ping-pong, a pause at the end, or a queue
+ * that bunches up at the gate — none of which a built-in wrap would allow.
+ *
+ * `O(log nodeCount)` — a binary search over the cumulative lengths, then one lerp.
+ */
+export declare function pathSample(path: Path, sPx: number, out: Vec2): Vec2;
+
+/**
+ * Which of the eight compass directions the path is heading in at arc length `sPx`, as a
+ * direction code for {@link DIR_DX}/{@link DIR_DY}. `0` on an empty path.
+ *
+ * A direction *code* rather than an angle, and this is a determinism decision as much as an
+ * ergonomic one: the obvious implementation is `Math.atan2`, and ECMA-262 does not require
+ * correctly-rounded trigonometry, so a facing angle that reaches a save file or a hash is not
+ * replayable across engines. Comparing the signs and magnitudes of `dx` and `dy` is exact
+ * arithmetic and is also what a sprite with eight facings actually wants.
+ */
+export declare function pathDirAt(path: Path, sPx: number): number;
+
+/**
+ * The arc length of the point on the path nearest to grid position `(gx, gy)`.
+ *
+ * The inverse of {@link pathSample}, and the function that turns a *place* into a *number*:
+ * `reach` is `pathProject(road, furthestLitLamp.gx, furthestLitLamp.gy)`, and the demo's
+ * ending ignites each lamp staggered by its own projection. Without it a game has to store an
+ * arc length beside every object on the road and keep the two in sync through every re-route.
+ */
+export declare function pathProject(path: Path, gx: number, gy: number): number;
+
+/**
+ * Collapse the staircase: remove collinear runs, then pull the path straight wherever the
+ * shortcut is passable. Mutates in place and shortens {@link Path.arcLength}.
+ *
+ * A raw 8-way A* result is a stair of unit steps, and a walker sampled along it wobbles from
+ * side to side like someone finding their keys in the dark (trap T16). Every game that
+ * samples a path needs this, so it ships here rather than being rediscovered per game.
+ *
+ * @param cost Omit to remove only exactly-collinear nodes, which is free and always safe.
+ *   Pass one to also string-pull through open ground, which is what makes a route look like a
+ *   road; the pull only ever shortens the path, so it cannot make a legal route illegal.
+ */
+export declare function pathSimplify(path: Path, cost?: TileCost): void;
 
 /**
  * A* over a tile source. Owns its open/closed buffers so a repeated query allocates nothing.
@@ -840,12 +1046,105 @@ export declare class FlowField {
   costAt(gx: number, gy: number): number;
   /** Sugar over {@link FlowField.dirAt}. `false` when there is no route, leaving `out` untouched. */
   step(gx: number, gy: number, out: Tile): boolean;
+  /** The {@link MutableTileSource.version} the last {@link FlowField.build} read. Compare to know whether to rebuild. */
+  readonly builtAtVersion: number;
 }
 ```
 
 **Reachability comes free.** A base-builder must answer "have I just walled my walkers in?", and
 that is `field.dirAt(x, y) === 0` after the wall is placed, or `costAt < 0`. No flood-fill export,
 no connected-component API — the flow field the game already keeps is the connectivity oracle.
+
+**Recompute on a tile change is the whole of the rockfall beat**, and it is three lines:
+
+```ts
+map.set(rock.gx, rock.gy, GROUND);                       // one write, version bumps
+if (field.builtAtVersion !== map.version) field.build(cost);   // one sweep
+finder.find(cost, gate.gx, gate.gy, shrine.gx, shrine.gy, road); pathSimplify(road, cost);
+```
+
+Every pilgrim re-routes on the next frame without being told, because none of them holds a
+route — they hold an arc length along `road`, and `road` is what changed. That is the second
+dividend of §3.8's central claim, and it is why there is no incremental replanner here (§4.9).
+
+### 3.9 `anchor` — attaching a durable thing to the world
+
+> **Routed from `@lattice/ui`:** nothing in the kit anchors a *persistent* overlay — a name
+> tag, a construction ring, a health bar — to a world entity across pan and zoom. `ui` covers
+> the one-shot float via an injected `project` hook; the durable case had no owner.
+>
+> **It is mine, and it is not a new concept.** `ui` was right that this and arc-length
+> sampling must not come out as two unrelated APIs. They do not, because both produce the same
+> currency: **a grid position.** `pathSample` writes one for a moving thing; `footprintAnchor`
+> writes one for a static thing; `anchorToScreen` projects either. There is no `Anchor` class,
+> no registry, no subscription, and nothing that has to be torn down.
+
+```ts
+/**
+ * A durable attachment point in the world: where a thing *is*, in grid space, plus how high
+ * above the ground plane it hangs.
+ *
+ * Three numbers, mutable, owned by whoever owns the entity. Deliberately **not** a screen
+ * point and deliberately not camera-aware: an anchor computed against a camera is stale the
+ * next time anyone pans, and caching screen positions is the same mistake as caching hit
+ * boxes during the draw pass (trap T5), one frame later.
+ *
+ * A moving anchor is two field writes: `pathSample(road, s, a)` fills `gx`/`gy`, and the
+ * caller sets `zPx` from {@link heightAt}. A static one is written once at placement time.
+ */
+export interface Anchor {
+  gx: number;
+  gy: number;
+  zPx: number;
+}
+
+/**
+ * Project an anchor to a screen point, now, for this camera. Allocation-free; call it once
+ * per anchored thing per frame and never store the result.
+ *
+ * This is the function `@lattice/ui` should be handed as its `project` hook and the one
+ * `@lattice/draw` should call for a world-space label. Both get the same pixel, which is the
+ * point — a HUD tag and a canvas ring on the same building must not disagree by a subpixel.
+ */
+export declare function anchorToScreen(camera: Camera, a: Readonly<Anchor>, out: Vec2): Vec2;
+
+/**
+ * Is this anchor within `marginPx` of the viewport?
+ *
+ * A DOM tag for an off-screen building must be hidden rather than positioned at −4000px:
+ * every browser still lays out and composites the second one, and a hundred of them is a
+ * measurable frame cost for something nobody can see.
+ */
+export declare function anchorVisible(camera: Camera, a: Readonly<Anchor>, marginPx?: number): boolean;
+```
+
+**What is still not mine.** Drawing the tag, the ring or the bar — `draw` on canvas, `ui` in
+the DOM — and the *lifetime* of the anchored thing. `iso` does not know that a building was
+demolished, so an overlay outliving its entity is the consumer's bug to prevent: the overlay
+must hold a reference to the entity's own `Anchor`, never a copy of it, and must be disposed
+by whatever disposes the entity (trap T19).
+
+### 3.10 Determinism: what this package may not compute
+
+`@lattice/core`'s RFC establishes a two-tier rule, and it constrains this package more than it
+constrains most. ECMA-262 specifies `+ - * /`, `Math.sqrt`, `Math.imul` and the bitwise
+operators exactly; it explicitly does **not** require correctly-rounded `sin`, `cos`, `atan2`,
+`pow`, `exp` or `log`. Anything whose result is hashed, persisted or replayed must stay in
+tier A.
+
+**No function in `@lattice/iso` uses a trigonometric, exponential or logarithmic function.**
+That is a testable claim (I17) and it costs nothing, because the geometry here is linear:
+
+| where it is tempting | what is used instead |
+|---|---|
+| a walker's facing angle | {@link pathDirAt} returns one of eight direction codes, from sign and magnitude comparisons |
+| the A* heuristic | the integer octile metric `STEP_DIAG·min(dx,dy) + STEP_ORTHO·abs(dx−dy)` — exact, admissible, and no `sqrt` at all |
+| arc length | `Math.sqrt` of an exactly-computed sum of squares, which is tier A |
+| an isometric "rotation" | there is none; the projection is a fixed 2×2 integer matrix |
+| per-tile variation | not this package's job. Call `core.hash2(seed, gx, gy)` through `fillFrom` or `tileSourceOf` — stateless, seeded, and independent of the order tiles are visited, which is what stops a valley reshuffling itself when one tile is touched |
+
+`iso` contains no randomness of any kind and holds no `Rng`. Everything that varies comes in
+through a `TileSource` the caller filled.
 
 ---
 
@@ -872,12 +1171,36 @@ The escape hatch for the one legitimate case — a different **aspect** ratio, e
 that it is a different projection, and hence a different package. 2:1 is what makes the
 inverse exact, the diamond test two half-planes, and the depth key a sum.
 
-### 4.2 Height as a third grid axis
+### 4.2 A third grid axis — but elevation itself is *in*, see §3.6
 
-No `gz`. No multi-storey maps, bridges, or tiles stacked in a column. Elevation exists only as
-a world-pixel `zPx` that shifts screen y. True 3D occlusion in a 2:1 projection is a different
-algorithm with a different data structure, and every shipped game that added floors did it by
-drawing one `Scene` per floor in order. Do that; the API already supports it.
+`iso` has a heightfield and it does not have a `gz`. The line between the two is worth stating
+precisely, because "we need elevation" and "we need a third axis" sound like the same request
+and are not:
+
+| in | out |
+|---|---|
+| one height per grid **vertex**, sampled bilinearly | a stack of tiles per column |
+| a screen-space `y` shift of `-zPx · zoom` | z entering the depth key or the occlusion test |
+| slope, flatness, and terrain-aware picking | bridges, overpasses, tunnels, floors above floors |
+
+The reason for the line is that everything in the left column keeps the projection linear and
+the sort two-dimensional, and everything in the right column replaces the depth sort with a
+different algorithm over a different data structure. A game that wants floors draws one
+`Scene` per floor, in order, which is what every shipped 2:1 game with floors actually does
+and which this API already supports at no extra cost.
+
+### 4.9 Incremental replanning (D* Lite, LPA*)
+
+The demo asks for "path recompute cheap enough to run on a tap", and the answer is
+**recompute it entirely**, plus the `version` counter of §3.5 so it happens exactly once. Some
+arithmetic, because this is a decision that sounds wrong until it is measured: a 48×48 valley
+is 2,304 tiles, so a worst-case A* that expands every tile is a few tens of microseconds and a
+full `FlowField.build` is one linear sweep in the low hundreds. The frame budget is 8 ms. An
+incremental replanner buys back a fraction of a percent of one frame, in exchange for a few
+hundred lines of the subtlest code in the package, a second invalidation protocol, and a class
+of bug — a stale key in the priority queue — that reproduces once an hour and never in a test.
+If a game appears whose maps are large enough for this to matter, it will also be a game that
+wants chunked flow fields, and that is a different design conversation with real numbers in it.
 
 ### 4.3 Anything that draws
 
@@ -895,12 +1218,17 @@ arguments and current state. Feel needs a clock and a pointer, and both live ups
 `@lattice/input`'s `cameracontrol` owns it and drives this camera through `panByScreen` and
 `zoomAt`. A camera that eases itself cannot be stepped deterministically in a replay.
 
-### 4.5 Continuous movement, steering and agent avoidance
+### 4.5 Steering, avoidance, and anything that owns a walker
 
-`path` returns tiles. It does not interpolate along them, does not smooth corners, does not
-stop fifty walkers piling into one doorway. Local avoidance is a simulation behaviour over
-time, not a grid query, and putting it here would drag a clock into an otherwise timeless
-package. This is a real gap — see §7.
+`pathSample` will tell you where arc length `s` is. It will not choose `s` for you, will not
+accelerate, will not stop fifty walkers piling into one doorway, and will not decide that this
+walker should wait because that one is in the way. Those need a clock and per-agent state,
+and this package has neither — every function here is a pure function of its arguments.
+
+Note how much this rules *out* rather than in: a game whose crowd is `s = (t · v + offset) mod
+arcLength` needs no steering at all, which is the demo's bet and is why its crowd is twelve
+lines. A game that needs walkers with genuine state is a game that needs a simulation layer —
+see §7.
 
 ### 4.6 Entities, components, or any scene graph
 
@@ -936,12 +1264,21 @@ rather than a drift.
 | I8 | `sort()` is deterministic and terminating: the same adds in the same order give the same output, on any engine, and a deliberately constructed cyclic layout terminates in bounded time rather than hanging. | The suite passes on Node and fails on Safari: a non-transitive comparator was handed to `Array.sort`. |
 | I9 | For two items at equal depth whose silhouettes overlap, `pick` returns the one that `idAt(count-1 … 0)` reaches first — i.e. the one painted last. | The tap opens the building behind (trap T3). |
 | I10 | `TileGrid.get` outside the grid returns `outOfBounds` and never throws; `TileGrid.set` outside the grid throws a `RangeError` naming the coordinate and the bounds. | A pathfinder scanning a border tile throws mid-frame. |
-| I11 | `PathFinder.find` on a uniform-cost open grid returns a path whose summed cost equals the octile distance `STEP_DIAG·min(dx,dy) + STEP_ORTHO·|dx−dy|`. | The path is optimal-looking but longer: the heuristic overestimates, or diagonals cost 10. |
+| I11 | `PathFinder.find` on a uniform-cost open grid returns a path whose summed cost equals the octile distance `STEP_DIAG·min(dx,dy) + STEP_ORTHO·abs(dx−dy)`. | The path is optimal-looking but longer: the heuristic overestimates, or diagonals cost 10. |
 | I12 | Every consecutive pair in a returned `Path` differs by at most 1 on each axis, and with `cutCorners: false` no diagonal step has both shared orthogonal neighbours impassable. | An agent walks through the corner where two walls meet. |
 | I13 | The same `find` call with the same cost function returns a byte-identical `Path` across runs and engines. | Two replays of one seed diverge after the first junction — float costs, or a heap with an unspecified tie-break. |
 | I14 | Following `FlowField.step` from any tile with `costAt ≥ 0` reaches a goal in at most `costAt / STEP_ORTHO` steps and never revisits a tile. | Two adjacent tiles point at each other and an agent vibrates in place for ever. |
-| I15 | A warm frame — `clear`, 400 `add`s, `sort`, 400 `idAt`s, one `pick`, one `find` — allocates zero bytes, asserted in `*.bench.ts` against a heap-delta measurement. | The number climbs the day someone returns `{x, y}` from a conversion. |
+| I15 | A warm frame — `clear`, 400 `add`s, `sort`, 400 `idAt`s, 50 `pathSample`s, one `pick`, one `find` — allocates zero bytes, asserted in `*.bench.ts` against a heap-delta measurement. | The number climbs the day someone returns `{x, y}` from a conversion. |
 | I16 | No file in `src/` references `window`, `document`, `Canvas`, `Math.random`, `Date.now` or `performance.now`. Enforced by `npm run lint`. | The camera grew a `resizeToCanvas` helper. |
+| I17 | No file in `src/` references `Math.sin`, `cos`, `tan`, `atan2`, `pow`, `exp` or `log`. `sqrt` and `hypot`-free arithmetic are permitted. Enforced by `npm run lint` alongside I16. | A facing angle reaches a save file and two engines disagree in the last bit (§3.9). |
+| I18 | `pathSample(p, 0)` is node 0, `pathSample(p, p.arcLength)` is the last node, and `pathSample` is monotone: for `s₁ < s₂` the sampled points advance along the path, never back. | A walker stutters backwards at a node boundary — the binary search returned the wrong segment on an exact hit. |
+| I19 | For a path built by `push`, `pathProject(p, p.gxAt(i), p.gyAt(i))` equals `p.sAt(i)` within `1e-6`, and `pathSample(p, pathProject(p, g))` returns `g` for any `g` on the path. | `reach` jumps when a lamp sits exactly on a node. |
+| I20 | Sampling a path at 1,000 evenly spaced arc lengths gives 999 consecutive world-space gaps that are equal within `1e-9`. | The walkers hitch on the diagonals: the parameterisation is in grid units, not world pixels (a 58% speed difference — see `Path.arcLength`). |
+| I21 | `pathSimplify` never increases `arcLength`, never changes the first or last node, and with a `cost` never produces a segment crossing an impassable tile. | The string-pull cut the corner of a building and the crowd walks through a wall. |
+| I22 | `heightAt` at integer grid coordinates equals `heights.get(gx, gy) × stepPx` exactly, and is continuous across tile boundaries. | Terrain seams: heights were sampled at tile centres rather than at vertices. |
+| I23 | `footprintFlatness` is `0` for every footprint on level ground and is invariant under adding a constant to the whole heightfield. | A press can be placed on a cliff, or cannot be placed anywhere above sea level. |
+| I24 | One `set` on a `TileGrid` increments `version` by at least one; a `set` writing the value already there does not have to, but must never decrement. | A cached flow field is never rebuilt after the rockfall, and the crowd walks the old road for ever. |
+| I25 | `pickTileOnHeights` on a ridge returns the tile whose *surface* the cursor is over, not the flat-ground tile behind it, for every pixel of a rendered slope. | Tapping a lamp on the ridge selects the ground two tiles beyond it (trap T11). |
 
 ---
 
@@ -1033,6 +1370,31 @@ frame; rounding each sprite's screen position independently makes sprites jitter
 each other, which is worse than the shimmer. The rounding happens in `@lattice/draw`, where the
 device pixel ratio lives — this package deliberately hands out unrounded floats so that the
 choice is available.
+
+**T15 — Elevation must not enter the depth key.** The first instinct on adding a heightfield is
+to sort by `gx + gy + z`, and it draws a lamp on the ridge in front of the gate that is plainly
+standing between it and the camera. In a 2:1 projection what occludes what is decided entirely
+on the ground plane: height moves a sprite up the screen, it does not move it towards the
+viewer. `Scene.add` takes `heightPx` for culling only, and the sort never reads it.
+
+**T16 — A raw A* path is a staircase, and a sampled staircase wobbles.** Octile A* returns unit
+steps, so a road across open ground comes back as alternating east and south-east moves. Walk a
+sprite along it and it weaves from side to side like someone finding their keys in the dark —
+the artefact reads as "the pathfinder is broken" when the path is in fact optimal. `pathSimplify`
+before sampling, always; it is one call and it is the difference between a crowd and a bug
+report. The same staircase also makes `arcLength` about 8% longer than the road looks, which
+quietly overpays a `reach`-based economy.
+
+**T17 — Arc length in grid units instead of world pixels.** The grid→world map is linear but not
+conformal: one grid unit along `+gx` is 35.8 world pixels and one along the `(1,1)` diagonal is
+22.6. Parameterising a walker in grid units makes it accelerate by 58% every time the road
+turns, which looks exactly like a frame-rate problem and is not one. Measure and sample in world
+pixels; `Path` does, and this is the only reason it keeps a second array.
+
+**T18 — Heights belong on grid vertices, not tile centres.** Centre-sampled terrain leaves a
+seam at every tile boundary, because two adjacent tiles disagree about the height of the edge
+they share. It is invisible until the terrain is drawn, at which point it is a rewrite of every
+function that reads a height. `heights.get(gx, gy)` is the north **corner** of tile `(gx, gy)`.
 
 **T14 — Sort scenery and buildings in one list.** Two separately sorted lists make trees pop
 through walls, no matter how correct each list is on its own. `Scene` takes everything —

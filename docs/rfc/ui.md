@@ -35,22 +35,26 @@ something when an event happens.
 
 ```ts
 import { fmt } from '@lattice/core';
-import { createOverlay, el, roll, toasts } from '@lattice/ui';
+import { createOverlay, drive, el, roll } from '@lattice/ui';
 
 const ui = createOverlay({ now: () => Date.now() });
 const gold = roll(ui, { format: fmt });
 ui.mount(el('div', { class: 'hud' }, 'Gold ', gold.node), { interactive: true });
-ui.every(() => gold.set(game.wallet.gold));
-toasts(ui).show('Refinery online', 'good');
+ui.every((nowMs) => gold.set(wallet.goldAt(nowMs)));
+drive(ui, loop); // `update` drives ui.tick, `render` drives ui.repaint. Never the other way round.
 ```
 
-Five lines, and four of the package's five hard decisions are already made for the caller:
+And when something happens: `toasts(ui).show('Refinery online', 'good')`.
+
+Five lines, and five of the package's hard decisions are already made for the caller:
 
 - **The overlay is pointer-transparent** and `{ interactive: true }` is the only thing that
   ever makes a node tappable. A tap that is not on a node you named reaches the world.
-- **`ui.every` is an interval**, not the frame loop. There is no `ui.onFrame` that a state
-  update could be put into by accident; the only other cadence is called `paint` and its
-  contract is that nothing breaks if it never runs.
+- **This package owns no clock.** `ui.every` runs on `@lattice/loop`'s **`update`** callback,
+  which advances on wall time whether or not anything paints. The overlay starts no timer of
+  its own, because a second cadence beside the loop's is a poll racing a settle (§6, trap 4).
+- **There is no way to put a state update in `render`.** The only other cadence is called
+  `paint`, and its contract is that nothing breaks if it never runs.
 - **The roll animates itself** on the paint cadence and snaps on `visibilitychange`, so a tab
   that comes back from an hour in the background shows the right number instantly rather
   than counting up from an hour ago.
@@ -71,6 +75,7 @@ to update it (I own only this file):
 | **add `overlay`** | The pointer-event contract, the two cadences and the layer stack are the package's reason to exist. Leaving them implicit means every widget re-invents them, which is precisely how `hud.ts` reached 3,102 lines. |
 | **add `theme`** | Recolouring the whole HUD from one brand hue is one function and three custom properties. Without it, every game writes `document.documentElement.style.setProperty('--brand', …)` by hand and the thumbnail cache goes stale behind it (§6, trap 7). |
 | **keep floating numbers inside `roll`** | `+120` rising off a building and a wallet ticking up to 1,240 are the same feature seen twice: a number in screen space, animated, that must be correct without animation. One module, two exports. |
+| **reword this package's third invariant** | It currently reads *"anything that is not painting updates on an interval, not inside the frame loop."* Right in spirit, wrong in letter. `@lattice/loop`'s `update` **already is** the interval; a `ui` that reads that sentence literally starts a `setInterval` of its own and now the HUD polls on one clock while the simulation settles on another — which is `PLAYBOOK.md` trap 12, the bug that overwrote a player's typed company name. It must read: **"anything that is not painting updates on the loop's `update` callback, never inside `render`."** The two sentences sound identical and are not. |
 
 Seven modules, nineteen exported functions. Everything else in this section is a type.
 
@@ -94,6 +99,13 @@ import { hueToHex } from '@lattice/draw';           // one hue -> one CSS colour
 caller's choice, passed in as `RollOptions.format`, so a game can ship its own suffix ladder
 without forking this package.
 
+**`@lattice/loop` is not imported either, and that is a layering fact rather than a
+preference** — `ui` is layer 3 and depends on `core` and `draw` only. But the HUD's cadence
+*is* the loop's `update`, so this package meets it structurally: `Driven` in §3.2 is the shape
+of a loop, declared here, satisfied by the real one without an import. A game with no loop at
+all — a menu, a settings screen, a storybook page — calls `tick()` itself and the overlay does
+not notice the difference.
+
 ### 3.2 `overlay` — the root, the pointer contract, the two cadences
 
 ```ts
@@ -108,25 +120,31 @@ export type LayerName = 'floats' | 'panels' | 'modal' | 'toasts';
 
 export interface OverlayOptions {
   /**
-   * Time, injected. The kit bans `Date.now()` inside `src/`, and a widget that reads a clock
-   * it was not handed is a widget no test can fast-forward. Pass `() => Date.now()` in a game
-   * and a counter you control in a test.
+   * Time, injected — and it must be **the same clock `@lattice/loop` was given**.
+   *
+   * The kit bans `Date.now()` inside `src/`, and a widget that reads a clock it was not handed
+   * is a widget no test can fast-forward. Almost all of this package's time arrives as the
+   * argument to `tick()`; `now` covers the moments that originate outside a tick — a toast
+   * spawned in a click handler, the `visibilitychange` resync — and it is the only clock the
+   * standalone driver has. Two clocks in one HUD is the same class of bug as two cadences.
    */
   readonly now: () => number;
   /** Where the root is appended. Defaults to `document.body`. */
   readonly parent?: HTMLElement;
   /**
-   * The state cadence, in milliseconds. Default 1000. This is the interval on which prices,
-   * disabled states and toast expiry are recomputed — see §5, invariant 2 for why it is not
-   * the frame loop.
+   * Who advances the state cadence. Default `'driven'`, and the default is the point.
+   *
+   * - `'driven'` — the overlay starts **no timer and no `requestAnimationFrame` loop**. It
+   *   advances only when something calls `tick()` / `repaint()`, which in a game means
+   *   `@lattice/loop`'s `update` and `render` (see `drive` below). One clock, the loop's.
+   * - `'standalone'` — the overlay runs its own `setInterval` at `standaloneMs` and its own
+   *   rAF loop. This is for a HUD with no game behind it: a menu, a settings screen, a
+   *   component page. In this mode `tick()` throws, because a host calling it *as well* is
+   *   precisely the two-clocks bug this option exists to keep out of games.
    */
-  readonly stateMs?: number;
-  /**
-   * Install the interval, the `requestAnimationFrame` loop and the `visibilitychange`
-   * listener at construction. Default `true`. Set `false` only in tests, where you drive
-   * `tick()` and `repaint()` yourself.
-   */
-  readonly autoStart?: boolean;
+  readonly driver?: 'driven' | 'standalone';
+  /** Only with `driver: 'standalone'`. Default 1000. @throws RangeError if set in `'driven'` mode, which would be a cadence nobody reads. */
+  readonly standaloneMs?: number;
   /** Stacking against your canvas. Default `1`, which is right when the canvas has none. */
   readonly zIndex?: number;
 }

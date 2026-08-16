@@ -3,6 +3,11 @@
 > Status: proposed. Owner: architect. Implements to `.lattice/kit.json → packages.persist`.
 > Nothing in this document is implemented yet. A builder should be able to write the package
 > from it without asking a question.
+>
+> **Amends `.lattice/kit.json`:** yes. Modules become
+> `["store", "migrate", "adapters", "integrity", "replay", "browser"]` — two more than declared.
+> `replay` is accepted ownership of the kit's headline claim (§4.9); `browser` is the one
+> DOM-shaped module. Routed in §8 because this file is the only one I own.
 
 ---
 
@@ -35,14 +40,16 @@ import { migrations, createStore, browserStorage, installFlushTriggers } from '@
 const chain = migrations(1, isV1)
   .step(2, 'one coin counter became a wallet of currencies', v1 => ({ version: 2, wallet: { coin: v1.coins } }), isV2)
   .seal();
-const store = createStore({ key: 'campus', chain, adapter: browserStorage(), fresh: newGame });
+const store = createStore({ key: 'campus', chain, adapter: browserStorage(), fresh: newGame, now: () => Date.now() });
 const opened = store.open();                       // never throws. `opened.failure` says why if it degraded
-const auto = store.autosave(() => game.state);     // coalesced writes; you drive the clock
-installFlushTriggers(auto, { visibility: document, page: window, now: () => Date.now() });
+const auto = store.autosave(() => game.state, { schedule: loop.real.after });
+installFlushTriggers(auto, { visibility: document, page: window });
 ```
 
-`opened.state` is always a playable state. `game.tick` calls `auto.tick(nowMs)`; the store
-writes at most once per four seconds and once more on the way out of the page.
+`opened.state` is always a playable state. The store writes at most once per four seconds and
+once more on the way out of the page. `now` is the game's calendar (§4.8) and there is no
+default for it; `schedule` is the game's timer (§4.6) and if you have no scheduler, call
+`auto.tick()` from whatever advances your simulation instead.
 
 Read what the example does *not* contain, because each absence is a decision:
 
@@ -52,16 +59,17 @@ Read what the example does *not* contain, because each absence is a decision:
 | a `validate` option | validation is per-version, inside the chain. There is one concept, not two. |
 | `try` / `catch` | there is nothing to catch. `open()` returns a result. |
 | `await` | the adapter is synchronous, deliberately. See §4.1. |
-| a timer | this package owns no timer. The caller drives `tick`. See §4.6. |
+| a timer | this package owns no timer and creates none. `schedule` is injected — `loop.real.after` in a browser, something synchronous in a test. See §4.6. |
+| a clock | the same. `now` is injected, required, and has no default, because reading one here would break non-negotiable #1 and defaulting one would silently zero every offline gap. See §4.8. |
 | `localStorage` | `browserStorage()` reaches for it behind a guard and degrades to memory. It is the only place the word appears. |
 
 ---
 
 ## 3. The public surface
 
-Five modules: `integrity`, `adapters`, `migrate`, `store`, `browser`. (`kit.json` currently
-lists four — see §7, this needs a routed edit.) The block below type-checks as written under
-the repo's `tsconfig.base.json` strictness, DOM lib present or absent.
+Six modules: `integrity`, `adapters`, `migrate`, `store`, `replay`, `browser`. The block below
+type-checks as written under the repo's `tsconfig.base.json` strictness, DOM lib present or
+absent.
 
 ### 3.1 Integrity
 
@@ -69,20 +77,36 @@ the repo's `tsconfig.base.json` strictness, DOM lib present or absent.
 /**
  * A checksum over the exact payload text.
  *
- * **This detects accident, not malice, and pretending otherwise is worse than having none.**
- * It catches a truncated write, a string clipped by a quota limit, a sync extension that
- * half-wrote the key, and a payload someone hand-edited into invalid state — the class of
- * damage that otherwise loads as a subtly wrong world three sessions later. It does not and
- * cannot stop a determined player: the algorithm is in the bundle they downloaded, and
- * recomputing it in a devtools console takes under a minute. If your game's economy needs a
- * save the player cannot edit, your game needs a server, and this kit deliberately does not
- * have one.
+ * **A 32-bit digest detects corruption. It does not authenticate, and pretending otherwise
+ * is worse than having none at all.** It catches a truncated write, a string clipped by a
+ * quota limit, a sync extension that half-wrote the key, and a payload hand-edited into
+ * invalid state — the class of damage that otherwise loads as a subtly wrong world three
+ * sessions later. It cannot stop a determined player: the algorithm is in the bundle they
+ * downloaded, there is no key, and recomputing it in a devtools console takes under a
+ * minute. If your game's economy needs a save the player cannot edit, your game needs a
+ * server, and this kit deliberately does not have one.
+ *
+ * Collision maths, stated so nobody has to guess: 32 bits is a birthday collision at roughly
+ * 77,000 distinct inputs, and one specific damaged payload passes with probability 2^-32.
+ * For "did these bytes survive the round trip" that is ample; for anything adversarial it is
+ * meaningless, because an adversary does not need a collision, they need a calculator.
  */
 export type Checksum = (text: string) => string;
 
-/** FNV-1a, 32 bits, as eight lowercase hex digits. Cheap, dependency-free, and enough for
- *  the corruption it is aimed at. Not a cryptographic hash and never described as one. */
-export declare const fnv1a32: Checksum;
+/**
+ * `hashString` from `@lattice/core`, rendered as eight lowercase hex digits.
+ *
+ * Deliberately not a bespoke CRC or FNV implementation: `core` split `hash` into its own
+ * module precisely so `persist`, `draw` and `iso` would not each grow a private 32-bit hash.
+ * One implementation, one set of tests, one portability seam.
+ *
+ * The payload is checksummed **as read, unnormalised**. `hashString` walks UTF-16 code units,
+ * so NFC and NFD spellings of the same text hash differently — and that is correct here,
+ * because they are different bytes and the checksum's whole job is to notice that the bytes
+ * changed. Do not "fix" this by normalising before hashing: it would make the digest cover a
+ * string that was never written.
+ */
+export declare const defaultChecksum: Checksum;
 ```
 
 ### 3.2 Adapters
@@ -150,13 +174,31 @@ export type Increment<N extends number, Counter extends readonly unknown[] = []>
   Counter['length'] extends N ? ([...Counter, unknown]['length'] & number) : Increment<N, [...Counter, unknown]>;
 
 /**
- * How a version recognises itself.
+ * How a version recognises itself: **returns the value typed, or throws.**
  *
- * A plain type predicate, because a schema language is a dependency and this kit has none.
- * Make it as loose as you can defend — checking that the two or three fields your migration
- * actually reads are present beats a field-by-field validator nobody maintains.
+ * Not `(value: unknown) => value is T`. A boolean predicate has already discarded the thing
+ * that was wrong by the time it returns, so it cannot produce the message non-negotiable #9
+ * demands — it can only ever say "no". This is the same shape `@lattice/core`'s `guard`
+ * module took for the same reason, and it composes directly with it:
+ *
+ * ```ts
+ * const isV2: Recognise<V2> = v => {
+ *   const o = expectObject(v, 'save.v2');
+ *   return { version: 2, wallet: expectRecordOfFinite(o['wallet'], 'save.v2.wallet') };
+ * };
+ * ```
+ *
+ * Two things fall out of returning rather than asserting. The thrown message travels into
+ * `SaveFailure.message`, so a rejected save says *which field* was wrong instead of "the
+ * guard said no" — the difference between a fixable bug report and a shrug. And a recogniser
+ * may **normalise as it validates**, returning a repaired value, which is the cheapest
+ * possible migration for a field that only ever needed a default.
+ *
+ * No schema language, because a schema language is a dependency and this kit has none. Make
+ * it as loose as you can defend: checking the two or three fields your migration actually
+ * reads beats a field-by-field validator nobody maintains.
  */
-export type Guard<T> = (value: unknown) => value is T;
+export type Recognise<T> = (value: unknown) => T;
 
 /** One rung, for reporting and for tests. `why` is prose a reviewer reads, not a label. */
 export interface MigrationStep {
@@ -177,8 +219,9 @@ export interface MigrationChain<Head extends number, T> {
   readonly floor: number;
   readonly head: Head;
   readonly steps: readonly MigrationStep[];
-  /** The head guard. `store.decode` runs this last, and a failure is `invalid`. */
-  recognises(value: unknown): value is T;
+  /** The head recogniser. `store.decode` runs it last; a throw becomes `invalid`, carrying
+   *  the thrown message. */
+  recognise(value: unknown): T;
   /**
    * Run `value` from version `from` up to `head`, one rung at a time.
    *
@@ -197,15 +240,15 @@ export interface ChainBuilder<Head extends number, Current> {
    * `Argument of type '3' is not assignable to parameter of type '2'`.
    *
    * `migrate` receives the previous version *typed*, because the previous version was
-   * recognised by its own guard before it was handed over. That is the whole reason a guard is
-   * mandatory rather than optional: without it a migration reads `unknown` and every line in it
-   * is a cast.
+   * recognised by its own recogniser before it was handed over. That is the whole reason a
+   * recogniser is mandatory rather than optional: without it a migration reads `unknown` and
+   * every line in it is a cast.
    */
   step<Next extends Increment<Head>, Migrated>(
     to: Next,
     why: string,
     migrate: (prior: Current) => Migrated,
-    recognises: Guard<Migrated>,
+    recognise: Recognise<Migrated>,
   ): ChainBuilder<Next, Migrated>;
   /** Freeze. Re-checks the chain at runtime for callers who arrived from JavaScript, and
    *  throws `RangeError` naming the missing version. Developer error, thrown loudly, at
@@ -214,14 +257,14 @@ export interface ChainBuilder<Head extends number, Current> {
 }
 
 /**
- * Start a chain at the oldest version you still support, with the guard that recognises it.
+ * Start a chain at the oldest version you still support, with the recogniser for that version.
  *
  * @param floor the oldest readable version. Raising it is a decision to abandon every save
  *              below it; make it in a commit of its own with the number in the message.
  */
 export declare function migrations<Floor extends number, T>(
   floor: Floor,
-  recognises: Guard<T>,
+  recognise: Recognise<T>,
 ): ChainBuilder<Floor, T>;
 ```
 
@@ -244,8 +287,9 @@ export declare function migrations<Floor extends number, T>(
 export interface SaveEnvelope {
   /** Save format version. */
   readonly v: number;
-  /** When it was written, in epoch ms, supplied by the caller — this package has no clock. */
-  readonly t: number;
+  /** When it was written, in epoch ms, read from the store's injected `now` — this package
+   *  has no clock of its own. The only timestamp in the format. §4.8. */
+  readonly t: EpochMillis;
   /** Write sequence, monotonic per key. Only used for cross-tab conflict detection (§4.4). */
   readonly n: number;
   /** `checksum(d)`. */
@@ -267,10 +311,11 @@ export type FailureReason =
   | 'future'
   /** `v` is below the chain floor: a save from before the versions this build still carries. */
   | 'orphaned'
-  /** A migration threw, or a step's guard rejected its own output. `atVersion` names the rung. */
+  /** A migration threw, or a step's recogniser rejected its own output. `atVersion` names the
+   *  rung and `message` carries what the recogniser said was wrong. */
   | 'migration-failed'
-  /** Migrated to the head and the head guard still said no. The chain has a bug, or something
-   *  else has been writing this key. */
+  /** Migrated to the head and the head recogniser still threw. The chain has a bug, or
+   *  something else has been writing this key. */
   | 'invalid';
 
 /**
@@ -345,6 +390,25 @@ export interface RejectedSave {
   readonly truncated: boolean;
 }
 
+/** From `@lattice/core`. Reproduced so this block stands alone; the implementation imports it. */
+type EpochMillis = number;
+/** From `@lattice/core`. The game's calendar: wall-clock milliseconds since the epoch. */
+type Now = () => EpochMillis;
+
+/** Undo a scheduled callback. Calling it twice is not an error. */
+export type Cancel = () => void;
+
+/**
+ * Run `fn` after `afterMs` have passed, and hand back a way to cancel it.
+ *
+ * Injected, never created. `persist` may not import `@lattice/loop` — they are siblings on
+ * layer 1 and the DAG forbids the edge — and it may not reach for `setTimeout`, because a
+ * package that creates a timer is a package that owns a leak. A browser game passes
+ * `loop.real.after`; a Node test passes a function that runs `fn` immediately or on a queue it
+ * controls, and every coalescing test then finishes in microseconds with no fake timers.
+ */
+export type Schedule = (afterMs: number, fn: () => void) => Cancel;
+
 export interface StoreOptions<Head extends number, T> {
   /** The storage key. Save slots are separate stores on separate keys; there is no slot concept. */
   readonly key: string;
@@ -353,6 +417,17 @@ export interface StoreOptions<Head extends number, T> {
   /** A brand-new game. Called on first run and on every degraded read. Must not throw — if this
    *  throws, boot is over and there is nothing left to degrade to. */
   readonly fresh: () => T;
+  /**
+   * The game's calendar. **Required, with no default, deliberately** — see §4.8.
+   *
+   * `persist` stamps `savedAt` and cannot read a clock of its own: `Date.now` is banned inside
+   * every package's `src/` and the linter enforces it. Defaulting this to `() => 0` would be
+   * the worst bug this package could ship, because every save would load with an elapsed time
+   * of zero, offline progress would silently pay out nothing, and *nothing would look broken*.
+   * A missing argument is a compile error; a zeroed timestamp is a support ticket in eight
+   * months.
+   */
+  readonly now: Now;
   /**
    * Floor on the interval between coalesced writes. Default 4000.
    *
@@ -364,7 +439,7 @@ export interface StoreOptions<Head extends number, T> {
   /** What to do when another tab has written since we last did. Default `'last-write-wins'`,
    *  which is free — `'refuse'` costs one extra read per write. §4.4. */
   readonly conflict?: 'last-write-wins' | 'refuse';
-  /** Default `fnv1a32`. */
+  /** Default `defaultChecksum`, which is `core`'s `hashString`. */
   readonly checksum?: Checksum;
   /** Keep unreadable saves under `${key}:rejected`. Default on, capped at 64 kB. §4.5. */
   readonly quarantine?: false | { readonly maxBytes?: number };
@@ -382,24 +457,39 @@ export interface StoreOptions<Head extends number, T> {
  * A coalescing write handle bound to one getter. `store.autosave` makes it; `store.reset` and
  * `store.close` kill it.
  */
+export interface AutosaveOptions {
+  /**
+   * The timer, injected. When supplied, the handle re-arms itself after every write and you
+   * never call `tick`.
+   *
+   * Prefer this to polling: a `tick` driven by the simulation stops when the simulation stops,
+   * and a paused or backgrounded game still owes the player the last four seconds of progress.
+   * Whatever you pass must keep firing in a hidden tab — `setInterval` does, `requestAnimationFrame`
+   * is 0 Hz and does not.
+   */
+  readonly schedule?: Schedule;
+}
+
 export interface Autosave {
   /**
-   * Drive this from whatever advances your simulation. Writes iff `minWriteIntervalMs` has
-   * passed since the last write.
+   * The polling form, for a game with no scheduler. Writes iff `minWriteIntervalMs` has passed
+   * since the last write, reading the instant from the store's injected `now`.
    *
-   * **Returns a boolean, not a result object** (house rule 7): this is called on the interval
-   * for the life of the session, and an object per call is a GC pause with a pleasant
-   * signature. The detail of the last write that actually happened is on `lastWrite`.
+   * **Returns a boolean, not a result object** (house rule 7): this is called for the life of
+   * the session and an object per call is a GC pause with a pleasant signature. The detail of
+   * the last write that actually happened is on `lastWrite`.
    *
    * Do not drive it from `requestAnimationFrame`: rAF is 0 Hz in a hidden tab, and a save that
    * stops when the tab is backgrounded is a save that never survives the tab being closed.
+   * A no-op when `schedule` was supplied, so wiring both is harmless rather than a double write.
    */
-  tick(nowMs: number): boolean;
+  tick(): boolean;
   /** Write now if anything is owed, ignoring the interval. What the visibility handler calls. */
-  flush(nowMs: number): WriteResult;
+  flush(): WriteResult;
   /** The last write this handle attempted, or `null`. One object per real write, not per tick. */
   readonly lastWrite: WriteResult | null;
-  /** Detach. Idempotent. A stopped handle's `tick` and `flush` are no-ops reporting `'closed'`. */
+  /** Detach and cancel any scheduled write. Idempotent. A stopped handle's `tick` and `flush`
+   *  are no-ops reporting `'closed'` — which is half of why the reset in §6.2 actually works. */
   stop(): void;
 }
 
@@ -421,10 +511,10 @@ export interface SaveStore<T> {
   decode(text: string): OpenResult<T>;
   /** The envelope text for `state`, exactly as `save` would write it. A backup or share-code
    *  button is this plus the game's own encoding of choice. */
-  encode(nowMs: number, state: T): string;
+  encode(state: T): string;
   /** Write now, unconditionally, subject only to `writable` and `phase`. */
-  save(nowMs: number, state: T): WriteResult;
-  autosave(get: () => T): Autosave;
+  save(state: T): WriteResult;
+  autosave(get: () => T, options?: AutosaveOptions): Autosave;
   /**
    * **A real reset.** In order: close the store to writes, stop every autosave handle it has
    * created, remove the key and the quarantine key, return a fresh state.
@@ -439,7 +529,7 @@ export interface SaveStore<T> {
   reset(): T;
   /** Tear down. Pass a getter to flush on the way out; pass nothing to close silently — which
    *  is what a "delete my save" button wants and what `reset` does internally. */
-  close(options?: { readonly flush?: false } | { readonly flush: true; readonly nowMs: number; readonly get: () => T }): void;
+  close(options?: { readonly flush?: false } | { readonly flush: true; readonly get: () => T }): void;
   /** The last save this store could not read, if quarantine kept it. For a debug panel or a
    *  bug-report payload. */
   rejected(): RejectedSave | null;
@@ -453,9 +543,173 @@ export declare function createStore<Head extends number, T>(options: StoreOption
 /** The envelope only, payload untouched, or `null` if this is not one. For tools, debug panels,
  *  and the `future` check that must work without parsing a payload it cannot understand. */
 export declare function inspect(text: string): SaveEnvelope | null;
+
+/**
+ * Milliseconds between the loaded save and now — the offline gap, and the one derived
+ * quantity this package will compute for you. See §4.8 for why it exists at all.
+ *
+ * Returns `0` when there is nothing to measure (`firstRun`, or a degraded read), which is the
+ * correct elapsed time for a game that has just begun. Clamped at zero from below, because a
+ * player who changes their device date produces a `savedAt` in the future and a negative
+ * elapsed is not a thing `sim` should have to defend against.
+ *
+ * **Not clamped from above.** An offline cap is a balance decision — how much of eight hours
+ * away a game chooses to pay out — and it belongs to `sim`, not here. This function reports
+ * the gap; `sim` decides what it is worth.
+ *
+ * Read `OpenResult.savedAt` directly if you want to detect the backwards clock and say
+ * something about it.
+ */
+export declare function elapsedSince(opened: OpenResult<unknown>, now: EpochMillis): number;
 ```
 
-### 3.6 Browser wiring
+### 3.6 Replay
+
+The kit's headline claim, made falsifiable. `AGENTS.md` #1 promises that a session replays from
+a seed and an input log and lands on the same pixel; §4.9 argues why the envelope, the recorder
+and the divergence check live here, and — just as importantly — which half of the job does not.
+
+```ts
+/** From `@lattice/core`. Reproduced so this block stands alone; the implementation imports it. */
+interface RngSnapshot { readonly seed: number; readonly state: number }
+
+/** One recorded input, exactly as the game handed it over. `persist` never interprets `E`. */
+export interface RecordedInput<E> {
+  /** The tick this arrived on. A replay is indexed by tick, never by wall time — wall time is
+   *  the thing that is different on the machine replaying it. */
+  readonly tick: number;
+  readonly event: E;
+}
+
+/**
+ * "The same pixel", reduced to a uint32.
+ *
+ * The game supplies it because only the game knows what is canonical: the wallet and the
+ * building list, probably; a camera position and a tween phase, definitely not, or every
+ * replay diverges the first time somebody scrolls. Build it from `core`'s `hashParts`.
+ */
+export type Digest<T> = (state: T) => number;
+
+/** Eight bytes. The interval between them trades log size against how tightly a divergence
+ *  can be bracketed — a checkpoint every ten seconds means "somewhere in these 600 ticks". */
+export interface Checkpoint {
+  readonly tick: number;
+  readonly digest: number;
+}
+
+/**
+ * A recorded session. **This is a save with a different payload**, which is the argument for
+ * it living here: it is versioned, migrated and checksummed by exactly the machinery above.
+ * Store one with `createStore` on its own key and its own chain.
+ */
+export interface ReplayLog<E> {
+  /** The kit build this was recorded under. A replay is only meaningful against the code that
+   *  produced it; without this a divergence is unattributable and the check is theatre. */
+  readonly kit: string;
+  /** The game's own build identity, however the game versions itself. */
+  readonly game: string;
+  /** The stream the session started from, cursor included — not just the seed. A replay that
+   *  restores a seed but not the cursor re-rolls every draw the session had already spent. */
+  readonly rng: RngSnapshot;
+  /** The fixed step, in ms. A replay recorded at 16.667 and driven at 20 is not a replay, and
+   *  the verifier refuses rather than reporting a divergence that is really a mismatch. */
+  readonly stepMs: number;
+  readonly startTick: number;
+  readonly endTick: number;
+  /** Sorted by tick, ascending, stable within a tick. */
+  readonly inputs: readonly RecordedInput<E>[];
+  readonly checkpoints: readonly Checkpoint[];
+}
+
+export interface RecorderOptions<T, E> {
+  readonly kit: string;
+  readonly game: string;
+  readonly rng: RngSnapshot;
+  readonly stepMs: number;
+  readonly startTick: number;
+  readonly digest: Digest<T>;
+  /** Ticks between checkpoints. Default 600 — ten seconds at 60 Hz. */
+  readonly checkpointEvery?: number;
+  /** Hard cap on recorded inputs. Default 250_000, after which `record` drops and counts.
+   *  A recorder that grows without limit is a memory leak with a feature name. */
+  readonly maxInputs?: number;
+}
+
+export interface Recorder<T, E> {
+  /** Append an input. `tick` must not go backwards; it throws `RangeError` if it does, because
+   *  an out-of-order log produces a replay that diverges for a reason nobody can find. */
+  record(tick: number, event: E): void;
+  /**
+   * Advance to `tick`, taking a checkpoint if one is due. Returns whether it took one.
+   *
+   * **A boolean, not a result object** (house rule 7): this is called every tick for the whole
+   * session, and `digest` is only invoked on the ticks that actually checkpoint.
+   */
+  mark(tick: number, state: T): boolean;
+  readonly inputCount: number;
+  /** Inputs refused after `maxInputs`. Non-zero means the log is incomplete and the verdict
+   *  from replaying it is worthless — surface it, do not swallow it. */
+  readonly dropped: number;
+  /** Freeze and hand back the log, taking a final checkpoint. Idempotent. */
+  stop(tick: number, state: T): ReplayLog<E>;
+}
+
+export declare function createRecorder<T, E>(options: RecorderOptions<T, E>): Recorder<T, E>;
+
+/**
+ * Feed a recorded log back, without allocating.
+ *
+ * `advance` applies every event at exactly `tick` in record order. Ticks must be requested in
+ * increasing order; the cursor is a single index, so this costs nothing per tick and is safe
+ * inside the fixed-step loop. Returning an array per tick would allocate sixty times a second
+ * for the length of the session.
+ */
+export interface ReplayCursor<E> {
+  advance(tick: number, apply: (event: E) => void): void;
+  readonly done: boolean;
+}
+
+export declare function replayCursor<E>(log: ReplayLog<E>): ReplayCursor<E>;
+
+export interface Divergence {
+  /** The checkpoint tick where the digests first disagreed. */
+  readonly tick: number;
+  /** The last tick known to agree. **The bug is between these two numbers** — which is the
+   *  entire value of a checkpoint interval, and why the report leads with the bracket. */
+  readonly lastAgreedTick: number;
+  readonly expected: number;
+  readonly actual: number;
+  readonly checkpointIndex: number;
+}
+
+export interface ReplayVerdict {
+  readonly matched: boolean;
+  readonly checkpointsChecked: number;
+  /** The **first** divergence only. Every later one is a consequence of this one, and
+   *  reporting them is noise that buries the line that matters. */
+  readonly divergence: Divergence | null;
+  /** Set when the replay could not honestly be attempted. A refusal is not a pass, and a
+   *  verifier that returned `matched: true` here would make the kit's central claim a lie
+   *  that reports green. */
+  readonly refused: 'kit-mismatch' | 'game-mismatch' | 'step-mismatch' | 'no-checkpoints' | null;
+}
+
+export interface ReplayVerifier<T> {
+  /** Compare at `tick` if a checkpoint is due there. Returns `false` once it has diverged, so
+   *  a driver can stop immediately rather than run an hour of ticks past the answer. */
+  mark(tick: number, state: T): boolean;
+  finish(): ReplayVerdict;
+}
+
+/** Build the verifier for a log. `kit`, `game` and `stepMs` are the *current* build's values;
+ *  mismatches become `refused`, never a divergence. */
+export declare function createVerifier<T, E>(
+  log: ReplayLog<E>,
+  current: { readonly kit: string; readonly game: string; readonly stepMs: number; readonly digest: Digest<T> },
+): ReplayVerifier<T>;
+```
+
+### 3.7 Browser wiring
 
 The only module that knows a browser exists, and it knows through parameters. It compiles
 without the DOM lib and tests in Node against two objects with `addEventListener`.
@@ -471,8 +725,6 @@ export interface FlushTargets {
   readonly visibility: ListenerTarget & { readonly visibilityState: string };
   /** `window`, structurally. */
   readonly page: ListenerTarget;
-  /** The host clock. This package has none; `Date.now` is banned inside `src/`. */
-  readonly now: () => number;
 }
 
 /**
@@ -534,7 +786,7 @@ here because nothing is being destroyed.
 |---|---|---|
 | compile | `step`'s `to` is typed `Increment<Head>`, and `createStore` takes the version off the chain head | `Argument of type '3' is not assignable to parameter of type '2'` |
 | construction | `seal()` re-walks the rungs for callers arriving from JavaScript or through an `any` | `RangeError: persist: migration chain jumps 4 → 6; version 5 has no migration` |
-| test | a fixture per historical version through `store.decode`, asserting `outcome`, `migratedFrom`, and the head guard | `decode(fixtures['v3'])` returns `failure.reason: 'migration-failed'` at a named rung |
+| test | a fixture per historical version through `store.decode`, asserting `outcome`, `migratedFrom`, and the head recogniser | `decode(fixtures['v3'])` returns `failure.reason: 'migration-failed'` at a named rung |
 
 The first two make a hole unwritable. Only the third catches a rung that exists and is *wrong*,
 which is the failure that actually ships, so it is not optional: **the kit's own demo game keeps
@@ -546,9 +798,10 @@ Design notes on the chain itself:
 - **`to === from + 1`, always. No 3→7 shortcut.** A shortcut means two paths from 3 to 7 and
   only one of them is ever exercised; the untested one is the path a player's four-year-old
   save takes.
-- **Every version has a guard, mandatory, including the floor.** This is how `migrate` receives
-  a typed argument instead of `unknown`. A chain of migrations that each begin with a cast is
-  not a chain, it is a stack of hopes.
+- **Every version has a recogniser, mandatory, including the floor.** This is how `migrate`
+  receives a typed argument instead of `unknown`. A chain of migrations that each begin with a
+  cast is not a chain, it is a stack of hopes. And because a recogniser *returns* the value
+  rather than answering yes/no, a rejection arrives with the field name in it.
 - **The floor is an argument, never inferred.** Raising it deletes saves below it. That should
   take a commit whose message says so.
 
@@ -619,10 +872,78 @@ a required argument at the boundary. That gives every guarantee that matters at 
 `decode` never hands the game a state the game itself did not vouch for — with none of the
 weight of owning a type system.
 
-The consequence a builder must not soften: `Guard<T>` has no optional variant, no default
-`() => true`, and no "skip validation in production" flag.
+The consequence a builder must not soften: `Recognise<T>` has no optional variant, no default
+`v => v as T`, and no "skip validation in production" flag. It is also not an assertion
+function — build tools strip those, which would leave the check running only where it is least
+needed.
 
 ---
+
+### 4.8 The saved-at seam, stated precisely
+
+Three packages can each reasonably assume another owns this number, so here is this side of it
+with no hedging.
+
+| question | answer |
+|---|---|
+| does the envelope carry it? | **Yes.** `SaveEnvelope.t`, integer epoch milliseconds. It is the only timestamp in the format. |
+| who stamps it? | **The caller. Always.** This package may not read a clock — non-negotiable #1 bans `Date.now` inside `src/` and the linter enforces it — so `persist` stamps *what it is given* and never a default. |
+| how is forgetting made impossible? | `nowMs` is a **required, non-optional, first positional parameter** of every entry point that can write: `save(nowMs, state)`, `encode(nowMs, state)`, `Autosave.tick(nowMs)`, `Autosave.flush(nowMs)`, `close({ flush: true, nowMs, get })`. `installFlushTriggers` requires `now: () => number` in `FlushTargets`. There is no overload without it and no `?`, so omitting it is a compile error rather than a silent `0` and an elapsed time of fifty-six years. |
+| what reads it back? | `OpenResult.savedAt: number | null` — the instant on disk, unmodified, including a value in the future. `null` **only** when no save was loaded (`firstRun`, or any degraded read). |
+| what computes the gap? | `elapsedSince(opened, nowMs): number` — `nowMs - savedAt`, clamped at zero below, `0` when there is nothing to measure. |
+| in what unit? | Milliseconds, integer, epoch. `persist` does not convert to seconds, does not apply a warp, and does not cap. |
+
+The division of labour that follows, for the orchestrator to check the other two RFCs against:
+
+- **`loop` owns the clock.** It is where `now()` comes from and the only package entitled to
+  decide what "now" means. `persist` takes it as an argument.
+- **`persist` owns the record.** It is the one place that unambiguously knows the moment a save
+  was written, because it is the code that wrote it. It stamps and reports; it does not
+  interpret.
+- **`sim` owns the meaning.** Offline accrual, the cap on how much time away pays out, and the
+  warp are balance decisions. `elapsedSince` hands `sim` a non-negative number of milliseconds
+  and stops there.
+
+The two clamps are split on purpose and the split is the interesting part. The **lower** clamp
+lives here because a negative elapsed is a *correctness* failure — a device clock moved
+backwards, and every consumer would otherwise have to defend against it separately. The
+**upper** clamp lives in `sim` because it is a *balance* number: "eight hours of offline
+progress" is a design decision, and a persistence layer that picked one would be making a game
+design choice on the game's behalf. If `sim`'s RFC does not clamp above, that is a real hole and
+it is `sim`'s hole, not this one's.
+
+### 4.9 Replay: accepted, with the boundary drawn along the DAG
+
+The kit's front page promises a session replays from a seed and an input log. Nothing owned
+that, which made the claim unfalsifiable — the worst state for a kit selling determinism,
+because it is either the best feature or a lie and nothing decides which. `core` proposed this
+package and the reasoning holds: **a replay is a save with a different payload.** It needs a
+version (a replay without the build it was recorded under is unattributable), a migration chain
+(reading an old replay *is* a migration), integrity (a divergence check is a checksum asking a
+different question), and an envelope. All four are already here, and taking it costs about a
+dozen exports rather than a package.
+
+The boundary matters as much as the acceptance, and the dependency graph draws it. `persist` is
+layer 1 and depends only on `core`; it may not import `input` (layer 2) or `loop` (its sibling).
+So:
+
+**This package owns** the `ReplayLog` envelope, the recorder as a *sink* that has no idea what an
+event is, the zero-allocation cursor that plays a log back, and the verifier that compares
+checkpoint digests and reports the first divergence with a bracket around it. Every one of those
+is a pure function of data and needs nothing but `core`.
+
+**This package does not own the driver** — the thing that constructs a game, restores the rng
+snapshot, runs the fixed step, and pumps the cursor into it. That requires the loop, the tick
+index and the game's own construction, and it belongs to **`loop`**: `persist` hands it a log and
+a verifier, `loop` turns the crank. That is routed in §8, and without it the recorder records
+sessions nobody replays.
+
+Two further deliberate limits. **Checkpoints are digests, not states** — storing states would
+make a replay a save-scumming format and a hundred times larger, and the question a replay
+answers is "did it diverge", not "what did it look like". And **a refusal is not a pass**: a log
+recorded under a different kit build, game build or step returns `refused`, never
+`matched: true`. A verifier that reports green because it declined to check is precisely how a
+determinism claim rots.
 
 ## 5. What is deliberately absent
 
@@ -641,8 +962,9 @@ This section is the one that stops the next agent adding it back.
 4. **Cloud sync, accounts, and conflict resolution across devices.** Same reason. The source
    game's non-negotiable was that the median visitor costs $0; a sync layer is the first thing
    that breaks that, and it is a product, not a module.
-5. **A schema language or validator.** §4.7. Guards are functions. Zod is a dependency, and the
-   second non-negotiable says there are none.
+5. **A schema language or validator.** §4.7. Recognisers are functions, and `core`'s `guard`
+   module already supplies the leaf validators. Zod is a dependency, and the second
+   non-negotiable says there are none.
 6. **A pluggable payload codec.** The envelope is always JSON. If the payload encoding were
    pluggable, a build that changed codecs could not read `v` off an old save to discover that it
    needed the old codec. The `d`-as-string design already gives a game room to put whatever it
@@ -680,7 +1002,7 @@ Each is phrased so the failing case is obvious. All run in Node against `memoryS
    `source: 'save'`, `migratedFrom: null`, `savedAt: t`, and a state deep-equal to `s`.
 4. **The floor still reaches the head.** For every fixture from `chain.floor` to `head - 1`,
    `decode` returns `source: 'save'`, `migratedFrom` equal to the fixture's version, and a state
-   the head guard accepts. *Fails when:* a rung was added or edited without its fixture.
+   the head recogniser accepts. *Fails when:* a rung was added or edited without its fixture.
 5. **A hole is unconstructable.** `seal()` throws `RangeError` if and only if the rungs do not
    form `floor → head` in steps of one — and never at decode time, where a hole would present as
    a player losing a save.
@@ -745,9 +1067,9 @@ Mined from `../foom-simple-ui`, which shipped this problem once already. `src/ga
 8. **JSON quietly destroys three things an idle game contains.** `undefined` fields vanish (fine),
    but `NaN` and `Infinity` serialise as `null`, and `BigInt` throws. An idle economy that lets a
    currency reach `Infinity` writes `null`, reads `null`, and becomes `NaN` on the next tick —
-   with a valid checksum, because the bytes were never damaged. The head guard is the place to
-   catch it; a guard that checks `Number.isFinite` on the currencies is worth more than one that
-   checks thirty field names.
+   with a valid checksum, because the bytes were never damaged. The head recogniser is the place
+   to catch it: `expectFinite` from `core`'s `guard` on the currencies is worth more than a
+   recogniser that checks thirty field names and no ranges.
 9. **A checksum over a re-serialisation is not a checksum.** `JSON.stringify(JSON.parse(text))`
    reorders numeric-looking keys and normalises number formatting, so it fails on saves that are
    fine and passes on saves that are not. Checksum the bytes as read. This is why `d` is a

@@ -2,14 +2,16 @@
 
 > Status: proposed. Owner: lattice-architect (task A6). Implements: `.lattice/kit.json` → `packages.audio`.
 > Reviewer: hold the built package against §5 and §6.
+> Revised once, after `docs/rfc/demo.md` landed: the bed is now the package's second primitive
+> rather than an appendix to it, and the sequencer is opt-in. §3.4 carries that argument.
 
 ---
 
 ## 1. The one sentence
 
 **`@lattice/audio` turns a table of oscillator recipes into the sound of a game — with no files,
-no `AudioContext` until the player touches something, and a hard ceiling on how loud a burst can
-get.**
+no `AudioContext` until the player touches something, a hard ceiling on how loud a burst can get,
+and one continuous bed that follows a number the game already has.**
 
 If a game author has to know what a `BiquadFilterNode` is to make a button click, this package
 failed. If they have to reach past it to a raw `AudioContext` to get a kick drum, it also failed.
@@ -22,7 +24,7 @@ This is what a game does with this package roughly all of the time: declare a ta
 first gesture, and play by name.
 
 ```ts
-import { createAudio } from '@lattice/audio';
+import { createAudio, createBed } from '@lattice/audio';
 
 const audio = createAudio({ sounds: {
   tap:     { bus: 'ui',  minGapMs: 40, layers: [{ wave: 'sine', hz: 1180, gain: 0.05, hold: 0.03, cutoff: 2400 }] },
@@ -34,14 +36,24 @@ addEventListener('pointerdown', () => audio.unlock());  // nothing is created be
 audio.play('collect');                                   // argument type is 'tap' | 'collect'
 ```
 
-Four things about that example are load-bearing, and every decision in §3 follows from them:
+And the other half of the package, which is two more lines and is what makes a world feel
+continuous rather than photographed:
+
+```ts
+const bed = createBed(audio, VALLEY_LAYERS);         // stands up once, runs forever
+bed.set(activity, daylight);                          // every frame; the same 0–1 the palette lerps on
+```
+
+Six things about those examples are load-bearing, and every decision in §3 follows from them:
 
 | the example does this | so the API must |
 |---|---|
 | writes sounds as a plain object literal | infer the id union from the table — no registry, no enum, no `SoundId` type to maintain by hand |
 | never mentions `AudioContext`, `GainNode`, `connect` | own the whole node graph. A layer is a recipe, not a patch |
-| calls `unlock()` from the game's own listener | never attach a listener of its own (see §4) |
+| calls `unlock()` from the game's own listener | never attach a listener of its own (§4.7) |
 | calls `play('collect')` with no time argument | take its clock from the audio device, not from `performance.now()` — which the constitution bans |
+| drives the bed with numbers the game already computed | expose one parameterised primitive, not a soundscape DSL |
+| never imports the sequencer | keep the sequencer behind its own factory, so a game that does not want it does not ship it |
 
 The shape of a `SoundDef` is deliberately the shape `foom-simple-ui`'s `src/config/audio.ts` already
 proved over fourteen sounds. That table is the strongest evidence in the source game that declarative
@@ -54,8 +66,8 @@ field-for-field rather than improved on.
 
 Everything below is re-exported from `packages/audio/src/index.ts` and nowhere else. Modules:
 `sounds` (the table and its validator), `voice` (recipe → plan), `engine` (`createAudio`, unlock,
-play, taps), `bus` (the mixer), `music` (the deck), and **`bed`** — a sixth module that
-`.lattice/kit.json` does not list and should; see §3.6 for the argument.
+play, taps), `bus` (the mixer), **`bed`** (the continuous half — a module `.lattice/kit.json` does
+not list and should), and `music` (the sequencer).
 
 ### 3.0 Waves, buses, and the one shared vocabulary
 
@@ -102,7 +114,7 @@ export const PUMP_INTERVAL_MS = 200;
 export const RAMP_SEC = 0.015;
 
 /** The kit version this package was built as part of. */
-export const VERSION: string;
+export declare const VERSION: string;
 ```
 
 ### 3.1 What a sound *is*, declaratively
@@ -157,7 +169,7 @@ export interface Layer {
    * sound like a cough. Giving both this and `cutoff` is a band-pass and costs one extra node.
    */
   readonly highpass?: number;
-  /** Static pan, −1…1. Almost always wrong to set here; pan belongs to the *event*, not the recipe. §3.5. */
+  /** Static pan, −1…1. Almost always wrong to set here; pan belongs to the *event*, not the recipe. §3.6. */
   readonly pan?: number;
 }
 
@@ -192,7 +204,7 @@ export interface SoundDef {
   readonly ladder?: { readonly steps: number; readonly windowMs: number };
   /**
    * Whether {@link PlayOptions.pan} is honoured for this sound. Defaults to `bus === 'sfx'`, which
-   * is the useful default: world events pan, and the interface does not follow the camera. §3.5.
+   * is the useful default: world events pan, and the interface does not follow the camera. §3.6.
    */
   readonly spatial?: boolean;
 }
@@ -210,16 +222,18 @@ export interface PlayOptions {
 }
 
 /**
- * What the engine decided to build, handed to every {@link Audio.onScheduled} listener.
+ * What the engine decided to build, handed to every {@link Audio.onScheduled} listener. Emitted by
+ * one-shots, by the deck, and by a bed's initial layers alike; `source` is the sound id, the track
+ * id, or `'bed'`.
  *
  * **This object is reused between calls.** It is emitted once per layer per play, which the
  * sequencer alone does eight times a second; a fresh object each time is a garbage collector
  * pause with a pleasant signature. Read it or copy the fields you keep — do not retain it.
  */
 export interface VoicePlan {
-  readonly sound: string;
+  readonly source: string;
   readonly bus: BusName;
-  /** Index into the sound's `layers`, or into a song's `tracks` for music. */
+  /** Index into the sound's `layers`, the song's `tracks`, or the bed's layers. */
   readonly layer: number;
   readonly wave: Wave;
   readonly hz: number;
@@ -248,7 +262,7 @@ returns problems rather than throwing — a table with a bad sound should still 
  * Returns problems rather than throwing, and the game's own test asserts the array is empty.
  * A shipped game must not refuse to start because a sound is 0.03 too loud.
  */
-export function validateSounds(sounds: Readonly<Record<string, SoundDef>>): readonly SoundProblem[];
+export declare function validateSounds(sounds: Readonly<Record<string, SoundDef>>): readonly SoundProblem[];
 
 export interface SoundProblem {
   readonly sound: string;
@@ -346,13 +360,12 @@ export interface AudioOptions<Ids extends string> {
   readonly now?: () => number;
   /** Override {@link MAX_VOICES}. Lower it on a game with a busy bed; raising it is almost always wrong. */
   readonly maxVoices?: number;
-  /** Absolute pan limit, default 0.6. §3.5 explains why it is not 1. */
+  /** Absolute pan limit, default 0.6. §3.6 explains why it is not 1. */
   readonly maxPan?: number;
 }
 
 export interface Audio<Ids extends string> {
   readonly mixer: Mixer;
-  readonly music: MusicDeck;
   /** Whether a real device exists. False in Node, in a locked-down browser, and before `unlock`. */
   readonly available: boolean;
   /** One-shot voices whose scheduled end is still in the future. The bed and the deck are not counted. */
@@ -381,9 +394,6 @@ export interface Audio<Ids extends string> {
    */
   play(id: Ids, options?: PlayOptions): boolean;
 
-  /** Stand up a continuous bed. See §3.6. */
-  bed(layers: readonly BedLayer[], options?: BedOptions): Bed;
-
   /**
    * Observe every voice the engine schedules, one call per layer. Returns a disposer.
    *
@@ -394,7 +404,7 @@ export interface Audio<Ids extends string> {
   onScheduled(listener: (plan: Readonly<VoicePlan>) => void): () => void;
 
   /**
-   * Stop everything, disconnect, and close the context.
+   * Stop everything, disconnect, close the context, and tear down every bed and deck built on it.
    *
    * Not optional politeness: browsers cap live `AudioContext`s per document (six, historically),
    * and a test file that creates one per case exhausts that cap and fails in a way that looks
@@ -403,41 +413,145 @@ export interface Audio<Ids extends string> {
   dispose(): void;
 }
 
-/** The only constructor. There is deliberately no module-level singleton — see §4. */
-export function createAudio<Ids extends string>(options: AudioOptions<Ids>): Audio<Ids>;
+/** The only constructor. There is deliberately no module-level singleton — see §4.5. */
+export declare function createAudio<Ids extends string>(options: AudioOptions<Ids>): Audio<Ids>;
 ```
 
-### 3.4 The music deck
+### 3.4 The bed — the continuous half, and the real answer to "twenty minutes"
 
-**The question: what is the minimum that is worth listening to for twenty minutes?**
+The brief asked what the minimum sequencer is that is worth listening to for twenty minutes. The
+demo RFC asked for something else: a drone that follows a 0–1 parameter, so that as night falls the
+sound darkens with the palette. **These are the same question, and the drone is the better answer to
+it.**
 
-The source game's theme is procedural — four bars, `MUSIC.progression = [3, 10, 0, 8]` over a 55 Hz
-root, an arpeggio on nine of sixteen steps, a walking bass, a kick on the quarters and a hat on the
-offbeats, at 112 bpm. What makes it survive an hour behind a spreadsheet is five properties, and
-they are the specification for this deck:
+The reason is worth stating precisely, because it decides which module gets the attention:
+
+- **A loop is annoying at twenty minutes because it is the same twenty minutes regardless of what
+  the player did.** What wears out is *melody* — the thing the ear learns, predicts, and then
+  resents. Texture does not wear out; nobody has ever been annoyed by rain.
+- **A bed is not annoying at twenty minutes because it is never quite the same and never asks for
+  attention.** It has nothing to remember. And when it is driven by game state it stops being
+  decoration and becomes a **readout**: in the source game the bed thickens as the campus grows,
+  so scale is something you hear before you look at a number, and it *sags in pitch* during a
+  brownout, because plant losing power winds down — a drop in level alone reads as a mixing
+  change, while a drop in pitch reads as machinery stopping. Information does not become tedious.
+- **Without it a Lattice game is silent between taps,** which for an idle game is 95% of a session.
+  Every game built on this kit will hand-roll a bed, badly, with `Math.random`.
+
+So the bed is a first-class module and the deck is opt-in (§3.5). `.lattice/kit.json` lists five
+modules for this package and the bed is not among them; that is the one change to the manifest this
+RFC asks for.
+
+**Can one primitive be both?** No, and it should not try. A note is an *event* — it has a start, a
+pitch and an end — and a drone is a *state* that is ramped toward. Unifying them yields a sequencer
+with a "0 bpm" mode and a bed with a step grid, and both are worse than either. What they *do*
+share, and what the API makes sure they share, is one vocabulary: both take a 0–1 level with the
+same meaning, both write to the same buses, and a game drives both off the same number in one line.
+That is the useful half of the unification and it costs nothing.
+
+```ts
+/** One continuous layer of a bed. Every layer runs forever; only its gain, filter and pitch move. */
+export interface BedLayer {
+  readonly wave: Wave;
+  readonly hz: number;
+  /** Gain at level 1. Scaled toward silence as level falls — an empty world is silent, not quiet. */
+  readonly gain: number;
+  readonly cutoff: number;
+  /**
+   * Multiple the cutoff opens to at full level. This, not gain, is what makes a busy hall sound
+   * busy: volume alone reads as "the same hum, nearer".
+   */
+  readonly cutoffAtFull?: number;
+  /**
+   * Detune against the previous layer, in Hz. Two near-identical sources beat, audibly, and that
+   * beat is what stops a bed sounding like a synthesiser pad. Real plant is never in phase.
+   */
+  readonly beat?: number;
+  /**
+   * The range of `tone` over which this layer speaks at all, fading in and out at its edges.
+   * Omit for "always".
+   *
+   * **This is what makes the bed a soundscape rather than a hum with a knob**, and it is the field
+   * the demo's day/night needs: crickets `band: [0, 0.4]`, coil whine `band: [0.55, 1]`, and the
+   * valley crossfades between them as the same number that lerps the palette moves. One filter
+   * sweep sounds like a filter sweep; two layers trading places sounds like evening.
+   */
+  readonly band?: readonly [number, number];
+}
+
+export interface BedOptions {
+  /** Default `'sfx'`, so a player muting music does not silence the world. */
+  readonly bus?: BusId;
+  /** Pitch multiplier at `tone = 0`. Default 0.55 — fans spinning down, not fans switched off. */
+  readonly sagTo?: number;
+  /** Seconds for a change to arrive. Default ~1. Anything faster reads as an edit rather than as a room. */
+  readonly glideSec?: number;
+}
+
+export interface Bed {
+  /**
+   * Drive the bed. Safe to call every frame — it ramps toward the figures rather than resetting
+   * anything, so nothing clicks, nothing restarts, and nothing is allocated.
+   *
+   * @param level 0–1, how much of the world is running. Scales gain and opens the filters.
+   * @param tone  0–1, what kind of world it is right now: daylight, health, power. Below 1 the
+   *              pitch sags, the top end closes, and `band` layers trade places. Default 1.
+   */
+  set(level: number, tone?: number): void;
+  /** The last values given, clamped. For a HUD, and so a game need not keep its own copy. */
+  readonly level: number;
+  readonly tone: number;
+  /** Fade out and tear the layers down. A stopped bed cannot restart; build another. */
+  stop(fadeSec?: number): void;
+}
+
+/**
+ * Stand up a bed on an engine. Free function rather than a method so a game that wants sounds and
+ * nothing else does not carry it.
+ */
+export declare function createBed<Ids extends string>(
+  audio: Audio<Ids>,
+  layers: readonly BedLayer[],
+  options?: BedOptions,
+): Bed;
+```
+
+Bed layers are **not** counted against `MAX_VOICES`. They never end, so a counter driven by
+`onended` would never decrement them (trap 4), and a bed of five layers must not eat a fifth of the
+ceiling forever. They are bounded by construction instead: a bed's layer count is fixed at creation
+and a bed built before `unlock()` stands its nodes up on the first unlock, not on the first `set`.
+
+### 3.5 The music deck — opt-in, and the minimum that survives an hour
+
+The deck stays in the package. A sequencer is the difference between a game with sound and a game
+with a soundtrack, `foom-simple-ui` shipped one, and cutting it because one demo does not want it
+would be the wrong lesson. But it is now **opt-in**: no `audio.music` member, one `createDeck`
+factory, so a game that never imports it never ships it. That matters against a 12 kB budget, and
+it makes the ranking honest — the bed is what a small game reaches for first.
+
+The source game's theme is four bars, `progression: [3, 10, 0, 8]` over a 55 Hz root, an arpeggio on
+nine of sixteen steps, a walking bass, a kick on the quarters and a hat on the offbeats, at 112 bpm.
+Five properties make it survive an hour behind a spreadsheet, and they are the specification here:
 
 1. **It rests.** The melody speaks on well under three quarters of the steps. The source's own test
    says it plainly: *a note on every step is a drill*. Percussion is exempt and obeys the opposite
    rule — a steady hat is the thing a listener stops hearing and starts moving to.
 2. **It is mixed under the information.** Every note is quieter than the quietest sound that means
    something. A theme that buries the brownout alarm gets the whole game muted, and muting to
-   escape the music also loses the alarm — which is the real cost of a bad theme and the reason
-   music is off by default.
+   escape the music also loses the alarm.
 3. **The harmony is one loop, rotated.** `C-G-Am-F` is `Am-F-C-G` started elsewhere; the same four
    chords read bright or wistful depending only on which one lands first. There is no cheaper way
    to change the mood of a piece than to change nothing in it.
 4. **Nothing is bright.** Every note goes through a low-pass. Brightness is what makes a loop nag.
-5. **Bars are not identical.** This is the one thing the source does *not* have, and the one thing I
-   would add for twenty minutes rather than five. Four bars of exactly the same notes has an
-   audible seam. Two cheap mechanisms remove it without a composer: a per-track **bar mask**
+5. **Bars are not identical.** The one thing the source lacks and the one thing twenty minutes needs.
+   Two cheap deterministic mechanisms remove the seam without a composer: a per-track **bar mask**
    (`bars: [0, 2]` — the arp sits out half the progression) and a seeded per-note **drop**
-   probability. Both are deterministic; the drop rolls a seeded RNG keyed by `(bar, step, track)`,
-   so the same song and seed produce the same twenty minutes on every machine and in every replay.
+   probability, rolled from a hash of `(seed, bar, step, track)` so the same song produces the same
+   twenty minutes on every machine and in every replay.
 
-Plus one thing that is not about tedium but about a game: **intensity**. `setIntensity(0.9)` when
-the campus is busy, `0.2` when it is idle, and tracks gate themselves on `minIntensity`. Tempo
-does not change — a tempo change mid-loop is a mistake you cannot un-hear — only which tracks
-speak. That is the whole dynamic-music feature, and it costs one number.
+Plus **intensity** — the deck's version of the bed's `level`, and the same 0–1 number: tracks gate
+themselves on `minIntensity`, so a busy world gets drums and an idle one gets a bass line. Tempo
+never changes; a tempo change mid-loop is a mistake you cannot un-hear.
 
 ```ts
 /** The instrument a track plays. It has no pitch: the sequencer supplies that from the chord. */
@@ -473,11 +587,11 @@ export interface Track {
   readonly bars?: readonly number[];
   /** Silent below this intensity, 0–1. Default 0 — always speaking. */
   readonly minIntensity?: number;
-  /** 0–1 chance a note is dropped, decided by the song's seeded RNG. Default 0. Keep it under ~0.2. */
+  /** 0–1 chance a note is dropped, decided by the song's seeded hash. Default 0. Keep it under ~0.2. */
   readonly drop?: number;
   /**
    * Whether this track carries melody. Only melodic tracks are held to the rest rule in
-   * {@link validateSong}; a hat that fills every offbeat is correct and a bass that does is not.
+   * {@link validateSong}; a hat that fills every offbeat is correct and a lead that does is not.
    */
   readonly melodic?: boolean;
 }
@@ -496,7 +610,7 @@ export interface Song {
 }
 
 /** The same class of check as {@link validateSounds}, for the failures a song has that a sound does not. */
-export function validateSong(song: Song): readonly SongProblem[];
+export declare function validateSong(song: Song): readonly SongProblem[];
 
 export interface SongProblem {
   /** `null` when the fault is the song's rather than one track's. */
@@ -510,7 +624,7 @@ export interface MusicDeck {
   readonly intensity: number;
   /** Fades in over `fadeSec` (default 0.6) and replaces whatever was playing. One song at a time. */
   play(song: Song, options?: { readonly fadeSec?: number }): void;
-  /** Fades out and stops scheduling. Notes already scheduled inside the horizon still sound. */
+  /** Fades out and stops scheduling. Notes already inside the horizon still sound. */
   stop(options?: { readonly fadeSec?: number }): void;
   /** 0–1, clamped. Gates tracks by `minIntensity`. Never changes tempo. */
   setIntensity(intensity: number): void;
@@ -520,16 +634,23 @@ export interface MusicDeck {
    * Schedule everything due inside {@link LOOKAHEAD_SEC}. Idempotent, safe to over-call, and safe
    * to call at an irregular rate — notes are pinned to the audio clock, not to whoever called this.
    *
-   * The deck runs its own {@link PUMP_INTERVAL_MS} timer, so a game never has to call this. It is
-   * public because a test needs to drive time by hand, and because a host with its own scheduler
-   * should be able to. Never drive it from `requestAnimationFrame` alone: rAF is 0 Hz in a hidden
-   * tab and the music would stop the moment the player changed tabs. See trap 9.
+   * The deck runs its own {@link PUMP_INTERVAL_MS} timer unless `autoPump: false`, so a game never
+   * has to call this. It is public because a test needs to drive time by hand, and because a host
+   * with its own scheduler should be able to. Never drive it from `requestAnimationFrame` alone:
+   * rAF is 0 Hz in a hidden tab and the music would stop the moment the player changed tabs.
+   * See trap 9.
    */
   pump(): void;
 }
+
+/** Opt-in. A game that does not call this does not ship the sequencer. */
+export declare function createDeck<Ids extends string>(
+  audio: Audio<Ids>,
+  options?: { readonly autoPump?: boolean },
+): MusicDeck;
 ```
 
-### 3.5 Spatialisation — a position
+### 3.6 Spatialisation — a position
 
 **Yes to stereo pan, no to anything with a listener in it.** But narrower than it first looks.
 
@@ -539,12 +660,12 @@ interesting question is whether `StereoPannerNode` — one node, negligible cost
 and the honest answer is *half of it does*:
 
 - **Panning a world event by screen x adds real value.** A build site off to the left, a rack
-  humming on the right: it makes the campus a place rather than a picture. This is the case where
-  a player can point at the thing that made the noise.
+  humming on the right: it makes the world a place rather than a picture. This is the case where a
+  player can point at the thing that made the noise.
 - **Panning by screen x is actively bad as the camera moves.** Drag the camera and a stationary
   sound sweeps across the stereo field, which reads as a fault. The mitigation is not to fix the
   mapping, it is to only ever pan *transients*: a sound that lasts 200 ms cannot sweep. Anything
-  continuous — the bed, the music — is centre, always.
+  continuous — the bed, the music — is centre, always, which is why `BedLayer` has no pan field.
 - **Hard pan is fatiguing on headphones,** which is where most of these games are played. Hence
   `maxPan = 0.6`. Full-width panning is a gimmick; two thirds of the width is atmosphere.
 - **The half that carries more than pan is gain.** An off-screen sound made *quieter* is far more
@@ -555,66 +676,6 @@ So the surface is two numbers on `PlayOptions` and a per-sound opt-out, and **th
 neither of them.** The screen-x-to-pan mapping needs a camera, and `audio` is layer 1 and does not
 know `iso` exists. The mapping is four lines in the game — and it is a gap worth routing; see the
 appendix.
-
-### 3.6 The bed — an argued addition
-
-`.lattice/kit.json` lists five modules for this package and the room is not among them. It should
-be. In the source game, "the room" is the highest-value audio feature that shipped, and it is not a
-sound effect: it is a **readout**. It thickens as the campus grows, so scale is something you hear
-before you look at a number, and it *sags in pitch* during a brownout, because plant losing power
-winds down and a drop in level alone reads as a mixing change while a drop in pitch reads as
-machinery stopping.
-
-Without it, a Lattice game is silent between taps — which for an idle game is 95% of the session —
-and every game built on this kit will hand-roll it, badly, with `Math.random`. The surface is two
-types and two methods.
-
-```ts
-/** One continuous layer of a bed. Every layer runs forever; only its gain, filter and pitch move. */
-export interface BedLayer {
-  readonly wave: Wave;
-  readonly hz: number;
-  /** Gain at intensity 1. Scaled toward silence as intensity falls — an empty world is silent. */
-  readonly gain: number;
-  readonly cutoff: number;
-  /**
-   * Multiple the cutoff opens to at full intensity. This, not gain, is what makes a busy hall
-   * sound busy: volume alone reads as "the same hum, nearer".
-   */
-  readonly cutoffAtFull?: number;
-  /**
-   * Detune against the previous layer, in Hz. Two near-identical sources beat, audibly, and that
-   * beat is what stops a bed sounding like a synthesiser pad. Real plant is never in phase.
-   */
-  readonly beat?: number;
-}
-
-export interface BedOptions {
-  /** Default `'sfx'`, so muting music does not silence the world. */
-  readonly bus?: BusId;
-  /** Pitch multiplier at `tone = 0`. Default 0.55 — fans spinning down, not fans switched off. */
-  readonly sagTo?: number;
-  /** Seconds for a change to arrive. Default ~1. Anything faster reads as an edit rather than as a room. */
-  readonly glideSec?: number;
-}
-
-export interface Bed {
-  /**
-   * Drive the bed. Safe to call every frame: it ramps toward the figures rather than resetting
-   * anything, so nothing clicks and nothing restarts.
-   *
-   * @param intensity 0–1, how much of the world is running. Scales gain and opens the filters.
-   * @param tone 0–1, how healthy it is. Below 1 the pitch sags and the top end closes. Default 1.
-   */
-  set(intensity: number, tone?: number): void;
-  /** Fade out and tear the layers down. A bed that is stopped cannot be restarted; make a new one. */
-  stop(fadeSec?: number): void;
-}
-```
-
-Bed layers are *not* counted against `MAX_VOICES`. They never end, so a counter driven by `onended`
-would never decrement them (trap 4), and a bed of five layers must not eat a fifth of the ceiling
-forever. They are bounded by construction instead: a bed's layer count is fixed at creation.
 
 ### 3.7 Testing with no `AudioContext` — a position
 
@@ -636,9 +697,9 @@ cannot reach 90% statements, which is this kit's floor. So:
 The consequence for a test author is that everything interesting is assertable with **no mock at
 all**: install an `onScheduled` listener, drive `now`, call `play` twice inside the gap, and count
 the plans. Coverage is then a question about the renderer alone, which is the only part that
-genuinely needs a browser — and a jsdom-free `happy-dom` run with a hand-written stub of the eight
-node types the renderer actually uses is a reasonable way to cover *those* lines, in one file,
-clearly labelled as covering node construction and nothing else.
+genuinely needs a browser — and a `happy-dom` run with a hand-written stub of the eight node types
+the renderer actually uses is a reasonable way to cover *those* lines, in one file, clearly labelled
+as covering node construction and nothing else.
 
 The price is the one departure from the source game: **`play()` returns `true` in a headless run.**
 The source returns `false` because it means "did a speaker move". Here it means "was this accepted",
@@ -662,10 +723,9 @@ needs an argument that beats the one written next to it.
    impulse response, which is an asset. A delay line is genuinely one node and is *still* refused,
    because the moment routing is author-defined the clipping invariant becomes unprovable: a
    feedback delay at 0.9 turns a 0.16 chord into a runaway, and no static validator can see it.
-   Fixed chain, provable ceiling. **What would change my mind:** the demo game needing a
-   pre-delay-free reverb for a large space, at which point *one* fixed, gain-limited send is a
-   smaller change than a graph.
-3. **`PannerNode`, HRTF, listener position and orientation, distance models, Doppler.** §3.5.
+   Fixed chain, provable ceiling. **What would change my mind:** the demo needing a reverb for a
+   large space, at which point *one* fixed, gain-limited send is a smaller change than a graph.
+3. **`PannerNode`, HRTF, listener position and orientation, distance models, Doppler.** §3.6.
    3D machinery for a 2D game, priced per voice.
 4. **`AnalyserNode`, FFT, waveform data.** A visualiser needs a real device, so anything built on
    it is invisible to tests and dead in Node. `onScheduled` gives a HUD the beat without any of
@@ -683,15 +743,18 @@ needs an argument that beats the one written next to it.
 8. **A general parameter automation API (`ramp(param, to, over)`).** It would collapse `bed`,
    `mixer` and the deck's fades into one primitive, and it would expose the node graph, which is
    the thing §3.1 is built to keep hidden.
-9. **Ducking / sidechain — music dipping when an alert fires.** The nearest miss on this list. It
-   is cheap (one `setTargetAtTime` on the music bus) and it genuinely helps a theme coexist with an
-   alarm. Absent for v1 only because it needs a policy — which sounds duck, how far, for how long —
-   and I would rather the demo game tell us than guess. **This is the first thing to add in v2.**
-10. **Reverse/negative time, offline rendering (`OfflineAudioContext`) to produce a buffer.**
-    Rendering a sound once and replaying the buffer is a real optimisation for `tap`, and it is
-    refused for now because it makes the ladder impossible (each step is a different render) and
-    because 24 oscillators is not a measured problem. If `perf` measures one, this is the fix.
-11. **Music that is generated rather than authored — Markov chains, generative harmony.** A seeded
+9. **A unified "soundscape" type covering both the bed and the deck.** Asked for and refused with
+   reasons in §3.4: a note is an event, a drone is a state, and the merged type is a sequencer with
+   a 0 bpm mode. They share a parameter vocabulary instead.
+10. **Ducking / sidechain — music dipping when an alert fires.** The nearest miss on this list. It
+    is cheap (one `setTargetAtTime` on the music bus) and it genuinely helps a theme coexist with
+    an alarm. Absent for v1 only because it needs a policy — which sounds duck, how far, for how
+    long — and I would rather the demo tell us than guess. **First thing to add in v2.**
+11. **Offline rendering (`OfflineAudioContext`) to bake a sound into a buffer.** A real
+    optimisation for `tap`, refused for now because it makes the ladder impossible (each step is a
+    different render) and because 24 oscillators is not a measured problem. If `perf` measures one,
+    this is the fix.
+12. **Music that is generated rather than authored — Markov chains, generative harmony.** A seeded
     drop probability is variation. A generator is a composer, and a composer that is 200 lines of
     probability tables writes music that is *different* every loop and *good* in none of them.
 
@@ -699,17 +762,18 @@ needs an argument that beats the one written next to it.
 
 ## 5. Invariants a reviewer can test
 
-Each is phrased so the failing case is obvious. Every one of them is assertable with **no
-`AudioContext`**, except where marked.
+Each is phrased so the failing case is obvious. Every one is assertable with **no `AudioContext`**,
+except where marked.
 
-1. **Nothing is created before a gesture.** `createAudio(...)` with a spy `context` factory:
-   the factory is not called. Call `play`, `mixer.setGain`, `music.play`, `bed` — still not called.
-   The first call to `unlock()` calls it exactly once; the second call does not call it again.
+1. **Nothing is created before a gesture.** `createAudio(...)` with a spy `context` factory: the
+   factory is not called. Call `play`, `mixer.setGain`, `createBed(...).set(1, 1)`,
+   `createDeck(...).play(song)` — still not called. The first `unlock()` calls it exactly once; the
+   second call does not call it again.
 2. **Silence, never an exception.** With `context: () => null`, every public method and every
-   getter runs without throwing — including `dispose()` twice, `bed().set(NaN, NaN)`,
-   `mixer.restore({} as MixerState)` and `music.pump()` before any `music.play`.
-3. **A context that throws on construction is a context that does not exist.** `context: () => { throw new Error('no'); }`
-   leaves `available === false` and does not propagate.
+   getter runs without throwing — including `dispose()` twice, `bed.set(NaN, NaN)`,
+   `mixer.restore({} as MixerState)` and `deck.pump()` before any `deck.play`.
+3. **A context that throws on construction is a context that does not exist.**
+   `context: () => { throw new Error('no'); }` leaves `available === false` and does not propagate.
 4. **The throttle is real, and visible without a device.** Two `play('collect')` at the same
    injected `now` emit one plan set, not two. Advancing `now` past `minGapMs` emits again.
 5. **The ladder walks and resets.** Four plays inside `windowMs` produce `hz` values in the ratio
@@ -717,36 +781,44 @@ Each is phrased so the failing case is obvious. Every one of them is assertable 
    at `steps`; two different sounds have independent ladders.
 6. **The voice ceiling holds and then releases.** 100 plays of a three-layer sound at one instant
    emit at most `maxVoices` plans. Advancing `now` past the longest `end` lets plays through again.
-   The bed's layers and the deck's notes do not consume the one-shot ceiling.
+   A bed's layers and a deck's notes do not consume the one-shot ceiling.
 7. **Mute is not gain.** `setGain('music', 0.4); setMuted('music', true); setMuted('music', false)`
    ⇒ `gain('music') === 0.4` throughout, and `muted('master')` silences without changing any bus.
 8. **Buses multiply.** With master 0.5 and music 0.5, a plan's rendered gain is a quarter of its
    layer gain — assertable from the plan plus the mixer, no device needed.
-9. **`snapshot`/`restore` round-trips**, and `restore` of an out-of-range or truncated state
-   clamps rather than throws and never leaves the game silent by accident.
-10. **The sequencer is pinned to the audio clock.** Pump at wildly irregular injected times; the
+9. **`snapshot`/`restore` round-trips**, and `restore` of an out-of-range or truncated state clamps
+   rather than throws and never leaves the game silent by accident.
+10. **The bed follows its parameter monotonically and without allocating.** `set(0.2, t)` then
+    `set(0.8, t)` raises every layer's target gain and never lowers one; `level`/`tone` report the
+    clamped values; a thousand `set` calls allocate nothing and create no nodes after the first.
+11. **A `band` crossfades rather than switches.** A layer with `band: [0, 0.4]` has target gain 0 at
+    `tone = 1`, full at `tone = 0`, and something strictly between at `tone = 0.3`. Two layers with
+    adjacent bands are both audible somewhere in the overlap — a bed that is ever completely silent
+    at some mid value of `tone` is a bug.
+12. **A bed built before `unlock()` still sounds after it** (requires a device), and building two
+    beds does not stack two copies of the same layer.
+13. **The sequencer is pinned to the audio clock.** Pump at wildly irregular injected times; the
     emitted `start` values form an exact arithmetic sequence of `60 / bpm / (steps / 4)` seconds
     with no drift and no duplicate step.
-11. **Nothing is scheduled twice and nothing is skipped.** Pumping ten times inside one step emits
+14. **Nothing is scheduled twice and nothing is skipped.** Pumping ten times inside one step emits
     each step exactly once; a pump after a one-second gap emits every step in between, in order.
-12. **The same seed is the same twenty minutes.** Two decks, same song and seed, pumped over the
+15. **The same seed is the same twenty minutes.** Two decks, same song and seed, pumped over the
     same injected time range, emit identical plan sequences. Different seeds differ.
-13. **Intensity gates tracks and nothing else.** Below a track's `minIntensity` it emits no plans;
+16. **Intensity gates tracks and nothing else.** Below a track's `minIntensity` it emits no plans;
     step times of the remaining tracks are unchanged. Tempo never changes.
-14. **`validateSounds` catches what it claims.** A table with a chord summing to 1.2 reports
-    `clips` naming the sound and the number; `minGapMs: 0` reports `no-throttle`; a `ladder`
-    whose `windowMs <= minGapMs` reports `ladder-shorter-than-gap`; a clean table returns `[]`.
-15. **`validateSong` enforces the rest rule on melody only.** A melodic track speaking on every
-    step reports `no-rests`; a hat on every offbeat does not.
-16. **The bed never restarts.** Two `set()` calls do not re-create nodes; `voices` is unchanged;
-    with a device, `set(0, 1)` on an empty world is inaudible rather than quiet.
-17. **`dispose` is final and quiet.** After it, `available === false`, `play` returns false,
-    `music.pump()` does nothing, the context is closed, and a second `dispose()` is a no-op.
-18. **No banned globals.** `npm run lint` finds no `Math.random`, `Date.now` or `performance.now`
-    in `packages/audio/src`, and no import of any package other than `@lattice/core`.
-19. **Requires a device:** every scheduled node is disconnected once its `end` has passed —
-    after a hundred plays and a full release tail, the context's node count returns to its
-    post-`unlock` baseline.
+17. **`validateSounds` catches what it claims.** A table with a chord summing to 1.2 reports `clips`
+    naming the sound and the number; `minGapMs: 0` reports `no-throttle`; a `ladder` whose
+    `windowMs <= minGapMs` reports `ladder-shorter-than-gap`; a clean table returns `[]`.
+18. **`validateSong` enforces the rest rule on melody only.** A melodic track speaking on every step
+    reports `no-rests`; a hat on every offbeat does not.
+19. **`dispose` is final and quiet.** After it, `available === false`, `play` returns false,
+    `deck.pump()` and `bed.set()` do nothing, the context is closed, and a second `dispose()` is a
+    no-op.
+20. **No banned globals.** `npm run lint` finds no `Math.random`, `Date.now` or `performance.now` in
+    `packages/audio/src`, and no import of any package other than `@lattice/core`.
+21. **Requires a device:** every scheduled node is disconnected once its `end` has passed — after a
+    hundred plays and a full release tail, the context's node count returns to its post-`unlock`
+    baseline, and a bed's node count does not grow with `set` calls.
 
 ---
 
@@ -758,31 +830,32 @@ Mined from `foom-simple-ui/src/core/audio.ts`, its config, and `PLAYBOOK.md`.
    silently produces nothing in some engines. Ramp to `0.0001`. And an exponential ramp *from* zero
    is silence, so the envelope must be `setValueAtTime(0)` → `linearRampToValueAtTime(peak)` →
    `exponentialRampToValueAtTime(0.0001)`.
-2. **A pitch sweep must be exponential too.** Pitch is heard logarithmically; a linear 880→190
-   sweep spends most of its life in the bottom octave.
+2. **A pitch sweep must be exponential too.** Pitch is heard logarithmically; a linear 880→190 sweep
+   spends most of its life in the bottom octave.
 3. **Assigning `gain.value` on a running node is an audible click.** Every change to a live
    parameter goes through `setTargetAtTime` with `RAMP_SEC`. A volume slider assigning directly
-   produces one click per pixel of travel.
-4. **A voice counter driven by `onended` leaks.** The bed's oscillators never end, so their
-   callback never fires and the counter never comes back down — a game that runs an hour ends up
-   permanently at the ceiling and goes silent. Count voices by *scheduled end time*, which is known
-   at schedule time and needs no callback at all. This is also what makes invariant 6 testable.
+   produces one click per pixel of travel. The bed's own glide is far slower again (~1 s): a bed
+   that arrives in 15 ms reads as an edit, not as a room.
+4. **A voice counter driven by `onended` leaks.** The bed's oscillators never end, so their callback
+   never fires and the counter never comes back down — a game that runs an hour ends up permanently
+   at the ceiling and goes silent. Count voices by *scheduled end time*, which is known at schedule
+   time and needs no callback at all. This is also what makes invariant 6 testable.
 5. **A suspended context after a backgrounded tab.** `unlock()` must resume as well as create, or
    sound works for one session and stops forever after the first tab switch.
 6. **`webkitAudioContext`, and a constructor that throws.** Old Safari names it differently; a
    locked-down browser throws. Both must land on `available === false`, silently. A boot path that
    can throw because of a *sound* is the worst possible trade.
-7. **iOS unlocks inside the gesture, synchronously.** `await` anything before `ctx.resume()` and
-   the gesture is spent — the context stays suspended and the game is silent on iPhone only. Also
-   note the hardware silent switch: a correctly unlocked context on iOS can still produce nothing,
-   which is not a bug to chase.
+7. **iOS unlocks inside the gesture, synchronously.** `await` anything before `ctx.resume()` and the
+   gesture is spent — the context stays suspended and the game is silent on iPhone only. Also note
+   the hardware silent switch: a correctly unlocked context on iOS can still produce nothing, which
+   is not a bug to chase.
 8. **A burst is one chord, not twenty blips.** COLLECT ALL is twenty calls in one millisecond. The
    throttle and the ceiling are both required — the throttle handles the repeat of *one* sound, the
    ceiling handles twenty *different* ones.
-9. **`setInterval` drifts, and a background tab throttles it to ≥1 s.** The timer decides only
-   *when to schedule*; the notes are pinned to `currentTime`. And the horizon must exceed the worst
-   throttle — hence `LOOKAHEAD_SEC = 1.5` against a `PUMP_INTERVAL_MS = 200` timer. A 250 ms
-   horizon (the source's) is fine in a foreground tab and leaves audible gaps in a background one.
+9. **`setInterval` drifts, and a background tab throttles it to ≥1 s.** The timer decides only *when
+   to schedule*; the notes are pinned to `currentTime`. And the horizon must exceed the worst
+   throttle — hence `LOOKAHEAD_SEC = 1.5` against a `PUMP_INTERVAL_MS = 200` timer. A 250 ms horizon
+   (the source's) is fine in a foreground tab and leaves audible gaps in a background one.
    Corollary from `PLAYBOOK.md` #3: never drive `pump()` from rAF alone, which is 0 Hz when hidden.
 10. **One noise buffer, built once, looped, filled deterministically.** A fresh
     `createBuffer(1, sampleRate, sampleRate)` per hat is an allocation and a fill of 48,000 floats
@@ -793,26 +866,31 @@ Mined from `foom-simple-ui/src/core/audio.ts`, its config, and `PLAYBOOK.md`.
 12. **Contexts are a capped resource.** Roughly six per document, historically. A test file that
     creates one per case, or a game that creates a second on a scene change, fails in a way that
     reads as a broken assertion. `dispose()` closes; `unlock()` is idempotent.
-13. **Music off by default.** Music nobody asked for is the fastest route to a permanently muted
-    game — and muting to escape music also loses the alarms, which are the sounds doing actual work.
-    `createAudio` must therefore start with the music bus *unmuted* but the deck *not playing*:
-    those are different states and conflating them means a game that restores a saved mixer with
-    `music` muted can never work out why `music.play()` did nothing.
-14. **A sound declared and never played.** The source project hit this class of defect — an
-    artefact correct in isolation that lies about the game — five separate times. `validateSounds`
-    cannot see it. The recipe belongs in the demo game's tests and in the README: grep `src` for
-    every key of the table. Worth stating because every game built on this kit needs the same test.
-15. **`noUncheckedIndexedAccess` is on, and `!` is banned.** `progression[bar]` is
+13. **The bed must be driven every frame and must cost nothing to drive.** It is called from the
+    render loop with numbers the game already has. `set` must not allocate, must not create nodes
+    after the first call, and must not re-issue an identical ramp — `setTargetAtTime` with the same
+    target every frame re-anchors the curve and the bed never actually arrives.
+14. **Music off by default, and "muted" is not "not playing".** Music nobody asked for is the
+    fastest route to a permanently muted game — and muting to escape music also loses the alarms,
+    which are the sounds doing actual work. So `createAudio` starts with the music bus *unmuted* and
+    no deck running: a game that restores a saved mixer with `music` muted and then calls
+    `deck.play()` will otherwise never work out why nothing happened.
+15. **A sound declared and never played.** The source project hit this class of defect — an artefact
+    correct in isolation that lies about the game — five separate times. `validateSounds` cannot see
+    it. The recipe belongs in the demo's tests and in the README: grep `src` for every key of the
+    table. Worth stating because every game built on this kit needs the same test.
+16. **`noUncheckedIndexedAccess` is on, and `!` is banned.** `progression[bar]` is
     `number | undefined` and the sequencer indexes arrays whose length is data. `PLAYBOOK.md`
     trap 14 is exactly this bug shipping a black screen; here it would be a silent `NaN` frequency,
     which WebAudio accepts and renders as nothing. Handle the `undefined`.
-16. **`NaN` and `Infinity` reach parameters happily and produce silence forever.** A `NaN` written
-    to an `AudioParam` poisons it for the life of the node. Clamp at the boundary — `PlayOptions`,
-    `Mixer`, `Bed.set` — and per rule 9, a `RangeError` naming the caller's mistake is the right
-    answer for a *programmer* error like `bpm: 0`, while a *player-supplied* value like a slider
-    position is clamped, not thrown.
-17. **The 12 kB gzip budget is real** and this is the widest surface of the layer-1 packages.
-    Refusal 2 in §4 is a size decision as much as a design one.
+17. **`NaN` and `Infinity` reach parameters happily and produce silence forever.** A `NaN` written
+    to an `AudioParam` poisons it for the life of the node — which for a bed layer is the life of
+    the session. Clamp at the boundary — `PlayOptions`, `Mixer`, `Bed.set` — and per rule 9, a
+    `RangeError` naming the caller's mistake is right for a *programmer* error like `bpm: 0`, while
+    a *player-supplied* value like a slider position is clamped, not thrown.
+18. **The 12 kB gzip budget is real** and this is the widest surface of the layer-1 packages.
+    Refusal 2 in §4 is a size decision as much as a design one, and `createDeck` being a free
+    function rather than a member of `Audio` is what lets a small game not pay for it.
 
 ---
 
@@ -825,21 +903,23 @@ Routed rather than fixed, per `docs/LOOP.md` rule 5.
   reasoning the source game encoded by writing `foom.muted` straight to `localStorage`. If `persist`
   offers only versioned save slots, every game will bypass it for exactly this, which defeats the
   package. Suggested shape: a second namespace with no migration chain and no export.
-- **Somebody owns screen-x → pan, and it is not `audio`.** Two lines that need a camera and a
-  canvas width. `iso`'s camera is the natural home (`camera.panOf(worldX, worldY): number`, −1…1),
-  or the demo game absorbs it and we learn whether anyone else wants it. Left out of this RFC
-  because the layering forbids me from taking the dependency.
-- **`core` must export a seeded RNG that is cheap to key by a tuple.** The music deck needs
-  "roll for (bar, step, track)" without keeping a stream position, i.e. a stateless hash-to-unit
-  function (`hash3(seed, a, b): number` in 0–1) alongside the streaming `Rng`. If `core` only
-  offers a streaming generator, this package will grow its own hash, which is a determinism
-  primitive living in the wrong place.
-- **`core` needs a `clamp` and a finite-number assertion that produces rule-9 error text.** This
-  package clamps at four boundaries and would otherwise write its own.
+- **Somebody owns screen-x → pan, and it is not `audio`.** Two lines that need a camera and a canvas
+  width. `iso`'s camera is the natural home (`camera.panOf(worldX, worldY): number`, −1…1), or the
+  demo absorbs it and we learn whether anyone else wants it. Left out here because the layering
+  forbids me the dependency.
+- **`core` must export a stateless seeded hash, not only a streaming `Rng`.** The deck needs "roll
+  for (bar, step, track)" without keeping a stream position — `hash3(seed, a, b): number` in 0–1.
+  If `core` offers only a streaming generator, this package will grow its own, which is a
+  determinism primitive living in the wrong place.
+- **`core` needs `clamp` and a finite-number assertion that produces rule-9 error text.** This
+  package clamps at five boundaries and would otherwise write its own.
 - **`.lattice/kit.json` needs three edits**, which I cannot make from my paths:
-  (a) add `bed` to `packages.audio.modules` (§3.6);
+  (a) add `bed` to `packages.audio.modules` (§3.4);
   (b) reword the invariant *"`play()` in a headless run does nothing at all"* → *"produces no
   sound"*, since acceptance is now device-independent (§3.7);
   (c) list this package's exports once the builder lands them.
-- **The demo game should be the one to answer the ducking question** (§4, refusal 9). If its
-  brownout alarm cannot be heard over its theme, that is the evidence v2 needs.
+- **The demo should answer the ducking question** (§4.10). If its brownout alarm — or whatever
+  carries urgency in the valley — cannot be heard over a theme, that is the evidence v2 needs.
+- **The demo's day/night parameter is the bed's `tone`, and the palette's lerp input is the same
+  number.** Worth stating in `docs/rfc/demo.md` as a shared contract, so the sound and the colour
+  cannot drift apart: one `daylight` value, two consumers.

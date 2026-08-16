@@ -21,6 +21,14 @@ art direction: three-tone faces derived from a single hex, cool shadows, warm hi
 silhouette stroke on everything. *A surface it does not own* is the engineering: nothing in
 this package, and nothing above it, ever holds a `CanvasRenderingContext2D`.
 
+> **Revised after `docs/rfc/demo.md` (A10).** The demo is a lamplighter game whose premise is
+> *"you can see exactly where the light stops"*, and it named three things this package could
+> not deliver: an emissive light, a night mask, and a palette that interpolates by `t`. All
+> three are now in this RFC — a new `light` module (3.9), a seventh render pass (3.11), and
+> `Palette.lerp` (3.6). Two of them changed the `Surface` seam, which is exactly the kind of
+> change that has to happen *before* a builder starts rather than after. The demo doing this
+> is the demo working.
+
 ---
 
 ## 2. The five-line example
@@ -31,7 +39,7 @@ This is written before the API, and the API below exists to serve it.
 import { beginFrame, createCanvas2dSurface, endFrame, isoBox, isoTile } from '@lattice/draw';
 
 const surface = createCanvas2dSurface(canvasEl);
-const pen = beginFrame(surface, camera, palette, t, 'sky');
+const pen = beginFrame({ surface, camera, palette, t, clear: 'sky' });
 isoTile(pen, 4, 7, 'ground');
 isoBox(pen, 4, 7, 2, 2, { color: 'brand', h: 3 });
 endFrame(pen);
@@ -42,7 +50,7 @@ Five lines, and every design decision in section 3 falls out of them:
 | the line says | so the API must |
 |---|---|
 | `createCanvas2dSurface(canvasEl)` | put the backend behind a factory, and never behind an inherited class the caller must subclass |
-| `beginFrame(surface, camera, …)` | bundle surface + camera + palette + clock into one `Pen` passed first, so a solid takes seven numbers rather than nine |
+| `beginFrame({ surface, camera, … })` | bundle surface + camera + palette + clock into one `Pen` passed first, so a solid takes seven numbers rather than nine. Named fields rather than positional, because the sixth one is an optional `LightField` and nobody should have to count commas to reach it |
 | `isoTile(pen, …)`, not `pen.tile(…)` | free functions, so a game that draws boxes and nothing else ships boxes and nothing else |
 | `'ground'`, `'brand'` | colours are **palette slots resolved at draw time**, which is the whole recolour-the-campus story, and the reason a cache key has to carry a palette revision |
 | `{ color, h }` — one colour, a height | faces are *derived*, never given. There is no `leftColor`. Offering one is offering the caller a way to break the look |
@@ -72,11 +80,24 @@ export const WATER_TOWER = defineSprite({
 });
 ```
 
+**Night**, which is the demo's whole subject. Darkness is a layer, and lights punch through
+it — one field, one number, and sprites that know nothing about the mask:
+
+```ts
+const light = createLightField(surface);
+palette.lerp(DAY, NIGHT, night);                     // night: 0 → 1, from the game's clock
+const pen = beginFrame({ surface, camera, palette, t, clear: 'sky', light });
+
+light.begin(pen, night, 'night');                    // darkness amount and its colour
+for (const lamp of lit) drawSprite(pen, LAMP, lamp.gx, lamp.gy, lamp.v);  // each emits a pool
+light.composite();                                   // the Light pass: mask down, glow up
+```
+
 And a **golden test**, in Node, with no canvas anywhere:
 
 ```ts
 const rec = createRecordingSurface(320, 200, 1);
-const pen = beginFrame(rec, camera, palette, 0, 'sky');
+const pen = beginFrame({ surface: rec, camera, palette, t: 0, clear: 'sky' });
 drawSprite(pen, WATER_TOWER, 0, 0, VARIANT_ZERO);
 endFrame(pen);
 expect(rec.digest()).toBe('…'); // and rec.ops is readable when it does not
@@ -88,8 +109,8 @@ expect(rec.digest()).toBe('…'); // and rec.ops is readable when it does not
 
 ### 3.0 The module map, and where it differs from `kit.json`
 
-`kit.json` declares nine modules. I am proposing eleven. The two additions are not scope
-creep; each one is a constitution rule that the nine-module list violates.
+`kit.json` declares nine modules. I am proposing twelve. The three additions are not scope
+creep; each is a constitution rule or a demo requirement the nine-module list cannot hold.
 
 | module | what is in it | change |
 |---|---|---|
@@ -97,12 +118,13 @@ creep; each one is a constitution rule that the nine-module list violates.
 | `canvas2d` | the browser backend | — |
 | **`record`** | the headless recording backend | **added** |
 | `color` | packed RGBA, `shade`, `outlineOf`, face constants | — |
-| `palette` | named slots, `rev` | — |
+| `palette` | named slots, `rev`, `lerp`, CSS var serialisation | — |
 | `solids` | the eight iso primitives | — |
 | **`sprite`** | `SpriteDef`, `SolidWriter`, `drawSprite`, `drawGhost`, `spriteBounds` | **added** |
 | `shadow` | contact shadow, full-frame wash | — |
+| **`light`** | `LightField` — emissive pools and the night mask they punch through | **added** |
 | `text` | wall text and screen text | — |
-| `layers` | the six passes and the depth-sorted draw list | — |
+| `layers` | the seven passes and the depth-sorted draw list | — |
 | `cache` | the sprite bitmap cache | — |
 
 **Why `record` is its own module.** Constitution rule 4: a module that touches the DOM says
@@ -117,6 +139,13 @@ home for bitmaps (`cache`) and no home at all for the thing in between: *how a g
 primitives into a building it owns*. That is the single most important question this package
 answers, and leaving it homeless is how it ends up hand-written per game, which is what the
 source game did. See 3.7.
+
+**Why `light` is its own module.** Every module in the nine-module list is subtractive —
+`shadow` is literally the opposite operation — and the demo's premise is a pool of light with
+a visible edge. `shadow` is per-object and immediate; a light field is per-frame, accumulated
+into its own buffer and composited once, because that is the only way two overlapping pools
+meet without a seam (3.9). Folding it into `shadow` would put two opposite lifecycles in one
+file, and folding it into `layers` would make the pass ordering own a framebuffer.
 
 ### 3.1 Types borrowed from below
 
@@ -211,8 +240,29 @@ export declare function withAlpha(color: Rgba, a: number): Rgba;
 /** Linear per-channel blend in sRGB bytes. Deliberately not perceptual — see section 4. */
 export declare function mix(a: Rgba, b: Rgba, t: number): Rgba;
 
-/** Packed colour → a CSS colour string, memoised. Backends only; not for game code. */
+/** Packed colour → `rgb()` / `rgba()`, memoised. Backends only; not for game code. */
 export declare function cssOf(color: Rgba): string;
+
+/** Packed colour → `#rrggbb`, or `#rrggbbaa` when it is not opaque. The DOM-facing form. */
+export declare function hexOf(color: Rgba): string;
+
+/**
+ * HSL → packed. `h` in degrees, `s` and `l` in 0–1.
+ *
+ * Hue is how a *player* picks a brand colour — a wheel, one number — and how a theme derives
+ * a dozen related tokens from that one number.
+ */
+export declare function hsl(h: number, s: number, l: number, a?: number): Rgba;
+
+/**
+ * A brand hue straight to `#rrggbb`, for the DOM.
+ *
+ * `hexOf(hsl(hue, sat, light))`, and it exists as its own export because `ui` derives its
+ * whole theme from one hue and must not grow a second colour model to do it. **Colour lives
+ * in exactly one package, and this is it** — `core` deliberately has none, so a second
+ * implementation anywhere above this line is the bug, not the convenience.
+ */
+export declare function hueToHex(hue: number, sat?: number, light?: number): string;
 
 /** Relative brightness of each visible face. The sun sits high and front-left. */
 export declare const FACE_TOP: 1;
@@ -238,6 +288,31 @@ backend's business, and that is not a convenience — it is the fix for a real b
 
 ```ts
 export type SurfaceKind = 'canvas2d' | 'recording';
+
+/**
+ * What a render target accumulates.
+ *
+ * `'image'` is ordinary source-over painting. `'light'` blends by **per-channel maximum** and
+ * starts black — which is the entire reason two lamp pools can overlap without a seam. It is
+ * `globalCompositeOperation = 'lighten'` on Canvas2D and `blendEquation(MAX)` on a GPU, so
+ * both backends honour it in one line and neither has to lie.
+ */
+export type TargetMode = 'image' | 'light';
+
+/**
+ * How a bitmap lands on what is already there. Three modes, not a composite API.
+ *
+ * | mode | Canvas2D | WebGL | used for |
+ * |---|---|---|---|
+ * | `'over'` | `source-over` | `SRC_ALPHA, ONE_MINUS_SRC_ALPHA` | everything ordinary |
+ * | `'add'` | `lighter` | `ONE, ONE` | the warm bloom a lamp throws |
+ * | `'cut'` | `destination-out` | alpha `ZERO, ONE_MINUS_SRC_COLOR` | punching light holes in darkness |
+ *
+ * Section 4 rejects `globalCompositeOperation` as a Canvas2D-shaped concept, and this is the
+ * narrow replacement: three named modes, each one blend state on both backends, each one
+ * demanded by a picture the kit has to be able to draw.
+ */
+export type BlitMode = 'over' | 'add' | 'cut';
 
 /**
  * A text run's appearance. Passed per call because a font left set on a 2D context is the
@@ -400,15 +475,22 @@ export interface Surface {
    *
    * Implementations must snap `dx`/`dy` to whole device pixels — see trap 10.
    */
-  blit(source: Bitmap, dx: number, dy: number, dw: number, dh: number): void;
+  blit(
+    source: Bitmap,
+    dx: number,
+    dy: number,
+    dw: number,
+    dh: number,
+    mode?: BlitMode,
+  ): void;
 
   /**
    * A sibling surface that renders into memory: an offscreen canvas, an FBO, a nested log.
    *
-   * This is what makes thumbnails, the sprite cache and golden tests one mechanism instead
-   * of three, and it is why `Surface` is an interface rather than a class.
+   * This is what makes thumbnails, the sprite cache, the light buffer and golden tests one
+   * mechanism instead of four, and it is why `Surface` is an interface rather than a class.
    */
-  createTarget(width: number, height: number): RenderTarget;
+  createTarget(width: number, height: number, mode?: TargetMode): RenderTarget;
 }
 
 export interface RenderTarget extends Surface {
@@ -436,16 +518,30 @@ export interface Pen {
    * hundred buildings, sixty times a second. Never retain a reference to this array.
    */
   readonly xy: Float64Array;
+  /**
+   * The light accumulator for this frame, if the game has one.
+   *
+   * `drawSprite` reads it to run a sprite's `emit` hook. `undefined` means the game has no
+   * night, and every light in the kit then costs nothing at all rather than a little.
+   */
+  readonly light: LightField | undefined;
 }
 
-/** One `Pen` is allocated per frame. That is the package's entire per-frame allocation. */
-export declare function beginFrame(
-  surface: Surface,
-  camera: Camera,
-  palette: Palette,
-  t: number,
-  clear?: Ink,
-): Pen;
+export interface FrameOpts {
+  readonly surface: Surface;
+  readonly camera: Camera;
+  readonly palette: Palette;
+  /** Seconds since the session began. From `loop`; this package never reads a clock. */
+  readonly t: number;
+  readonly clear?: Ink;
+  readonly light?: LightField;
+}
+
+/**
+ * One `Pen` and one `FrameOpts` are allocated per frame. That is the package's entire
+ * per-frame allocation, and it is two objects rather than two per sprite.
+ */
+export declare function beginFrame(opts: FrameOpts): Pen;
 
 export declare function endFrame(pen: Pen): void;
 
@@ -481,17 +577,49 @@ export declare function createCanvas2dSurface(
   opts?: Canvas2dOpts,
 ): Surface;
 
+export interface OffscreenOpts {
+  /** Default 1. A thumbnail pinned to 1 is byte-identical across machines, which a test wants. */
+  readonly pixelRatio?: number;
+  readonly alpha?: boolean;
+}
+
+/**
+ * A `Surface` that renders into a detached canvas, and hands the result back to the DOM.
+ *
+ * This is the same seam as `createRecordingSurface`, pointed at a browser instead of at Node:
+ * one `Surface` interface, three places it can end up — a screen, a memory image, an op log —
+ * and one body of drawing code that cannot tell which. `ui.thumb` cannot exist without it,
+ * and it is what stops a shop card and the building it sells from ever drifting apart.
+ */
+export interface OffscreenSurface extends Surface {
+  readonly kind: 'canvas2d';
+  /**
+   * The backing element. Prefer this: it can be appended, or drawn into another surface, with
+   * no encode and no decode.
+   */
+  readonly element: HTMLCanvasElement;
+  /**
+   * A `data:` URL of the current contents. Roughly a third larger than the bytes it encodes
+   * and it costs a synchronous encode, so it earns its place only when the caller is caching
+   * the string across DOM rebuilds — which is exactly what a shop card does.
+   */
+  toDataUrl(type?: string, quality?: number): string;
+}
+
 /**
  * A detached surface of a fixed size — the one `ui` needs for shop thumbnails.
  *
- * Uses `OffscreenCanvas` where it exists and a detached `<canvas>` where it does not, and
- * the difference is not visible through `Surface`.
+ * Always a detached `<canvas>`, never an `OffscreenCanvas`, and that is deliberate:
+ * `OffscreenCanvas` has no `toDataURL`, only an async `convertToBlob`, and an async thumbnail
+ * is a shop card that pops in one frame late every time it is opened. The kit's *internal*
+ * targets (`createTarget`) are free to use `OffscreenCanvas`, because nothing ever asks them
+ * for a URL.
  */
 export declare function createOffscreenSurface(
   width: number,
   height: number,
-  pixelRatio?: number,
-): Surface;
+  opts?: OffscreenOpts,
+): OffscreenSurface;
 ```
 
 ### 3.5 `record` — the headless backend
@@ -556,9 +684,16 @@ export declare function createRecordingSurface(
 export declare const ESTIMATED_ADVANCE_RATIO: 0.55;
 ```
 
-### 3.6 `palette` — named colour, and the revision that keeps a cache honest
+### 3.6 `palette` — named colour, the revision that keeps a cache honest, and the day/night spine
 
 ```ts
+/**
+ * A named, immutable set of slot colours: `DAY`, `DUSK`, `NIGHT`. Plain data, so a game
+ * authors them in one object literal, diffs them in review, and hands two of them to
+ * {@link Palette.lerp}.
+ */
+export type Stops = Readonly<Record<string, Rgba>>;
+
 export interface Palette {
   /**
    * Bumped on every `set()`.
@@ -575,9 +710,58 @@ export interface Palette {
   /** Resolve an {@link Ink}: a number passes through untouched, a string is a slot lookup. */
   ink(value: Ink): Rgba;
   keys(): readonly string[];
+  /**
+   * Cross-fade every slot between two stop sets. **One call and one number recolours the
+   * entire world** — the day/night spine, and the strongest argument the zero-asset rule has.
+   *
+   * Two things about it are load-bearing and neither is obvious:
+   *
+   * 1. **`t` is quantised to `1 / PALETTE_STEPS` before it is applied, and `rev` bumps only
+   *    when the quantised step changes.** A continuous lerp that bumped `rev` every frame
+   *    would invalidate every cached sprite every frame, which turns the prettiest moment in
+   *    the game into its slowest. Thirty-two steps across a six-second dusk is a colour delta
+   *    of under two levels per step — invisible — and thirty-two cache generations, which the
+   *    LRU absorbs.
+   * 2. **Both stop sets must define exactly the same slots**, or this throws naming the
+   *    missing one. A half-defined night palette is precisely how one thing stays gold at
+   *    midnight, and the failure is silent everywhere else.
+   *
+   * Interpolation is per-channel in sRGB bytes, the same space as {@link mix}, so a
+   * mid-transition frame is a colour the art direction already sanctioned.
+   */
+  lerp(from: Stops, to: Stops, t: number): void;
 }
 
-export declare function createPalette(slots: Readonly<Record<string, Rgba>>): Palette;
+export declare function createPalette(slots: Stops): Palette;
+
+/** Quantisation steps for {@link Palette.lerp}. 32 — see the note above about `rev`. */
+export declare const PALETTE_STEPS: 32;
+
+/** A flat slot → CSS colour bag. The only shape colour crosses into the DOM in. */
+export type Vars = Readonly<Record<string, string>>;
+
+/**
+ * Interpolate two stop sets into CSS strings — the `draw` → `ui` seam.
+ *
+ * Pure: it touches no `Palette` and no DOM. `ui` writes the entries onto custom properties
+ * under its own prefix, guarded per key, on its 1 Hz state cadence, and lets a CSS transition
+ * do the smoothing. Optimised for clarity, not for the frame: at one call a second the
+ * allocation of a fresh object is not worth a line of thought.
+ *
+ * **It shares its quantisation and its interpolation with {@link Palette.lerp}**, and that is
+ * not an implementation detail — it is invariant 17. If the world's blue and the HUD's blue
+ * were computed by two functions, they would drift, and nightfall is the one moment where a
+ * mismatch is unmissable.
+ */
+export declare function lerpPalette(a: Stops, b: Stops, t: number): Vars;
+
+/** The same bag, from whatever the live palette currently is. For a `rev`-guarded push. */
+export declare function paletteVars(p: Palette): Vars;
+
+/** Reference stop sets covering {@link BASE_SLOTS}. A game overrides them; a demo does not. */
+export declare const DAY: Stops;
+export declare const DUSK: Stops;
+export declare const NIGHT: Stops;
 
 /**
  * The slots the kit itself draws with, so `createPalette(BASE_SLOTS)` is a working game.
@@ -683,6 +867,15 @@ export type Massing = (w: SolidWriter, v: Variant, rng: Rng) => void;
 /** Live art over the cached image. Same fresh-seeded `rng`; `pen.t` is the only clock. */
 export type Animator = (pen: Pen, gx: number, gy: number, v: Variant, rng: Rng) => void;
 
+/** Emissive contribution. Runs only when a `LightField` is attached to the frame. */
+export type Emitter = (
+  field: LightField,
+  gx: number,
+  gy: number,
+  v: Variant,
+  rng: Rng,
+) => void;
+
 export interface SpriteDef {
   /** Stable across releases: it is hashed into every cache key and every golden file. */
   readonly id: string;
@@ -691,6 +884,16 @@ export interface SpriteDef {
   readonly d: number;
   readonly massing: Massing;
   readonly animate?: Animator;
+  /**
+   * Light this sprite throws into the frame's {@link LightField}, if there is one.
+   *
+   * Kept separate from `animate` because it runs at a different time and into a different
+   * buffer, and separate from `massing` because light is never cached. This is the answer to
+   * "how does a lamp's radius reach the night mask without the mask knowing what a lamp is":
+   * it does not — the lamp posts a pool, and a pool is a position, a radius, an intensity and
+   * a colour.
+   */
+  readonly emit?: Emitter;
 }
 
 /** Identity at runtime; exists to give a sprite literal a contextual type at the call site. */
@@ -911,7 +1114,118 @@ export declare function screenText(
 ): void;
 ```
 
-### 3.9 `cache` — what is cached, keyed on what, invalidated when
+### 3.9 `light` — the pool, the edge, and the darkness it is cut from
+
+The demo's premise is *"you can see exactly where the light stops"*. That sentence is a
+requirement on compositing, and it rules out the two obvious implementations:
+
+- **Recolour the world at night and draw a warm blob per lamp.** There is then no edge — the
+  blob fades into a world that is uniformly darker, and the player cannot tell where light
+  ends because nothing ends. This is "night is a recolour, and the game has no subject".
+- **Draw darkness per lamp, punching a hole per lamp as you go.** Two overlapping pools punch
+  the same pixels twice — `(1−a₁)(1−a₂)`, not `max(a₁,a₂)` — and the overlap comes out
+  visibly brighter than either pool, so every pair of adjacent lamps grows a hot lens-shaped
+  seam between them. It looks like a rendering bug because it is one, and it is unfixable in
+  that shape.
+
+The fix is an accumulator. **Light is gathered into its own buffer with per-channel max
+blending, and darkness is composited once from the finished field.** Max is what makes two
+pools meet as one pool: overlapping does not brighten, and there is no seam to see. The full
+frame is three steps and they are all inside `composite()`:
+
+| step | what | why |
+|---|---|---|
+| 1 | every `add()` draws a `softEllipse` into a `'light'` target | max blending, so overlap resolves before anything is composited |
+| 2 | a darkness quad at `darkness × tint`, `blit(lightBuf, 'cut')` | one hole per pool, with the pool's own soft edge |
+| 3 | `blit(lightBuf, 'add')` at `bloom` | the warm spill on the ground *inside* the pool, where additive is genuinely correct — two lamps really are brighter |
+
+The buffers render at **half resolution by default**. Light is low-frequency; two full-screen
+RGBA targets at device resolution is 20 MB and 4× the fill on a laptop, for a difference
+nobody can point at. This is the one place in the kit that deliberately renders soft.
+
+```ts
+export interface LightFieldOpts {
+  /** Buffer resolution relative to the surface. Default 0.5 — see above. 1 for a screenshot. */
+  readonly scale?: number;
+  /** Falloff exponent from centre to rim. Default 2. Higher is a harder-edged pool. */
+  readonly falloff?: number;
+  /** How much of the accumulated light is added back as warm spill. Default 0.35. */
+  readonly bloom?: number;
+}
+
+export interface LightField {
+  /**
+   * False when `darkness` is 0 — full day.
+   *
+   * The whole subsystem then costs nothing: no buffers cleared, no pools drawn, no composite,
+   * and `emit` hooks are skipped. A game with no night pays for none of this, which is what
+   * lets the light module exist at all inside a 12 KB budget.
+   */
+  readonly active: boolean;
+  /** Pools accumulated this frame. For a budget assertion, and for `docs/PERFORMANCE.md`. */
+  readonly count: number;
+
+  /**
+   * Start the frame's light field. Call before the Terrain pass, not in the Light pass —
+   * pools accumulate as sprites draw, and only the *composite* happens in the Light pass.
+   *
+   * `darkness` is 0–1 and is the game's own day/night value, the same number it passes to
+   * `Palette.lerp`. `tint` is the colour the dark goes: a slot name, so the dark itself
+   * recolours with the palette.
+   */
+  begin(pen: Pen, darkness: number, tint: Ink): void;
+
+  /**
+   * Add a pool of light at a grid position, `radiusTiles` across.
+   *
+   * The mask knows a position, a radius, an intensity and a colour, and deliberately nothing
+   * else. It does not know what a lamp is, it holds no list of emitters, and it retains
+   * nothing between frames — so a lamp that stops being drawn stops lighting, with no
+   * unregister call to forget.
+   */
+  add(
+    gx: number,
+    gy: number,
+    z: number,
+    radiusTiles: number,
+    intensity: number,
+    color: Ink,
+    falloff?: number,
+  ): void;
+
+  /** The same, in screen pixels — a flash, a cursor glow, a UI-anchored highlight. */
+  addScreen(
+    sx: number,
+    sy: number,
+    radiusPx: number,
+    intensity: number,
+    color: Ink,
+    falloff?: number,
+  ): void;
+
+  /** Composite mask and bloom onto the surface. Called once, in the Light pass. */
+  composite(): void;
+
+  resize(width: number, height: number): void;
+  /** Disposes both buffers. A field that outlives its surface leaks GPU memory. */
+  dispose(): void;
+}
+
+export declare function createLightField(
+  surface: Surface,
+  opts?: LightFieldOpts,
+): LightField;
+```
+
+**Where the light layer belongs, and why it is here rather than anywhere else.** It is asked
+of `draw` because it is a compositing operation over a `Surface`, and `Surface` is the only
+thing in the kit that knows what a framebuffer is. Putting it in `ui` would make the darkness
+a DOM element over the canvas — which cannot have holes with soft edges, and which would sit
+above the placement ghost. Putting it in a game would make every game re-derive the max-blend
+accumulator, and the second implementation would have the seam bug. `light` depends on
+nothing that `draw` does not already own.
+
+### 3.10 `cache` — what is cached, keyed on what, invalidated when
 
 The brief's third question, answered as three rules.
 
@@ -988,7 +1302,7 @@ export declare function spriteKey(
 export declare function zoomBucketOf(zoom: number, steps: number): number;
 ```
 
-### 3.10 `layers` — the six passes, and the sort
+### 3.11 `layers` — the seven passes, and the sort
 
 The pass order is fixed, and it is fixed because **the order is the product**:
 
@@ -996,11 +1310,23 @@ The pass order is fixed, and it is fixed because **the order is the product**:
 2. **Terrain** — culled tile diamonds, colour varied per tile from a seeded stream, so grass has texture without a texture.
 3. **Solids** — buildings *and* scenery, one list, one sort. Two sorted lists is what makes trees pop through walls.
 4. **Placement** — ghost and selection: above the world, below the UI.
-5. **Overlay** — bubbles and timers, in screen space, unsorted, always on top. A reward the player cannot see behind a neighbouring roof is a reward that does not exist.
-6. **Effects** — floating numbers and bursts.
+5. **Light** — the night mask goes down and the bloom goes up, in one composite.
+6. **Overlay** — bubbles and timers, in screen space, unsorted, always on top. A reward the player cannot see behind a neighbouring roof is a reward that does not exist.
+7. **Effects** — floating numbers and bursts.
 
-There is deliberately no way to add a seventh, and no way to get a second Solids pass. Both
-are how the tree-through-wall bug comes back.
+**Light sits at 5 and the position is argued, not arbitrary.** It is *after* Placement because
+a ghost is a thing in the valley and a thing in the valley at night is dark — a placement
+preview that stays daylit while the world around it does not is the tell that the darkness is
+a filter rather than the world. It is *before* Overlay because a coin pill and a build timer
+are not in the valley, and a HUD the player cannot read at midnight is a HUD that is broken
+for half of every cycle. Everything the light darkens is something the camera could pan away
+from; everything above it is something bolted to the screen.
+
+Seven, and closed. There is no way to add an eighth and no way to get a second Solids pass —
+the second Solids pass is how the tree-through-wall bug comes back, and an eighth is how
+somebody puts the HUD under the darkness. The seventh was found by the demo RFC and added
+before a line was written, which is the process working; the next one, if there is one, gets
+found the same way.
 
 ```ts
 export declare const Layer: {
@@ -1008,8 +1334,9 @@ export declare const Layer: {
   readonly Terrain: 1;
   readonly Solids: 2;
   readonly Placement: 3;
-  readonly Overlay: 4;
-  readonly Effects: 5;
+  readonly Light: 4;
+  readonly Overlay: 5;
+  readonly Effects: 6;
 };
 export type Layer = (typeof Layer)[keyof typeof Layer];
 

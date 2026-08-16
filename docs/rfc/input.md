@@ -32,7 +32,7 @@ below, and where the two disagreed, the API moved.
 const input = createInput({
   element: canvas,
   camera,
-  actions: { collect: ['tap', 'key:Space', 'pad:a'] },
+  actions: { collect: ['tap', 'key:Space'], build: ['key:KeyB'] },
 });
 input.onAction('collect', (a) => collectAt(state, a.gx, a.gy));
 loop.onFrame((nowMs) => { input.update(nowMs); render(state, camera); });
@@ -44,15 +44,15 @@ Read it as a list of promises the API has to keep:
 | the line | what it forces on the design |
 |---|---|
 | `element` + `camera` and nothing else | The package needs the surface and the transform. It never sees game state, so it can never hold a stale idea of what is in the world. |
-| `actions: { collect: [...] }` | Three sources, one name, declared as data. `'colect'` in the handler is a **compile error** — the action names are inferred from this object literal. |
-| `a.gx, a.gy` | The handler is handed tiles. Converting screen → world → tile by hand is the step where games get the camera wrong, so the package has already done it. |
+| `actions: { collect: [...] }` | Two sources — one that has a position and one that does not — under one name, declared as data. `'colect'` in the handler is a **compile error**: the action names are inferred from this object literal. A third source is one more string in the array and no new handler. |
+| `a.gx, a.gy` | The handler is handed tiles, not pixels. This is the tap → grid seam (§3.8) and it is closed here, so that no game ever writes the conversion. |
 | `input.update(nowMs)` before `render` | Nothing is emitted except inside `update`. Input therefore cannot be a side effect of rendering; it is the thing that happens before it. |
 | `input.dispose()` | One call. Everything bound through `input` or any scope descended from it is gone, including the camera controller's inertia and any key the player was holding. |
 
-Pinch, wheel, two-finger pan, drag-to-pan, arrow keys and the left stick are all live in
-those five lines: the camera controller is on by default, because a tile game whose camera
-does not move is not a tile game, and making every game write that wiring is how every game
-gets it subtly different.
+Pinch, wheel, two-finger pan, drag-to-pan and the arrow keys are all live in those five
+lines: the camera controller is on by default, because a tile game whose camera does not
+move is not a tile game, and making every game write that wiring is how every game gets it
+subtly different.
 
 ---
 
@@ -194,15 +194,15 @@ export interface DragGesture extends GestureBase {
 /**
  * "Scale the world by `scale` about this point."
  *
- * One gesture for wheel, trackpad pinch, two-finger pinch, `+`/`-` and the shoulder
- * buttons, because the camera does not care which it was and neither does a game. `sx, sy`
+ * One gesture for wheel, trackpad pinch, two-finger pinch and `+`/`-`, because the camera
+ * does not care which it was and neither does a game. `sx, sy`
  * is the anchor: the pointer, the midpoint between two fingers, or the viewport centre for
  * a source that has no position. `dx, dy` carries the midpoint's own travel, so a
  * two-finger gesture pans and zooms at once the way a map does.
  */
 export interface ZoomGesture extends GestureBase {
   readonly type: 'zoom';
-  readonly source: 'wheel' | 'pinch' | 'key' | 'pad';
+  readonly source: 'wheel' | 'pinch' | 'key';
   /** Multiplicative, > 1 zooms in. Never additive: additive zoom is unusable above 2×. */
   readonly scale: number;
   readonly dx: number;
@@ -222,13 +222,6 @@ export interface GestureMap {
 ### 3.3 Actions
 
 ```ts
-/** Standard-mapping gamepad buttons, named after the layout the spec's index order matches. */
-export type PadButton =
-  | 'a' | 'b' | 'x' | 'y'
-  | 'lb' | 'rb' | 'lt' | 'rt'
-  | 'back' | 'start' | 'l3' | 'r3'
-  | 'up' | 'down' | 'left' | 'right';
-
 /**
  * One way of producing an action.
  *
@@ -238,23 +231,25 @@ export type PadButton =
  * mean 'key:Space'?` rather than binding nothing and going quiet.
  *
  * Only `tap` and `longpress` appear here, out of six gestures. An action must mean the
- * same thing from all three devices, and a drag has no keyboard equivalent that is not a
- * lie.
+ * same thing from every device that can produce it, and a drag has no keyboard equivalent
+ * that is not a lie. A `` `pad:${PadButton}` `` member is the intended shape of the third
+ * source when it returns (§4.2); adding a member to this union breaks nothing.
  */
-export type ActionBinding = 'tap' | 'longpress' | `key:${string}` | `pad:${PadButton}`;
+export type ActionBinding = 'tap' | 'longpress' | `key:${string}`;
 
 /**
  * An action fired.
  *
  * The coordinates are always populated, which is the point. A pointer-sourced action
- * carries where the finger was; a key- or pad-sourced one carries {@link
- * InputOptions.focus} — the game's current selection — falling back to the viewport
- * centre. Without that rule the keyboard path either does nothing or does something
- * different from the touch path, and the keyboard path is the one nobody tests.
+ * carries where the finger was; a key-sourced one carries {@link InputOptions.focus} — the
+ * game's current selection — falling back to the viewport centre. Without that rule the
+ * keyboard path either does nothing or does something different from the touch path, and
+ * the keyboard path is the one nobody tests. It is also the seam a gamepad would need
+ * (§4.2): a positionless source is already a solved case here.
  */
 export interface ActionEvent<A extends string> {
   readonly action: A;
-  readonly source: 'pointer' | 'key' | 'pad';
+  readonly source: 'pointer' | 'key';
   /** Which binding fired it. Present so a tutorial can say "you can also press Space". */
   readonly binding: ActionBinding;
   readonly sx: number;
@@ -272,6 +267,13 @@ Actions fire on the **press edge only**, once per physical press. Auto-repeat do
 fire them: the repeat rate is an operating-system setting, so an action that repeats is an
 action whose count is not reproducible, and non-negotiable 1 says the log must replay. A
 held action is a query (`held`), not a stream.
+
+**This is also the answer to "one handler, three bindings".** The game writes
+`onAction('collect', …)` once. `tap` reaches it through the gesture recogniser with the
+finger's tile; `key:Space` reaches it through the keyboard with the focus point's tile;
+both arrive as the same `ActionEvent`, in the same drain, in binding-declaration order. The
+only thing a handler can tell them apart by is `source` and `binding`, and it is free to
+ignore both — which is the test of whether the abstraction is real.
 
 ### 3.4 The system
 
@@ -324,7 +326,6 @@ export interface InputOptions<A extends string> {
 export interface InputSystem<A extends string = never> extends InputScope<A> {
   readonly element: HTMLElement;
   readonly camera: CameraController;
-  readonly pad: PadState;
   readonly profile: Readonly<GestureProfile>;
 
   /** Every declared action, in declaration order. */
@@ -424,8 +425,6 @@ export interface GestureProfile {
   readonly wheelPinchRate: number;
   readonly keyZoomStep: number;
   readonly keyPanPxPerS: number;
-  readonly stickDeadzone: number;
-  readonly triggerThreshold: number;
   readonly flingMinPxPerS: number;
   readonly flingHalfLifeMs: number;
   readonly flingSampleMs: number;
@@ -448,9 +447,7 @@ export declare const DEFAULT_PROFILE: Readonly<GestureProfile>;
 | `wheelZoomRate` | **0.0016** | `scale = exp(-dz × rate)`. Exponential so a notch feels the same at 0.6× and at 4×, and so wheeling up then down returns to exactly where you started. 0.0016 puts a typical 100 px notch at ~1.17×, close to `keyZoomStep`. |
 | `wheelPinchRate` | **0.0100** | A trackpad pinch arrives as a `wheel` with `ctrlKey` set and much smaller deltas. Using the scroll rate for it makes pinch-to-zoom on a laptop feel dead. |
 | `keyZoomStep` | **1.15** | ~5 presses per doubling: coarse enough to get somewhere, fine enough to frame a building. |
-| `keyPanPxPerS` | **700** | Held keys and sticks integrate per frame rather than jumping per keypress, so this is a speed: about a viewport every two seconds. |
-| `stickDeadzone` | **0.22** | **Radial**, applied to the vector's magnitude, not per axis. Worn sticks rest as far out as 0.2; per-axis deadzones snap diagonals onto the axes and make a camera pan in eight directions instead of freely. |
-| `triggerThreshold` | **0.5** | Analog triggers bound as digital buttons need one crossing point, with hysteresis around it so a resting finger does not chatter. |
+| `keyPanPxPerS` | **700** | Held keys integrate per frame rather than jumping per keypress, so this is a speed: about a viewport every two seconds. The source game panned 90 px per keydown and inherited the operating system's repeat rate, which means the camera moved at a speed set in the player's accessibility preferences. |
 | `flingMinPxPerS` | **120** | Below this a release is a stop, not a flick. Without a floor every drag drifts after the finger lifts and the camera can never be placed exactly. |
 | `flingHalfLifeMs` | **150** | Exponential decay, so glide is frame-rate independent. A 1200 px/s flick coasts ~260 px: enough to feel alive, short enough that a second gesture is never fighting the first. |
 | `flingSampleMs` | **60** | The window velocity is averaged over. See `DragGesture.vx`. |
@@ -489,15 +486,58 @@ export interface CameraController {
 
   readonly gliding: boolean;
 }
-
-export interface PadState {
-  /** False until the player presses something: browsers hide pads until then, deliberately. */
-  readonly connected: boolean;
-  isDown(button: PadButton): boolean;
-  /** Writes the deadzoned stick into `out` and returns its magnitude, 0..1. */
-  stick(which: 'left' | 'right', out: Vec2): number;
-}
 ```
+
+**Where the line falls, and why it falls there.** `iso` owns the `Camera`: the projection,
+`toWorld`/`toScreen`, `panByScreen`, `zoomAt`, and the clamp that stops a player losing
+their island off the edge of the world. This package owns the *controller*: which pixel is
+the anchor, how much a wheel notch is worth, whether a release becomes a glide, and how a
+held key becomes a speed.
+
+The defence is that each half has a hard requirement the other cannot meet.
+
+- The camera must run in Node with no DOM. Depth sorting, culling, pathfinding, golden
+  tests and a headless replay all need `toScreen` and none of them have a pointer. A camera
+  that knew about gestures could not be imported by any of them.
+- The controller cannot run without the DOM. `pointerType`, `WheelEvent.deltaMode`,
+  `ctrlKey`-means-trackpad-pinch — every decision it makes is about the quirks of a browser
+  input source. Putting that in `iso` would make the kit's most reusable package the one
+  that has to know Firefox reports scroll in lines.
+
+The seam is one method: `zoomAt(factor, sx, sy)`. **`iso` owns the arithmetic of anchoring;
+`input` owns the choice of anchor.** Said in one line: *`iso` decides where the camera is
+allowed to be, `input` decides where the player is trying to put it.* Nothing in either
+package can express a zoom without an anchor, which is how "zoom is anchored to the
+pointer" stops being a convention and becomes a property of the type signatures.
+
+### 3.8 The tap → tile seam
+
+`iso` owns the conversion. `input` owns performing it. **Game code never does it at all.**
+
+That is a position, not a compromise, and it has three parts:
+
+1. **The function belongs to `iso`:** `screenToTile(camera, sx, sy, out: GridPoint): void`.
+   Which diamond a pixel falls in is a projection question, it must floor rather than round
+   (rounding snaps to the nearest lattice *vertex* and picks the wrong tile for three
+   quarters of every diamond), and it has to be callable with no DOM — pathfinding, depth
+   sort and headless tests all ask it. If it lived here, `iso` would have to duplicate it or
+   import upward.
+2. **The call belongs to `input`.** Every gesture and every action arrives with `gx, gy`
+   already filled in, resolved once per drained event, inside `update`, through the camera
+   as it stands *before* anything moves it this frame. `hoverTile(out)` is the same seam for
+   the hover case.
+3. **Therefore the demo's 0:04 moment is one line** — `input.onAction('collect', a =>
+   collectAt(state, a.gx, a.gy))` — with no conversion in it, no camera reference in it, and
+   nowhere for a stale coordinate to hide.
+
+If `iso` declines to export `screenToTile`, `input` composes `camera.toWorld` +
+`worldToTile` and the flooring rule then exists in two packages, which is precisely how two
+packages come to disagree about which tile is under a finger. I would rather take the
+dependency; this is the one item in §7 I would call blocking.
+
+What this package will never own is *what* is at that tile. `gx, gy` is geometry;
+"the headquarters, not the rack behind it" is `iso`'s `hitTest` over game state, and §4.1
+explains why it cannot live here.
 
 ### 3.7 Samples and diagnostics
 
@@ -517,9 +557,7 @@ export type RawSample =
   /** `dz` is normalised to CSS pixels; `pinch` is a trackpad pinch arriving as a wheel. */
   | { readonly kind: 'wheel'; readonly sx: number; readonly sy: number; readonly dz: number; readonly pinch: boolean }
   | { readonly kind: 'key'; readonly code: string; readonly down: boolean }
-  /** Buttons as a bitmask, sticks as four numbers: one fixed-size sample, no allocation. */
-  | { readonly kind: 'pad'; readonly buttons: number; readonly lx: number; readonly ly: number; readonly rx: number; readonly ry: number }
-  /** The window lost focus. Everything held is released — see §6, trap 11. */
+  /** The window lost focus. Everything held is released — see §6, trap 10. */
   | { readonly kind: 'blur' }
   | { readonly kind: 'frame'; readonly nowMs: number };
 
@@ -552,7 +590,45 @@ this package already computed. (The source game's version of this bug made every
 bubble untappable in a backgrounded tab, where the draw pass had stopped running and the
 cached boxes were minutes old.)
 
-**2. Double tap.** Disambiguating it costs every single tap ~300 ms of latency, because a
+**2. The gamepad.** Cut from 0.1, and this is the entry that argues with the brief: the
+module list in `kit.json` names `gamepad`, and the demo game designed in `docs/rfc/demo.md`
+is the only real test the kit has of anything — and it never touches it. Three reasons, in
+increasing order of how much they matter.
+
+*It cannot be exercised.* There is no headless gamepad. Tests could feed my own normaliser
+its own samples and prove nothing about `navigator.getGamepads()`, and non-negotiable 10
+says green is not evidence. Shipping it means shipping the one module nobody has ever
+watched work.
+
+*It is the input source that cannot answer "where".* Every other source in this package
+resolves to a tile: a tap is a position, and a key borrows the focus point, which a game
+already maintains because it has a selection. A stick is a *direction*. Making a pad honour
+`ActionEvent.gx/gy` needs a virtual cursor — an on-screen reticle that moves, accelerates,
+snaps to candidates, and is drawn and focus-managed by `ui`. That is not one more row in an
+action map; it is a second interaction model, and the kit has not designed one. Adding
+`pad:` bindings without it would give a game a binding that fires at the middle of the
+screen for ever.
+
+*The cost of it returning is small and additive.* One member on `ActionBinding`, one
+`RawSample` kind, one `PadState`, one poller, and the `focus()` seam that positionless
+sources already use. Nothing above breaks. **It comes back when a game shape asks for it**
+— an isometric game whose verb is "steer a character", or a build targeting a TV or a
+handheld — and it comes back with the reticle, because that is the part that is actually
+hard.
+
+What that poller will have to get right, so the knowledge is not lost: there are no gamepad
+events worth using, so it is read in `update` and nowhere else; `navigator.getGamepads()`
+allocates a fresh array on every call in every browser and Safari has handed back stale
+objects, so it is read once per frame into a fixed sample; a sample is emitted only when
+the button mask or an axis actually changed, or a recorded log becomes 60 samples a second
+of nothing; the deadzone is **radial**, applied to the vector's magnitude and never per
+axis, because per-axis deadzones snap diagonals onto the axes and make a camera pan in
+eight directions instead of freely; worn sticks rest as far out as 0.22; analog triggers
+bound as buttons need hysteresis around their threshold or a resting finger chatters; and a
+pad is invisible to the page until a button is pressed, so `connected` starting false with a
+controller plugged in is the specification working, not a bug.
+
+**3. Double tap.** Disambiguating it costs every single tap ~300 ms of latency, because a
 tap cannot be delivered until the second one has failed to arrive. In a game whose primary
 verb is "tap the thing to collect it", that trade is catastrophic and invisible in review —
 it does not look broken, it just feels slow. Double-tap-to-zoom is also redundant with
