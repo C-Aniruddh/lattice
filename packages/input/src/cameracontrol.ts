@@ -156,6 +156,22 @@ export interface CameraControl extends CameraController {
    *   deltas are ignored rather than integrated backwards.
    */
   integrate(dtMs: number): void;
+
+  /**
+   * Replace the three thresholds in place, for `InputSystem.setProfile`.
+   *
+   * **In place, and that is the point.** A game holds `input.camera` — it is a public object with
+   * `enabled` on it — so retuning by building a second controller would leave every reference the
+   * game kept pointing at one that no longer drives anything, and the symptom would be a camera
+   * that ignores `enabled = false` while a modal is open.
+   *
+   * A glide already in flight **keeps going**, now decaying at the new half-life. Stopping it
+   * would be a camera that halts under the player's finger because someone moved a slider in a
+   * debug panel, which is a worse surprise than a flick that finishes slightly differently.
+   *
+   * @throws RangeError if any threshold is not a finite number, before anything is changed.
+   */
+  retune(keyPanPxPerS: number, flingMinPxPerS: number, flingHalfLifeMs: number): void;
 }
 
 /**
@@ -165,11 +181,11 @@ export interface CameraControl extends CameraController {
  */
 export function createCameraControl(options: CameraControlOptions): CameraControl {
   const { camera, keyHeld } = options;
-  const keyPanPxPerS = expectFinite(options.keyPanPxPerS, 'cameraControl.keyPanPxPerS');
-  const flingMinPxPerS = expectFinite(options.flingMinPxPerS, 'cameraControl.flingMinPxPerS');
-  const flingHalfLifeMs = expectFinite(options.flingHalfLifeMs, 'cameraControl.flingHalfLifeMs');
+  let keyPanPxPerS = expectFinite(options.keyPanPxPerS, 'cameraControl.keyPanPxPerS');
+  let flingMinPxPerS = expectFinite(options.flingMinPxPerS, 'cameraControl.flingMinPxPerS');
+  let flingHalfLifeMs = expectFinite(options.flingHalfLifeMs, 'cameraControl.flingHalfLifeMs');
   /** Decay rate in 1/seconds, from the half-life in milliseconds. */
-  const lambda = (LN2 * 1000) / flingHalfLifeMs;
+  let lambda = (LN2 * 1000) / flingHalfLifeMs;
 
   let enabled = options.enabled;
   let vx = 0;
@@ -202,6 +218,18 @@ export function createCameraControl(options: CameraControlOptions): CameraContro
 
     get gliding(): boolean {
       return vx !== 0 || vy !== 0;
+    },
+
+    retune(nextKeyPan: number, nextFlingMin: number, nextHalfLife: number): void {
+      // Validated into locals first, so a bad number leaves the controller exactly as it was
+      // rather than half-retuned with a `NaN` lambda that blanks the camera on the next frame.
+      const keyPan = expectFinite(nextKeyPan, 'cameraControl.keyPanPxPerS');
+      const flingMin = expectFinite(nextFlingMin, 'cameraControl.flingMinPxPerS');
+      const halfLife = expectFinite(nextHalfLife, 'cameraControl.flingHalfLifeMs');
+      keyPanPxPerS = keyPan;
+      flingMinPxPerS = flingMin;
+      flingHalfLifeMs = halfLife;
+      lambda = (LN2 * 1000) / flingHalfLifeMs;
     },
 
     fling(vxPxPerS: number, vyPxPerS: number): void {

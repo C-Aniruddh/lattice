@@ -35,7 +35,7 @@ describe('presses', () => {
   });
 
   it('ignores a second down for a pointer already tracked', () => {
-    const h = harness({ stepMs: 100 });
+    const h = harness({ hz: 10 });
     const seen = watch(h.input);
     h.step(down(1, 400, 300, 'touch'), down(1, 700, 300, 'touch'));
     h.step(up(1, 400, 300));
@@ -44,7 +44,7 @@ describe('presses', () => {
   });
 
   it('does not tap after a cancel', () => {
-    const h = harness({ stepMs: 100 });
+    const h = harness({ hz: 10 });
     const seen = watch(h.input);
     h.step(down(1, 400, 300, 'touch'));
     h.step({ kind: 'cancel', id: 1 });
@@ -52,7 +52,7 @@ describe('presses', () => {
   });
 
   it('lets a drag begin after a long press has fired', () => {
-    const h = harness({ stepMs: 100 });
+    const h = harness({ hz: 10 });
     const seen = watch(h.input);
     h.step(down(1, 400, 300, 'touch'));
     h.idle(5);
@@ -143,7 +143,7 @@ describe('two fingers', () => {
   });
 
   it('ignores a third pointer, and re-seeds the survivor when one lifts', () => {
-    const h = harness({ stepMs: 100 });
+    const h = harness({ hz: 10 });
     const seen = watch(h.input);
     h.step(down(1, 300, 300, 'touch'), down(2, 500, 300, 'touch'));
     h.step(down(3, 100, 100, 'touch'), move(3, 200, 100));

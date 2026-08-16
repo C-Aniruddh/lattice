@@ -103,7 +103,7 @@ describe('suggestCode', () => {
 describe('one handler, two bindings', () => {
   it('delivers a tap and a key press to the same handler as the same event', () => {
     const h = harness({
-      stepMs: 100,
+      hz: 10,
       actions: { collect: ['tap', 'key:Space'] },
       focus: (out): boolean => {
         out.x = 200;
@@ -132,7 +132,7 @@ describe('one handler, two bindings', () => {
 
   it('points a keyboard action at the viewport center when the game has no selection', () => {
     const h = harness({
-      stepMs: 100,
+      hz: 10,
       actions: { collect: ['key:Space'] },
       focus: (): boolean => false,
     });
@@ -147,7 +147,7 @@ describe('one handler, two bindings', () => {
   });
 
   it('does not fire an action from a gesture a handler claimed', () => {
-    const h = harness({ stepMs: 100, actions: { collect: ['tap'] } });
+    const h = harness({ hz: 10, actions: { collect: ['tap'] } });
     let fired = 0;
     h.input.on('tap', (g): void => {
       g.claim();
@@ -160,7 +160,7 @@ describe('one handler, two bindings', () => {
   });
 
   it('stops at the first action handler that claims', () => {
-    const h = harness({ stepMs: 100, actions: { collect: ['tap'] } });
+    const h = harness({ hz: 10, actions: { collect: ['tap'] } });
     const order: string[] = [];
     h.input.onAction('collect', (a): void => {
       order.push('first');

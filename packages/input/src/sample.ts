@@ -288,7 +288,7 @@ export class SampleBuffer {
   private open: Bucket = { slots: [], count: 0 };
   /** The bucket a tick is delivering. Its slots are recycled by the next {@link close}. */
   private drained: Bucket = { slots: [], count: 0 };
-  private readonly max: number;
+  private max: number;
   private readonly onOverflow: () => void;
   /** Raised once per overflow episode; re-armed by {@link close}, so a stall reports once. */
   private overflowed = false;
@@ -308,6 +308,22 @@ export class SampleBuffer {
   /** Samples waiting for the next tick. A number a stall diagnostic can watch. */
   get buffered(): number {
     return this.open.count;
+  }
+
+  /**
+   * Move the stall ceiling, for `InputSystem.setProfile`.
+   *
+   * In place rather than by replacement, so the slot pool the buffer has already grown survives
+   * a retune — the whole point of that pool is that a running game allocates nothing per sample,
+   * and throwing it away to change one integer would hand the next few hundred moves back to the
+   * allocator.
+   *
+   * Whatever is already waiting stays waiting. A new ceiling below the current occupancy is not
+   * an error and does not drop anything: the next {@link push} finds the bucket over the line and
+   * collapses it, which is exactly what it does when a real stall crosses the ceiling.
+   */
+  retune(maxBufferedSamples: number): void {
+    this.max = maxBufferedSamples;
   }
 
   /**

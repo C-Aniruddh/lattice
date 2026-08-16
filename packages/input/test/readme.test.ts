@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { createCamera } from '@lattice/iso';
 import { createHeadlessInput } from '../src/system.js';
 import { createLog, record, replay } from '../src/record.js';
+import { fixedStep } from '../src/step.js';
 
 describe('the README example', () => {
   it('prints what the README says it prints', () => {
@@ -20,7 +21,7 @@ describe('the README example', () => {
     const camera = createCamera(800, 600); //         CSS pixels, centered on (0,0)
     const input = createHeadlessInput({
       camera,
-      stepMs: 1000 / 60, //                            the same step the loop runs
+      step: fixedStep(60), //                          or `step: loop` in a game
       actions: { collect: ['tap', 'key:Space'] }, //   two sources, one handler
       focus: (at) => {
         at.x = 400; //                     where the keyboard aims: the selection,
@@ -66,7 +67,7 @@ describe('the README example', () => {
     // ── the replay ────────────────────────────────────────────────────────────
     const again = createHeadlessInput({
       camera: createCamera(800, 600),
-      stepMs: 1000 / 60,
+      step: fixedStep(60),
       actions: { collect: ['tap', 'key:Space'] },
       focus: (at) => {
         at.x = 400;

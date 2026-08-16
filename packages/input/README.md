@@ -18,7 +18,7 @@ npm i @lattice/input
 const input = createInput({
   element: canvas,
   camera,
-  stepMs: loop.stepMs,
+  step: loop, //                                   the loop itself, so the step cannot drift
   actions: { collect: ['tap', 'key:Space'], build: ['key:KeyB'] },
 });
 input.onAction('collect', (a) => collectAt(state, a.gx, a.gy));
@@ -26,6 +26,15 @@ loop.onUpdate((_dt, tick) => input.tick(tick));
 loop.onRender(() => input.frame(now));
 onSceneEnd(() => input.dispose());
 ```
+
+**`step` takes the loop, not a number.** Every duration this package reports is a count of ticks
+times that step; it never reads a clock. A step that is not the loop's does not fail, it lies by a
+constant ratio — `16` against a 16.667 ms loop is a long press at 432 ms, a fling 4% low, and a
+recorded log that a replay refuses *months* later, none of which surfaces where the mistake was
+made. So `stepMs: 16` no longer compiles, and neither does `{ stepMs: 16 }`: the shortest thing
+that type-checks is the loop itself. Where there is no loop — a headless replay, a test — use
+`fixedStep(hz)`, which derives the step with `createLoop`'s own arithmetic so the two are
+bit-identical rather than merely close.
 
 Pinch, wheel, two-finger pan, drag-to-pan and the arrow keys are all live in those five lines:
 the camera controller is on by default, because a tile game whose camera does not move is not a
@@ -50,12 +59,12 @@ Everything below runs in Node with no DOM and no shim, and is executed by
 
 ```ts
 import { createCamera } from '@lattice/iso';
-import { createHeadlessInput, createLog, record, replay } from '@lattice/input';
+import { createHeadlessInput, createLog, fixedStep, record, replay } from '@lattice/input';
 
 const camera = createCamera(800, 600); //          CSS pixels, centered on (0, 0)
 const input = createHeadlessInput({
   camera,
-  stepMs: 1000 / 60, //                            the same step the loop runs
+  step: fixedStep(60), //                          or `step: loop` in a game
   actions: { collect: ['tap', 'key:Space'] }, //   two sources, one handler
   focus: (at) => {
     at.x = 400; //                                 where the keyboard aims: the game's
@@ -193,9 +202,49 @@ Override what you need, keep the rest:
 createInput({ …, profile: { tapSlopPx: { touch: 12 }, longPressMs: 600 } });
 ```
 
+Retune while the game is running, and keep every handler:
+
+```ts
+input.setProfile({ tapSlopPx: { touch: 14 } }); //  handlers, scopes and camera all survive
+```
+
+`setProfile` **replaces** the override set rather than patching it — it resolves against the
+defaults exactly as construction does, so `setProfile({})` returns to them and the thresholds
+depend only on the object you pass, never on the order the sliders were moved. A path-dependent
+profile is one a log's fingerprint cannot be reasoned about.
+
+Every live gesture ends first, under the *old* thresholds: each drag gets its `dragend` and each
+held key its release, exactly as `dispose` does it and for the same reason. It refuses from inside
+a handler (the bucket being delivered was recognized under the rules that are about to change) and
+while a recording is running (the fingerprint is a third of a log's identity).
+
+The step is deliberately **not** retunable. Changing it would re-time every gesture and invalidate
+every log; that is a new system, not a knob.
+
 **A profile is part of a replay's identity.** The same finger movements under a tap slop of 8 px
 and of 12 px are a different sequence of actions, so a log records which profile it was made
 under and a replay under a different one is refused rather than migrated.
+
+### When a HUD covers the world
+
+A transparent element over the canvas eats every tap and nothing anywhere reports it, so
+`createInput` watches for a `pointerdown` that lands inside the world's rect and is delivered to
+something else. The question it then has to answer is whether that node is *legitimate chrome* or
+the thing swallowing the game — and it answers it without learning anything about what is in the
+world:
+
+| how the node came to take the press | reported? |
+|---|---|
+| `pointer-events` set **inline**, on it or an ancestor — which is what `@lattice/ui` writes on every node it grants | no |
+| listed in `createInput({ overlays: [hud] })` | no |
+| `auto` from a stylesheet, with an inline `none` above it that lost the specificity fight | **yes** — this is the bug |
+| `auto` from a stylesheet, with nothing declared anywhere | **yes** |
+
+The first row is why a `@lattice/ui` panel is silent with no configuration at all: that package
+ships **no stylesheet** and writes the grant per node, so "somebody named this node" is a fact
+already recorded in the DOM. `overlays` is the escape for a HUD styled entirely from CSS, which
+cannot be told apart from a spacer any other way. It is read when a cover is found rather than at
+construction, so a HUD built after the input still counts.
 
 ### The camera
 

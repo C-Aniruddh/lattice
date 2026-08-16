@@ -75,7 +75,7 @@ describe('HandlerList', () => {
 
 describe('the scope tree', () => {
   it('runs handlers in registration order and scopes in creation order', () => {
-    const h = harness({ stepMs: 100 });
+    const h = harness({ hz: 10 });
     const order: string[] = [];
     const first = h.input.scope();
     const second = h.input.scope();
@@ -98,7 +98,7 @@ describe('the scope tree', () => {
   });
 
   it('skips a handler another handler disposed earlier in the same delivery', () => {
-    const h = harness({ stepMs: 100 });
+    const h = harness({ hz: 10 });
     const seen: string[] = [];
     const scope = h.input.scope();
     let off = (): void => undefined;
@@ -115,7 +115,7 @@ describe('the scope tree', () => {
   });
 
   it('disposes children with their parent, and not the other way round', () => {
-    const h = harness({ stepMs: 100 });
+    const h = harness({ hz: 10 });
     const seen: string[] = [];
     const parent = h.input.scope();
     const child = parent.scope();
@@ -173,7 +173,7 @@ describe('the scope tree', () => {
   });
 
   it('never runs a handler bound to a scope that was already disposed', () => {
-    const h = harness({ stepMs: 100 });
+    const h = harness({ hz: 10 });
     const scope = h.input.scope();
     scope.dispose();
     let ran = false;

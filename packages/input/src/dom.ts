@@ -34,6 +34,10 @@
  * 6. **Two live instances driving one canvas.** Vite HMR leaves the previous module's listeners
  *    bound; without the throw below the symptom is a camera that pans twice as fast and a game
  *    that is impossible to debug.
+ * 7. **An invisible element covering the world.** It eats every tap and nothing anywhere reports
+ *    it. Reported once, and only for a node that never declared itself — see
+ *    `declaredChrome` for how a legitimate HUD is told apart from a spacer without this file
+ *    learning anything about what is in the world.
  */
 
 import type { Disposer } from '@lattice/core';
@@ -59,6 +63,39 @@ export interface InputOptions<A extends string> extends HeadlessInputOptions<A> 
    * `contextmenu` itself.
    */
   readonly keepContextMenu?: boolean;
+
+  /**
+   * Roots whose subtrees are chrome, not a cover. For the `covered-by-overlay` diagnostic, and
+   * for nothing else.
+   *
+   * **Most games need this and do not know it, because most chrome already declares itself.**
+   * The diagnostic's real test is whether *anything* between the pressed node and the document
+   * root sets `pointer-events` inline — see {@link createInput}. `@lattice/ui` does, on every
+   * node it grants, so a `ui` panel is silent here with no configuration at all. This option is
+   * for the HUD that is styled entirely from a stylesheet and therefore cannot be told apart
+   * from the spacer the diagnostic exists to catch.
+   *
+   * Read at the moment a cover is found rather than captured at construction, so a HUD built
+   * after the input still counts and an array a game pushes into keeps working.
+   *
+   * **This is not a hit-test and cannot become one.** It carries no rectangle, no ordering and
+   * nothing about the world; the only question it can answer is "did the game already know
+   * something was there", which is a question about the page, not about the game. Passing the
+   * world element itself would be meaningless — a press on the world never reaches this check.
+   */
+  readonly overlays?: readonly Element[];
+}
+
+/**
+ * The one member of an element `declaredChrome` reads.
+ *
+ * Written out rather than imported because `Element` does not declare `style` and the elements
+ * that do — `HTMLElement`, `SVGElement`, `MathMLElement` — have no common ancestor that does.
+ * Optional on purpose: a document can in principle hold an element with no inline style at all,
+ * and a missing one is simply "declared nothing".
+ */
+interface MaybeStyled {
+  readonly style?: { getPropertyValue(name: string): string };
 }
 
 /** An {@link InputSystem} bound to an element, which is the only thing a DOM one adds. */
@@ -99,10 +136,15 @@ const REQUIRED_STYLE: readonly (readonly [string, string])[] = [
  * `overscroll-behavior: contain` and `user-select: none`. See this module's header for what
  * each of them prevents.
  *
+ * A press that lands on something *over* the world is reported once as `covered-by-overlay`,
+ * unless something between that node and the document root declared `pointer-events` inline or
+ * the node is inside an {@link InputOptions.overlays} root. Every `@lattice/ui` panel satisfies
+ * the first without being configured.
+ *
  * @throws TypeError if `element` is not an element with `addEventListener`.
  * @throws RangeError if `element` already has a live binding — see {@link InputOptions.element}.
- * @throws RangeError / TypeError for everything `createHeadlessInput` refuses: a bad `stepMs`,
- *   an out-of-range threshold, a malformed action binding.
+ * @throws RangeError / TypeError for everything `createHeadlessInput` refuses: a `step` that is
+ *   not the loop's, an out-of-range threshold, a malformed action binding.
  */
 export function createInput<A extends string = never>(
   options: InputOptions<A>,
@@ -165,12 +207,19 @@ export function createInput<A extends string = never>(
   // ── the element rect, cached ─────────────────────────────────────────────────────────────
   let rectLeft = 0;
   let rectTop = 0;
+  // Kept as well as the origin so the overlay check below can ask "was that press inside the
+  // world" without forcing a layout on every pointerdown anywhere on the page — including every
+  // press on the HUD, which is the one this check is most often asked about.
+  let rectRight = 0;
+  let rectBottom = 0;
   let rectValid = false;
 
   function refreshRect(): void {
     const rect = element.getBoundingClientRect();
     rectLeft = rect.left;
     rectTop = rect.top;
+    rectRight = rect.right;
+    rectBottom = rect.bottom;
     rectValid = true;
   }
   function invalidateRect(): void {
@@ -344,32 +393,83 @@ export function createInput<A extends string = never>(
   }
 
   /**
+   * Did somebody *declare* that this node takes pointer events, or did a stylesheet hand it one?
+   *
+   * This is the whole of {@link onDocumentDown}'s judgement, and it is worth stating why it is
+   * the right question. The diagnostic below cannot ask whether a node is visible, and it must
+   * never ask what is in the world — that is this package's central refusal. What it can ask is
+   * whether the node's `pointer-events: auto` was **written on the element**:
+   *
+   * | how a node came to take the press | inline `pointer-events` | verdict |
+   * |---|---|---|
+   * | `@lattice/ui`'s `interactive(node)`, or a hand-written `style="pointer-events:auto"` | `auto` on it or an ancestor | chrome — somebody named this node |
+   * | listed in {@link InputOptions.overlays} | — | chrome — the game said so |
+   * | a spacer that lost `.spacer { pointer-events: none }` to `#ui > * { pointer-events: auto }` | `none` on an ancestor, nothing below | **the trap** |
+   * | a bare `<div>` over the canvas with no declaration anywhere | none | reported, and correctly: nothing on the page ever said this should eat a tap |
+   *
+   * `@lattice/ui` makes this free rather than lucky. It ships **no stylesheet at all** and writes
+   * `pointer-events` inline per node — `auto` on the ones it grants, `none` on the rest — so
+   * every `ui` panel over a canvas is recognized here with no configuration, and the one
+   * configuration that used to be needed (filtering the diagnostic on a class name, which is
+   * exactly the workaround a kit exists to remove) is gone.
+   *
+   * The walk stops at the **first** element carrying an inline declaration, because that is the
+   * one that decided: an inline `none` with a stylesheet `auto` below it is the trap, spelled
+   * out. Any inline value other than `none` counts as a grant — `visiblePainted` and friends are
+   * SVG's way of saying the same thing.
+   */
+  function declaredChrome(target: Element): boolean {
+    // Read here rather than captured at construction: a HUD built after the input still counts.
+    const declared = options.overlays;
+    if (declared !== undefined) {
+      for (const root of declared) {
+        if (root === target || root.contains(target)) return true;
+      }
+    }
+    for (let node: Element | null = target; node !== null; node = node.parentElement) {
+      // `Element` does not declare `style`; every element that can carry one — HTML, SVG, MathML
+      // — does. A structural read rather than an `instanceof HTMLElement`, because the global is
+      // one this package's tests deliberately do not provide.
+      const inline = (node as MaybeStyled).style?.getPropertyValue('pointer-events') ?? '';
+      if (inline === '') continue;
+      return inline !== 'none';
+    }
+    return false;
+  }
+
+  /**
    * A transparent element covering the world eats every tap and nothing anywhere reports it.
    *
    * `#ui > * { pointer-events: auto }` out-specifies a bare `.spacer { pointer-events: none }`,
-   * so an invisible spacer over the canvas swallows the game. This notices a `pointerdown`
-   * whose client point lies inside the bound element's rect but whose target is neither the
-   * element nor a descendant, and says so **once**, naming the culprit. A diagnostic rather
-   * than a throw because a legitimate modal is also a cover, and on the first pointerdown
-   * rather than at bind time for the same reason.
+   * so an invisible spacer over the canvas swallows the game. This notices a `pointerdown` whose
+   * client point lies inside the bound element's rect, whose target is neither the element nor a
+   * descendant, and which {@link declaredChrome} does not recognize — and says so **once**,
+   * naming the culprit.
+   *
+   * A diagnostic rather than a throw because a cover can be legitimate, and on the first
+   * pointerdown rather than at bind time because a HUD is usually built after the input is.
+   *
+   * The rect is the cached one. The uncached version forced a layout on every pointerdown
+   * anywhere in the document, for the life of the game, including every press on the HUD.
    */
   function onDocumentDown(event: PointerEvent): void {
     const target = event.target;
     if (target === element) return;
     if (target !== null && element.contains(target as Node)) return;
-    const rect = element.getBoundingClientRect();
+    ensureRect();
     if (
-      event.clientX < rect.left ||
-      event.clientX > rect.right ||
-      event.clientY < rect.top ||
-      event.clientY > rect.bottom
+      event.clientX < rectLeft ||
+      event.clientX > rectRight ||
+      event.clientY < rectTop ||
+      event.clientY > rectBottom
     ) {
       return;
     }
+    if (target !== null && declaredChrome(target as Element)) return;
     diagnose({
       code: 'covered-by-overlay',
       message:
-        'createInput: a pointerdown inside the world element was delivered to something on top of it, so that press never reached the game. If this element is not a modal, it is covering the world — check for a spacer that inherits pointer-events: auto from a parent rule.',
+        'createInput: a pointerdown inside the world element was delivered to something on top of it, so that press never reached the game — and nothing between that node and the document root declares pointer-events inline, so whatever made it take the press came from a stylesheet. That is how an invisible spacer swallows the world: a bare `.spacer { pointer-events: none }` loses to a rule like `#ui > * { pointer-events: auto }`. If this node is chrome, say so — @lattice/ui already does it for you (mount(node, { interactive: true }) writes the grant inline), or list its root in createInput({ overlays: [hud] }).',
       element: target === null ? element : (target as Element),
     });
   }
@@ -434,10 +534,11 @@ function listen(
   if (target === null || !when) return noop;
   const listener = handler as EventListener;
   target.addEventListener(type, listener, options);
-  let live = true;
+  // No idempotence guard. Every one of these is called exactly once, from the single teardown
+  // registered on the system's scope, and `removeEventListener` is idempotent in the platform
+  // anyway — so a `live` flag here would be a branch no test could ever take, which is worse
+  // than no branch at all.
   return (): void => {
-    if (!live) return;
-    live = false;
     target.removeEventListener(type, listener, options);
   };
 }

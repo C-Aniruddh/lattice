@@ -13,22 +13,52 @@ import type { GridPoint } from '@lattice/iso';
 import type { Vec2 } from '@lattice/core';
 import { createHeadlessInput, internalsOf } from '../src/system.js';
 import type { Diagnostic } from '../src/sample.js';
+import { createLog, record } from '../src/record.js';
 import { STEP_60, camera, down, harness, move, types, up, watch } from './harness.js';
 
 describe('construction', () => {
   it('refuses a system with no camera to resolve through', () => {
-    expect(() => createHeadlessInput({ camera: undefined as never, stepMs: 16 })).toThrow(
+    expect(() => createHeadlessInput({ camera: undefined as never, step: STEP_60 })).toThrow(
       /expected an @lattice\/iso Camera/,
     );
-    expect(() => createHeadlessInput({ camera: {} as never, stepMs: 16 })).toThrow(TypeError);
+    expect(() => createHeadlessInput({ camera: {} as never, step: STEP_60 })).toThrow(TypeError);
   });
 
   it('refuses a step that makes every duration wrong by the same ratio', () => {
+    // The mistake K13 names: a bare 16 against a 16.667 ms loop. It used to be accepted, and the
+    // symptom arrived months later as a replay refusal.
+    expect(() => createHeadlessInput({ camera: camera(), step: 16 as never })).toThrow(
+      /createHeadlessInput\.step: expected the loop, or fixedStep\(hz\) — got the bare number 16/,
+    );
+    expect(() => createHeadlessInput({ camera: camera(), step: null as never })).toThrow(TypeError);
+
     for (const stepMs of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
-      expect(() => createHeadlessInput({ camera: camera(), stepMs })).toThrow(
-        /createHeadlessInput\.stepMs: expected a finite number > 0/,
-      );
+      expect(() =>
+        createHeadlessInput({ camera: camera(), step: { stepMs, stepSeconds: stepMs / 1000 } }),
+      ).toThrow(/createHeadlessInput\.step\.stepMs: expected a finite number > 0/);
+      expect(() =>
+        createHeadlessInput({ camera: camera(), step: { stepMs: 16.667, stepSeconds: stepMs } }),
+      ).toThrow(/createHeadlessInput\.step\.stepSeconds: expected a finite number > 0/);
     }
+  });
+
+  it('refuses a pair that describes two different steps', () => {
+    // A hand-written loop-alike: 16 ms beside 60 Hz worth of seconds. Nothing else in the kit
+    // could catch this — both fields are finite and positive.
+    expect(() =>
+      createHeadlessInput({ camera: camera(), step: { stepMs: 16, stepSeconds: 0.016667 } }),
+    ).toThrow(/describe different steps — 16.667 ms against 16 ms/);
+  });
+
+  it('accepts a real loop reading, whose two fields agree only to a rounding error', () => {
+    // Exactly how `createLoop` derives them: integer microseconds, then two divisions. The
+    // agreement tolerance has to survive this and refuse the pair above.
+    const stepUs = Math.round(1_000_000 / 60);
+    const input = createHeadlessInput({
+      camera: camera(),
+      step: { stepMs: stepUs / 1_000, stepSeconds: stepUs / 1_000_000 },
+    });
+    expect(input.stepMs).toBe(16.667);
   });
 
   it('exposes the resolved profile, the step and the action names', () => {
@@ -36,7 +66,7 @@ describe('construction', () => {
       actions: { collect: ['tap'], build: ['key:KeyB'] },
       profile: { longPressMs: 900 },
     });
-    expect(h.input.stepMs).toBe(STEP_60);
+    expect(h.input.stepMs).toBe(STEP_60.stepMs);
     expect(h.input.profile.longPressMs).toBe(900);
     expect(h.input.profile.tapSlopPx.touch).toBe(9);
     expect(h.input.actionNames).toEqual(['collect', 'build']);
@@ -59,7 +89,7 @@ describe('tick', () => {
   });
 
   it('starts wherever the loop is, so a system built mid-session still works', () => {
-    const h = harness({ stepMs: 100 });
+    const h = harness({ hz: 10 });
     const seen = watch(h.input);
     h.input.submit(down(1, 400, 300, 'touch'));
     h.input.submit(up(1, 400, 300));
@@ -166,7 +196,7 @@ describe('the queries', () => {
   });
 
   it('answers held from any binding, and keyHeld for a key with no action', () => {
-    const h = harness<'charge'>({ stepMs: 100, actions: { charge: ['tap', 'key:Space'] } });
+    const h = harness<'charge'>({ hz: 10, actions: { charge: ['tap', 'key:Space'] } });
     expect(h.input.held('charge')).toBe(false);
     h.step(down(1, 400, 300, 'touch'));
     expect(h.input.held('charge')).toBe(true);
@@ -215,7 +245,7 @@ describe('the camera controller', () => {
 describe('diagnostics', () => {
   it('goes to console.warn by default', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    createHeadlessInput({ camera: camera(), stepMs: 16, actions: { odd: ['key:Lang1'] } });
+    createHeadlessInput({ camera: camera(), step: STEP_60, actions: { odd: ['key:Lang1'] } });
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn.mock.calls[0]?.[0]).toContain('unknown-key-code');
   });
@@ -281,6 +311,14 @@ describe('internalsOf', () => {
       /expected an InputSystem from createInput or createHeadlessInput/,
     );
   });
+
+  it('hands back an empty log when a recording was stopped that never started', () => {
+    // Reachable only through the internals seam, which is why it is asserted here rather than
+    // through `record`: `stop()` with no `start()` before it must be an empty session, not a
+    // `TypeError` from a hook a debugging tool called in the wrong order.
+    const h = harness();
+    expect(internalsOf(h.input).stop()).toEqual([]);
+  });
 });
 
 describe('dispose', () => {
@@ -306,5 +344,175 @@ describe('dispose', () => {
     const seen = watch(h.input);
     h.input.dispose();
     expect(seen).toEqual([]);
+  });
+});
+
+/**
+ * K13's third finding: there was no `setProfile`, so retuning one threshold meant dispose,
+ * recreate and re-register every handler — the only reason the gallery bootstrap grew its own
+ * `onAction`/`on` indirection and a `Binding[]` to replay onto each new system.
+ */
+describe('setProfile', () => {
+  it('puts the new thresholds in force and keeps every handler', () => {
+    const h = harness({ hz: 10 });
+    const seen = watch(h.input);
+    // 40 px of travel: a drag under the default mouse slop of 4, still a drag under 30, and a
+    // tap once the slop is 60.
+    h.step(down(1, 400, 300), move(1, 440, 300));
+    h.step(up(1, 440, 300));
+    expect(types(seen)).toEqual(['dragstart', 'dragend']);
+
+    expect(h.input.setProfile({ tapSlopPx: { mouse: 60 } }).tapSlopPx.mouse).toBe(60);
+    expect(h.input.profile.tapSlopPx.mouse).toBe(60);
+
+    seen.length = 0;
+    h.step(down(2, 400, 300), move(2, 440, 300));
+    h.step(up(2, 440, 300));
+    // The same handler, never re-registered, now sees the same movement as a tap.
+    expect(types(seen)).toEqual(['tap']);
+  });
+
+  it('keeps action handlers and child scopes too, which is the whole point', () => {
+    const h = harness<'collect'>({ hz: 10, actions: { collect: ['tap'] } });
+    const fired: number[] = [];
+    const scope = h.input.scope();
+    scope.onAction('collect', (a) => fired.push(a.gx));
+    h.input.setProfile({ longPressMs: 800 });
+    h.step(down(1, 400, 300));
+    h.step(up(1, 400, 300));
+    expect(fired).toHaveLength(1);
+    scope.dispose();
+  });
+
+  it('replaces the override set rather than patching it, so the result is path-independent', () => {
+    const h = harness({ hz: 10, profile: { longPressMs: 900, pinchStartPx: 30 } });
+    expect(h.input.profile.longPressMs).toBe(900);
+    // Naming only one knob drops the other: a patching version would make the thresholds depend
+    // on the order the sliders were moved, and a path-dependent profile is one a log's
+    // fingerprint cannot be reasoned about.
+    h.input.setProfile({ longPressMs: 300 });
+    expect(h.input.profile.longPressMs).toBe(300);
+    expect(h.input.profile.pinchStartPx).toBe(12);
+    // And nothing at all is a return to the defaults, not a no-op.
+    expect(h.input.setProfile({}).longPressMs).toBe(450);
+    expect(h.input.setProfile(undefined).pinchStartPx).toBe(12);
+  });
+
+  it('counts the new long press in ticks of the same step', () => {
+    const h = harness({ hz: 10 });
+    const seen = watch(h.input);
+    h.input.setProfile({ longPressMs: 300 });
+    h.step(down(1, 400, 300, 'touch'));
+    // 100 ms a tick, so 300 ms is three ticks past the press: it matures on tick 3 and not on
+    // tick 2. Under the default 450 ms it would be five, so this cannot pass without the retune.
+    h.idle(2);
+    expect(types(seen)).toEqual([]);
+    h.idle(1);
+    expect(types(seen)).toEqual(['longpress']);
+  });
+
+  it('retunes the camera controller in place, so a held reference still drives it', () => {
+    const h = harness({ hz: 10 });
+    const control = h.input.camera;
+    h.step({ kind: 'key', code: 'ArrowRight', down: true });
+    h.input.frame(0);
+    h.input.frame(1000);
+    // One second of held pan at the default 700 px/s. Negative because the player is dragging
+    // the viewport right, which moves the camera's world origin left — see PAN_KEYS.
+    expect(h.view.x).toBe(-700);
+
+    h.input.setProfile({ keyPanPxPerS: 100 });
+    // The retune released the key, exactly as dispose does, so the camera is not left panning
+    // under thresholds nobody chose.
+    expect(h.input.keyHeld('ArrowRight')).toBe(false);
+    expect(h.input.camera).toBe(control);
+
+    // Advance the frame clock first, with nothing held, so the second measurement is one clean
+    // second of the new speed rather than two of it.
+    h.input.frame(2000);
+    h.step({ kind: 'key', code: 'ArrowRight', down: true });
+    h.input.frame(3000);
+    expect(h.view.x).toBe(-800);
+  });
+
+  it('moves the stall ceiling on the buffer that already exists', () => {
+    const h = harness({ hz: 10, onDiagnostic: (): void => undefined });
+    h.input.setProfile({ maxBufferedSamples: 4 });
+    for (let i = 0; i < 12; i++) h.input.submit(move(1, 400 + i, 300));
+    // Collapsed to the newest move for that pointer rather than growing to twelve.
+    expect(h.input.buffered).toBeLessThanOrEqual(4);
+  });
+
+  it('ends every live gesture first, under the thresholds that recognized it', () => {
+    const h = harness({ hz: 10 });
+    const seen = watch(h.input);
+    h.step(down(1, 400, 300), move(1, 460, 300));
+    expect(types(seen)).toEqual(['dragstart']);
+    h.input.setProfile({ tapSlopPx: { mouse: 60 } });
+    // A drag whose `dragend` never arrives is a placement ghost stuck to the cursor.
+    expect(types(seen)).toEqual(['dragstart', 'dragend']);
+  });
+
+  it('validates before it touches anything, so a refused override changes nothing', () => {
+    const h = harness({ hz: 10, profile: { longPressMs: 900 } });
+    expect(() => h.input.setProfile({ longPressMs: -1 })).toThrow(
+      /input\.setProfile\.longPressMs: expected a finite number > 0/,
+    );
+    expect(() => h.input.setProfile({ maxPointers: 1.5 })).toThrow(RangeError);
+    expect(h.input.profile.longPressMs).toBe(900);
+  });
+
+  it('refuses a retune from inside a handler, mid-bucket', () => {
+    const h = harness({ hz: 10 });
+    let thrown: unknown;
+    h.input.on('tap', () => {
+      try {
+        h.input.setProfile({ longPressMs: 300 });
+      } catch (error) {
+        thrown = error;
+      }
+    });
+    h.step(down(1, 400, 300));
+    h.step(up(1, 400, 300));
+    // The samples behind this one would meet a recognizer that never saw their press.
+    expect(String(thrown)).toMatch(/called from inside a handler/);
+    expect(h.input.profile.longPressMs).toBe(450);
+    // And the flag is cleared afterwards, so one refusal does not brick the knob.
+    expect(h.input.setProfile({ longPressMs: 300 }).longPressMs).toBe(300);
+  });
+
+  it('clears the guard even when a handler throws', () => {
+    const h = harness({ hz: 10 });
+    h.input.on('tap', () => {
+      throw new Error('the game is broken, and that is the game to fix');
+    });
+    h.step(down(1, 400, 300));
+    expect(() => h.step(up(1, 400, 300))).toThrow(/the game is broken/);
+    expect(() => h.input.setProfile({ longPressMs: 300 })).not.toThrow();
+  });
+
+  it('refuses while a recording is running, because the fingerprint is a third of its identity', () => {
+    const h = harness({ hz: 10 });
+    const tape = record(h.input);
+    expect(() => h.input.setProfile({ longPressMs: 300 })).toThrow(/a recording is running/);
+    const log = tape.stop();
+    // Now it is allowed, and the log that was sealed keeps the profile it was recorded under.
+    h.input.setProfile({ longPressMs: 300 });
+    expect(log.profile).toContain('longPressMs:450');
+    expect(createLog(h.input).profile).toContain('longPressMs:300');
+  });
+
+  it('makes a log recorded after a retune refuse to replay into a system that was not retuned', () => {
+    const h = harness({ hz: 10 });
+    h.input.setProfile({ tapSlopPx: { touch: 20 } });
+    expect(internalsOf(h.input).fingerprint).toContain('tap:4,20,6');
+    const fresh = harness({ hz: 10 });
+    expect(internalsOf(fresh.input).fingerprint).toContain('tap:4,9,6');
+  });
+
+  it('refuses after dispose, rather than storing thresholds nothing reads', () => {
+    const h = harness({ hz: 10 });
+    h.input.dispose();
+    expect(() => h.input.setProfile({ longPressMs: 300 })).toThrow(/has been disposed/);
   });
 });

@@ -100,7 +100,7 @@ describe('input buckets on the same index', () => {
   it('a cursor over a recorded log is ascending, once per tick, with no gaps', () => {
     const camera = createCamera(800, 600);
     const loop = createLoop({ hz: 60, clock: manualClock(0), frames: manualFrames() });
-    const input = createHeadlessInput({ camera, stepMs: loop.stepMs });
+    const input = createHeadlessInput({ camera, step: loop });
     loop.stop();
 
     // Drive a handful of ticks with nothing in them: the contract under test is the indexing,
@@ -117,15 +117,16 @@ describe('input buckets on the same index', () => {
     }
   });
 
-  // The step is the other half of the join, and input reads it from the loop rather than
-  // computing it. If either package ever recomputes it the naive way, this fails.
+  // The step is the other half of the join, and input takes the loop rather than a number, so
+  // it cannot be recomputed at the call site at all: `Loop` satisfies `FixedStep` structurally
+  // and a bare `loop.stepMs` no longer type-checks. If either package ever derives the step the
+  // naive way, this fails.
   it("input's step is the loop's own value, not a recomputation", () => {
     const loop = createLoop({ hz: 60, clock: manualClock(0), frames: manualFrames() });
-    const stepMs = loop.stepMs;
     loop.stop();
-    expect(stepMs).not.toBe(1000 / 60);
+    expect(loop.stepMs).not.toBe(1000 / 60);
 
-    const input = createHeadlessInput({ camera: createCamera(800, 600), stepMs });
-    expect(input).toBeDefined();
+    const input = createHeadlessInput({ camera: createCamera(800, 600), step: loop });
+    expect(input.stepMs).toBe(loop.stepMs);
   });
 });

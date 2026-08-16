@@ -6,7 +6,7 @@
  * const input = createInput({
  *   element: canvas,
  *   camera,
- *   stepMs: loop.stepMs,
+ *   step: loop,
  *   actions: { collect: ['tap', 'key:Space'], build: ['key:KeyB'] },
  * });
  * input.onAction('collect', (a) => collectAt(state, a.gx, a.gy));
@@ -120,6 +120,16 @@ export type {
   ProfileOverrides,
   ProfileScalar,
 } from './profile.js';
+
+// ── the fixed step ──────────────────────────────────────────────────────────────────────────
+//
+// Taken as the loop reports it rather than as a bare number. `step: 16` against a 16.667 ms loop
+// does not fail, it lies by 4% — a long press at 432 ms, a fling that coasts short, and a log a
+// replay refuses months later. `Loop` satisfies `FixedStep` structurally, so the shortest thing
+// that type-checks is `step: loop`; `fixedStep(hz)` covers the callers with no loop to read.
+
+export { fixedStep } from './step.js';
+export type { FixedStep } from './step.js';
 
 // ── the camera controller ───────────────────────────────────────────────────────────────────
 //

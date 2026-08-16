@@ -13,9 +13,10 @@ import type { HeadlessInputOptions, InputSystem } from '../src/system.js';
 import type { GestureName } from '../src/recognize.js';
 import type { PointerKind } from '../src/profile.js';
 import type { RawSample } from '../src/sample.js';
+import { fixedStep } from '../src/step.js';
 
-/** 60 Hz, to two more decimal places than anyone needs. */
-export const STEP_60 = 1000 / 60;
+/** 60 Hz, derived exactly as a real loop derives it: `stepMs` is 16.667, not 16.6666…. */
+export const STEP_60 = fixedStep(60);
 
 /** An 800×600 viewport centered on the world origin, so screen (400, 300) is world (0, 0). */
 export function camera(): Camera {
@@ -92,13 +93,17 @@ export interface Harness<A extends string> {
   readonly tick: number;
 }
 
-/** Build a headless system and a tick counter over it. */
+/** Build a headless system and a tick counter over it.
+ *
+ * `hz` is a shorthand this file adds and the package does not: most tests want a step whose
+ * arithmetic is readable (`hz: 10` is 100 ms a tick), and spelling `step: fixedStep(10)` at
+ * forty call sites would bury the number the test is actually about. */
 export function harness<A extends string = never>(
-  options?: Partial<HeadlessInputOptions<A>>,
+  options?: Partial<HeadlessInputOptions<A>> & { readonly hz?: number },
 ): Harness<A> {
   const view = options?.camera ?? camera();
   const input = createHeadlessInput<A>({
-    stepMs: STEP_60,
+    step: options?.hz === undefined ? STEP_60 : fixedStep(options.hz),
     ...options,
     camera: view,
   } as HeadlessInputOptions<A>);

@@ -28,7 +28,7 @@ function bind(options?: { keepContextMenu?: boolean }) {
   const input = createInput({
     element: w.element as unknown as HTMLElement,
     camera: createCamera(800, 600),
-    stepMs: STEP_60,
+    step: STEP_60,
     actions: { collect: ['tap', 'key:Space'] },
     onDiagnostic: (d): void => {
       diagnostics.push(d);
@@ -46,7 +46,7 @@ function pointer(clientX: number, clientY: number, extra?: Record<string, unknow
 describe('binding', () => {
   it('refuses anything that is not an element', () => {
     const camera = createCamera(800, 600);
-    expect(() => createInput({ element: null as unknown as HTMLElement, camera, stepMs: 16 })).toThrow(
+    expect(() => createInput({ element: null as unknown as HTMLElement, camera, step: STEP_60 })).toThrow(
       /expected the element the world is drawn on/,
     );
   });
@@ -56,7 +56,7 @@ describe('binding', () => {
     const second = {
       element: w.element as unknown as HTMLElement,
       camera: createCamera(800, 600),
-      stepMs: STEP_60,
+      step: STEP_60,
     };
     // Without this the symptom is a camera that pans twice as fast and a game that is
     // impossible to debug.
@@ -74,7 +74,7 @@ describe('binding', () => {
     const input = createInput({
       element: w.element as unknown as HTMLElement,
       camera: createCamera(800, 600),
-      stepMs: STEP_60,
+      step: STEP_60,
     });
     expect(w.element.style.getPropertyValue('touch-action')).toBe('none');
     expect(w.element.style.getPropertyValue('overscroll-behavior')).toBe('contain');
@@ -88,7 +88,7 @@ describe('binding', () => {
     const { w, input } = bind();
     expect(input.element).toBe(w.element);
     // A wrapper object would have refused to record, an hour into a debugging session.
-    expect(record(input).stop().stepMs).toBe(STEP_60);
+    expect(record(input).stop().stepMs).toBe(STEP_60.stepMs);
   });
 
   it('diagnoses a stylesheet that beats the inline touch-action, and a dead surface', () => {
@@ -98,7 +98,7 @@ describe('binding', () => {
     createInput({
       element: w.element as unknown as HTMLElement,
       camera: createCamera(800, 600),
-      stepMs: STEP_60,
+      step: STEP_60,
       onDiagnostic: (d): void => {
         diagnostics.push(d);
       },
@@ -116,7 +116,7 @@ describe('binding', () => {
     const input = createInput({
       element: w.element as unknown as HTMLElement,
       camera: createCamera(800, 600),
-      stepMs: STEP_60,
+      step: STEP_60,
     });
     // No computed style to check, no window to listen to, and still a working recognizer.
     w.fire('pointerdown', pointer(500, 350));
@@ -130,7 +130,7 @@ describe('binding', () => {
     const input = createInput({
       element: w.element as unknown as HTMLElement,
       camera: createCamera(800, 600),
-      stepMs: STEP_60,
+      step: STEP_60,
     });
     expect(w.view.observers).toEqual([]);
     input.dispose();
@@ -399,7 +399,7 @@ describe('I14 — the overlay diagnostic', () => {
   it('says nothing for a press outside the world, or on a child of it', () => {
     const { w, diagnostics } = bind();
     const child = new Element(w.doc, 'DIV');
-    w.element.children.push(child);
+    w.element.append(child);
     w.fire('pointerdown', pointer(500, 350), child);
     w.fire('pointerdown', pointer(5, 5), new Element(w.doc, 'DIV'));
     w.fire('pointerdown', pointer(5000, 5000), new Element(w.doc, 'DIV'));
@@ -414,10 +414,145 @@ describe('I14 — the overlay diagnostic', () => {
     createInput({
       element: w.element as unknown as HTMLElement,
       camera: createCamera(800, 600),
-      stepMs: STEP_60,
+      step: STEP_60,
     });
     w.fire('pointerdown', pointer(500, 350), new Element(w.doc, 'DIV'));
     expect(warn.mock.calls[0]?.[0]).toContain('covered-by-overlay');
+  });
+
+  it('reads the cached rect, so a press anywhere on the page forces no layout', () => {
+    const { w } = bind();
+    // Every tap on a HUD reaches this listener. The uncached version read the rect on each one,
+    // for the life of the game.
+    w.fire('pointerdown', pointer(500, 350), new Element(w.doc, 'DIV'));
+    const reads = w.element.rects;
+    for (let i = 0; i < 20; i++) {
+      w.fire('pointerdown', pointer(500, 350), new Element(w.doc, 'DIV'));
+    }
+    expect(w.element.rects).toBe(reads);
+  });
+});
+
+/**
+ * K12: the diagnostic used to fire on the first tap on *any* HUD over the canvas, including
+ * every `@lattice/ui` panel — which `GALLERY.md` makes mandatory, so every planned exhibit
+ * would have hit it. The discriminator is whether anything declared `pointer-events` inline.
+ */
+describe('K12 — chrome that declared itself is not a cover', () => {
+  /** A node that `@lattice/ui`'s `mount(node, { interactive: true })` has granted. It writes the
+   *  grant inline and ships no stylesheet, which is what makes this detectable at all. */
+  function granted(w: FakeWorld, value = 'auto'): FakeElement {
+    const node = new Element(w.doc, 'DIV');
+    node.style.setProperty('pointer-events', value);
+    return node;
+  }
+
+  it('says nothing for a node that was granted pointer events inline', () => {
+    const { w, diagnostics } = bind();
+    w.fire('pointerdown', pointer(500, 350), granted(w));
+    expect(diagnostics).toEqual([]);
+  });
+
+  it('says nothing for a child of one, which takes the press by inheritance', () => {
+    const { w, diagnostics } = bind();
+    // A `ui` panel grants the panel; the button inside it is `auto` because it inherits, and it
+    // is the button that becomes `event.target`.
+    const label = granted(w).append(new Element(w.doc, 'SPAN'));
+    w.fire('pointerdown', pointer(500, 350), label);
+    expect(diagnostics).toEqual([]);
+  });
+
+  it('treats any inline value that is not none as a grant, including the SVG spellings', () => {
+    const { w, diagnostics } = bind();
+    w.fire('pointerdown', pointer(500, 350), granted(w, 'visiblePainted'));
+    expect(diagnostics).toEqual([]);
+  });
+
+  it('still reports the trap: an inline none that a stylesheet beat underneath', () => {
+    const { w, diagnostics } = bind();
+    // The exact failure the diagnostic was written for. The layer says `none` inline; the spacer
+    // inside it says nothing inline and computes to `auto` because `#ui > *` out-specifies
+    // `.spacer`. The walk stops at the first declaration it meets, and that declaration lost.
+    const layer = granted(w, 'none');
+    const spacer = layer.append(new Element(w.doc, 'DIV'));
+    w.fire('pointerdown', pointer(500, 350), spacer);
+    expect(diagnostics.map((d) => d.code)).toEqual(['covered-by-overlay']);
+    expect(diagnostics[0]?.element).toBe(spacer);
+    expect(diagnostics[0]?.message).toContain('declares pointer-events inline');
+  });
+
+  it('still reports a bare element with no declaration anywhere above it', () => {
+    const { w, diagnostics } = bind();
+    const outer = new Element(w.doc, 'DIV');
+    const inner = outer.append(new Element(w.doc, 'DIV'));
+    w.fire('pointerdown', pointer(500, 350), inner);
+    expect(diagnostics.map((d) => d.code)).toEqual(['covered-by-overlay']);
+  });
+
+  it('says nothing inside a root the game declared, which is the escape for a CSS-only HUD', () => {
+    const w = world();
+    const hud = new Element(w.doc, 'DIV');
+    const slider = hud.append(new Element(w.doc, 'INPUT'));
+    const diagnostics: Diagnostic[] = [];
+    createInput({
+      element: w.element as unknown as HTMLElement,
+      camera: createCamera(800, 600),
+      step: STEP_60,
+      overlays: [hud as unknown as HTMLElement],
+      onDiagnostic: (d): void => {
+        diagnostics.push(d);
+      },
+    });
+    // Neither of these declares anything inline — the gallery's panel is styled entirely from a
+    // stylesheet — so without `overlays` both would be reported.
+    w.fire('pointerdown', pointer(500, 350), hud);
+    w.fire('pointerdown', pointer(500, 350), slider);
+    expect(diagnostics).toEqual([]);
+  });
+
+  it('reads overlays when the cover is found, so a HUD built after the input still counts', () => {
+    const w = world();
+    const late: HTMLElement[] = [];
+    const diagnostics: Diagnostic[] = [];
+    createInput({
+      element: w.element as unknown as HTMLElement,
+      camera: createCamera(800, 600),
+      step: STEP_60,
+      overlays: late,
+      onDiagnostic: (d): void => {
+        diagnostics.push(d);
+      },
+    });
+    const hud = new Element(w.doc, 'DIV');
+    late.push(hud as unknown as HTMLElement);
+    w.fire('pointerdown', pointer(500, 350), hud);
+    expect(diagnostics).toEqual([]);
+  });
+
+  it('treats an element with no inline style at all as having declared nothing', () => {
+    const { w, diagnostics } = bind();
+    // `Element` does not declare `style`, so the walk has to survive a node that has none rather
+    // than assuming every ancestor is an `HTMLElement`.
+    const styleless = { tagName: 'DIV', parentElement: null };
+    w.fire('pointerdown', pointer(500, 350), styleless);
+    expect(diagnostics.map((d) => d.code)).toEqual(['covered-by-overlay']);
+  });
+
+  it('reports a node outside every declared root, so overlays is not a blanket mute', () => {
+    const w = world();
+    const hud = new Element(w.doc, 'DIV');
+    const diagnostics: Diagnostic[] = [];
+    createInput({
+      element: w.element as unknown as HTMLElement,
+      camera: createCamera(800, 600),
+      step: STEP_60,
+      overlays: [hud as unknown as HTMLElement],
+      onDiagnostic: (d): void => {
+        diagnostics.push(d);
+      },
+    });
+    w.fire('pointerdown', pointer(500, 350), new Element(w.doc, 'DIV'));
+    expect(diagnostics.map((d) => d.code)).toEqual(['covered-by-overlay']);
   });
 });
 
@@ -480,7 +615,7 @@ describe('a whole gesture, through the DOM', () => {
     const input = createInput({
       element: w.element as unknown as HTMLElement,
       camera,
-      stepMs: STEP_60,
+      step: STEP_60,
     });
     w.fire('pointerdown', pointer(500, 350));
     input.tick(0);

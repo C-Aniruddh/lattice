@@ -87,7 +87,7 @@ describe('the camera as it stood when the tick opened', () => {
 
 describe('the reused event objects', () => {
   it('carries the fields of its own kind and nothing else', () => {
-    const h = harness({ stepMs: 100 });
+    const h = harness({ hz: 10 });
     const kinds: string[] = [];
     h.input.on('tap', (g) => kinds.push(`tap heldMs=${String(g.heldMs)}`));
     h.input.on('zoom', (g) => kinds.push(`zoom source=${g.source} scale>${String(g.scale > 1)}`));
@@ -113,7 +113,7 @@ describe('the reused event objects', () => {
   });
 
   it('exposes claimed as a readable flag, not only as a side effect', () => {
-    const h = harness({ stepMs: 100 });
+    const h = harness({ hz: 10 });
     const flags: boolean[] = [];
     h.input.on('tap', (g) => {
       flags.push(g.claimed);

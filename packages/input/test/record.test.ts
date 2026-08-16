@@ -13,10 +13,11 @@ import { createHeadlessInput } from '../src/system.js';
 import { createLog, record, replay, replayCursor } from '../src/record.js';
 import { LOG_VERSION } from '../src/sample.js';
 import type { InputLog } from '../src/sample.js';
+import { fixedStep } from '../src/step.js';
 import { STEP_60, down, harness, move, types, up, watch } from './harness.js';
 
 function session(): { log: InputLog; seen: ReturnType<typeof watch> } {
-  const input = createHeadlessInput({ camera: createCamera(800, 600), stepMs: STEP_60 });
+  const input = createHeadlessInput({ camera: createCamera(800, 600), step: STEP_60 });
   const seen = watch(input);
   const recording = record(input);
   input.submit(down(1, 400, 300, 'touch'));
@@ -33,7 +34,7 @@ describe('createLog', () => {
     const h = harness({ profile: { longPressMs: 700 } });
     const log = createLog(h.input);
     expect(log.version).toBe(LOG_VERSION);
-    expect(log.stepMs).toBe(STEP_60);
+    expect(log.stepMs).toBe(STEP_60.stepMs);
     expect(log.profile).toContain('longPressMs:700');
     expect(log.samples).toEqual([]);
   });
@@ -78,7 +79,7 @@ describe('record', () => {
 describe('replay', () => {
   it('reproduces the session exactly', () => {
     const { log, seen } = session();
-    const again = createHeadlessInput({ camera: createCamera(800, 600), stepMs: STEP_60 });
+    const again = createHeadlessInput({ camera: createCamera(800, 600), step: STEP_60 });
     const againSeen = watch(again);
     replay(again, log);
     expect(againSeen).toEqual(seen);
@@ -86,17 +87,17 @@ describe('replay', () => {
 
   it('names the field that differs, and refuses rather than migrating', () => {
     const { log } = session();
-    const slower = createHeadlessInput({ camera: createCamera(800, 600), stepMs: 20 });
+    const slower = createHeadlessInput({ camera: createCamera(800, 600), step: fixedStep(50) });
     expect(() => replay(slower, log)).toThrow(/recorded at stepMs 16\.6.* and this system runs at 20/);
 
     const retuned = createHeadlessInput({
       camera: createCamera(800, 600),
-      stepMs: STEP_60,
+      step: STEP_60,
       profile: { tapSlopPx: { touch: 12 } },
     });
     expect(() => replay(retuned, log)).toThrow(/recorded under a different gesture profile/);
 
-    const fresh = createHeadlessInput({ camera: createCamera(800, 600), stepMs: STEP_60 });
+    const fresh = createHeadlessInput({ camera: createCamera(800, 600), step: STEP_60 });
     expect(() => replay(fresh, { ...log, version: LOG_VERSION + 1 })).toThrow(
       /recognition rules change with the version/,
     );
@@ -116,16 +117,16 @@ describe('replay', () => {
 describe('replayCursor', () => {
   it('counts the ticks and carries the step, so a driver can refuse a mismatch', () => {
     const { log } = session();
-    const fresh = createHeadlessInput({ camera: createCamera(800, 600), stepMs: STEP_60 });
+    const fresh = createHeadlessInput({ camera: createCamera(800, 600), step: STEP_60 });
     const cursor = replayCursor(fresh, log);
     expect(cursor.ticks).toBe(3);
-    expect(cursor.stepMs).toBe(STEP_60);
+    expect(cursor.stepMs).toBe(STEP_60.stepMs);
     expect(cursor.checkpointAt(0)).toBeUndefined();
   });
 
   it('satisfies the driver contract: once per tick, ascending, before the update', () => {
     const { log, seen } = session();
-    const fresh = createHeadlessInput({ camera: createCamera(800, 600), stepMs: STEP_60 });
+    const fresh = createHeadlessInput({ camera: createCamera(800, 600), step: STEP_60 });
     const freshSeen = watch(fresh);
     const cursor = replayCursor(fresh, log);
     const updates: number[] = [];
@@ -141,7 +142,7 @@ describe('replayCursor', () => {
 
   it('delivers an empty bucket past the end of the recording', () => {
     const { log } = session();
-    const fresh = createHeadlessInput({ camera: createCamera(800, 600), stepMs: STEP_60 });
+    const fresh = createHeadlessInput({ camera: createCamera(800, 600), step: STEP_60 });
     const seen = watch(fresh);
     const cursor = replayCursor(fresh, log);
     for (let tick = 0; tick < cursor.ticks + 5; tick++) cursor.applyAt(tick);

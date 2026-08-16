@@ -17,14 +17,15 @@ import type { GridPoint } from '@lattice/iso';
 import { createHeadlessInput } from '../src/system.js';
 import type { InputSystem } from '../src/system.js';
 import type { RawSample } from '../src/sample.js';
+import { fixedStep } from '../src/step.js';
 
-const STEP = 1000 / 60;
+const STEP = fixedStep(60);
 
 /** A system with a handler on everything, because an unobserved gesture is not the real path. */
 function system(): InputSystem<'collect'> {
   const input = createHeadlessInput<'collect'>({
     camera: createCamera(1280, 720),
-    stepMs: STEP,
+    step: STEP,
     actions: { collect: ['tap', 'key:Space'] },
     // The stall benchmark deliberately overflows the buffer, which is exactly the condition the
     // diagnostic exists to report. Swallowing it here keeps the measurement out of stderr.
@@ -96,7 +97,7 @@ describe('the per-frame paths', () => {
   glide.tick(2);
   let now = 0;
   bench('frame — integrating a glide', () => {
-    now += STEP;
+    now += STEP.stepMs;
     glide.frame(now);
   });
 

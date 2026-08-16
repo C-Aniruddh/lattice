@@ -20,7 +20,7 @@ import { STEP_60, down, harness, move, types, up, watch } from './harness.js';
 describe('I1 — a press produces at most one of tap and longpress', () => {
   it('fires longpress only when the press outlives the threshold', () => {
     // 100 ms steps, so five ticks is 500 ms and the 450 ms threshold is crossed at tick 5.
-    const h = harness({ stepMs: 100 });
+    const h = harness({ hz: 10 });
     const seen = watch(h.input);
     h.step(down(1, 400, 300));
     h.idle(5);
@@ -30,7 +30,7 @@ describe('I1 — a press produces at most one of tap and longpress', () => {
   });
 
   it('fires tap only when it does not', () => {
-    const h = harness({ stepMs: 100 });
+    const h = harness({ hz: 10 });
     const seen = watch(h.input);
     h.step(down(1, 400, 300));
     h.step(up(1, 400, 300));
@@ -55,7 +55,7 @@ describe('I2 — travel beyond the slop for the device is never a tap', () => {
   });
 
   it('disarms the hold as the finger starts travelling', () => {
-    const h = harness({ stepMs: 100 });
+    const h = harness({ hz: 10 });
     const seen = watch(h.input);
     h.step(down(1, 400, 300, 'touch'));
     h.step(move(1, 430, 300));
@@ -90,7 +90,7 @@ describe('I3 — zoom is anchored to the point it was asked to anchor at', () =>
 
 describe('I4 — output is a pure function of the sample stream', () => {
   it('replays a recorded log to an identical sequence of gestures', () => {
-    const live = createHeadlessInput({ camera: createCamera(800, 600), stepMs: STEP_60 });
+    const live = createHeadlessInput({ camera: createCamera(800, 600), step: STEP_60 });
     const liveSeen = watch(live);
     const recording = record(live);
 
@@ -109,7 +109,7 @@ describe('I4 — output is a pure function of the sample stream', () => {
     live.tick(4);
     const log = recording.stop();
 
-    const again = createHeadlessInput({ camera: createCamera(800, 600), stepMs: STEP_60 });
+    const again = createHeadlessInput({ camera: createCamera(800, 600), step: STEP_60 });
     const againSeen = watch(again);
     replay(again, log);
 
@@ -120,7 +120,7 @@ describe('I4 — output is a pure function of the sample stream', () => {
 
 describe('I5 — nothing game-visible is emitted outside tick', () => {
   it('runs no handler however many frames pass', () => {
-    const h = harness({ stepMs: 100 });
+    const h = harness({ hz: 10 });
     const seen = watch(h.input);
     h.input.submit(down(1, 400, 300));
     for (let i = 0; i < 1000; i++) h.input.frame(i * 16);
@@ -133,7 +133,7 @@ describe('I5 — nothing game-visible is emitted outside tick', () => {
 
 describe('I6 — a tick sees a bucket that was closed before it started', () => {
   it('delivers a sample submitted by a handler in the next tick, never the running one', () => {
-    const h = harness({ stepMs: 100 });
+    const h = harness({ hz: 10 });
     const seen = watch(h.input);
     let injected = false;
     h.input.on('tap', (): void => {
@@ -150,7 +150,7 @@ describe('I6 — a tick sees a bucket that was closed before it started', () => 
   });
 
   it('loses nothing on a pump with no ticks and delivers the backlog to the first of five', () => {
-    const h = harness({ stepMs: 100 });
+    const h = harness({ hz: 10 });
     const seen = watch(h.input);
     h.input.submit(down(1, 400, 300, 'touch'));
     h.input.submit(up(1, 400, 300));
@@ -166,7 +166,7 @@ describe('I7 — overflow degrades precision, never events', () => {
   it('keeps the up, collapses the moves, and says so once', () => {
     const diagnostics: Diagnostic[] = [];
     const h = harness({
-      stepMs: 100,
+      hz: 10,
       onDiagnostic: (d): void => {
         diagnostics.push(d);
       },
@@ -189,7 +189,7 @@ describe('I7 — overflow degrades precision, never events', () => {
 
 describe('I8 — dispose is total and idempotent', () => {
   it('runs zero handlers afterwards and is safe to call twice', () => {
-    const h = harness({ stepMs: 100, actions: { collect: ['tap', 'key:Space'] } });
+    const h = harness({ hz: 10, actions: { collect: ['tap', 'key:Space'] } });
     const seen = watch(h.input);
     let live = true;
     h.input.onAction('collect', (): void => {
@@ -214,7 +214,7 @@ describe('I8 — dispose is total and idempotent', () => {
   });
 
   it('leaves a sibling scope working when one child is disposed alone', () => {
-    const h = harness({ stepMs: 100 });
+    const h = harness({ hz: 10 });
     const first: string[] = [];
     const second: string[] = [];
     const a = h.input.scope();
@@ -236,7 +236,7 @@ describe('I8 — dispose is total and idempotent', () => {
 
 describe('I9 — focus loss releases everything', () => {
   it('releases a held key with no up', () => {
-    const h = harness({ stepMs: 100, actions: { pan: ['key:KeyW'] } });
+    const h = harness({ hz: 10, actions: { pan: ['key:KeyW'] } });
     h.step({ kind: 'key', code: 'KeyW', down: true });
     expect(h.input.keyHeld('KeyW')).toBe(true);
     expect(h.input.held('pan')).toBe(true);
@@ -270,7 +270,7 @@ describe('I13 — the recognizer cannot be latched', () => {
 
   for (const ending of endings) {
     it(`produces exactly one dragend on ${ending.name}`, () => {
-      const h = harness({ stepMs: 100 });
+      const h = harness({ hz: 10 });
       const seen = watch(h.input);
       h.step(down(1, 400, 300));
       h.step(move(1, 440, 300));

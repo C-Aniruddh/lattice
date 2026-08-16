@@ -337,7 +337,9 @@ export function bootstrap<A extends string = never>(options: BootOptions<A> = {}
     return createInput<A>({
       element: canvas,
       camera,
-      stepMs: loop.stepMs,
+      // `step: loop`, not `stepMs: loop.stepMs`: `input` now takes a `FixedStep` structurally,
+      // so the bare number this file existed to stop anyone typing no longer compiles at all.
+      step: loop,
       ...(options.actions === undefined ? {} : { actions: options.actions }),
       profile: profileOverrides,
       ...(options.control === undefined ? {} : { control: options.control }),

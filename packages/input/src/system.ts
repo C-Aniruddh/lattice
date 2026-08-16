@@ -54,6 +54,8 @@ import { profileFingerprint, resolveProfile } from './profile.js';
 import type { GestureProfile, ProfileOverrides } from './profile.js';
 import { createRecogniser } from './recognize.js';
 import type { GestureOut, Recognizer } from './recognize.js';
+import { resolveStep } from './step.js';
+import type { FixedStep } from './step.js';
 import { SampleBuffer, createSampleSlot, toRawSample, writeSlot } from './sample.js';
 import type { Diagnostic, DiagnosticCode, DiagnosticSink, RawSample } from './sample.js';
 import { HandlerList, createGestureLists, createInputScope } from './scope.js';
@@ -71,13 +73,19 @@ export interface HeadlessInputOptions<A extends string> {
   readonly camera: Camera;
 
   /**
-   * The loop's fixed step, in milliseconds. **Must be the same number the loop uses.**
+   * The loop's fixed step. **Pass the loop.**
    *
-   * The recognizer counts ticks and multiplies by this; it never reads a clock. Get it wrong
-   * and every duration in the profile is wrong by the same ratio — so pass `loop.stepMs` rather
-   * than a literal.
+   * ```ts
+   * createInput({ element: canvas, camera, step: loop });
+   * ```
+   *
+   * The recognizer counts ticks and multiplies by this; it never reads a clock. A step that is
+   * not the loop's does not fail, it lies by a constant ratio — a long press at the wrong moment,
+   * a fling at the wrong speed, and a recorded log a replay refuses months later. That is why
+   * this is a {@link FixedStep} and no longer a bare number: `@lattice/loop`'s `Loop` satisfies
+   * it, `16` does not compile, and `fixedStep(hz)` covers the headless cases.
    */
-  readonly stepMs: number;
+  readonly step: FixedStep;
 
   /**
    * The action map, as data.
@@ -87,7 +95,8 @@ export interface HeadlessInputOptions<A extends string> {
    */
   readonly actions?: ActionMap<A>;
 
-  /** Override any threshold in the profile. Everything not named keeps its default. */
+  /** Override any threshold in the profile. Everything not named keeps its default. Not a
+   *  one-shot: {@link InputSystem.setProfile} takes the same object and keeps every handler. */
   readonly profile?: ProfileOverrides;
 
   /** Set `false` for a game whose camera is fixed. The gestures still arrive. */
@@ -123,9 +132,53 @@ export interface InputSystem<A extends string = never> extends InputScope<A> {
   /** The gestures-to-camera policy. `iso` owns where the camera may be; this owns where the
    *  player is trying to put it. */
   readonly camera: CameraController;
-  /** The thresholds in force, defaults filled in and every override validated. */
+  /**
+   * The thresholds in force **right now**, defaults filled in and every override validated.
+   *
+   * A live read, not the object handed to the constructor: after {@link setProfile} this is the
+   * new one. Frozen, so a game that wants a different threshold changes it through `setProfile`
+   * rather than by writing to a shared object three other things are reading.
+   */
   readonly profile: Readonly<GestureProfile>;
-  /** The fixed step every duration is counted in. */
+
+  /**
+   * Replace every threshold, and keep every handler.
+   *
+   * ```ts
+   * input.setProfile({ tapSlopPx: { touch: 14 } }); //  handlers, scopes and camera all survive
+   * ```
+   *
+   * **A full replacement of the override set, resolved against the defaults exactly as
+   * construction does — not a patch onto the profile in force.** `setProfile({})` therefore
+   * returns to the defaults, and a game that keeps its overrides in one object and re-passes it
+   * gets a profile that depends only on that object and not on the order the sliders were moved.
+   * A patching version would make the thresholds path-dependent, and a path-dependent value is
+   * one a recorded log's fingerprint cannot be reasoned about.
+   *
+   * The recognizer is rebuilt behind the seam — its tick counts, its velocity rings and its
+   * pointer slots are all sized from the profile — but the buffer's slot pool, the camera
+   * controller, every handler, every child scope and the DOM binding are the same objects
+   * afterwards. That is what makes this cheap enough to put behind a slider: retuning one
+   * threshold used to mean dispose, recreate and re-register every handler.
+   *
+   * **Every live gesture ends first**, under the *old* thresholds: each drag gets its `dragend`
+   * and each held key its release, exactly as `dispose` does it, for the same reason — a
+   * recognizer replaced mid-drag is a placement ghost stuck to the cursor and a camera that pans
+   * for ever.
+   *
+   * @returns the resolved profile, so a HUD can show what it actually got rather than what it
+   *   asked for — the two differ wherever a default filled in.
+   * @throws RangeError if any override is out of range, **before anything changes**; if called
+   *   from inside a handler, because the bucket being delivered was recognized under the old
+   *   thresholds and the samples behind it would meet a recognizer that never saw their press;
+   *   if a recording is running, because the profile fingerprint is a third of a log's identity
+   *   and a log that changed rules half way through describes no session that can be replayed;
+   *   or if the system has been disposed.
+   */
+  setProfile(overrides: ProfileOverrides | undefined): Readonly<GestureProfile>;
+
+  /** The fixed step every duration is counted in. Fixed for the life of the system: changing it
+   *  would re-time every gesture and invalidate every log, which is a new system, not a knob. */
   readonly stepMs: number;
 
   /** Every declared action, in declaration order. */
@@ -212,7 +265,8 @@ export interface InputSystem<A extends string = never> extends InputScope<A> {
  */
 export interface SystemInternals {
   readonly stepMs: number;
-  /** The profile's canonical encoding, for a log's compatibility triple. */
+  /** The canonical encoding of the profile **in force**, for a log's compatibility triple. Read
+   *  at the moment a log is sealed, so a system retuned by `setProfile` seals the truth. */
   readonly fingerprint: string;
   /**
    * The system's own diagnostic sink, deduplicated per code.
@@ -252,9 +306,9 @@ export function internalsOf(system: object): SystemInternals {
  *
  * This is how the package is tested and how a replay runs in Node.
  *
- * @throws RangeError if `stepMs` is not a finite number greater than zero, if a profile
- *   override is out of range, or if an action binding is malformed.
- * @throws TypeError if `camera` is missing.
+ * @throws RangeError if `step` describes no coherent step, if a profile override is out of
+ *   range, or if an action binding is malformed.
+ * @throws TypeError if `camera` is missing, or if `step` is not the loop or a `fixedStep(hz)`.
  */
 export function createHeadlessInput<A extends string = never>(
   options: HeadlessInputOptions<A>,
@@ -278,12 +332,7 @@ export function createSystem<A extends string>(
       `${label}.camera: expected an @lattice/iso Camera — every coordinate this package reports is resolved through it, so there is no useful default`,
     );
   }
-  const stepMs = options.stepMs;
-  if (!(Number.isFinite(stepMs) && stepMs > 0)) {
-    throw new RangeError(
-      `${label}.stepMs: expected a finite number > 0, got ${String(stepMs)} — pass loop.stepMs rather than a literal, or every gesture duration is wrong by the same ratio`,
-    );
-  }
+  const stepMs = resolveStep(options.step, `${label}.step`);
 
   /** Diagnostics, at most once per code. See {@link HeadlessInputOptions.onDiagnostic}. */
   const reported = new Set<DiagnosticCode>();
@@ -298,8 +347,11 @@ export function createSystem<A extends string>(
     console.warn(`[@lattice/input] ${diagnostic.code}: ${diagnostic.message}`);
   };
 
-  const profile = resolveProfile(options.profile, `${label}.profile`);
-  const fingerprint = profileFingerprint(profile);
+  // Mutable, because `setProfile` replaces them together. Every reader goes through these two
+  // names rather than capturing a copy, so there is exactly one place the thresholds in force
+  // are recorded and no second copy that can lag behind a retune.
+  let profile = resolveProfile(options.profile, `${label}.profile`);
+  let fingerprint = profileFingerprint(profile);
   const actions: CompiledActions<A> = compileActions(options.actions, `${label}.actions`, diagnose);
 
   const owner: Scope = createScope();
@@ -321,6 +373,15 @@ export function createSystem<A extends string>(
   let lastNowMs: number | undefined;
   let disposed = false;
   let scopeOrder = 0;
+  /**
+   * True while handlers are running: inside a tick's delivery, and inside `setProfile`'s own
+   * release of live gestures.
+   *
+   * The only thing that reads it is `setProfile`, and it exists because swapping the recognizer
+   * half way through a bucket would feed the samples behind the current one to a machine that
+   * never saw their press — a `move` with no `down`, which the recognizer is entitled to ignore.
+   */
+  let delivering = false;
 
   let recording: RawSample[] | undefined;
 
@@ -452,7 +513,10 @@ export function createSystem<A extends string>(
     fireActions(entries, 'key', sx, sy);
   }
 
-  const recognizer: Recognizer = createRecogniser({
+  // `let`, and every reader names it rather than closing over the value: `setProfile` replaces
+  // the recognizer, and the camera controller's `keyHeld` bridge below would otherwise keep
+  // asking the retired one which keys are down.
+  let recognizer: Recognizer = createRecogniser({
     profile,
     stepMs,
     emit: deliverGesture,
@@ -525,7 +589,54 @@ export function createSystem<A extends string>(
     },
 
     camera: control,
-    profile,
+
+    get profile(): Readonly<GestureProfile> {
+      return profile;
+    },
+
+    setProfile(overrides: ProfileOverrides | undefined): Readonly<GestureProfile> {
+      if (disposed) {
+        throw new RangeError(
+          'input.setProfile: this system has been disposed — the thresholds would be stored on a recognizer nothing feeds and a camera nothing drives, and the retune would appear to have worked',
+        );
+      }
+      if (delivering) {
+        throw new RangeError(
+          'input.setProfile: called from inside a handler. The bucket being delivered was recognized under the thresholds in force when the tick opened, and the samples behind this one would meet a recognizer that never saw their press. Retune after the tick returns.',
+        );
+      }
+      if (recording !== undefined) {
+        throw new RangeError(
+          'input.setProfile: a recording is running, and the profile fingerprint is one third of a log\'s identity — a log whose rules changed half way through describes no session that can be replayed. Stop the recording, retune, and start a new one.',
+        );
+      }
+      // Resolved and validated *before* anything is touched, so a rejected override leaves the
+      // system exactly as it was rather than half-retuned.
+      const next = resolveProfile(overrides, 'input.setProfile');
+
+      delivering = true;
+      try {
+        // Under the OLD thresholds, and for the reason `dispose` does it: a drag whose `dragend`
+        // never arrives is a placement ghost stuck to the cursor, and a key the recognizer still
+        // believes is held is a camera that pans for ever.
+        frame.capture(camera);
+        recognizer.releaseAll();
+      } finally {
+        delivering = false;
+      }
+
+      profile = next;
+      fingerprint = profileFingerprint(next);
+      buffer.retune(next.maxBufferedSamples);
+      control.retune(next.keyPanPxPerS, next.flingMinPxPerS, next.flingHalfLifeMs);
+      // Rebuilt rather than retuned: its long-press tick count, its velocity ring sizes and its
+      // pointer slots are all *sized* from the profile, and a machine that resized itself while
+      // holding live state would be a second state machine to get right for no gain. It is one
+      // small allocation on a call a game makes when someone moves a slider.
+      recognizer = createRecogniser({ profile: next, stepMs, emit: deliverGesture, onKey });
+      return next;
+    },
+
     stepMs,
     actionNames: actions.names,
     bindings: actions.bindings,
@@ -571,14 +682,21 @@ export function createSystem<A extends string>(
       recognizer.setView(camera.viewW, camera.viewH);
 
       const closed = buffer.close();
-      for (let i = 0; i < closed.count; i++) {
-        const slot = closed.slots[i];
-        if (slot === undefined) continue;
-        recognizer.feed(slot, index);
+      delivering = true;
+      try {
+        for (let i = 0; i < closed.count; i++) {
+          const slot = closed.slots[i];
+          if (slot === undefined) continue;
+          recognizer.feed(slot, index);
+        }
+        // After the bucket, so a press released this tick is a tap rather than a hold that
+        // matured a moment before the release arrived.
+        recognizer.mature(index);
+      } finally {
+        // `finally`, so a handler that throws does not leave the system permanently refusing to
+        // retune — the throw is the game's bug to fix and it should not acquire a second symptom.
+        delivering = false;
       }
-      // After the bucket, so a press released this tick is a tap rather than a hold that
-      // matured a moment before the release arrived.
-      recognizer.mature(index);
     },
 
     frame(nowMs: number): void {
@@ -633,7 +751,12 @@ export function createSystem<A extends string>(
 
   INTERNALS.set(system, {
     stepMs,
-    fingerprint,
+    // A getter, so `createLog` and `record().stop()` seal the profile in force rather than the
+    // one the system was born with. A recording cannot span a retune — `setProfile` refuses
+    // while one is running — so this can never disagree with the samples it is sealed beside.
+    get fingerprint(): string {
+      return fingerprint;
+    },
     diagnose,
     start(): void {
       if (recording !== undefined) {

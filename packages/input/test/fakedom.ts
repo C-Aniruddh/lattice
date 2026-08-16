@@ -83,6 +83,15 @@ export class FakeElement extends FakeTarget {
   /** Set to make `setPointerCapture` throw, as it does for a pointer already gone. */
   refuseCapture = false;
   readonly children: FakeElement[] = [];
+  /**
+   * The chain the overlay diagnostic walks. `null` on a detached node, which is what a bare
+   * `document.createElement` gives you and therefore the default here.
+   *
+   * Modeled because `declaredChrome` asks each ancestor in turn whether it declared
+   * `pointer-events` inline: the trap it exists to tell apart from legitimate chrome is
+   * precisely an inline `none` on a wrapper with a stylesheet `auto` on the child underneath.
+   */
+  parentElement: FakeElement | null = null;
   ownerDocument: FakeDocument;
   rects = 0;
 
@@ -106,8 +115,19 @@ export class FakeElement extends FakeTarget {
     if (!this.captured.delete(id)) throw new Error('NotFoundError');
   }
 
+  /** Adopt a child, both ways. Two links rather than one because the adapter walks up and the
+   *  `contains` check walks down, and a fixture that only wired one would pass by accident. */
+  append(child: FakeElement): FakeElement {
+    this.children.push(child);
+    child.parentElement = this;
+    return child;
+  }
+
+  /** As the DOM's: the whole subtree, not only the direct children. */
   contains(node: unknown): boolean {
-    return node === this || this.children.includes(node as FakeElement);
+    if (node === this) return true;
+    for (const child of this.children) if (child.contains(node)) return true;
+    return false;
   }
 }
 
