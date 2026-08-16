@@ -1795,6 +1795,85 @@
       "status": "todo",
       "owner": null,
       "notes": "Also fix draw/src/index.ts, whose comment justifies keeping record.ts on the grounds that ui wants it for layout measurement. Nothing in ui references the recording surface."
+    },
+    {
+      "id": "K12",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "input must be told an overlay is legitimate",
+      "package": "input",
+      "paths": [
+        "packages/input/**"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "covered-by-overlay fires on the FIRST TAP on any HUD over the canvas — including every @lattice/ui panel",
+        "this now BLOCKS a rule: GALLERY.md requires exhibits use ui for their overlay, so every exhibit would hit it",
+        "the bootstrap works around it by filtering on class name, which is exactly the kind of workaround a kit exists to remove",
+        "wants InputOptions.overlays, or something better — decide the shape"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "Blocking. Discovered by the gallery bootstrap, one commit after ui was made the mandatory overlay."
+    },
+    {
+      "id": "K13",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "createInput.stepMs should not take a bare number",
+      "package": "input",
+      "paths": [
+        "packages/input/**"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "it takes a bare number and rejects only 0 and NaN, so stepMs:16 against a 16.667ms loop is a long press at 432ms, a fling 4% low, and a log persist refuses months later",
+        "take the loop, or { stepMs: Millis } structurally — the branded type exists precisely so this substitution cannot compile",
+        "also: no input.setProfile, so retuning one threshold means dispose, recreate, and re-register every handler"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "The gallery bootstrap removed the field from its own options entirely and passes loop.stepMs itself, which is the workaround shape."
+    },
+    {
+      "id": "K14",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "Camera cannot read back its own policy",
+      "package": "iso",
+      "paths": [
+        "packages/iso/**"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "minZoom, maxZoom and keepVisible go in at construction and vanish — there is no reader and no setZoomLimits",
+        "the gallery panel had to keep a shadow copy and rebuild the camera AND the input on every drag of a zoom slider",
+        "a value a caller supplied and cannot read back is a value they must store twice, and two copies drift"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "K15",
+      "phase": "gaps",
+      "role": "lattice-architect",
+      "title": "Options as data per call, not closed at construction",
+      "package": "*",
+      "paths": [
+        "docs/rfc/live-options.md"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "sim passes its parameters per call, so every one of its knobs is live; every other package closes its options over at construction",
+        "that single difference is what forced a rebuild-on-change path into the gallery control panel",
+        "audio is the sharp case: mixer is mutable post-construction, the voice ceiling is not, and dispose() closes the AudioContext — a document gets about six, so a live voice slider can PERMANENTLY SILENCE THE PAGE",
+        "draw is the arbitrary case: falloff is per-call on add, while scale and bloom are construction-only, with no principle separating them",
+        "decide whether this is a kit-wide rule worth stating in AGENTS.md, or a per-package judgement — but the asymmetry should be deliberate rather than accidental"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "The most interesting observation from the gallery bootstrap. It is an architecture question, not a bug."
     }
   ]
 }
