@@ -915,8 +915,8 @@
         "under 250 lines, most of it art; seed comes from the URL",
         "stresses draw iso — report where it fought back and the logic-to-art split"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-designer",
       "notes": ""
     },
     {
@@ -938,8 +938,8 @@
         "under 250 lines, most of it art; seed comes from the URL",
         "stresses draw — report where it fought back and the logic-to-art split"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-designer",
       "notes": ""
     },
     {
@@ -1053,8 +1053,8 @@
         "under 250 lines, most of it art; seed comes from the URL",
         "stresses iso — report where it fought back and the logic-to-art split"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-designer",
       "notes": ""
     },
     {
@@ -2097,8 +2097,8 @@
         "36 type positions; every use site field name already ends in Ms or Seconds, so the deletion is mechanical",
         "this is the actual cause and the cheapest fix in the set"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "done",
+      "owner": "lattice-builder",
       "notes": "The prose was never the failure — four documents stated the truth, two of them in the source of the packages involved, and the false claim was written twice anyway."
     },
     {
@@ -2118,8 +2118,8 @@
         "ambiguity resolves to logic. Until this tool exists the grep in GALLERY.md is the rule, which means the rule is currently unenforced",
         "also worth a lint rule for the one lintable piece: every duration parameter name ends in Ms or Seconds, which catches the after(3000)-means-fifty-minutes class"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "done",
+      "owner": "lattice-builder",
       "notes": ""
     },
     {
@@ -2132,8 +2132,8 @@
         "packages/iso/**"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-builder",
       "acceptance": [
         "the shared Bucket cannot meet its invariant B7 — \"an unsorted each throws\" — from outside the package, and the reason is worth reading: DepthSorter publishes nothing that separates \"not sorted\" from \"sorted, nothing culled\"",
         "pre-sort, count equals the bucket count and indexAt(i) === i — and an unculled frame filled in depth order is BIT-IDENTICAL to that. Any detector built on the published surface is a false alarm on a real frame",
@@ -2178,9 +2178,29 @@
         "this is the same species as the adapter finding already fixed, but the fix is different: an adapter IS downloaded by a game and must stay counted, whereas mutually exclusive backends genuinely cannot both ship",
         "decide whether the tool should report a per-entry-point figure, and note that getting this right retires draw's override rather than merely explaining it"
       ],
-      "status": "todo",
+      "status": "done",
       "owner": null,
       "notes": ""
+    },
+    {
+      "id": "K31",
+      "phase": "gaps",
+      "role": "lattice-designer",
+      "title": "The hero carries no @art tags, so the tool cannot see its split",
+      "package": "demo",
+      "paths": [
+        "examples/demo/src/**"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "npm run gallery reports the hero as 1286 logic / 99 art, where GALLERY.md documents 622 / 768 — because not one module in examples/demo/src carries an @art tag",
+        "the tag goes on its own line inside the file leading doc comment: sprites, sky, ambient, sound, palette are the candidates",
+        "the classification test is the one in GALLERY.md — a module is art if deleting it changes only what the exhibit looks or sounds like, holds no state past a frame, and moves no number the player is playing for",
+        "the hero is exempt from the CAP, not from being measured. A documented split nothing can verify is the same species as the claim that a duration alias guarded anything"
+      ],
+      "notes": "Found by tools/gallery.mjs the moment it could measure. The tool says so explicitly rather than printing a large number and moving on."
     }
   ]
 }

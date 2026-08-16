@@ -145,7 +145,8 @@ npm run verify     # build + lint + test — the gate before any commit. nothing
 npm run test       # vitest, whole workspace
 npm run bench      # performance benchmarks
 npm run dev        # the demo game, on :5173. what proves the kit works
-npm run size       # per-package gzipped size against the budget in kit.json
+npm run size       # per-package gzipped size vs kit.json. exclusive backends charged at the heaviest, never summed
+npm run gallery    # every exhibit's logic/art split, and the 200-line logic cap, enforced
 npm run lint       # the house rules above, enforced. determinism, layering, doc coverage
 ```
 
