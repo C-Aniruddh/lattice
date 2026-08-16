@@ -1198,7 +1198,7 @@
       "id": "G99",
       "phase": "gallery",
       "role": "lattice-scribe",
-      "title": "The landing page",
+      "title": "The landing page — a live argument, not a brochure",
       "package": "*",
       "paths": [
         "site/**"
@@ -1219,14 +1219,18 @@
         "G13"
       ],
       "acceptance": [
-        "clean, minimal, dark, IBM Plex Mono throughout",
-        "the gallery IS the page — exhibits are the content and prose is the caption",
-        "every exhibit runs live and links to its source",
-        "the page is not part of the kit and is not bound by the zero-asset rule; nothing it does leaks into packages/"
+        "NOTHING on the page is a picture of Lattice. Everything is Lattice, running — no screenshots, no video, no watch-the-demo button",
+        "the hero is a live isometric world rendering the moment the page paints, playable rather than merely animated: drag to pan, scroll to zoom, tap something and it responds",
+        "the gallery is fourteen LIVE scenes in a grid, not fourteen thumbnails — fourteen worlds animating at once in a page lighter than one hero image is a claim no competitor can make",
+        "chrome minimal, content maximal: IBM Plex Mono, near-black, almost no ornament — the type gets out of the way so the product is the only loud object",
+        "proof as numbers rather than adjectives: zero dependencies, zero assets, nine packages, ~78 kB gzipped, ~2,300 tests, and the live frame time shown on the page",
+        "the agent story is prominent and early — install the skills, point an agent at it, get a game. Show the actual invocation and what it produces",
+        "fast on a mid-range phone: tiles paused until scrolled into view, hero at a lower cadence off-screen. A page selling frame-time discipline cannot stutter",
+        "every tile links to its source, because a visitor who likes a tile wants the file immediately"
       ],
       "status": "todo",
       "owner": null,
-      "notes": ""
+      "notes": "If the hero is static for even a second on load it reads as an image and the whole premise is lost. The page should hold itself to the zero-asset rule wherever it can even though it is exempt — a landing page that quietly needs a sprite sheet to look good is an argument against its own product."
     },
     {
       "id": "G14",

@@ -132,12 +132,73 @@ cycle, and they matter more than the exhibits.
 
 ## The landing page
 
-Built last, by an agent, once the exhibits exist.
+Built last, by an agent, once the exhibits exist. It has one job: **make Lattice the obvious
+choice for anyone building an isometric game with an agent, within about four seconds of
+arriving.**
 
-- **Clean, minimal, dark.** IBM Plex Mono throughout.
-- The gallery is the page. Exhibits are the content; prose is the caption.
-- Each exhibit runs live and links to its source, because the source is the point.
+### The resolution of the two briefs
 
-Note that the landing page is **not part of the kit** and is not bound by the zero-asset rule
-— a webfont is fine there. Nothing it does may leak into `packages/`, and no exhibit may
-depend on it.
+"Clean, minimal, dark, IBM Plex Mono" and "a visual treat showing the full wrath of the kit"
+sound like opposite instructions. They are not, and the resolution is the whole design:
+
+> **The chrome is minimal. The content is maximal.**
+
+Restrained monospace typography, near-black ground, almost no ornament, generous space — and
+inside that frame, worlds that move. Every dev-tool page worth remembering works this way: the
+type gets out of the way so the thing being sold is the only loud object on screen. A page
+that is itself decorated competes with its own product.
+
+### The one rule that makes it a treat rather than a brochure
+
+**Nothing on this page is a picture of Lattice. Everything is Lattice, running.**
+
+No screenshots. No recorded video. No "watch the demo" button. The hero is a live isometric
+world rendering in a canvas the moment the page paints, and the gallery below it is fourteen
+*live* scenes in a grid — not fourteen thumbnails. Fourteen worlds animating at once, in a
+page that weighs less than one hero image on a typical framework site, is a claim no
+competitor can make and no visitor can misread.
+
+That single decision does the persuading. A visitor does not need to be told the renderer is
+fast; they are watching fourteen of them.
+
+### What the page has to land, in order
+
+1. **The first frame.** A world, moving, before any text is read. Saturated, framed to fill,
+   with something already happening in it — pilgrims walking, a light coming on, a crane
+   turning. If the hero is static for even a second on load, it reads as an image and the
+   entire premise is lost.
+2. **What it is, in one line**, under it. Not a feature list.
+3. **The proof, as numbers rather than adjectives.** Zero dependencies. Zero asset files.
+   Nine packages. Roughly 78 kB gzipped for all of them. ~2,300 tests. A frame budget the
+   page is meeting live — and it may as well *show* the frame time, because a page confident
+   enough to display its own render cost is making an argument.
+4. **The agent story, prominently and early.** This is the differentiator and it is the part
+   a generic gamedev library cannot copy: install the skills, point an agent at it, get a
+   game. Show the actual invocation. Show what an agent produces. The audience is people who
+   will build this *with* an agent, and the page should be legible to the agent too.
+5. **The gallery.** Fourteen live tiles, each one line of caption, each linking to source.
+   The source is the point — a visitor who likes a tile wants the file, immediately.
+6. **One paste-able example** that compiles, sized so the whole thing fits on screen at once.
+
+### Interaction
+
+The hero should be **playable, not merely animated** — drag to pan, scroll to zoom, tap
+something and watch it respond. The moment a visitor discovers the header image is a game,
+the page has won, and that discovery should take under two seconds of idle cursor movement.
+
+Scroll can direct the hero: day into night as the reader descends, or an empty valley filling
+in. The kit already does this; the page should use its own product as its scroll animation
+rather than importing a library to fake one.
+
+### Constraints
+
+- The page is **not part of the kit** and is not bound by the zero-asset rule — a webfont is
+  fine here. But it should hold itself to the rule anyway wherever it can, because a landing
+  page that quietly needs a sprite sheet to look good is an argument against its own product.
+- **Nothing it does may leak into `packages/`**, and no exhibit may depend on it.
+- It must be **fast on a phone**. Fourteen live scenes is a spectacle on a laptop and a
+  disaster on a mid-range Android unless the tiles are paused until scrolled into view and
+  the hero drops to a lower cadence off-screen. The kit gives you exactly the tools for this
+  and it would be embarrassing to get wrong on a page selling frame-time discipline.
+- **It works with JavaScript disabled** to the extent of showing what the project is. Not
+  gracefully — just honestly.
