@@ -1,7 +1,8 @@
 # The gallery
 
-Lattice does not ship one demo. It ships **10–15 small examples**, shown on a landing page,
-each of which a visitor can understand in one to two minutes.
+Lattice does not ship one demo. It ships **fourteen small examples**, shown on a landing page,
+each of which a visitor can understand in one to two minutes — **and one hero**, which is the
+page's playable header and is [named and bounded below](#the-one-hero-and-the-one-exemption).
 
 That is a deliberate choice over a single flagship game, for three reasons:
 
@@ -10,7 +11,9 @@ That is a deliberate choice over a single flagship game, for three reasons:
   build things nobody has designed yet, which is the actual claim.
 - **Small exhibits get finished and stay beautiful.** A full game accretes systems until the
   art stops being the priority, which is precisely what happened to the first attempt here —
-  it reached 1,450 lines and a near-black opening frame.
+  it reached 1,450 lines and a near-black opening frame. The hero is the single place that risk is
+  taken deliberately, and rule 1 still binds it — which is the whole difference between a flagship
+  and a header.
 - **They are the documentation people actually use.** Nobody reads an API reference to find
   out how a thing feels. They open the example nearest what they want and start deleting.
 
@@ -29,13 +32,17 @@ not belong in an exhibit.
    cannot say which in a sentence, it is two exhibits or none.
 3. **Something moves before the visitor does anything.** A static first frame reads as a
    screenshot of a game rather than a game.
-4. **Under 250 lines, most of it art.** The logic-to-art ratio is the kit's own report card:
-   art code growing means the kit is working, logic code growing means it is not.
+4. **Under 200 lines of *logic*. Art is not counted.** This rule used to cap an exhibit's whole
+   line count at 250, and it was measuring the wrong thing — art is precisely what the gallery
+   exists to encourage, and a cap that a beautiful exhibit cannot meet is either ignored or met
+   by making exhibits uglier. The number did not go up; it moved off the count that includes art
+   and onto the count that does not. The classification and the one command that checks it are
+   in [The line rule](#the-line-rule) below, because a rule nobody can evaluate is not a rule.
 5. **Deterministic.** Same seed, same world. Every exhibit takes its seed from the URL so a
    visitor can share exactly what they saw.
 6. **Zero assets, like everything else here.** Drawn and synthesized, no exceptions.
 7. **The overlay is `@lattice/ui`, not canvas text.** This is a rule rather than a preference,
-   and it exists because an audit found that **not one of the fifteen rows below named `ui` at
+   and it exists because an audit found that **not one of the rows below named `ui` at
    all**. A whole package reached 100% coverage with no consumer in the entire plan — and the
    one UI-shaped artifact in the gallery, the control panel, lives in `examples/_shared`
    precisely because `ui` is deliberately not a controls library. So the HUD is where `ui`
@@ -45,6 +52,131 @@ not belong in an exhibit.
    It also carries the one cross-package promise **nothing has ever executed**: `draw`'s
    `paletteVars` reaching the DOM as CSS custom properties, so the overlay darkens with the
    world instead of glowing in daylight colors over a night scene.
+
+---
+
+## The line rule
+
+**An exhibit's logic is under 200 code lines. Its art is not counted at all.**
+
+The old rule capped the total, and the first exhibit came in at five times it while being exactly
+the thing the rule was written to produce. Both were wrong, and they were wrong in different
+directions: the cap was measuring the wrong quantity, and the exhibit was not an exhibit. This
+section replaces the cap; the [exemption](#the-one-hero-and-the-one-exemption) settles the exhibit.
+
+Three parts, each of them checkable by someone who did not write the exhibit.
+
+### What a code line is
+
+A line that is neither blank nor entirely a comment.
+
+```bash
+grep -cvE '^[[:space:]]*($|//|/\*|\*)' src/main.ts
+```
+
+Comments are excluded because prose is a load-bearing part of this product (non-negotiable 5), and
+a rule that counted it would be a rule against explaining yourself. This is not a new metric: run
+it over Lamp Road's nine modules and it returns **1,286**, and over the `<style>` block in its
+`index.html` it returns **104** — the two numbers that exhibit's author reported by hand. A measure
+that reproduces the figure already published is one nobody has to be talked into.
+
+### Which module is which
+
+**Classification is per module, and the module declares itself.** An art module carries `@art` on
+its own line in its header doc comment. Everything else is logic. Non-negotiable 4 already makes a
+module's first doc line the place a module confesses what it is; this is that habit, not a new one.
+
+> **A module is `@art` if deleting it would change only what the exhibit looks like or sounds
+> like.** It may draw, synthesize, and write to the DOM. It may not hold state that outlives a
+> frame, may not return a value that any decision reads, and may not move a number the player is
+> playing for.
+>
+> **Everything else is logic, and every ambiguous module is logic.** The budget is on logic, so
+> the tiebreak has to cost the author something — otherwise the classification drifts to wherever
+> the author needs it to be, which is what a line-by-line split does today.
+
+There is no line-by-line classification and deliberately no way to ask for one. A module that is
+half art and half wiring gets **split**, and the split is the point rather than the overhead: an
+author who wants a larger art budget pays for it by moving art out of the file the next reader has
+to understand. Lamp Road's `ambient.ts` was already written this way and says so in its first line
+— *"everything that moves and changes no number… it has its own module precisely because it is
+mechanically inert."* The rule asks every exhibit to do what that one file already did.
+
+The cases worth settling in advance, from the only exhibit that exists:
+
+| module | verdict | why |
+|---|---|---|
+| `sprites.ts`, `sky.ts`, `ambient.ts`, `palette.ts` | **art** | they draw and nothing else. Delete any one and the game still plays |
+| `sound.ts` | **art** | four recipes and a bed. Synthesis is art; the zero-asset rule is the only reason it is code |
+| the CSS in `index.html` | **art** | uncounted, like every other art line. An exhibit's whole appearance may live here |
+| `valley.ts` | **logic**, though it reads as art | it is the landform *and* the map — the road, the stations, and the height field that hit-testing and the economy both read. Delete it and nothing runs |
+| `hud.ts` | **logic** | it reads game state, formats it, and owns the button that lights a lamp. Its *appearance* is the CSS, which is art, and that is the seam rule 7 already asks for |
+| `main.ts`, `rules.ts` | **logic** | wiring, state, the frame, the economy |
+
+### The one command
+
+```bash
+cd examples/<exhibit>
+grep -LE '^[[:space:]]*\*?[[:space:]]*@art\b' src/*.ts | xargs cat |
+  grep -cvE '^[[:space:]]*($|//|/\*|\*)'
+```
+
+Under 200 and it passes. `examples/_shared` is never counted — the bootstrap and the control panel
+are gallery instruments rather than parts of any exhibit — and neither is anything in `packages/`.
+An `npm run gallery` that prints the split for every exhibit and fails the one that is over is
+routed as a finding; until it exists, the two lines above are the rule.
+
+### The ratio stays a report card, and is never a gate
+
+Rule 4 used to carry the ratio as its justification, and the ratio keeps that job: **every author
+reports the split, and no number gates on it.** An art *floor* would be met with padding within a
+week, and rule 1 already fails an exhibit that is not worth looking at. The cap binds the half that
+gets worse as it grows; the ratio is how the kit reads its own results across fourteen of them.
+
+### Why 200 is not a relaxation
+
+250 was chosen when it covered everything. 200 on logic alone is therefore a *tightening* for any
+exhibit that would have spent its budget on wiring, and a removal of the ceiling only from the half
+that was the point. If an exhibit cannot state its one idea in 200 lines of logic, it is two
+exhibits or none — which is rule 2, arriving at the same place from the other side.
+
+---
+
+## The one hero, and the one exemption
+
+Lamp Road is 1,286 code lines against a cap of 250 and **622 of them are logic** against a cap of
+200. The 295/1,095 split it reported was counted line by line inside files; per module, on the
+classification above, the honest logic figure is more than twice that. **No choice of metric
+rescues it**, which is the answer to the question it raised: it is not an exhibit that grew, it is
+a game, and the gallery relabeled it on the way past.
+
+The arithmetic, so nobody has to take it on trust:
+
+| | modules | code lines |
+|---|---|---|
+| **logic** | `main.ts` 305, `valley.ts` 134, `hud.ts` 124, `rules.ts` 59 | **622** |
+| **art** | `sprites.ts` 365, `sky.ts` 130, `ambient.ts` 112, `sound.ts` 43, `palette.ts` 14, plus 104 of CSS | 768 |
+
+So it is relabeled back. **Lamp Road is the landing page's hero, and not a row.** The landing-page
+section below already requires something this document had not budgeted for — a world that is
+*"playable, not merely animated"*, that a visitor drags, zooms and taps within two seconds of
+arriving, and that "does the persuading" before any text is read. Depth is what that asks for, and
+depth is the one thing a row is forbidden to have. Lamp Road already is it.
+
+The hero is bound by **every other rule in this document** — the first frame, one idea, something
+moving, deterministic and seeded from the URL, zero assets, the `ui` overlay — and by no line rule
+at all.
+
+**There is exactly one hero and this document names it.** A row may not claim the exemption, and
+"it is really a hero" is not a defense available to an exhibit that overran. A second exhibit that
+genuinely needs the exemption has found something wrong with the gallery rather than with the rule,
+and reports it as a finding instead of taking it.
+
+`Lamplighter` therefore leaves the table below. Its one idea — capacity gating made visible, light
+as the resource, dusk as the pressure — *is* Lamp Road's, and a smaller re-take of the hero's own
+premise is the weakest row this gallery could ship. That also settles a count this document has had
+wrong throughout: the table listed fifteen rows while the landing-page section promises fourteen
+live tiles in four separate places. **Fourteen rows and one hero** is the shape.
 
 ---
 
@@ -72,14 +204,14 @@ its row is either finished or is a different exhibit.
 | **Wayfinding** | a flow field re-routing a moving crowd the instant the map changes | `iso.path` |
 | **Builder** | placement: footprints, a ghost, validity, and the tap→tile seam | `iso` `input` |
 | **Idle** | cost curves and buy-max in closed form, then fourteen hours of offline in one frame | `sim` |
-| **Lamplighter** | capacity gating made visible — light as the resource, and dusk as the pressure | `sim` `draw.light` |
 | **Replay** | record, scrub, and prove it: the same seed and log land on the same pixel | `loop` `persist` `input` |
 | **Migration** | a v1 save opened by a v5 build, stepping the chain in front of you | `persist` |
 | **Instrument** | sound with no files — a board that shows the synthesis as it plays | `audio` |
 | **Resonance** | a game you play *by ear*: gates hum a chord and you have to answer it | `audio` `draw.light` |
 
-Fifteen. The list is expected to lose one or two that turn out to be dull and gain one or
-two nobody has thought of.
+Fourteen, plus the hero. `Lamplighter` was the fifteenth and is now the hero's own premise; see
+[The one hero](#the-one-hero-and-the-one-exemption). The list is still expected to lose one or two
+that turn out to be dull and gain one or two nobody has thought of.
 
 ### Resonance, because an audio package needs a game and not a demo
 
@@ -136,8 +268,10 @@ combinations nobody designed for, and every place two of them hand-roll the same
 of bootstrap is a gap in the kit rather than a coincidence.
 
 So each exhibit's author reports the same two things the first demo was asked for: **where the
-kit fought back**, and **the logic-to-art line split**. Those reports are the input to the next
-cycle, and they matter more than the exhibits.
+kit fought back**, and **the logic-to-art line split** — the latter from the command in
+[The line rule](#the-line-rule) rather than by hand, so that fourteen reports are one series
+instead of fourteen different opinions about what a line is. Those reports are the input to the
+next cycle, and they matter more than the exhibits.
 
 ---
 

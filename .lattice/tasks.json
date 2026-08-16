@@ -1828,12 +1828,12 @@
       "dependsOn": [],
       "acceptance": [
         "it takes a bare number and rejects only 0 and NaN, so stepMs:16 against a 16.667ms loop is a long press at 432ms, a fling 4% low, and a log persist refuses months later",
-        "take the loop, or { stepMs: Millis } structurally — the branded type exists precisely so this substitution cannot compile",
+        "CORRECTED AFTER THE FACT: this criterion originally claimed core has a branded duration type that would stop the substitution. It does not — see docs/rfc/durations.md. A brand separates kinds and a duration has only one kind. What shipped is the right answer: take the loop itself, structurally, and cross-check the two fields it publishes.",
         "also: no input.setProfile, so retuning one threshold means dispose, recreate, and re-register every handler"
       ],
       "status": "done",
       "owner": null,
-      "notes": "The gallery bootstrap removed the field from its own options entirely and passes loop.stepMs itself, which is the workaround shape."
+      "notes": "The acceptance list above contains one criterion I wrote that was false, corrected in place rather than deleted, because a wrong claim left in a done task is prior art the next agent will find."
     },
     {
       "id": "K14",
@@ -1912,8 +1912,8 @@
       "dependsOn": [
         "K5"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-builder",
       "acceptance": [
         "iso now exports isEdgeOn — the predicate for a wall whose two points have equal gx and gy deltas, which projects to a vertical line and draws zero pixels",
         "isoWall should assert on it in dev, or refuse and name the two tiles. iso cannot warn: it has no console and no dev/prod distinction, so this is draw side",
@@ -1936,8 +1936,8 @@
         "maxVoices is one integer in a comparison — no allocation, no handle to invalidate, nothing downstream with a correctness claim that it did not change",
         "add the readers too, per the new eleventh non-negotiable"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-builder",
       "notes": "The sharpest row in docs/rfc/live-options.md."
     },
     {
@@ -1955,8 +1955,8 @@
         "this is the strongest single piece of evidence for the readback rule: mutability is the interesting half and gets thought about, readback costs three lines and gets skipped",
         "also fix the record.ts comment in draw/src/index.ts — it claims ui wants the recording surface for layout measurement, and nothing in ui references it. The real justification is a PLANNED consumer, the Replay exhibit, and the replacement text must say planned rather than reading as already-true"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-builder",
       "notes": ""
     },
     {
@@ -1974,8 +1974,8 @@
         "BUT the RFC author found a hole in their own recommendation: making actions live is NOT covered by that refusal. The log stores RawSamples and actions is not in the compatibility triple, so a mid-recording rebind silently changes what a replay DOES with a triple that still matches",
         "either setActions refuses too, or actions joins the triple — decide and say why"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-builder",
       "notes": "Self-caught by the RFC author. A recommendation that finds its own hole is worth more than one that does not."
     },
     {
@@ -1995,8 +1995,8 @@
         "iso frees 0.64 kB when ChunkGrid is deleted, which is more than its entire remaining headroom — that is the shape of the argument to apply here",
         "do NOT raise the global. A limit that moves outward whenever something exceeds it is not a limit"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-builder",
       "notes": ""
     },
     {
@@ -2015,8 +2015,8 @@
         "0.64 kB gzipped against iso having 0.45 kB of headroom — it is larger than everything iso has left, spent on the only module with no reader",
         "record the revisit trigger: a second WRITER, not a bigger map. A bigger map is new TileGrid(512,512); endless procedural terrain is tileSourceOf and free"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-builder",
       "notes": ""
     },
     {
@@ -2029,8 +2029,8 @@
         "docs/rfc/durations.md"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "owner": null,
+      "status": "done",
+      "owner": "lattice-architect",
       "acceptance": [
         "core exports EpochMillis and MonotonicMillis, both branded — but neither is a DURATION. Millis belongs to @lattice/loop, is a bare number alias, and its own doc comment says it guards nothing",
         "so a { stepMs: Millis } parameter was never an available shape for a sibling package, and the acceptance criterion I wrote for K13 asserted that it was",
@@ -2050,8 +2050,8 @@
         "examples/_shared/**"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-builder",
       "acceptance": [
         "docs/rfc/depth-bucket.md specifies it and assigns it to G0. G0 shipped the bootstrap and the panel without it",
         "the exhibit applied the named PATTERN by hand — one array, one index space, the subtraction gone — but the add-time index compare that makes the silent mis-pick unreachable is the helper and it does not exist",
@@ -2071,8 +2071,8 @@
         "docs/GALLERY.md"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "owner": null,
+      "status": "done",
+      "owner": "lattice-designer",
       "acceptance": [
         "the rule postdates this exhibit, so the question is which is wrong — the exhibit or the rule",
         "the split is 295 logic / 1,095 art, and art is what the rule was meant to encourage, so a raw line cap may be measuring the wrong thing",
@@ -2080,6 +2080,47 @@
         "whatever is decided binds the other thirteen exhibits, so decide before they are written rather than after"
       ],
       "notes": "Flagged by the exhibit author as the largest single thing wrong with it as a gallery row."
+    },
+    {
+      "id": "K26",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "Delete the Millis and Seconds aliases from loop",
+      "package": "loop",
+      "paths": [
+        "packages/loop/**"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "these are bare number aliases whose own doc says they guard nothing, and they are the VECTOR for a false claim that a branded duration exists",
+        "kit.json lists them among loop exports alphabetized beside Loop and Scheduler, one package away from core EpochMillis, with nothing distinguishing a type that guards from a synonym for number — and agents read the manifest first, because AGENTS.md tells them to",
+        "36 type positions; every use site field name already ends in Ms or Seconds, so the deletion is mechanical",
+        "this is the actual cause and the cheapest fix in the set"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "The prose was never the failure — four documents stated the truth, two of them in the source of the packages involved, and the false claim was written twice anyway."
+    },
+    {
+      "id": "K27",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "tools/gallery.mjs — enforce the logic cap the rule now states",
+      "package": "*",
+      "paths": [
+        "tools/gallery.mjs",
+        "package.json"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "print each exhibit logic/art split and fail the one over 200 logic code lines",
+        "classification is per MODULE via an @art tag in the header doc comment, per GALLERY.md — a module is art if deleting it changes only what the exhibit looks or sounds like, holds no state past a frame, and moves no number the player is playing for",
+        "ambiguity resolves to logic. Until this tool exists the grep in GALLERY.md is the rule, which means the rule is currently unenforced",
+        "also worth a lint rule for the one lintable piece: every duration parameter name ends in Ms or Seconds, which catches the after(3000)-means-fifty-minutes class"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
     }
   ]
 }

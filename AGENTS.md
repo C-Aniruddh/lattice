@@ -171,6 +171,14 @@ names a reader guesses correctly before reading the body.
 - **`readonly` on every interface field that is not deliberately mutated.** `Readonly<T>` on
   every array that crosses a package boundary.
 
+- **A brand separates *kinds*; it never checks a *value*.** `EpochMillis` and `MonotonicMillis`
+  are two kinds of instant and the brand stops you swapping them. A duration has only one kind,
+  so an `asMillis(16)` would cheerfully brand the exact mistake it was invented to prevent.
+  Where a duration has one correct value that something else already knows, **take that thing,
+  not the number** — `step: loop`, not `stepMs: 16`. Where it does not, declare it structurally
+  with a second *derived* view that cross-checks the first. Everywhere else it is a plain
+  `number` whose parameter name ends in its unit. `docs/rfc/durations.md` has the reasoning.
+
   **But know what `readonly` does not do.** TypeScript *ignores property `readonly`
   modifiers when checking assignability.* Two interfaces identical but for `readonly` are
   mutually assignable, so a `Readonly<Vec2>` flows happily into a parameter typed `Vec2` and

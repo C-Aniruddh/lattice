@@ -1,12 +1,13 @@
 # examples/_shared
 
-What every exhibit in the gallery shares. Two modules, independent of each other, and neither of
+What every exhibit in the gallery shares. Three modules, independent of each other, and none of
 them a kit feature.
 
 | | |
 |---|---|
 | `bootstrap()` | the thirty lines of boot that would otherwise sit at the top of fourteen files |
 | `controlPanel()` | sliders over the kit's **real** parameters, every value in the URL |
+| `createBucket()` | the array a `DepthSorter`'s integers index into, and the one compare that keeps it aligned |
 
 ```bash
 npx vite examples/_shared      # http://localhost:5183 — the harness, which is this folder's proof
@@ -47,6 +48,101 @@ boot.start();
 `src/harness.ts` is the same thing in full, running, and is the file to copy from. It is not an
 exhibit and never will be — it is eleven blocks and a ninety-second day, chosen because between
 them they touch every seam this folder owns.
+
+---
+
+## The frame bucket
+
+`docs/rfc/depth-bucket.md` is the specification and the argument; this is how to use it.
+
+```ts
+import { createBucket } from '../../_shared/src/index.js';
+
+type Drawable = Thing | Walker;                        // heterogeneous, and none of it reaches iso
+const bucket = createBucket<Drawable>(boot.order);      // once, at setup
+
+const paint = (d: Drawable): void => { … };             // hoisted. a closure here is one per frame
+
+const passes: Passes = {
+  solids(pen) { framePen = pen; bucket.each(paint); },
+};
+
+boot.onRender((pen) => {
+  bucket.clear();                                       // clears boot.order too — see below
+  for (const t of things) bucket.add(t, t.gx, t.gy, t.def.w, t.def.d, t.top);
+  for (let i = 0; i < walkers; i++) bucket.addPoint(pilgrims[i], here.gx, here.gy, z);
+  renderFrame(pen, passes, boot.order);
+});
+
+boot.onAction('touch', () => {
+  const hit = bucket.pick(underFinger);                 // a Drawable | undefined. never an integer
+});
+```
+
+**No exhibit ever sees an insertion index again**, which is the whole deliverable. `T` is opaque
+and is meant to be a union — the demo's is `Thing | number` — and the generic stops here:
+`boot.order` is a plain `DepthSorter`, and `renderFrame`, `Passes.solids` and `pickSorted` never
+hear about it.
+
+### What cannot go wrong, and what merely throws
+
+Three of the four traps in the RFC are *unrepresentable* rather than caught:
+
+| the mistake | why it cannot be written |
+|---|---|
+| `index - things.length` | one array, and no caller is handed an index to do arithmetic on |
+| the array and the sorter disagreeing about a fill | `add` does *both* writes; there is no way to do one without the other |
+| clearing one and not the other | `bucket.clear()` clears the sorter too |
+
+What is left is reaching *around* the bucket to `order.add`, which a helper cannot prevent. It is
+detected at three points instead — the index compare in `add`, the count guard in `each`/`pick`,
+and a per-item bound in `each` for the case the cull would otherwise hide — so the whole class is
+thrown, named, and on the offending line.
+
+**`clear()` clearing the sorter is the one departure from the RFC's surface.** The RFC kept the two
+clears separate in case a game shared its sorter with something else in the same frame, but `add`
+already refuses that by name (invariant B3), so there is never anything in the sorter the bucket
+did not put there. `order.clear()` is idempotent, so the RFC's `order.clear(); bucket.clear();`
+still reads and behaves exactly as written.
+
+### It costs about 3%
+
+`test/bucket.bench.ts`, against the hand-written parallel array it replaces — same scene, same
+sorter, same walk, so the difference is one integer compare per drawable and one bound check per
+painted item:
+
+| drawables | by hand | bucket | |
+|---|---|---|---|
+| 100 | 0.0125 ms | 0.0143 ms | 1.14× |
+| 400 | 0.0424 ms | 0.0449 ms | 1.06× |
+| 2000 | 0.174 ms | 0.179 ms | 1.03× |
+
+The realistic number is the 400 row — a busy scene after culling — where the helper costs 2.5 µs
+against an 8 ms frame budget, and the ratio falls as the scene grows because the sort dominates.
+`npm run bench` does **not** run this file: the root `benchmark.include` is scoped to `packages`.
+Point a config at `examples/*/test/**` to reproduce it.
+
+### The one wart
+
+`each(visit)` hands the visitor an item and a sorted position and nothing else, so a visitor that
+needs the `pen` must either close over it — a closure per frame, which is what the doc comment
+tells you not to do — or read it from a module-level slot, which is what `src/harness.ts` does and
+labels. A context-carrying overload (`each(ctx, (ctx, item, pos) => …)`) would remove it. Left out
+because the RFC's surface does not have one and fourteen exhibits have not yet said they want one;
+if they fork `each`, that is the promotion criterion answering itself.
+
+### Not sorted, not detected
+
+`Bucket.each`'s doc in the RFC promises a throw when the sorter has not been sorted this frame.
+**It does not throw, and it cannot from here.** `DepthSorter` publishes `count`, `clear`, `add`,
+`addPoint`, `sort` and `indexAt`, and none of them separates "not sorted" from "sorted and nothing
+culled": before `sort()`, `order.count === bucket.count` and `indexAt(i) === i`, and a legitimate
+unculled frame whose fill happened to be in depth order is bit-identical to it. Any detector built
+on that is a false alarm on a real frame, which is worse than no detector.
+
+The fix is three lines in `packages/iso` — a `sorted` flag that `add` and `clear` lower and `sort`
+raises — and it is routed, not done. `test/bucket.test.ts` asserts the gap as a tripwire so that
+whoever adds the flag is told where to come back to.
 
 ---
 
@@ -225,7 +321,7 @@ Reported as findings, in the order they cost the most.
 
 1. **`createInput.stepMs` takes a bare `number`.** Any positive value is accepted and every wrong
    one is silent. `input` is layer 2 and `loop` is layer 1, so it may take the loop — or a
-   `{ readonly stepMs: Millis }` structurally — and the literal becomes unconstructable.
+   `{ readonly stepMs, readonly stepSeconds } (the loop itself)` structurally — and the literal becomes unconstructable.
 2. **`beginFrame`'s `light` is an optional field and `renderFrame` uses `pen.light?.composite()`.**
    Omitting it is completely silent. Cheapest fix: `LightField.begin` throws when
    `pen.light !== this`, naming the missing option. One comparison, at the first frame.
@@ -271,9 +367,11 @@ settable state.
   `bootstrap` only centers on `bounds`, because a fresh camera looks at world (0, 0) — the *top
   corner* of the map in a 2:1 projection — and an exhibit that forgets to frame would otherwise
   open on empty space beside its own world.
-- **A drawable list.** Which object owns the parallel array beside `DepthSorter` has an RFC of its
-  own (`docs/rfc/depth-bucket.md`). Guessing at it here would put fourteen exhibits on the wrong
-  side of the answer.
+- **A drawable list with passes, layers or a camera in it.** Which object owns the parallel array
+  beside `DepthSorter` had an RFC of its own (`docs/rfc/depth-bucket.md`) and now has an answer —
+  `createBucket`, above — but the answer is deliberately *only* the array. A bucket that knew
+  about passes is a `DrawList`, which `draw` deleted; a bucket that sorted would reopen the window
+  `renderFrame` closes by sorting immediately before the solids pass.
 - **A HUD, a palette schedule, or any sound.** Those are the exhibit.
 - **Anything exhibit-specific in the panel.** A control must name a kit parameter. An exhibit's
   own value — a day length, a spawn rate — may be written as a `Control` literal, and the required
@@ -286,3 +384,12 @@ settable state.
   it. It is covered by `npm run typecheck` (`tsconfig.check.json` includes `examples/*/src/**`) and
   by any exhibit that adds `{ "path": "../_shared" }` to its own references. Adding it to the root
   is one line in a file this task does not own.
+- **`test/` here is run but not typechecked.** `vitest.config.ts` includes
+  `examples/*/test/**` so `npm run test` runs `test/bucket.test.ts`, but `tsconfig.check.json`
+  includes only `examples/*/src/**`, so `npm run typecheck` never looks at it. That is the exact
+  hazard `AGENTS.md` warns about for `@ts-expect-error`, one folder over. Two words in
+  `tsconfig.check.json`; not this task's file.
+- **`examples/demo` should adopt `createBucket`.** It hand-rolls the pattern correctly today, in
+  about a dozen lines and two `undefined` guards that exist only because indexed access is
+  `T | undefined`. The helper deletes those and adds the compare the hand-rolled version has no
+  way to have. Belongs to whoever holds `examples/demo`.
