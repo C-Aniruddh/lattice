@@ -755,7 +755,7 @@
         "one to two minutes end to end — no ending, no meta progression, no settings",
         "reports the logic-to-art line split and where the kit fought back"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-designer",
       "notes": "Scope changed mid-build: this is one exhibit in a 10-15 item gallery, not the demo. See docs/GALLERY.md."
     },
@@ -892,8 +892,8 @@
         "the knobs chosen are the ones with a visible wrong end: voice ceiling at 2 chokes a burst, offline exponent at 1.0 pays out uncapped, tap slop at 1px makes touch unusable",
         "if an exhibit wants a slider for something the kit does not expose, that is a finding — report it"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-architect",
       "notes": "Lives in examples/_shared/, never in packages/. It is a gallery instrument; @lattice/ui is deliberately not a controls library."
     },
     {
@@ -1579,8 +1579,8 @@
         "pxToLevels to pair with levelsToPx: every elevation iso produces is world pixels and every height a sprite author writes is storeys, so  appears at every boundary in game code",
         "a contract test above iso and draw — both have full coverage and no shared test, which is exactly how this got shipped"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-builder",
       "notes": "The single largest gap the exhibit found. Findings 1, 2 and 11 are one fix."
     },
     {
@@ -1601,8 +1601,8 @@
         "renderFrame calls visibleTileBounds with no marginTiles, so a 440px summit vanished the moment its base left the screen — expose FrameOpts.maxHeightPx or a margin on Passes.terrain",
         "the one place draw takes ownership from the game is the one place the game had the number"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-builder",
       "notes": "Findings 3 and 9."
     },
     {
@@ -1622,8 +1622,8 @@
         "a misalignment is a silent mis-pick, which is precisely the bug class pickSorted exists to prevent",
         "decide: an optional item channel on DepthSorter, a shared helper in examples/_shared, or a documented refusal — but ten exhibits writing it ten times is not an answer"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-architect",
       "notes": "Finding 6. The design was right and the ergonomics are wrong; those can both be true."
     },
     {
@@ -1643,8 +1643,8 @@
         "weighted pathfinding is iso.path headline feature and the only simplifier in the kit undoes it",
         "the exhibit worked around it by passing a DIFFERENT predicate than its cost function, which nobody should have to discover"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-builder",
       "notes": "Finding 5."
     },
     {
@@ -1667,8 +1667,8 @@
         "Vite HMR re-evaluates the module, createInput correctly throws on the double bind, and the FIRST instance keeps rendering — a zombie game with a frozen HUD. One line in input README saves every example an hour",
         "wallText is hidden by its own roof overhang in the exhibit — either the overhang or the text needs to know about the other"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-builder",
       "notes": "Findings 8, 10, 13b, and one drawing finding."
     },
     {
@@ -1688,8 +1688,8 @@
         "the whole rate went through one edge EdgeScale and was divided back out per lamp with a guard; it works, stays Tier A, and the division is the tell",
         "decide whether the linear-producer shape is the right constraint and the docs should say so loudly, or whether a non-linear edge belongs in the surface"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-architect",
       "notes": "Finding 7. EdgeScale is the sanctioned hook, so this may be a docs answer rather than an API one."
     },
     {
@@ -1708,8 +1708,8 @@
         "Palette.lerp requires both stop sets to define exactly the same slots, which is right — but there is no way to add a GAME slot that participates in the lerp without redefining all three sets",
         "the exhibit sand had to live outside the palette entirely, so it does not roll at dusk with everything else"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-builder",
       "notes": "Finding 13."
     },
     {
@@ -1730,8 +1730,8 @@
         "examples/demo/package.json declares @lattice/persist and @lattice/ui, neither imported",
         "record what the exhibit cut left with NO consumer at all — persist entirely, sim.offline and sim.schedule in full including the CatchUp.fromSeconds that D2 added and nothing now calls, the whole replay story, FlowField, ChunkGrid, anchor"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-scribe",
       "notes": "The unused-feature list is the more important half: those are shipped features with zero real usage."
     }
   ]
