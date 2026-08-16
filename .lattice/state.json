@@ -36,6 +36,8 @@
     "verify": "green",
     "packages": 8,
     "publicSymbols": 484,
-    "tests": 2312
+    "tests": 2056,
+    "testFiles": 83,
+    "$note": "tests measured with `npx vitest run`, not estimated. An earlier value here was written from memory and was wrong by 256 \u2014 agents read this file first, so a number in it that nobody measured is worse than no number."
   }
 }

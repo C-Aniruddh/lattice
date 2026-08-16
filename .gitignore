@@ -5,3 +5,4 @@ coverage/
 .DS_Store
 .vite/
 .lattice/reports/
+.lattice/doccheck/

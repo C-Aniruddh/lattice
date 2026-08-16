@@ -11,6 +11,21 @@ is loop-invariant and V8 cannot hoist the work out of the loop.
 
 ---
 
+## Method notes
+
+Read these before the first table; every number below is measured under them.
+
+- **p50 and p99, never a mean alone.** A mean hides precisely the frame that stutters, which
+  is the one a player notices. The allocation section immediately below is the whole argument
+  for this rule, and it is the reason the rule is stated before any number is quoted.
+- **Fixed seeds.** Every benchmark drives its inputs from a seeded `Rng`, so the workload is
+  identical between runs and a change in the number is a change in the code.
+- **The machine is named**, because a number without one is not reproducible.
+- **Regressions stay in the table.** A row that got worse is more useful than a row that
+  quietly disappeared.
+
+---
+
 ## The allocation question, and what the benchmark actually said
 
 The kit's rule 7 — *the hot path allocates nothing* — costs something real: every vector
@@ -98,18 +113,6 @@ does.
 
 ---
 
-## Method notes
-
-- **p50 and p99, never a mean alone.** A mean hides precisely the frame that stutters, which
-  is the one a player notices. The allocation table above is the whole argument for this.
-- **Fixed seeds.** Every benchmark drives its inputs from a seeded `Rng`, so the workload is
-  identical between runs and a change in the number is a change in the code.
-- **The machine is named**, because a number without one is not reproducible.
-- **Regressions stay in the table.** A row that got worse is more useful than a row that
-  quietly disappeared.
-
----
-
 ## `@lattice/sim`
 
 The economy's whole design rests on closed form rather than iteration, so these numbers are
@@ -132,6 +135,8 @@ hours, and only because the longer absence credits the full 24-hour horizon — 
 is not in the complexity at all. A tick-based economy would have needed 15.7 million steps
 for that row.
 
+---
+
 ## `@lattice/loop`
 
 | path | rate | per call |
@@ -147,6 +152,8 @@ for that row.
 The loop's own share of an 8 ms budget is about **0.005%**. The replay figure matters for a
 different reason: verifying an hour of recorded play takes under a third of a second, so a
 divergence check is something CI can run on every commit rather than a thing anyone schedules.
+
+---
 
 ## `@lattice/audio`
 
@@ -164,6 +171,8 @@ that runs on every call whether or not a speaker exists.
 A rejected `play` is 5× cheaper than an accepted one, which is the right shape: the throttle
 exists precisely for the case where a game fires the same sound forty times in a frame.
 
+---
+
 ## `@lattice/persist`
 
 | operation | rate |
@@ -176,6 +185,8 @@ exists precisely for the case where a game fires the same sound forty times in a
 
 The first three are the ones that run every frame, and all three are effectively free. The
 encode/decode figures are per *save*, which happens every few seconds at most.
+
+---
 
 ## `@lattice/input`
 

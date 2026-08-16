@@ -5,9 +5,17 @@
   "description": "The grid underneath. A TypeScript kit for isometric, deterministic, zero-asset games.",
   "license": "MIT",
   "type": "module",
-  "engines": { "node": ">=20.19.0" },
-  "repository": { "type": "git", "url": "git+https://github.com/C-Aniruddh/lattice.git" },
-  "workspaces": ["packages/*", "examples/*"],
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/C-Aniruddh/lattice.git"
+  },
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
   "scripts": {
     "build": "tsc --build",
     "clean": "tsc --build --clean && rm -rf packages/*/dist",
@@ -17,9 +25,10 @@
     "bench": "vitest bench --run",
     "cover": "vitest run --coverage",
     "lint": "node tools/lint.mjs",
-    "verify": "npm run build && npm run lint && npm run test",
+    "verify": "npm run build && npm run lint && npm run docs && npm run test",
     "dev": "npm run dev --workspace=@lattice/demo",
-    "size": "node tools/size.mjs"
+    "size": "node tools/size.mjs",
+    "docs": "node tools/check-docs.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
