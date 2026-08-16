@@ -204,8 +204,19 @@ for (const [id] of Object.entries(kit.packages)) {
     const lines = code.split('\n');
     const isIndex = basename(file) === 'index.ts';
 
-    /** A module that declares itself the adapter, and is therefore allowed to touch a host. */
-    const browserOnly = raw.slice(0, 2000).includes('@browser-only');
+    // A module that declares itself the adapter, and is therefore allowed to touch a host.
+    //
+    // The marker must be in the **first five lines**, which in practice means the opening of
+    // the module's doc comment. Scanning the first two kilobytes instead was wrong in a way
+    // worth recording: `persist/src/index.ts` mentions the marker in prose — "in the one
+    // module marked `@browser-only`" — and was thereby granted the exemption itself. A
+    // barrel counted as an adapter is bad bookkeeping; a barrel silently exempted from the
+    // DOM purity rule is a hole in the rule, and it was open for exactly as long as nobody
+    // read the adapter list at the bottom of a clean run.
+    //
+    // Declaring something has to look different from talking about it.
+    const header = raw.split('\n', 5).join('\n');
+    const browserOnly = header.includes('@browser-only');
     if (browserOnly) adapters.push(rel);
 
     lines.forEach((line, n) => {
