@@ -1,10 +1,16 @@
 /**
- * The whole of the economy: two stocks, one gate, one cost curve, and a clock.
+ * The whole of the economy: **one stock**, one gate, one cost curve, and a clock.
  *
- * `lit` is a *count* the player owns, held as a stock so that one closed-form integration answers
- * for a frame and for a minute alike; `night` is the gate the dark closes, and it is binary and
- * committed at the boundary rather than varying continuously, because a rate that moves inside an
- * integral makes the answer depend on how often you asked.
+ * `night` is the gate the dark closes, and it is binary and committed at the boundary rather than
+ * varying continuously, because a rate that moves inside an integral makes the answer depend on
+ * how often you asked.
+ *
+ * There was a second node here, `lit`, and it existed for one reason: `EdgeSpec.from` was required,
+ * so a rate that multiplies nothing had to nominate an arbitrary multiplicand and divide it back
+ * out — with a `> 0` guard so the division was not `0/0`. `from` is optional now, the edge is a
+ * source, and the division and its guard are gone. That was never only tidiness: `EconomySpec.nodes`
+ * **is** the save's field order, so the workaround put a field in every save file whose only job
+ * was to be multiplied by and then divided by.
  */
 import { clamp01, smooth } from '@lattice/core';
 import {
@@ -19,7 +25,7 @@ import {
 } from '@lattice/sim';
 import { SPACING } from './valley.js';
 
-export type Node = 'lit' | 'coin';
+export type Node = 'coin';
 export type Gate = 'night';
 
 export const LAMP: CostCurve = { base: 12, growth: 1.3 };
@@ -59,11 +65,13 @@ export function coinRate(reach: Reach): number {
 
 export function createRules(reach: Reach): Rules {
   const eco = defineEconomy<Node, Gate>({
-    nodes: ['lit', 'coin'],
+    nodes: ['coin'],
     gates: ['night'],
-    // The one place the kit made this game divide: `coin` is not linear in anything the graph
-    // holds, so the whole rate goes through one edge's scale and is divided back out per lamp.
-    edges: [{ from: 'lit', to: 'coin', per: 1, scale: (s) => (s.lit > 0 ? coinRate(reach) / s.lit : 0) }],
+    // A source: the road's income is a property of the *world* — how far the light reaches — and
+    // multiplies no stock at all. `gate: 'night'` is what makes the dark actually pay: without the
+    // tag the edge is untagged, `DARK` is never read, and the HUD's "+1.7×" is a number the
+    // economy does not owe.
+    edges: [{ to: 'coin', per: 1, gate: 'night', scale: () => coinRate(reach) }],
   });
   return { eco, flow: createFlow(eco) };
 }

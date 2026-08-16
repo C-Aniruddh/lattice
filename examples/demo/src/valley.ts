@@ -98,9 +98,11 @@ export function layRoad(v: Valley): void {
     v.road.push(GATE.gx, GATE.gy);
     v.road.push(SHRINE.gx, SHRINE.gy);
   }
-  // `pathSimplify` string-pulls through anything merely *passable*, which throws away the
-  // weighted route it was just handed. Pulling against "cheap ground only" keeps the contours.
-  pathSimplify(v.road, (gx, gy) => (v.cost(gx, gy) === 1 ? 1 : 0));
+  // The same cost function the search used, which is now what `pathSimplify` wants: it pulls
+  // only where the straight line is no worse than the ground the route was already on, so the
+  // contours survive. Passing a stricter predicate — "cheap ground only" — was the workaround,
+  // and it kept the shape by refusing nearly every shortcut: five nodes here, twenty then.
+  pathSimplify(v.road, v.cost);
   v.stations = Math.max(1, Math.floor(v.road.arcLength / SPACING));
 
   const here: GridPoint = { gx: 0, gy: 0 };

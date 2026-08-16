@@ -6,59 +6,45 @@
  * the ground is a relief term plus two scales of seeded grain plus a hairline grid, and it meets
  * the water through a ring of sand.
  *
- * `terrainQuad` exists because `iso` ships a heightfield and `draw` ships only flat diamonds, so a
- * tile whose four corners sit at four different heights has to be assembled here out of
- * `gridToScreen` and `surface.poly`. It is the single largest thing the kit made this game write
- * for itself.
+ * The relief and the four corner heights used to be assembled here, out of `gridToScreen` and
+ * `surface.poly`, because `iso` shipped a heightfield and `draw` shipped only flat diamonds. That
+ * is `draw.isoTerrain` now — and extracting it found that this file had the relief term's **sign
+ * inverted**, which is invisible: terrain lit from the right still looks like terrain, while every
+ * building standing on it is lit from the left and the picture reads as flat for a reason no
+ * screenshot names. All that is left here is the game's own half — which terrain type, how much
+ * seeded grain, and the two second passes the kit deliberately does not do.
  */
 import { clamp01, hash2, noise2, toUnit, type Vec2 } from '@lattice/core';
 import { gridToScreen, heightAt, pathSample, type GridPoint } from '@lattice/iso';
-import { mix, shade, withAlpha, type Pen, type Rgba } from '@lattice/draw';
-import { SAND } from './palette.js';
-import { RIVER, SCREE, SEA, STEP_PX, type Valley } from './valley.js';
+import { isoTerrain, mix, shade, withAlpha, type Ink, type Pen, type Rgba } from '@lattice/draw';
+import { RIVER, SCREE, SEA, type Valley } from './valley.js';
 
 const pt: Vec2 = { x: 0, y: 0 };
 const sample: GridPoint = { gx: 0, gy: 0 };
 
-function corner(pen: Pen, v: Valley, at: number, gx: number, gy: number): void {
-  gridToScreen(pen.camera, gx, gy, heightAt(v.field, gx, gy), pt);
-  pen.xy[at] = pt.x + pen.snapX;
-  pen.xy[at + 1] = pt.y + pen.snapY;
-}
-
-/** Sand at this hour, blended the same way the palette is so the beach never falls out of tune. */
-export function sandAt(daylight: number): Rgba {
-  return daylight > 0.5
-    ? mix(SAND.dusk, SAND.day, (daylight - 0.5) * 2)
-    : mix(SAND.night, SAND.dusk, daylight * 2);
-}
-
 /**
- * One terrain tile, on its own four corner heights. North, east, south, west — `iso`'s order.
+ * One terrain tile: pick the ink, hand `isoTerrain` the game's own grain, then decorate.
  *
- * Four things go into the fill and none of them is a texture: relief from the difference of two
- * corner heights, a coarse patchwork of fields, a fine per-tile grain, and a hairline of the same
- * hue along two edges. Remove any one and the ground goes back to being a rug with a map on it.
+ * Two scales of seeded noise go in through `tint` rather than through a second `shade` call,
+ * because `shade` pulls toward a cool or a warm tint by distance from neutral — shading twice
+ * tints twice and the ground goes muddy. The kit folds the relief into the same one call.
+ *
+ * Both second passes read the color `isoTerrain` returned and the corners it left in `pen.xy`,
+ * so a swell glint and a hairline seam cost no projection at all.
  */
-export function terrainQuad(pen: Pen, v: Valley, gx: number, gy: number, daylight: number, sand: Rgba): void {
+export function terrainTile(pen: Pen, v: Valley, gx: number, gy: number, daylight: number): void {
   const t = v.terrain.get(gx, gy);
   const wet = t === SEA || t === RIVER;
-  const beach = !wet && v.shore.get(gx, gy) === 1;
-  let base = wet
+  const ink: Ink = wet
     ? mix(pen.palette.get('glass'), pen.palette.get('ink'), 0.36)
-    : beach
-      ? sand
-      : pen.palette.get(t === SCREE ? 'metal' : 'ground');
+    : v.shore.get(gx, gy) === 1
+      ? 'sand'
+      : t === SCREE
+        ? 'metal'
+        : 'ground';
   const field = noise2(v.seed ^ 0x9e1, gx * 0.13, gy * 0.13) * 0.1;
   const grain = (toUnit(hash2(v.seed, gx, gy)) - 0.5) * 0.11;
-  const relief = (heightAt(v.field, gx, gy + 1) - heightAt(v.field, gx + 1, gy)) / (STEP_PX * 1.5);
-  const tint = 1 + field + grain + (relief > 1 ? 1 : relief < -1 ? -1 : relief) * 0.32;
-  corner(pen, v, 0, gx, gy);
-  corner(pen, v, 2, gx + 1, gy);
-  corner(pen, v, 4, gx + 1, gy + 1);
-  corner(pen, v, 6, gx, gy + 1);
-  base = shade(base, tint);
-  pen.surface.poly(pen.xy, 4, base);
+  const base = isoTerrain(pen, v.field, gx, gy, ink, undefined, 1 + field + grain);
   if (wet) {
     // A slow swell, so still water is not a painted sheet.
     const swell = noise2(v.seed ^ 0x33, gx * 0.42 + pen.t * 0.22, gy * 0.42) * 0.5 + 0.5;
@@ -67,7 +53,8 @@ export function terrainQuad(pen: Pen, v: Valley, gx: number, gy: number, dayligh
       pen.surface.poly(pen.xy, 4, withAlpha(glint, (swell - 0.6) * (0.9 * daylight + 0.25)));
     }
   } else if (pen.camera.zoom > 0.44) {
-    // The hairline grid. Two edges only, at the tile's own hue, so it reads as a seam in the turf.
+    // The hairline grid. Two edges only, at the tile's own hue, so it reads as a seam in the turf
+    // — which is why it is three points here rather than `isoTerrain`'s four-sided `stroke`.
     pen.surface.stroke(pen.xy, 3, false, withAlpha(shade(base, 0.86), 0.4), 1);
   }
 }
@@ -149,30 +136,6 @@ export function drawSky(pen: Pen, daylight: number, cycle: number): void {
   s.softEllipse(bx, by, 96, 96, withAlpha(body, day ? 0.28 : 0.15), withAlpha(body, 0));
   s.ellipse(bx, by, day ? 18 : 13, day ? 18 : 13, withAlpha(body, 0.95));
   if (!day) s.ellipse(bx + 5.5, by - 4.5, 11, 11, withAlpha(zenith, 0.92));
-}
-
-/** Three ranks of distant hills, so the sea has a far edge and the frame has no void in it. */
-export function drawRidgeline(pen: Pen, seed: number, daylight: number): void {
-  const s = pen.surface;
-  const w = s.width;
-  const h = s.height;
-  gridToScreen(pen.camera, -130, -130, 0, pt);
-  const seaTop = pt.y;
-  for (let layer = 0; layer < 3; layer++) {
-    const yBase = seaTop + layer * 16;
-    const amp = 54 - layer * 14;
-    const tone = mix(pen.palette.get('sky'), pen.palette.get('metal'), 0.34 + layer * 0.18);
-    let n = 0;
-    for (let x = -40; x <= w + 40; x += 36) {
-      pen.xy[n++] = x;
-      pen.xy[n++] = yBase - (noise2(seed ^ (layer * 977), x * 0.0018 + layer * 7, 0) * 0.5 + 0.5) * amp;
-    }
-    pen.xy[n++] = w + 40;
-    pen.xy[n++] = h;
-    pen.xy[n++] = -40;
-    pen.xy[n++] = h;
-    s.poly(pen.xy, n / 2, shade(tone, 0.82 + daylight * 0.22));
-  }
 }
 
 /** A pale wash laid over the whole frame at dawn and dusk. One quad, and it earns it. */

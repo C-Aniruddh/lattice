@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview --port 5174 --strictPort"
   },
-  "$comment": "Seven of nine, and the two that are missing are a finding rather than an oversight. This exhibit has no save, so it needs no @lattice/persist, and it draws its one line of HUD into the canvas, so it needs no @lattice/ui. Both were declared here while the demo was still the game in docs/rfc/demo.md; see that document's orphan ledger for what depends on them now.",
+  "$comment": "Eight of nine. @lattice/persist is the one that is absent, and that is a finding rather than an oversight: this exhibit has no save, per docs/GALLERY.md, so nothing in the gallery plan yet depends on it. @lattice/ui was declared and unimported for a whole iteration because the HUD was drawn into the canvas; it is the overlay now, which is what GALLERY.md made a rule.",
   "dependencies": {
     "@lattice/audio": "^0.1.0",
     "@lattice/core": "^0.1.0",
@@ -17,6 +17,7 @@
     "@lattice/input": "^0.1.0",
     "@lattice/iso": "^0.1.0",
     "@lattice/loop": "^0.1.0",
-    "@lattice/sim": "^0.1.0"
+    "@lattice/sim": "^0.1.0",
+    "@lattice/ui": "^0.1.0"
   }
 }

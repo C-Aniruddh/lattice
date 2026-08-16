@@ -7,6 +7,7 @@
     { "path": "../../packages/draw" }, { "path": "../../packages/loop" },
     { "path": "../../packages/input" }, { "path": "../../packages/audio" },
     { "path": "../../packages/persist" }, { "path": "../../packages/sim" },
-    { "path": "../../packages/ui" }
+    { "path": "../../packages/ui" },
+    { "path": "../_shared" }
   ]
 }

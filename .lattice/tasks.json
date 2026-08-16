@@ -1773,7 +1773,7 @@
         "hud.ts already keeps a Hud interface as the seam — swap the body, keep the call",
         "report honestly if ui made this harder than canvas text did; that is a finding about ui, not a reason to revert"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": null,
       "notes": "A whole package reached 100% coverage with no consumer in the entire plan. This is the fix."
     },
@@ -1887,7 +1887,7 @@
       "dependsOn": [
         "K1"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": null,
       "acceptance": [
         "LIVE BUG FIRST: spriteVolume is called without the ground, so a silhouette is computed at sea level while the building is painted up the hill — taps on tall-standing lamps land in mid-air, partly masked by a hand-written bubble fallback",
@@ -2039,6 +2039,47 @@
         "audit how many other briefs and RFCs assume a duration brand exists"
       ],
       "notes": "Found by a builder while implementing a criterion I wrote that was false. The interesting question is how many other places carry the same assumption."
+    },
+    {
+      "id": "K24",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "examples/_shared/bucket.ts was specified and never built",
+      "package": "shared",
+      "paths": [
+        "examples/_shared/**"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "docs/rfc/depth-bucket.md specifies it and assigns it to G0. G0 shipped the bootstrap and the panel without it",
+        "the exhibit applied the named PATTERN by hand — one array, one index space, the subtraction gone — but the add-time index compare that makes the silent mis-pick unreachable is the helper and it does not exist",
+        "that compare is the entire reason the RFC chose a helper over a documented pattern: a pattern is followed until someone is in a hurry",
+        "fourteen exhibits are about to be written against it"
+      ],
+      "notes": "The one acceptance item on the exhibit cleanup that could not be met. A specified deliverable that quietly did not ship is worth more attention than a bug."
+    },
+    {
+      "id": "K25",
+      "phase": "gallery",
+      "role": "lattice-designer",
+      "title": "Lamp Road is 1,286 lines against the gallery rule of 250",
+      "package": "demo",
+      "paths": [
+        "examples/demo/**",
+        "docs/GALLERY.md"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "the rule postdates this exhibit, so the question is which is wrong — the exhibit or the rule",
+        "the split is 295 logic / 1,095 art, and art is what the rule was meant to encourage, so a raw line cap may be measuring the wrong thing",
+        "either cut the exhibit to the rule, or change the rule to bound LOGIC and let art run — and say which in GALLERY.md",
+        "whatever is decided binds the other thirteen exhibits, so decide before they are written rather than after"
+      ],
+      "notes": "Flagged by the exhibit author as the largest single thing wrong with it as a gallery row."
     }
   ]
 }

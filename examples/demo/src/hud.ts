@@ -1,27 +1,48 @@
 /**
- * The HUD — **and the one seam in this exhibit that is not wired to the package that owes it.**
+ * The HUD — **`@lattice/ui` over the canvas, and the seam that had never been run.**
  *
- * `@lattice/ui` had not landed when this was built: it exports `VERSION` and nothing else, so
- * there is no panel, no number roll, no toast and no CSS-variable bridge holding the DOM's colors
- * to `draw`'s. Rather than invent a substitute DOM overlay, everything here is drawn in the
- * Overlay pass out of `draw`'s screen-space primitives, which is what they are for. What is
- * missing is exactly what `ui` was going to give: rolls instead of jumps, real buttons with an
- * affordable state, and a HUD that keeps reading while the canvas is throttled.
+ * This was drawn into the Overlay pass out of `draw`'s screen-space primitives, because `ui` had
+ * not landed. It has now, and `docs/GALLERY.md` makes the DOM overlay a rule rather than a
+ * preference. {@link Hud} is unchanged as the shape the exhibit fills; only the body below moved.
  *
- * {@link Hud} is the shape `ui` should fill. Swap the body of `drawHud`; keep the call.
+ * Four things the canvas version could not do, and they are the argument for the whole package:
+ *
+ * | | canvas text | `ui` |
+ * |---|---|---|
+ * | a number changing | jumps between two integers | {@link roll} eases, and is *correct* if no frame paints |
+ * | an affordance | a rectangle you have to hit-test yourself | a `<button>`, with focus, hover and a real disabled state |
+ * | a message | a string you have to time, place and expire | {@link toasts}, with a latch so a notice cannot train its own dismissal |
+ * | a hidden tab | freezes with the canvas, showing stale prices | `ui.every` runs on the loop's *update*, so the HUD is never wrong |
+ *
+ * ## The cross-package promise this file executes
+ *
+ * `draw` exports `paletteVars` and `ui` exports `applyPalette`, and until this file nothing in the
+ * repo had ever put the two together. {@link createHud} pushes the live palette onto the overlay
+ * root as `--lattice-*` custom properties on the **state** cadence, guarded on `palette.rev` —
+ * so the card stock, the rules and the accent all darken with the valley at dusk instead of
+ * glowing in daylight colors over a night scene. The smoothing is a CSS `transition` in
+ * `index.html`, not a tween here: it runs on the compositor and degrades to an instant jump in a
+ * hidden tab, which is correct, because nobody is looking.
+ *
+ * **This module owns no stylesheet either.** `ui` ships none by design and neither does the
+ * exhibit's TypeScript; every color, radius and cut corner is in `index.html`, reading the custom
+ * properties this file writes. That is the boundary, and it is why the package can be dropped
+ * into a game whose art direction was decided first.
  */
-import { fmtCompact } from '@lattice/core';
-import { DEFAULT_TEXT, mix, screenText, shade, withAlpha, type Pen, type Rgba, type TextStyle } from '@lattice/draw';
-
-/** The HUD must read at midnight, so its type colors are fixed rather than taken from the palette. */
-const PAPER = 0xf2f5fbff;
-const DIM = 0x9aa6bcff;
-const TITLE: TextStyle = { ...DEFAULT_TEXT, size: 11, weight: 800, align: -1, baseline: 0 };
-const BODY: TextStyle = { ...DEFAULT_TEXT, size: 15, weight: 600, align: -1, baseline: 0 };
-const VALUE: TextStyle = { ...DEFAULT_TEXT, size: 21, weight: 800, align: -1, baseline: 0 };
-const LABEL: TextStyle = { ...DEFAULT_TEXT, size: 10, weight: 700, align: -1, baseline: 0 };
-const RATE: TextStyle = { ...DEFAULT_TEXT, size: 11, weight: 600, align: -1, baseline: 0 };
-const CHIP: TextStyle = { ...DEFAULT_TEXT, size: 14, weight: 700, align: 0, baseline: 0 };
+import { fmtCompact, type Disposer } from '@lattice/core';
+import { paletteVars, type Palette as WorldPalette } from '@lattice/draw';
+import {
+  applyPalette,
+  createOverlay,
+  el,
+  roll,
+  setText,
+  show,
+  toasts,
+  type Overlay,
+  type Roll,
+  type ToastHost,
+} from '@lattice/ui';
 
 export interface Hud {
   /** One line, always naming the next action. The entire tutorial. */
@@ -33,72 +54,149 @@ export interface Hud {
   readonly walkers: number;
   readonly daylight: number;
   readonly showCoin: boolean;
+  /** What the next lamp costs. Rolled on the button, so a price rise is something you watch. */
+  readonly price: number;
+  /** Whether the player can pay it — the button's affordable state, and nothing else. */
+  readonly affordable: boolean;
 }
 
-/** A panel with its corners cut. Eight points, one fill, one hairline — a whole visual language. */
-function plate(pen: Pen, x: number, y: number, w: number, h: number, fill: Rgba, edge: Rgba): void {
-  const c = 7;
-  const xy = pen.xy;
-  const pts = [x + c, y, x + w - c, y, x + w, y + c, x + w, y + h - c, x + w - c, y + h, x + c, y + h, x, y + h - c, x, y + c];
-  for (let i = 0; i < pts.length; i++) xy[i] = pts[i] ?? 0;
-  pen.surface.poly(xy, 8, fill);
-  pen.surface.stroke(xy, 8, true, edge, 1);
+/** How the HUD is built. Everything it needs and nothing about how it looks. */
+export interface HudOptions {
+  /** The world's live palette. Read on the state cadence and pushed to the DOM through
+   *  `paletteVars`; never mutated here. */
+  readonly palette: WorldPalette;
+  /** The state, read once per update. A pull rather than a push, so there is exactly one place
+   *  the HUD can be a frame behind the world and it is this line. */
+  readonly read: () => Hud;
+  /** The button. The same call the world's tap makes, so there is one code path to be wrong. */
+  readonly onLight: () => void;
+  /** Milliseconds, and it must be the clock `@lattice/loop` was given. Two clocks in one HUD is
+   *  a poll racing a settle. */
+  readonly now: () => number;
 }
 
-export function drawHud(pen: Pen, h: Hud): void {
-  const s = pen.surface;
-  const ink = pen.palette.get('ink');
-  const card = withAlpha(shade(ink, 0.75), 0.86);
-  const edge = withAlpha(PAPER, 0.14);
-  const warm = pen.palette.get('warn');
-  const ok = pen.palette.get('ok');
+/** The HUD, as the exhibit holds it. */
+export interface HudView {
+  /** Hand this to `ui.drive(view.ui, boot)`. The overlay owns no clock until you do. */
+  readonly ui: Overlay;
+  /** Say something, at most once per `key` for the session. `key` names the *condition*. */
+  say(key: string, text: string, kind?: 'plain' | 'good' | 'bad'): void;
+  /** Remove the overlay and everything on it. */
+  destroy(): void;
+}
 
-  // The objective card: a title, and one line that always names the next action.
-  plate(pen, 18, 18, 336, 78, card, edge);
-  screenText(pen, 34, 38, 'LAMP ROAD', warm, TITLE);
-  screenText(pen, 34, 68, h.objective, PAPER, BODY);
+/** A label and the roll beside it, as one row. Four of these are most of the HUD. */
+function stat(ui: Overlay, label: string, format: (n: number) => string): { node: HTMLElement; value: Roll } {
+  const value = roll(ui, { format });
+  return {
+    node: el('div', { class: 'stat' }, el('span', { class: 'stat-label' }, label), value.node),
+    value,
+  };
+}
 
-  let y = 108;
-  if (h.showCoin) {
-    // The coin pill: a struck-coin glyph, a label, a value, and the rate under it.
-    plate(pen, 18, y, 190, 58, card, edge);
-    s.softEllipse(46, y + 29, 17, 17, withAlpha(warm, 0.4), withAlpha(warm, 0));
-    s.ellipse(46, y + 29, 11, 11, warm);
-    s.ellipse(46, y + 29, 7, 7, withAlpha(shade(warm, 0.8), 0.9));
-    screenText(pen, 68, y + 20, 'COIN', DIM, LABEL);
-    screenText(pen, 68, y + 38, fmtCompact(h.coin), PAPER, VALUE);
-    screenText(pen, 138, y + 40, `+${h.coinRate.toFixed(1)}/s`, withAlpha(ok, 0.95), RATE);
-    y += 70;
-  }
+export function createHud(opts: HudOptions): HudView {
+  const ui = createOverlay({ now: opts.now });
 
-  // The road bar: the one number that is actually the subject, drawn as a place rather than a stat.
-  plate(pen, 18, y, 190, 52, card, edge);
-  screenText(pen, 34, y + 18, 'ROAD LIT', DIM, LABEL);
-  screenText(pen, 150, y + 18, `${h.lit}/${h.stations}`, PAPER, LABEL);
-  const track = 158;
-  const fill = (h.lit / Math.max(1, h.stations)) * track;
-  plate(pen, 34, y + 28, track, 10, withAlpha(0x000000ff, 0.45), withAlpha(PAPER, 0.08));
-  if (fill > 2) {
-    s.softEllipse(34 + fill * 0.5, y + 33, fill * 0.5 + 8, 12, withAlpha(warm, 0.35), withAlpha(warm, 0));
-    plate(pen, 34, y + 28, fill, 10, mix(warm, 0xfff0c0ff, 0.2), withAlpha(warm, 0.5));
-  }
+  // ── the cards ────────────────────────────────────────────────────────────────────────────
+  const objective = el('p', { class: 'brief-line' });
+  const brief = el(
+    'section',
+    { class: 'card brief' },
+    el('h1', { class: 'brief-title' }, 'LAMP ROAD'),
+    objective,
+  );
 
-  // A day/night chip, so the coming dusk is something the player can see arriving.
-  const cw = 176;
-  const cx = s.width - 18 - cw;
-  plate(pen, cx, 18, cw, 44, card, edge);
-  const day = h.daylight > 0.5;
-  const body = day ? warm : 0xdfe6f5ff;
-  s.softEllipse(cx + 24, 40, 16, 16, withAlpha(body, 0.4), withAlpha(body, 0));
-  s.ellipse(cx + 24, 40, 8.5, 8.5, body);
-  if (!day) s.ellipse(cx + 27, 37, 7, 7, card);
-  screenText(pen, cx + 42, 34, day ? 'DAY' : 'NIGHT', PAPER, LABEL);
-  screenText(pen, cx + 42, 50, `${h.walkers} on the road`, DIM, LABEL);
+  const coin = roll(ui, { format: fmtCompact });
+  const rate = el('span', { class: 'coin-rate' });
+  const coinCard = el(
+    'section',
+    { class: 'card coin' },
+    el('span', { class: 'coin-mark' }),
+    el('div', { class: 'coin-body' }, el('span', { class: 'stat-label' }, 'COIN'), coin.node),
+    rate,
+  );
 
-  // The one instruction, bottom center, where a thumb is already looking.
-  if (h.objective !== '') {
-    const w = s.measure('Tap a marker to light the next lamp', CHIP) + 44;
-    plate(pen, s.width / 2 - w / 2, s.height - 62, w, 36, card, edge);
-    screenText(pen, s.width / 2, s.height - 44, 'Tap a marker to light the next lamp', withAlpha(PAPER, 0.9), CHIP);
-  }
+  const litOf = stat(ui, 'ROAD LIT', String);
+  const total = el('span', { class: 'road-total' });
+  const fill = el('div', { class: 'road-fill' });
+  const roadCard = el(
+    'section',
+    { class: 'card road' },
+    el('div', { class: 'road-head' }, litOf.node, total),
+    el('div', { class: 'road-track' }, fill),
+  );
+
+  const hour = el('span', { class: 'hour-name' });
+  const walkers = stat(ui, 'ON THE ROAD', String);
+  const hourCard = el(
+    'section',
+    { class: 'card hour' },
+    el('span', { class: 'hour-orb' }),
+    el('div', { class: 'hour-body' }, hour, walkers.node),
+  );
+
+  // The one interactive node in the whole overlay. Everything else is `pointer-events: none` by
+  // default, which is `ui`'s most important decision: a tap that is not on a node you named
+  // reaches the world, and the world is what this exhibit is.
+  const price = roll(ui, { format: fmtCompact });
+  const button = el(
+    'button',
+    { class: 'light', type: 'button', onclick: opts.onLight },
+    el('span', { class: 'light-word' }, 'Light the next lamp'),
+    el('span', { class: 'light-price' }, price.node),
+  );
+
+  ui.mount(el('div', { class: 'dock dock-left' }, brief, coinCard, roadCard), { layer: 'panels' });
+  ui.mount(el('div', { class: 'dock dock-right' }, hourCard), { layer: 'panels' });
+  ui.mount(el('div', { class: 'dock dock-foot' }, button), { layer: 'panels', interactive: true });
+
+  const host: ToastHost = toasts(ui, { max: 2 });
+
+  // ── the two cadences ─────────────────────────────────────────────────────────────────────
+  //
+  // Everything below is on `every`, which is the loop's *update*: wall time, and it keeps running
+  // when the canvas does not. Nothing here is registered on `paint` — the only paint work in this
+  // HUD belongs to the rolls, which registered their own.
+
+  /** `rev` is the whole guard. A custom property written on the root invalidates style for every
+   *  node that inherits it, so pushing an unchanged palette sixty times a second would be sixty
+   *  full-subtree recalculations to animate a color the player reads over three minutes. */
+  let paletteRev = -1;
+  const stopPalette: Disposer = ui.every(() => {
+    if (opts.palette.rev === paletteRev) return;
+    paletteRev = opts.palette.rev;
+    applyPalette(ui, paletteVars(opts.palette));
+  });
+
+  const stopState: Disposer = ui.every(() => {
+    const h = opts.read();
+    setText(objective, h.objective);
+    show(coinCard, h.showCoin);
+    coin.set(h.coin);
+    setText(rate, `+${h.coinRate.toFixed(1)}/s`);
+    litOf.value.set(h.lit);
+    setText(total, `/ ${String(h.stations)}`);
+    fill.style.setProperty('--road', (h.lit / Math.max(1, h.stations)).toFixed(3));
+    setText(hour, h.daylight > 0.5 ? 'DAY' : 'NIGHT');
+    hourCard.dataset['night'] = h.daylight > 0.5 ? '0' : '1';
+    walkers.value.set(h.walkers);
+    // The affordable state, as data rather than as `disabled`: an unaffordable lamp is still
+    // worth tapping — it is how a player learns there is a price — and a `disabled` button
+    // swallows the tap, plays no sound and teaches nothing.
+    button.dataset['afford'] = h.affordable ? '1' : '0';
+    show(button, h.lit < h.stations);
+    price.set(h.price);
+  });
+
+  return {
+    ui,
+    say(key, text, kind = 'plain') {
+      host.once(key, text, kind);
+    },
+    destroy() {
+      stopState();
+      stopPalette();
+      ui.destroy();
+    },
+  };
 }

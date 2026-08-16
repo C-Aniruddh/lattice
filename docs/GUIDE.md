@@ -295,7 +295,7 @@ const loop = createLoop({
 const input = createInput({
   element: canvas,
   camera,
-  stepMs: loop.stepMs,     // the same number the loop runs at. Not a literal — see below
+  step: loop,              // the loop itself, not a number. See below for why
   actions: {
     place: ['tap', 'key:KeyL'],
     inspect: ['longpress'],
@@ -303,7 +303,7 @@ const input = createInput({
 });
 ```
 
-`stepMs` is not decoration. The recognizer counts *ticks* and multiplies by this to get
+The step is not decoration. The recognizer counts *ticks* and multiplies by it to get
 durations; it never reads a clock. Pass a literal that disagrees with the loop and every threshold
 in the gesture profile — tap timeout, long-press duration, fling window — is wrong by the same
 ratio, and the symptom is "long press feels wrong on some machines".
@@ -825,7 +825,7 @@ packages each have a headless door. There is no jsdom anywhere in this repo's su
 
 | instead of | use | what it gives you |
 |---|---|---|
-| `createInput({ element })` | `createHeadlessInput({ camera, stepMs, actions })` | the same object minus a producer of samples. Feed it `submit()` and `tick()` |
+| `createInput({ element })` | `createHeadlessInput({ camera, step, actions })` | the same object minus a producer of samples. Feed it `submit()` and `tick()` |
 | `createCanvas2dSurface(canvas)` | `createRecordingSurface(w, h)` | a `Surface` that keeps every op as data — assert on geometry, not on pixels |
 | `browserFrames()` + `performance.now` | `manualFrames()` + `manualClock()` | a loop you step by hand, at whatever speed you like, with no timers |
 | `browserStorage()` | `memoryStorage()` | the same adapter contract, in a `Map` |
@@ -849,12 +849,12 @@ function countOps(): number {
 And a whole gesture, asserted, with no pointer:
 
 ```ts
-import { createHeadlessInput } from '@lattice/input';
+import { createHeadlessInput, fixedStep } from '@lattice/input';
 
 function tapTile(): { gx: number; gy: number } | null {
   const headless = createHeadlessInput({
     camera,
-    stepMs: 1000 / 60,
+    step: fixedStep(60),
     actions: { place: ['tap'] },
   });
   let hit: { gx: number; gy: number } | null = null;

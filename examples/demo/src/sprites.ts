@@ -21,9 +21,12 @@
  *    are each handed a stream rewound from `Variant.seed`, so a lamp's flicker is *that* lamp's
  *    flicker on every reload and after every re-sort.
  *
- * One thing here is game code only because the kit has no slot for it: every sprite reads its
- * ground elevation out of `Variant.level`, because `drawSprite` has no `zPx` and `massing` is
- * handed nothing else that could carry one.
+ * **Nothing here names its ground elevation twice.** A massing is not told where the hill is —
+ * the writer already stands on it, so every `z` below is measured from the sprite's own base — and
+ * an animator and an emitter each take `zPx`, the world pixels `drawSprite` was handed, converted
+ * once with `pxToLevels`. This used to be smuggled through `Variant.level`, in a unit conversion
+ * written here, and the tell that it was wrong is that the *picking* half of the same seam had no
+ * channel at all: silhouettes were computed at sea level while the lamps were painted up the hill.
  */
 import { hash2, noise2, toUnit, type Vec2 } from '@lattice/core';
 import { gridToScreen } from '@lattice/iso';
@@ -37,16 +40,14 @@ import {
   isoPost,
   isoWall,
   mix,
+  pxToLevels,
   shade,
   withAlpha,
   type Ink,
   type Pen,
 } from '@lattice/draw';
-import { STEP_PX } from './valley.js';
 import { smoke } from './ambient.js';
 
-/** Ground elevation is smuggled through `Variant.level`, in height units. See the file header. */
-export const zOf = (levelUnits: number): number => (levelUnits * STEP_PX) / LEVEL_H;
 const pt: Vec2 = { x: 0, y: 0 };
 
 /** The screen point for a grid position at a storey height — the one conversion `animate` needs. */
@@ -102,33 +103,32 @@ export const lamp = defineSprite({
   w: 1,
   d: 1,
   massing(w, v, rng) {
-    const z = zOf(v.level);
     const on = (v.flags & FLAG_POWERED) !== 0;
     const iron = 'ink';
     const lean = rng.next() * 0.04 - 0.02;
     w.shadow(0.14, 0.14, 0.72, 0.72, on ? 0.5 : 0.34);
     // 1 — massing: an apron, a plinth, a post that tapers twice, a hooded lantern.
     w.tile(0, 0, withAlpha(0x000000ff, 0.09), undefined, 0.14, 0.004);
-    w.box(0.24, 0.24, 0.52, 0.52, { color: 'metal', h: 0.16, z });
-    w.box(0.31, 0.31, 0.38, 0.38, { color: 'metal', h: 0.1, z: z + 0.16, outline: false });
-    w.post(0.5 + lean, 0.5 + lean, z + 0.26, 1.2, iron, 0.17);
-    w.post(0.5 + lean * 2, 0.5 + lean * 2, z + 1.46, 0.62, iron, 0.11);
+    w.box(0.24, 0.24, 0.52, 0.52, { color: 'metal', h: 0.16 });
+    w.box(0.31, 0.31, 0.38, 0.38, { color: 'metal', h: 0.1, z: 0.16, outline: false });
+    w.post(0.5 + lean, 0.5 + lean, 0.26, 1.2, iron, 0.17);
+    w.post(0.5 + lean * 2, 0.5 + lean * 2, 1.46, 0.62, iron, 0.11);
     // 2 — rhythm: a collar, a crossarm, glazing bars on both visible faces of the housing.
-    w.box(0.41, 0.41, 0.18, 0.18, { color: 'metal', h: 0.06, z: z + 1.4, outline: false });
-    w.box(0.44, 0.16, 0.12, 0.7, { color: iron, h: 0.05, z: z + 2.0, outline: false });
+    w.box(0.41, 0.41, 0.18, 0.18, { color: 'metal', h: 0.06, z: 1.4, outline: false });
+    w.box(0.44, 0.16, 0.12, 0.7, { color: iron, h: 0.05, z: 2.0, outline: false });
     const pane: Ink = on ? 'warn' : 'glass';
-    w.box(0.3, 0.3, 0.4, 0.4, { color: on ? 'warn' : 'metal', h: 0.44, z: z + 2.04 });
-    w.wall(0.3, 0.7, 0.7, 0.7, z + 2.1, z + 2.42, pane, iron);
-    w.wall(0.7, 0.7, 0.7, 0.3, z + 2.1, z + 2.42, pane, iron);
-    w.roof(0.21, 0.21, 0.58, 0.58, z + 2.48, 0.28, iron);
+    w.box(0.3, 0.3, 0.4, 0.4, { color: on ? 'warn' : 'metal', h: 0.44, z: 2.04 });
+    w.wall(0.3, 0.7, 0.7, 0.7, 2.1, 2.42, pane, iron);
+    w.wall(0.7, 0.7, 0.7, 0.3, 2.1, 2.42, pane, iron);
+    w.roof(0.21, 0.21, 0.58, 0.58, 2.48, 0.28, iron);
     // 3 — trim: a finial, a cap bead, a ring on the crossarm, a rivet.
-    w.post(0.5, 0.5, z + 2.76, 0.24, iron, 0.06);
-    w.box(0.44, 0.44, 0.12, 0.12, { color: 'metal', h: 0.05, z: z + 3.0, outline: false });
-    w.box(0.46, 0.14, 0.09, 0.09, { color: 'metal', h: 0.05, z: z + 1.9, outline: false });
-    if (on) w.glow(0.5, 0.5, z + 2.26, 'warn', 0.2, 0.95);
+    w.post(0.5, 0.5, 2.76, 0.24, iron, 0.06);
+    w.box(0.44, 0.44, 0.12, 0.12, { color: 'metal', h: 0.05, z: 3.0, outline: false });
+    w.box(0.46, 0.14, 0.09, 0.09, { color: 'metal', h: 0.05, z: 1.9, outline: false });
+    if (on) w.glow(0.5, 0.5, 2.26, 'warn', 0.2, 0.95);
   },
-  animate(pen, gx, gy, v, rng) {
-    const z = zOf(v.level);
+  animate(pen, gx, gy, v, rng, zPx) {
+    const z = pxToLevels(zPx);
     const phase = rng.next() * 40;
     if ((v.flags & FLAG_POWERED) === 0) {
       const swing = noise2(0x5a1, phase, pen.t * 0.5) * 0.035;
@@ -141,10 +141,10 @@ export const lamp = defineSprite({
     const k = pen.camera.zoom;
     pen.surface.softEllipse(p.x, p.y, 26 * k, 20 * k, withAlpha(pen.palette.get('warn'), 0.13), withAlpha(pen.palette.get('warn'), 0));
   },
-  emit(field, gx, gy, v, rng) {
+  emit(field, gx, gy, v, rng, zPx) {
     if ((v.flags & FLAG_POWERED) === 0) return;
     const lick = noise2(0x11ae, rng.next() * 40, 0) * 0.5 + 0.5;
-    field.add(gx + 0.5, gy + 0.5, v.level * STEP_PX, 3.3 + lick * 0.35, 0.88 + lick * 0.1, 'warn');
+    field.add(gx + 0.5, gy + 0.5, zPx, 3.3 + lick * 0.35, 0.88 + lick * 0.1, 'warn');
   },
 });
 
@@ -160,10 +160,9 @@ export const site = defineSprite({
   w: 1,
   d: 1,
   massing(w, v, rng) {
-    const z = zOf(v.level);
     w.shadow(0.14, 0.14, 0.72, 0.72, 0.34);
     w.tile(0, 0, withAlpha(0x000000ff, 0.09), undefined, 0.14, 0.004);
-    let h = z;
+    let h = 0;
     for (let i = 0; i < 5; i++) {
       const s = 0.46 - i * 0.07;
       const o = (1 - s) / 2 + (rng.next() - 0.5) * 0.07;
@@ -172,12 +171,13 @@ export const site = defineSprite({
       h += t;
     }
     // A tall waypost, so the marker has a silhouette a finger can find and a volume a
-    // silhouette pick can hit — the bubble floats just inside the top of it.
-    w.post(0.28, 0.72, z, 2.0, 'ink', 0.08);
-    w.box(0.16, 0.6, 0.26, 0.26, { color: 'metal', h: 0.08, z: z + 1.7, outline: false });
+    // silhouette pick can hit — and it runs *past* the bubble, so the bubble is inside the
+    // massing `spriteVolume` measures rather than floating above it needing a fallback.
+    w.post(0.28, 0.72, 0, 2.5, 'ink', 0.08);
+    w.box(0.16, 0.6, 0.26, 0.26, { color: 'metal', h: 0.08, z: 1.7, outline: false });
   },
-  animate(pen, gx, gy, v, rng) {
-    const z = zOf(v.level);
+  animate(pen, gx, gy, v, rng, zPx) {
+    const z = pxToLevels(zPx);
     const phase = rng.next() * 20;
     const sway = noise2(0x9c2, phase, pen.t * 0.9) * 0.1;
     isoWall(pen, gx + 0.28, gy + 0.72, gx + 0.28 + sway, gy + 0.72 + sway * 1.6, z + 1.18, z + 1.62, 'ok', 'ink');
@@ -212,52 +212,51 @@ export const gate = defineSprite({
   id: 'gate',
   w: 3,
   d: 3,
-  massing(w, v, rng) {
-    const z = zOf(v.level);
+  massing(w, _v, rng) {
     const stone: Ink = 'metal';
     w.shadow(-0.1, -0.1, 3.2, 3.2, 0.5);
     // 1 — massing: a paved apron, a plinth, two towers, an arch between them.
     for (let i = 0; i < 9; i++) w.tile(i % 3, (i / 3) | 0, withAlpha(0x000000ff, 0.1), undefined, 0.1, 0.004);
-    w.box(-0.14, -0.14, 3.28, 3.28, { color: stone, h: 0.26, z });
+    w.box(-0.14, -0.14, 3.28, 3.28, { color: stone, h: 0.26 });
     for (const ox of [0, 2.25]) {
-      w.box(ox, 0.3, 0.75, 2.4, { color: stone, h: 2.7, z: z + 0.26 });
-      w.box(ox + 0.06, 0.36, 0.63, 2.28, { color: stone, h: 0.55, z: z + 2.96 });
+      w.box(ox, 0.3, 0.75, 2.4, { color: stone, h: 2.7, z: 0.26 });
+      w.box(ox + 0.06, 0.36, 0.63, 2.28, { color: stone, h: 0.55, z: 2.96 });
       // 2 — rhythm: a string course, three windows a side, crenellations along the parapet.
-      w.box(ox - 0.06, 0.24, 0.87, 2.52, { color: stone, h: 0.13, z: z + 1.5, outline: false });
-      windows(w, ox + 0.75, 0.4, ox + 0.75, 2.6, z + 1.85, z + 2.6, 3, 0x1a + ox * 7);
+      w.box(ox - 0.06, 0.24, 0.87, 2.52, { color: stone, h: 0.13, z: 1.5, outline: false });
+      windows(w, ox + 0.75, 0.4, ox + 0.75, 2.6, 1.85, 2.6, 3, 0x1a + ox * 7);
       for (let i = 0; i < 5; i++) {
-        w.box(ox + 0.02, 0.32 + i * 0.48, 0.71, 0.24, { color: stone, h: 0.3, z: z + 3.51 });
+        w.box(ox + 0.02, 0.32 + i * 0.48, 0.71, 0.24, { color: stone, h: 0.3, z: 3.51 });
       }
-      w.roof(ox - 0.12, 0.18, 0.99, 2.64, z + 3.81, 0.85, 'brand');
-      w.post(ox + 0.37, 1.5, z + 4.66, 0.5, 'ink', 0.06);
+      w.roof(ox - 0.12, 0.18, 0.99, 2.64, 3.81, 0.85, 'brand');
+      w.post(ox + 0.37, 1.5, 4.66, 0.5, 'ink', 0.06);
     }
     // The arch, and the gatehouse over it.
-    w.box(0.75, 0.9, 1.5, 0.42, { color: stone, h: 1.7, z: z + 0.26, outline: false });
-    w.box(0.75, 2.1, 1.5, 0.42, { color: stone, h: 1.7, z: z + 0.26, outline: false });
-    w.box(0.7, 0.85, 1.6, 1.72, { color: stone, h: 1.0, z: z + 1.96 });
-    windows(w, 0.75, 2.58, 2.25, 2.58, z + 2.2, z + 2.8, 3, 0x2b);
-    w.roof(0.6, 0.75, 1.8, 1.9, z + 2.96, 0.62, 'brand');
-    w.sign(0.75, 2.62, 2.25, 2.62, z + 1.9, 0.4, 'GATE', 'warn');
+    w.box(0.75, 0.9, 1.5, 0.42, { color: stone, h: 1.7, z: 0.26, outline: false });
+    w.box(0.75, 2.1, 1.5, 0.42, { color: stone, h: 1.7, z: 0.26, outline: false });
+    w.box(0.7, 0.85, 1.6, 1.72, { color: stone, h: 1.0, z: 1.96 });
+    windows(w, 0.75, 2.58, 2.25, 2.58, 2.2, 2.8, 3, 0x2b);
+    w.roof(0.6, 0.75, 1.8, 1.9, 2.96, 0.62, 'brand');
+    w.sign(0.75, 2.62, 2.25, 2.62, 1.9, 0.4, 'GATE', 'warn');
     // 3 — trim: a chimney, firewood, a water butt, a bracket lantern by the arch.
-    w.box(0.25, 2.55, 0.34, 0.34, { color: stone, h: 0.75, z: z + 4.0 });
-    w.cylinder(2.8, 2.72, 0.22, { color: 'brand', h: 0.55, z });
+    w.box(0.25, 2.55, 0.34, 0.34, { color: stone, h: 0.75, z: 4.0 });
+    w.cylinder(2.8, 2.72, 0.22, { color: 'brand', h: 0.55 });
     for (let i = 0; i < 5; i++) {
-      w.cylinder(0.28 + rng.next() * 0.2, 0.15 + i * 0.03, 0.1, { color: 'ink', h: 0.44, z, outline: false });
+      w.cylinder(0.28 + rng.next() * 0.2, 0.15 + i * 0.03, 0.1, { color: 'ink', h: 0.44, outline: false });
     }
-    w.glow(1.5, 2.6, z + 2.55, 'warn', 0.18, 0.9);
+    w.glow(1.5, 2.6, 2.55, 'warn', 0.18, 0.9);
   },
-  animate(pen, gx, gy, v) {
-    const z = zOf(v.level);
+  animate(pen, gx, gy, _v, _rng, zPx) {
+    const z = pxToLevels(zPx);
     flame(pen, gx + 0.37, gy + 1.5, z + 5.2, 3.3, 0.3, 1);
     flame(pen, gx + 2.62, gy + 1.5, z + 5.2, 8.1, 0.3, 1);
     const wave = noise2(0x7b3, 1, pen.t * 1.2) * 0.12;
     isoWall(pen, gx + 0.9, gy + 2.6, gx + 2.1, gy + 2.6 + wave, z + 1.0, z + 1.9, 'brand', 'ink');
-    smoke(pen, gx + 0.42, gy + 2.72, (z + 4.75) * LEVEL_H, 0x9a1, 1);
+    smoke(pen, gx + 0.42, gy + 2.72, zPx + 4.75 * LEVEL_H, 0x9a1, 1);
   },
-  emit(field, gx, gy, v) {
-    field.add(gx + 0.37, gy + 1.5, v.level * STEP_PX, 4, 0.85, 'warn');
-    field.add(gx + 2.62, gy + 1.5, v.level * STEP_PX, 4, 0.85, 'warn');
-    field.add(gx + 1.5, gy + 2.6, v.level * STEP_PX, 2, 0.5, 'warn');
+  emit(field, gx, gy, _v, _rng, zPx) {
+    field.add(gx + 0.37, gy + 1.5, zPx, 4, 0.85, 'warn');
+    field.add(gx + 2.62, gy + 1.5, zPx, 4, 0.85, 'warn');
+    field.add(gx + 1.5, gy + 2.6, zPx, 2, 0.5, 'warn');
   },
 });
 
@@ -267,40 +266,39 @@ export const shrine = defineSprite({
   id: 'shrine',
   w: 3,
   d: 3,
-  massing(w, v) {
-    const z = zOf(v.level);
+  massing(w) {
     w.shadow(-0.4, -0.4, 3.8, 3.8, 0.55);
     // 1 — massing: three terraces, a colonnade, a body, a smaller storey, a double roof.
-    w.box(-0.42, -0.42, 3.84, 3.84, { color: 'metal', h: 0.22, z });
-    w.box(-0.26, -0.26, 3.52, 3.52, { color: 'metal', h: 0.22, z: z + 0.22 });
-    w.box(-0.1, -0.1, 3.2, 3.2, { color: 'metal', h: 0.22, z: z + 0.44 });
+    w.box(-0.42, -0.42, 3.84, 3.84, { color: 'metal', h: 0.22 });
+    w.box(-0.26, -0.26, 3.52, 3.52, { color: 'metal', h: 0.22, z: 0.22 });
+    w.box(-0.1, -0.1, 3.2, 3.2, { color: 'metal', h: 0.22, z: 0.44 });
     for (let i = 0; i < 5; i++) {
-      w.box(-0.36 + i * 0.07, 1.1, 0.07, 0.9, { color: 'metal', h: 0.06, z: z + 0.08 + i * 0.13, outline: false });
+      w.box(-0.36 + i * 0.07, 1.1, 0.07, 0.9, { color: 'metal', h: 0.06, z: 0.08 + i * 0.13, outline: false });
     }
-    w.box(0.28, 0.28, 2.44, 2.44, { color: 'brand', h: 2.1, z: z + 0.66 });
+    w.box(0.28, 0.28, 2.44, 2.44, { color: 'brand', h: 2.1, z: 0.66 });
     for (const ox of [0.06, 2.66]) {
-      for (const oy of [0.06, 2.66]) w.cylinder(ox + 0.14, oy + 0.14, 0.16, { color: 'metal', h: 2.4, z: z + 0.66 });
+      for (const oy of [0.06, 2.66]) w.cylinder(ox + 0.14, oy + 0.14, 0.16, { color: 'metal', h: 2.4, z: 0.66 });
     }
     // 2 — rhythm: a doorway, lattice windows either side, a frieze, a set-back upper storey.
-    w.wall(1.1, 0.28, 1.9, 0.28, z + 0.66, z + 1.7, 'ink', 'ink');
-    windows(w, 0.28, 0.9, 0.28, 2.4, z + 1.1, z + 1.95, 3, 0x77);
-    windows(w, 2.72, 0.9, 2.72, 2.4, z + 1.1, z + 1.95, 3, 0x78);
-    w.box(0.16, 0.16, 2.68, 2.68, { color: 'ink', h: 0.16, z: z + 2.76, outline: false });
-    w.roof(-0.3, -0.3, 3.6, 3.6, z + 2.92, 0.8, 'ink');
-    w.sign(0.45, 2.72, 2.55, 2.72, z + 2.7, 0.38, 'THE SHRINE', 'warn');
-    w.box(0.72, 0.72, 1.56, 1.56, { color: 'brand', h: 0.62, z: z + 3.72 });
-    w.roof(0.44, 0.44, 2.12, 2.12, z + 4.34, 0.72, 'ink');
+    w.wall(1.1, 0.28, 1.9, 0.28, 0.66, 1.7, 'ink', 'ink');
+    windows(w, 0.28, 0.9, 0.28, 2.4, 1.1, 1.95, 3, 0x77);
+    windows(w, 2.72, 0.9, 2.72, 2.4, 1.1, 1.95, 3, 0x78);
+    w.box(0.16, 0.16, 2.68, 2.68, { color: 'ink', h: 0.16, z: 2.76, outline: false });
+    w.roof(-0.3, -0.3, 3.6, 3.6, 2.92, 0.8, 'ink');
+    w.sign(0.45, 2.72, 2.55, 2.72, 2.7, 0.38, 'THE SHRINE', 'warn');
+    w.box(0.72, 0.72, 1.56, 1.56, { color: 'brand', h: 0.62, z: 3.72 });
+    w.roof(0.44, 0.44, 2.12, 2.12, 4.34, 0.72, 'ink');
     // 3 — trim: the brazier and its tripod, two flag poles, a bell on a bracket.
-    w.cylinder(1.5, 1.5, 0.38, { color: 'metal', h: 0.1, z: z + 4.96, outline: false });
-    w.cylinder(1.5, 1.5, 0.3, { color: 'warn', h: 0.44, z: z + 5.06 });
+    w.cylinder(1.5, 1.5, 0.38, { color: 'metal', h: 0.1, z: 4.96, outline: false });
+    w.cylinder(1.5, 1.5, 0.3, { color: 'warn', h: 0.44, z: 5.06 });
     // The flag poles run across the *screen* rather than into it, or the line between them is a
     // three-pixel stripe on the near corner of the roof.
-    w.post(-0.34, 3.34, z + 0.66, 4.4, 'ink', 0.1);
-    w.post(3.34, -0.34, z + 0.66, 4.4, 'ink', 0.1);
-    w.cylinder(2.9, 0.4, 0.18, { color: 'warn', h: 0.3, z: z + 2.2 });
+    w.post(-0.34, 3.34, 0.66, 4.4, 'ink', 0.1);
+    w.post(3.34, -0.34, 0.66, 4.4, 'ink', 0.1);
+    w.cylinder(2.9, 0.4, 0.18, { color: 'warn', h: 0.3, z: 2.2 });
   },
-  animate(pen, gx, gy, v) {
-    const z = zOf(v.level);
+  animate(pen, gx, gy, _v, _rng, zPx) {
+    const z = pxToLevels(zPx);
     // Prayer flags between the poles: eleven squares on one wave, each at its own phase.
     for (let i = 0; i < 11; i++) {
       const k = (i + 1) / 12;
@@ -318,8 +316,8 @@ export const shrine = defineSprite({
     flame(pen, gx + 1.5, gy + 1.5, z + 5.5, 7.1, 0.4, 1);
     flame(pen, gx + 1.5, gy + 1.5, z + 5.95, 2.7, 0.24, 0.6);
   },
-  emit(field, gx, gy, v) {
-    field.add(gx + 1.5, gy + 1.5, v.level * STEP_PX, 4.6, 0.82, 'warn');
+  emit(field, gx, gy, _v, _rng, zPx) {
+    field.add(gx + 1.5, gy + 1.5, zPx, 4.6, 0.82, 'warn');
   },
 });
 
@@ -331,14 +329,13 @@ export const prop = defineSprite({
   w: 1,
   d: 1,
   massing(w, v, rng) {
-    const z = zOf(v.level);
     const kind = v.flags & 7;
     const big = (v.flags & 8) !== 0;
     const h = (big ? 1.9 : 1.25) + rng.next() * 0.7;
     if (kind === 4) {
       w.shadow(0.2, 0.2, 0.6, 0.6, 0.4);
-      w.box(0.22, 0.24, 0.5, 0.46, { color: 'metal', h: 0.3 + rng.next() * 0.4, z, inset: 0.04 });
-      w.box(0.4, 0.16, 0.28, 0.3, { color: 'metal', h: 0.24, z, outline: false });
+      w.box(0.22, 0.24, 0.5, 0.46, { color: 'metal', h: 0.3 + rng.next() * 0.4, inset: 0.04 });
+      w.box(0.4, 0.16, 0.28, 0.3, { color: 'metal', h: 0.24, outline: false });
       return;
     }
     if (kind === 3) {
@@ -347,7 +344,6 @@ export const prop = defineSprite({
         w.cylinder(0.36 + rng.next() * 0.28, 0.36 + rng.next() * 0.28, 0.16 + rng.next() * 0.1, {
           color: 'ok',
           h: 0.3 + rng.next() * 0.2,
-          z,
           outline: i === 0,
         });
       }
@@ -355,33 +351,33 @@ export const prop = defineSprite({
     }
     w.shadow(0.16, 0.16, 0.68, 0.68, 0.4);
     if (kind === 2) {
-      w.post(0.5, 0.5, z, h * 1.25, 'ink', 0.13);
-      w.post(0.34, 0.6, z + h * 0.6, h * 0.42, 'ink', 0.07);
-      w.post(0.64, 0.38, z + h * 0.78, h * 0.3, 'ink', 0.06);
+      w.post(0.5, 0.5, 0, h * 1.25, 'ink', 0.13);
+      w.post(0.34, 0.6, h * 0.6, h * 0.42, 'ink', 0.07);
+      w.post(0.64, 0.38, h * 0.78, h * 0.3, 'ink', 0.06);
       return;
     }
-    w.post(0.5, 0.5, z, h * 0.55, 'ink', 0.11 + rng.next() * 0.03);
+    w.post(0.5, 0.5, 0, h * 0.55, 'ink', 0.11 + rng.next() * 0.03);
     if (kind === 0) {
       const r = 0.38 + rng.next() * 0.14;
-      w.cylinder(0.5, 0.5, r, { color: 'ok', h: h * 0.44, z: z + h * 0.3 });
-      w.cylinder(0.5, 0.5, r * 0.74, { color: 'ok', h: h * 0.4, z: z + h * 0.68, outline: false });
-      w.cylinder(0.5, 0.5, r * 0.44, { color: 'ok', h: h * 0.34, z: z + h * 1.04, outline: false });
+      w.cylinder(0.5, 0.5, r, { color: 'ok', h: h * 0.44, z: h * 0.3 });
+      w.cylinder(0.5, 0.5, r * 0.74, { color: 'ok', h: h * 0.4, z: h * 0.68, outline: false });
+      w.cylinder(0.5, 0.5, r * 0.44, { color: 'ok', h: h * 0.34, z: h * 1.04, outline: false });
     } else {
       const r = 0.34 + rng.next() * 0.12;
       for (let i = 0; i < 3; i++) {
         w.cylinder(0.5 + (rng.next() - 0.5) * 0.36, 0.5 + (rng.next() - 0.5) * 0.36, r * (0.7 + rng.next() * 0.45), {
           color: 'ok',
           h: h * 0.5,
-          z: z + h * (0.42 + rng.next() * 0.26),
+          z: h * (0.42 + rng.next() * 0.26),
           outline: i === 0,
         });
       }
     }
   },
-  animate(pen, gx, gy, v, rng) {
+  animate(pen, gx, gy, v, rng, zPx) {
     const kind = v.flags & 7;
     if (kind === 4) return;
-    const z = zOf(v.level);
+    const z = pxToLevels(zPx);
     const ph = rng.next() * 30;
     const big = (v.flags & 8) !== 0;
     const h = (big ? 1.9 : 1.25) + rng.next() * 0.7;
@@ -416,7 +412,7 @@ export const prop = defineSprite({
  * into a place.
  */
 export function drawPilgrim(pen: Pen, id: number, gx: number, gy: number, zPx: number, t: number): void {
-  const z = zPx / LEVEL_H;
+  const z = pxToLevels(zPx);
   const k = pen.camera.zoom;
   const tall = 0.78 + toUnit(hash2(0x9d1, id, 1)) * 0.44;
   const stoop = toUnit(hash2(0x9d1, id, 2)) * 0.12;

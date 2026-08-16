@@ -71,7 +71,7 @@ const loop = createLoop({
 const input = createInput({
   element: canvas,
   camera,                    // drag pans it, wheel zooms about the pointer, both for free
-  stepMs: loop.stepMs,       // the same step, or every gesture threshold is wrong by a ratio
+  step: loop,                // the loop itself — a literal here mistimes every gesture
   actions: { place: ['tap', 'key:KeyL'] },       // one handler, two devices
 });
 

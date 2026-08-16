@@ -2,6 +2,142 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Lamp Road — a Lattice exhibit</title>
-<style>html,body{margin:0;height:100%;background:#0d1226;overscroll-behavior:none}</style>
+<style>
+  /*
+   * The HUD's whole appearance. `@lattice/ui` ships no stylesheet at all — it writes structure,
+   * `pointer-events`, and the `--lattice-*` custom properties below, and holds no opinion about
+   * anything else. So this file is the exhibit's art direction for the overlay, exactly as
+   * `sprites.ts` is for the canvas.
+   *
+   * Every color here resolves through a custom property that `hud.ts` pushes from `draw`'s live
+   * palette once per update. The fallbacks are the daylight values, so the first paint is right
+   * before a single frame has run — and the `transition` is what turns one push a second into a
+   * continuous dusk, on the compositor, with no frame callback and no tween in the game.
+   */
+  html, body { margin: 0; height: 100%; background: #0d1226; overscroll-behavior: none; }
+
+  .lattice-ui {
+    --paper: #f2f5fb;
+    --dim: #9aa6bc;
+    --card: color-mix(in srgb, var(--lattice-ink, #1b2436) 86%, transparent);
+    --edge: color-mix(in srgb, var(--paper) 16%, transparent);
+    --accent: var(--lattice-warn, #f2b528);
+    --good: var(--lattice-ok, #56c268);
+    --cut: polygon(7px 0, calc(100% - 7px) 0, 100% 7px, 100% calc(100% - 7px),
+                   calc(100% - 7px) 100%, 7px 100%, 0 calc(100% - 7px), 0 7px);
+    font: 600 13px/1.3 ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+    color: var(--paper);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  /*
+   * A plate with its corners cut. `clip-path` clips the border and the box-shadow with
+   * everything else, so the hairline is a second clipped layer inset by a pixel — and it is
+   * `::before` rather than `::after`, because `::after` is the *last* child and would paint over
+   * the card's own text. (It did, for one screenshot.)
+   */
+  .card { position: relative; padding: 13px 16px; background: var(--edge); clip-path: var(--cut); }
+  .card::before {
+    content: ''; position: absolute; inset: 1px; clip-path: var(--cut);
+    background: var(--card); transition: background-color 1.2s linear;
+  }
+  .card > * { position: relative; }
+
+  .dock { position: absolute; display: flex; gap: 10px; }
+  .dock-left { left: 18px; top: 18px; flex-direction: column; align-items: flex-start; max-width: 340px; }
+  .dock-right { right: 18px; top: 18px; }
+  .dock-foot { left: 50%; bottom: 28px; transform: translateX(-50%); }
+
+  .brief { min-width: 300px; }
+  .brief-title { margin: 0 0 7px; font-size: 11px; font-weight: 800; letter-spacing: .16em; color: var(--accent); transition: color 1.2s linear; }
+  .brief-line { margin: 0; font-size: 15px; line-height: 1.35; }
+
+  .stat-label, .road-total { font-size: 10px; font-weight: 700; letter-spacing: .13em; color: var(--dim); }
+  .stat { display: flex; align-items: baseline; gap: 8px; }
+
+  .coin { display: flex; align-items: center; gap: 12px; min-width: 196px; }
+  .coin-mark {
+    width: 22px; height: 22px; border-radius: 50%; flex: none;
+    background: radial-gradient(circle at 38% 34%, color-mix(in srgb, var(--accent) 55%, #fff), var(--accent) 62%);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 55%, transparent);
+    transition: background-color 1.2s linear, box-shadow 1.2s linear;
+  }
+  .coin-body { display: flex; flex-direction: column; line-height: 1.1; }
+  .coin-body .lattice-roll { font-size: 21px; font-weight: 800; letter-spacing: .01em; }
+  .coin-rate { margin-left: auto; font-size: 11px; color: var(--good); transition: color 1.2s linear; }
+
+  .road { min-width: 196px; }
+  .road-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .road-head .lattice-roll { font-size: 10px; font-weight: 700; letter-spacing: .13em; color: var(--paper); }
+  .road-track {
+    margin-top: 9px; height: 9px; background: rgba(0, 0, 0, .45);
+    clip-path: polygon(3px 0, 100% 0, calc(100% - 3px) 100%, 0 100%);
+  }
+  .road-fill {
+    height: 100%; width: calc(var(--road, 0) * 100%);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 72%, #000), var(--accent));
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 70%, transparent);
+    transition: width .45s cubic-bezier(.2, .9, .3, 1), background-color 1.2s linear;
+  }
+
+  .hour { display: flex; align-items: center; gap: 11px; }
+  .hour-orb {
+    width: 19px; height: 19px; border-radius: 50%; flex: none;
+    background: var(--accent);
+    box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 60%, transparent);
+    transition: background-color 1.2s linear, box-shadow 1.2s linear;
+  }
+  .hour[data-night='1'] .hour-orb { background: #dfe6f5; box-shadow: 0 0 16px rgba(223, 230, 245, .5); }
+  .hour-body { display: flex; flex-direction: column; line-height: 1.35; }
+  .hour-name { font-size: 10px; font-weight: 800; letter-spacing: .16em; }
+  .hour .stat-label { order: 2; }
+
+  /* The one interactive node in the overlay, and the only place `ui` grants pointer events. */
+  .light {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 20px; border: 0; cursor: pointer;
+    font: inherit; font-size: 14px; font-weight: 700;
+    clip-path: var(--cut);
+    background: var(--accent); color: var(--lattice-ink, #1b2436);
+    transition: background-color 1.2s linear, color 1.2s linear, opacity .25s linear, transform .12s ease-out;
+  }
+  .light-price::before { content: '·'; margin-right: 10px; opacity: .5; }
+  .light:hover { transform: translateY(-1px); }
+  .light:active { transform: translateY(1px); }
+  .light:focus-visible { outline: 2px solid var(--paper); outline-offset: 3px; }
+  /* Not affordable: still tappable, because refusing the tap is how a player learns nothing. */
+  .light[data-afford='0'] { background: var(--card); color: var(--dim); box-shadow: inset 0 0 0 1px var(--edge); }
+
+  /* A settled number flashes once; a number that flashed every tick would have taught the
+     player to ignore exactly the moment it moved. `ui` adds the class, `pulse` restarts it. */
+  .lattice-roll { display: inline-block; }
+  .lattice-roll.bump { animation: bump 240ms cubic-bezier(.2, .9, .3, 1); }
+  @keyframes bump { from { transform: scale(1.16); } to { transform: scale(1); } }
+
+  /* Under the day/night chip, not centered: the objective card is top-left and a centered
+     column overlaps it on a narrow window, which hides the one line of text that is the whole
+     tutorial. The layer is `inset: 0` from the package; the padding is where it may write. */
+  .lattice-layer-toasts { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; padding: 76px 18px 0; }
+  .lattice-toast {
+    position: relative; max-width: 420px; padding: 10px 18px 12px; cursor: pointer;
+    background: var(--card); box-shadow: inset 0 0 0 1px var(--edge);
+    clip-path: var(--cut); font-size: 13px;
+    animation: rise 260ms cubic-bezier(.2, .9, .3, 1);
+  }
+  .lattice-toast-good { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--good) 55%, transparent); }
+  .lattice-toast-bad { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lattice-bad, #d6483f) 55%, transparent); }
+  .lattice-toast-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--accent); transform-origin: left; }
+  @keyframes rise { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lattice-roll.bump, .lattice-toast { animation: none; }
+    .light:hover, .light:active { transform: none; }
+  }
+  @media (max-width: 560px) {
+    .dock-left { max-width: calc(100vw - 36px); }
+    .brief { min-width: 0; }
+  }
+</style>
 <div id="app"></div>
 <script type="module" src="/src/main.ts"></script>
