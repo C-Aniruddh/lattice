@@ -176,3 +176,164 @@ exists precisely for the case where a game fires the same sound forty times in a
 
 The first three are the ones that run every frame, and all three are effectively free. The
 encode/decode figures are per *save*, which happens every few seconds at most.
+
+## `@lattice/input`
+
+Every row here is on a per-frame path. Nothing else in the package runs more than once per scene.
+
+| path | rate | per call |
+|---|---:|---:|
+| `submit` — one `pointermove` into the open bucket | 37.7 M/s | ~27 ns |
+| `hoverTile` — the query a placement ghost makes every frame | 21.1 M/s | ~47 ns |
+| `frame` — integrating a glide | 18.6 M/s | ~54 ns |
+| `tick` — an empty bucket, which is most ticks | 14.5 M/s | ~69 ns |
+| `tick` — a realistic frame: 8 coalesced moves delivered as drags | 1.41 M/s | ~708 ns |
+| `tick` — the stall case: 1,000 moves in one bucket | 10.2 k/s | ~98 µs |
+
+The fifth row is the one to read: **a realistic input frame is 0.009% of the 8 ms budget.** A
+120 Hz pointer mid-drag delivers two to eight coalesced positions per displayed frame, each of
+which is submitted, buffered, recognised, resolved to a tile through the frozen camera, and
+dispatched to a handler — all of it for about seven hundred nanoseconds.
+
+The last row is deliberately pathological: a tick that arrives after the browser has queued a
+second of input. At 98 µs it is 1.2% of the budget, which is the answer to "what does a stall
+cost" — it costs a slow frame, not a dropped gesture, because the collapse rule spends precision
+and never events.
+
+### The allocation claim, measured
+
+**Three million `move` samples through three thousand ticks retain zero bytes**, with a forced
+GC either side (`node --expose-gc`, three runs, all within noise of zero — the heap is fractionally
+*smaller* afterwards than before, because the forced collection also clears the warm-up).
+
+Three things are doing that work, and all three are load-bearing rather than clever:
+
+- **The buffer owns its slots for the life of the system.** A bucket has a `count` and an array
+  whose `length` is capacity; emptying is `count = 0`, never `length = 0`, so the slot objects
+  survive to the next tick. `submit` copies a caller's sample into a slot, which is also why the
+  DOM adapter can reuse one object per event kind for ever.
+- **The gesture handed to a handler is the same object every time** — one per kind, for the life
+  of the system. A fresh event object per pointer move, sixty times a second, is a garbage
+  collector pause with a nice API. (Copy what you keep; retaining one keeps a reference to next
+  tick's gesture.)
+- **Recording is the one path that allocates**, one small object per sample, and only while a
+  recorder is running. A game that never calls `record` pays none of it.
+
+The rule this confirms is the one in the allocation section at the top of this file: the number
+that matters is not the mean, it is the frame-time tail, and the way to protect the tail is to
+give the collector nothing to do.
+
+---
+
+## `@lattice/draw`
+
+**The draw calls are where an isometric game's frame time actually goes.** `core`'s tables above
+put vector maths and terrain hashing together at under half a percent of the budget and said so
+explicitly; this section is the other side of that sentence.
+
+### What is being measured, and what is not
+
+Everything this package does per frame is **geometry and command submission**: project corners
+into `pen.xy`, derive three face colours from one, and hand `(buffer, count, colour)` to a
+backend. The benchmark backend (`test/null-surface.ts`) consumes those calls and folds every
+coordinate into a checksum — so V8 cannot delete the frame — and rasterises nothing.
+
+Rasterisation happens inside the browser's compositor, is not reachable from Node, and is **not
+what a sprite cache would save**: a cached sprite is blitted at the same size it would have been
+drawn. What a cache replaces is exactly the column below.
+
+The device pixel ratio is set to 3 — a phone — and appears in the numbers not at all, which is
+the point: `Surface` coordinates are CSS pixels and the ratio is the backend's business.
+
+### The frame
+
+A building of 42 draw calls: a plinth, a body, a setback that branches on upgrade level, ten
+windows, a gabled roof, a tank, a mast, six lit windows, a contact shadow and one animated glow.
+The camera is pulled back far enough that **nothing is culled**, so these are worst-case frames.
+
+| workload | mean | p99 | share of the 8 ms budget |
+|---|---:|---:|---:|
+| 200 sprites × 42 ops, dpr 3 | 1.11 ms | 1.89 ms | **14%** |
+| **400 sprites × 42 ops, dpr 3** | **2.17 ms** | 2.33 ms | **27%** |
+| 1,000 sprites × 42 ops, dpr 3 | 5.45 ms | 5.71 ms | 68% |
+| 400 sprites, dpr 1 | 2.17 ms | 2.34 ms | 27% |
+| 400 buildings + 120 lamps, night mask composited once | 2.20 ms | 2.36 ms | 28% |
+| 2,400 terrain diamonds | 0.44 ms | 0.51 ms | 5.5% |
+
+The last three rows each answer a question someone would otherwise have to guess at. **The device
+ratio is not in the geometry** — 400 sprites cost the same at dpr 1 and dpr 3, to within the
+noise, which is invariant 3 measured rather than asserted. **A full night is nearly free**: 120
+emitters and a composite add 0.03 ms to a 400-sprite frame, because pools accumulate into one
+buffer and the darkness is cut once rather than per lamp. And terrain, the thing that *looks*
+like the big loop, is a twentieth of the budget.
+
+### The cache verdict
+
+The RFC wrote `cache` as provisional and named deleting it as a clean outcome. **It is deleted,
+and this is the number.**
+
+| | 400 sprites |
+|---|---:|
+| direct path, every sprite drawn from its massing | 2.17 ms |
+| **a perfect cache: key, lookup and blit, 100% hits, no misses** | **0.04 ms** |
+| the most a cache could ever save | 2.13 ms, of an 8 ms budget |
+
+A cache does not make a frame free; on a hit it still builds the key — sprite id, level, seed,
+flags, quantised progress, palette revision, zoom bucket — looks it up, and submits a blit. So
+the honest comparison is not "2.17 ms versus nothing" but "2.17 ms versus 0.04 ms plus four new
+ways to render something stale": zoom buckets, palette revisions, blit snapping, and a
+don't-fill-while-moving rule that exists because filling during a pinch is *strictly worse* than
+no cache at all. Add 8 MiB of resident bitmaps on a phone.
+
+At the demo's real load — two to four hundred sprites — the direct path is 14% to 27% of the
+budget. That is the "fits with headroom" the RFC set as the test, so the module is not built.
+
+**The condition under which this reopens is in the table above**: a thousand buildings of this
+complexity is 5.45 ms and 68% of the budget, and that is where a cache would start to earn what
+it costs. It is a row rather than a footnote so that whoever hits it can point at the number.
+
+Nothing else in the package depended on the decision. `SpriteDef`, `Variant` and the
+`massing`/`animate` split all exist for reasons that outlive it — the split is what makes a
+sprite's static art declarative and its motion explicit, and it enforces *something moves on
+every building* structurally rather than by memory.
+
+### Per primitive
+
+A thousand calls each, so a regression can be attributed rather than merely noticed.
+
+| primitive | per 1,000 | per call | ops submitted |
+|---|---:|---:|---:|
+| `isoRoof` | 0.49 ms | 0.49 µs | 4 |
+| `isoCylinder` | 0.45 ms | 0.45 µs | 4 |
+| `isoBox` | 0.45 ms | 0.45 µs | 4 |
+| `isoTile` | 0.18 ms | 0.18 µs | 1 |
+| `isoPost` | 0.15 ms | 0.15 µs | 1 |
+| `wallText` | 0.11 ms | 0.11 µs | 1 |
+| `glowDot` | 0.09 ms | 0.09 µs | 2 |
+| `contactShadow` | 0.07 ms | 0.07 µs | 1 |
+
+The ordering is the op count, almost exactly, which is the shape you want: the cost of a solid is
+what it submits, not what it computes. `isoBox` projects **four** x values for its eight corners
+— the top four sit directly above the bottom four and elevation moves screen y alone — which is
+`iso`'s separable `toScreenX`/`toScreenY` paying for itself on the innermost line of the package.
+
+### Two things that are not on the frame path, measured anyway
+
+| operation | time | notes |
+|---|---:|---|
+| `spriteHeightPx`, 400 sprites | 0.17 ms | a measuring replay of the whole massing. Cache the result per instance; it changes only with the variant |
+| `palette.lerp` across a six-second dusk, 361 calls | 0.05 ms | and it bumps `rev` **32** times, not 361 — the quantisation that stops a transition invalidating everything downstream on every frame of it |
+
+### Allocation
+
+`test/invariants.test.ts` reads the source of every function a frame calls and rejects object
+literals, array literals, closures and `new` in any of them — the same instrument `iso` settled
+on, for the same reason it settled on it: **a heap delta cannot see this failure.** The objects a
+leaking primitive creates are dead the instant they are made, so a scavenge collects them and
+`heapUsed` ends where it started; a garbage-collection *count* survives that argument but not the
+environment, because the module loader and the runner are collecting too.
+
+One `Pen` per frame is this package's entire per-frame allocation. That includes the seeded `Rng`
+each sprite hook receives: streams are held by seed and rewound in place, because `core` is
+explicit that one `Rng` per sprite per frame is precisely the small, short-lived, invisible-in-a-
+mean allocation the rule at the top of this file exists to prevent.
