@@ -1,0 +1,717 @@
+{
+  "$comment": "The work queue. Agents pull from here; the orchestrator sets owner and status. Phases run in order; tasks within a phase run in parallel on disjoint paths.",
+  "phases": [
+    "design",
+    "build",
+    "audit",
+    "game",
+    "ship"
+  ],
+  "tasks": [
+    {
+      "id": "A1",
+      "phase": "design",
+      "role": "lattice-architect",
+      "title": "RFC the public surface of @lattice/core",
+      "package": "core",
+      "paths": [
+        "docs/rfc/core.md"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "docs/rfc/core.md exists and follows the six-section shape in the architect brief",
+        "the five-line example is written before the API and the API serves it",
+        "every signature type-checks if pasted into a .ts file",
+        "the deliberately-absent section names at least three things and says why"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "A2",
+      "phase": "design",
+      "role": "lattice-architect",
+      "title": "RFC the public surface of @lattice/iso",
+      "package": "iso",
+      "paths": [
+        "docs/rfc/iso.md"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "docs/rfc/iso.md exists and follows the six-section shape in the architect brief",
+        "the five-line example is written before the API and the API serves it",
+        "every signature type-checks if pasted into a .ts file",
+        "the deliberately-absent section names at least three things and says why"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "A3",
+      "phase": "design",
+      "role": "lattice-architect",
+      "title": "RFC the public surface of @lattice/draw",
+      "package": "draw",
+      "paths": [
+        "docs/rfc/draw.md"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "docs/rfc/draw.md exists and follows the six-section shape in the architect brief",
+        "the five-line example is written before the API and the API serves it",
+        "every signature type-checks if pasted into a .ts file",
+        "the deliberately-absent section names at least three things and says why"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "A4",
+      "phase": "design",
+      "role": "lattice-architect",
+      "title": "RFC the public surface of @lattice/loop",
+      "package": "loop",
+      "paths": [
+        "docs/rfc/loop.md"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "docs/rfc/loop.md exists and follows the six-section shape in the architect brief",
+        "the five-line example is written before the API and the API serves it",
+        "every signature type-checks if pasted into a .ts file",
+        "the deliberately-absent section names at least three things and says why"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "A5",
+      "phase": "design",
+      "role": "lattice-architect",
+      "title": "RFC the public surface of @lattice/input",
+      "package": "input",
+      "paths": [
+        "docs/rfc/input.md"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "docs/rfc/input.md exists and follows the six-section shape in the architect brief",
+        "the five-line example is written before the API and the API serves it",
+        "every signature type-checks if pasted into a .ts file",
+        "the deliberately-absent section names at least three things and says why"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "A6",
+      "phase": "design",
+      "role": "lattice-architect",
+      "title": "RFC the public surface of @lattice/audio",
+      "package": "audio",
+      "paths": [
+        "docs/rfc/audio.md"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "docs/rfc/audio.md exists and follows the six-section shape in the architect brief",
+        "the five-line example is written before the API and the API serves it",
+        "every signature type-checks if pasted into a .ts file",
+        "the deliberately-absent section names at least three things and says why"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "A7",
+      "phase": "design",
+      "role": "lattice-architect",
+      "title": "RFC the public surface of @lattice/persist",
+      "package": "persist",
+      "paths": [
+        "docs/rfc/persist.md"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "docs/rfc/persist.md exists and follows the six-section shape in the architect brief",
+        "the five-line example is written before the API and the API serves it",
+        "every signature type-checks if pasted into a .ts file",
+        "the deliberately-absent section names at least three things and says why"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "A8",
+      "phase": "design",
+      "role": "lattice-architect",
+      "title": "RFC the public surface of @lattice/sim",
+      "package": "sim",
+      "paths": [
+        "docs/rfc/sim.md"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "docs/rfc/sim.md exists and follows the six-section shape in the architect brief",
+        "the five-line example is written before the API and the API serves it",
+        "every signature type-checks if pasted into a .ts file",
+        "the deliberately-absent section names at least three things and says why"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "A9",
+      "phase": "design",
+      "role": "lattice-architect",
+      "title": "RFC the public surface of @lattice/ui",
+      "package": "ui",
+      "paths": [
+        "docs/rfc/ui.md"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "docs/rfc/ui.md exists and follows the six-section shape in the architect brief",
+        "the five-line example is written before the API and the API serves it",
+        "every signature type-checks if pasted into a .ts file",
+        "the deliberately-absent section names at least three things and says why"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "A10",
+      "phase": "design",
+      "role": "lattice-designer",
+      "title": "Design the demo game the kit must be able to build",
+      "package": "demo",
+      "paths": [
+        "docs/rfc/demo.md"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "a one-page design: the loop, the ending, why it is worth finishing",
+        "names the kit capabilities it needs, package by package — this is the real acceptance test for the RFCs",
+        "stays under a few hundred lines of game code by design"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "B1",
+      "phase": "build",
+      "role": "lattice-builder",
+      "title": "Implement @lattice/core",
+      "package": "core",
+      "paths": [
+        "packages/core/**"
+      ],
+      "dependsOn": [
+        "A1"
+      ],
+      "acceptance": [
+        "npm run verify passes from the repo root",
+        "test/ mirrors src/ one file to one file, >=90% statements (100% for core)",
+        "benchmarks exist for every per-frame or per-entity path",
+        "README.md opens with an example that has actually been run",
+        "npm run lint -- --fix leaves kit.json accurate"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "B2",
+      "phase": "build",
+      "role": "lattice-builder",
+      "title": "Implement @lattice/iso",
+      "package": "iso",
+      "paths": [
+        "packages/iso/**"
+      ],
+      "dependsOn": [
+        "A2"
+      ],
+      "acceptance": [
+        "npm run verify passes from the repo root",
+        "test/ mirrors src/ one file to one file, >=90% statements (100% for core)",
+        "benchmarks exist for every per-frame or per-entity path",
+        "README.md opens with an example that has actually been run",
+        "npm run lint -- --fix leaves kit.json accurate"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "B3",
+      "phase": "build",
+      "role": "lattice-builder",
+      "title": "Implement @lattice/draw",
+      "package": "draw",
+      "paths": [
+        "packages/draw/**"
+      ],
+      "dependsOn": [
+        "A3"
+      ],
+      "acceptance": [
+        "npm run verify passes from the repo root",
+        "test/ mirrors src/ one file to one file, >=90% statements (100% for core)",
+        "benchmarks exist for every per-frame or per-entity path",
+        "README.md opens with an example that has actually been run",
+        "npm run lint -- --fix leaves kit.json accurate"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "B4",
+      "phase": "build",
+      "role": "lattice-builder",
+      "title": "Implement @lattice/loop",
+      "package": "loop",
+      "paths": [
+        "packages/loop/**"
+      ],
+      "dependsOn": [
+        "A4"
+      ],
+      "acceptance": [
+        "npm run verify passes from the repo root",
+        "test/ mirrors src/ one file to one file, >=90% statements (100% for core)",
+        "benchmarks exist for every per-frame or per-entity path",
+        "README.md opens with an example that has actually been run",
+        "npm run lint -- --fix leaves kit.json accurate"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "B5",
+      "phase": "build",
+      "role": "lattice-builder",
+      "title": "Implement @lattice/input",
+      "package": "input",
+      "paths": [
+        "packages/input/**"
+      ],
+      "dependsOn": [
+        "A5"
+      ],
+      "acceptance": [
+        "npm run verify passes from the repo root",
+        "test/ mirrors src/ one file to one file, >=90% statements (100% for core)",
+        "benchmarks exist for every per-frame or per-entity path",
+        "README.md opens with an example that has actually been run",
+        "npm run lint -- --fix leaves kit.json accurate"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "B6",
+      "phase": "build",
+      "role": "lattice-builder",
+      "title": "Implement @lattice/audio",
+      "package": "audio",
+      "paths": [
+        "packages/audio/**"
+      ],
+      "dependsOn": [
+        "A6"
+      ],
+      "acceptance": [
+        "npm run verify passes from the repo root",
+        "test/ mirrors src/ one file to one file, >=90% statements (100% for core)",
+        "benchmarks exist for every per-frame or per-entity path",
+        "README.md opens with an example that has actually been run",
+        "npm run lint -- --fix leaves kit.json accurate"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "B7",
+      "phase": "build",
+      "role": "lattice-builder",
+      "title": "Implement @lattice/persist",
+      "package": "persist",
+      "paths": [
+        "packages/persist/**"
+      ],
+      "dependsOn": [
+        "A7"
+      ],
+      "acceptance": [
+        "npm run verify passes from the repo root",
+        "test/ mirrors src/ one file to one file, >=90% statements (100% for core)",
+        "benchmarks exist for every per-frame or per-entity path",
+        "README.md opens with an example that has actually been run",
+        "npm run lint -- --fix leaves kit.json accurate"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "B8",
+      "phase": "build",
+      "role": "lattice-builder",
+      "title": "Implement @lattice/sim",
+      "package": "sim",
+      "paths": [
+        "packages/sim/**"
+      ],
+      "dependsOn": [
+        "A8"
+      ],
+      "acceptance": [
+        "npm run verify passes from the repo root",
+        "test/ mirrors src/ one file to one file, >=90% statements (100% for core)",
+        "benchmarks exist for every per-frame or per-entity path",
+        "README.md opens with an example that has actually been run",
+        "npm run lint -- --fix leaves kit.json accurate"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "B9",
+      "phase": "build",
+      "role": "lattice-builder",
+      "title": "Implement @lattice/ui",
+      "package": "ui",
+      "paths": [
+        "packages/ui/**"
+      ],
+      "dependsOn": [
+        "A9"
+      ],
+      "acceptance": [
+        "npm run verify passes from the repo root",
+        "test/ mirrors src/ one file to one file, >=90% statements (100% for core)",
+        "benchmarks exist for every per-frame or per-entity path",
+        "README.md opens with an example that has actually been run",
+        "npm run lint -- --fix leaves kit.json accurate"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "C1",
+      "phase": "audit",
+      "role": "lattice-auditor",
+      "title": "Adversarially audit @lattice/core",
+      "package": "core",
+      "paths": [
+        "packages/core/**"
+      ],
+      "dependsOn": [
+        "B1"
+      ],
+      "acceptance": [
+        "every stated invariant in kit.json has been attacked with a test",
+        "adversarial inputs covered: 0, 1, -1, NaN, Infinity, empty, huge, exact boundary",
+        "determinism verified across a fresh process, not just twice in one",
+        "findings ranked worst-first with a reproduction each"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "C2",
+      "phase": "audit",
+      "role": "lattice-auditor",
+      "title": "Adversarially audit @lattice/iso",
+      "package": "iso",
+      "paths": [
+        "packages/iso/**"
+      ],
+      "dependsOn": [
+        "B2"
+      ],
+      "acceptance": [
+        "every stated invariant in kit.json has been attacked with a test",
+        "adversarial inputs covered: 0, 1, -1, NaN, Infinity, empty, huge, exact boundary",
+        "determinism verified across a fresh process, not just twice in one",
+        "findings ranked worst-first with a reproduction each"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "C3",
+      "phase": "audit",
+      "role": "lattice-auditor",
+      "title": "Adversarially audit @lattice/draw",
+      "package": "draw",
+      "paths": [
+        "packages/draw/**"
+      ],
+      "dependsOn": [
+        "B3"
+      ],
+      "acceptance": [
+        "every stated invariant in kit.json has been attacked with a test",
+        "adversarial inputs covered: 0, 1, -1, NaN, Infinity, empty, huge, exact boundary",
+        "determinism verified across a fresh process, not just twice in one",
+        "findings ranked worst-first with a reproduction each"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "C4",
+      "phase": "audit",
+      "role": "lattice-auditor",
+      "title": "Adversarially audit @lattice/loop",
+      "package": "loop",
+      "paths": [
+        "packages/loop/**"
+      ],
+      "dependsOn": [
+        "B4"
+      ],
+      "acceptance": [
+        "every stated invariant in kit.json has been attacked with a test",
+        "adversarial inputs covered: 0, 1, -1, NaN, Infinity, empty, huge, exact boundary",
+        "determinism verified across a fresh process, not just twice in one",
+        "findings ranked worst-first with a reproduction each"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "C5",
+      "phase": "audit",
+      "role": "lattice-auditor",
+      "title": "Adversarially audit @lattice/input",
+      "package": "input",
+      "paths": [
+        "packages/input/**"
+      ],
+      "dependsOn": [
+        "B5"
+      ],
+      "acceptance": [
+        "every stated invariant in kit.json has been attacked with a test",
+        "adversarial inputs covered: 0, 1, -1, NaN, Infinity, empty, huge, exact boundary",
+        "determinism verified across a fresh process, not just twice in one",
+        "findings ranked worst-first with a reproduction each"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "C6",
+      "phase": "audit",
+      "role": "lattice-auditor",
+      "title": "Adversarially audit @lattice/audio",
+      "package": "audio",
+      "paths": [
+        "packages/audio/**"
+      ],
+      "dependsOn": [
+        "B6"
+      ],
+      "acceptance": [
+        "every stated invariant in kit.json has been attacked with a test",
+        "adversarial inputs covered: 0, 1, -1, NaN, Infinity, empty, huge, exact boundary",
+        "determinism verified across a fresh process, not just twice in one",
+        "findings ranked worst-first with a reproduction each"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "C7",
+      "phase": "audit",
+      "role": "lattice-auditor",
+      "title": "Adversarially audit @lattice/persist",
+      "package": "persist",
+      "paths": [
+        "packages/persist/**"
+      ],
+      "dependsOn": [
+        "B7"
+      ],
+      "acceptance": [
+        "every stated invariant in kit.json has been attacked with a test",
+        "adversarial inputs covered: 0, 1, -1, NaN, Infinity, empty, huge, exact boundary",
+        "determinism verified across a fresh process, not just twice in one",
+        "findings ranked worst-first with a reproduction each"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "C8",
+      "phase": "audit",
+      "role": "lattice-auditor",
+      "title": "Adversarially audit @lattice/sim",
+      "package": "sim",
+      "paths": [
+        "packages/sim/**"
+      ],
+      "dependsOn": [
+        "B8"
+      ],
+      "acceptance": [
+        "every stated invariant in kit.json has been attacked with a test",
+        "adversarial inputs covered: 0, 1, -1, NaN, Infinity, empty, huge, exact boundary",
+        "determinism verified across a fresh process, not just twice in one",
+        "findings ranked worst-first with a reproduction each"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "C9",
+      "phase": "audit",
+      "role": "lattice-auditor",
+      "title": "Adversarially audit @lattice/ui",
+      "package": "ui",
+      "paths": [
+        "packages/ui/**"
+      ],
+      "dependsOn": [
+        "B9"
+      ],
+      "acceptance": [
+        "every stated invariant in kit.json has been attacked with a test",
+        "adversarial inputs covered: 0, 1, -1, NaN, Infinity, empty, huge, exact boundary",
+        "determinism verified across a fresh process, not just twice in one",
+        "findings ranked worst-first with a reproduction each"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "C10",
+      "phase": "audit",
+      "role": "lattice-perf",
+      "title": "Measure the whole kit against the frame budget",
+      "package": "*",
+      "paths": [
+        "docs/PERFORMANCE.md",
+        "packages/*/test/*.bench.ts"
+      ],
+      "dependsOn": [
+        "B1",
+        "B2",
+        "B3",
+        "B4"
+      ],
+      "acceptance": [
+        "docs/PERFORMANCE.md is a table: operation, n, p50, p99, budget, verdict",
+        "the depth-sort comparator is benchmarked at 100, 1000 and 10000",
+        "every allocation found on a hot path is either removed or justified in writing"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "C11",
+      "phase": "audit",
+      "role": "lattice-scribe",
+      "title": "Cold-arrival navigability audit",
+      "package": " *",
+      "paths": [
+        "README.md",
+        "docs/**",
+        "packages/*/README.md"
+      ],
+      "dependsOn": [
+        "B9"
+      ],
+      "acceptance": [
+        "three newcomer tasks attempted using only repo navigation, each failure recorded and fixed",
+        "every package README opens with a runnable example",
+        "no doc comment that only restates its symbol name survives"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "D1",
+      "phase": "game",
+      "role": "lattice-designer",
+      "title": "Build the demo game from nothing but the kit",
+      "package": "demo",
+      "paths": [
+        "examples/demo/**"
+      ],
+      "dependsOn": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "B7",
+        "B8",
+        "B9"
+      ],
+      "acceptance": [
+        "runs with npm run dev and is playable within ten seconds of load",
+        "no runtime dependency outside @lattice/*, and no asset files of any kind",
+        "deterministic: same seed, same world",
+        "the ranked list of kit gaps it hit is the primary deliverable"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "E1",
+      "phase": "ship",
+      "role": "lattice-scribe",
+      "title": "The front door: root README, docs, and the publish checklist",
+      "package": "*",
+      "paths": [
+        "README.md",
+        "docs/**",
+        ".github/**"
+      ],
+      "dependsOn": [
+        "D1"
+      ],
+      "acceptance": [
+        "root README earns a star in the first screen: what it is, what it looks like, one example",
+        "CONTRIBUTING and a CI workflow that runs npm run verify on every push",
+        "every package.json is publish-ready: files, exports, sideEffects, repository, license"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    }
+  ]
+}
