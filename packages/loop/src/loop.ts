@@ -64,7 +64,7 @@
  */
 
 import { expectFinite, expectInt, type Disposer } from '@lattice/core';
-import type { Clock, Millis, Seconds } from './clock.js';
+import type { Clock } from './clock.js';
 import type { FrameSource, Pump } from './frames.js';
 import { createTimeline, type Scheduler } from './scheduler.js';
 import type { FrameStats } from './stats.js';
@@ -169,7 +169,7 @@ export interface LoopOptions {
    * Optional only because it is shorthand: giving it here is exactly `onUpdate(fn)` called
    * before `start()`, and it is therefore always the first subscriber.
    */
-  readonly update?: (dt: Seconds, tick: number) => void;
+  readonly update?: (dt: number, tick: number) => void;
 
   /**
    * Draw the world as it stands `alpha` of the way from the last completed step to the next
@@ -188,7 +188,7 @@ export interface LoopOptions {
    * Must not: mutate simulation state, accumulate anything the simulation reads, step tweens,
    * cache hit-boxes, or start timers.
    */
-  readonly render?: (alpha: number, time: Seconds, nowMs: Millis) => void;
+  readonly render?: (alpha: number, time: number, nowMs: number) => void;
 
   /**
    * Fixed steps per second. Default {@link DEFAULT_HZ}. An idle game is happy at 20.
@@ -209,14 +209,14 @@ export interface LoopOptions {
    * step is legal and means the loop never steps at all — occasionally what a test wants, and
    * never what a game does.
    */
-  readonly maxCatchUpMs?: Millis;
+  readonly maxCatchUpMs?: number;
 
   /**
    * Pump cost above which `stats.overBudget` increments. Default {@link DEFAULT_BUDGET_MS}.
    *
    * @throws RangeError if negative or not finite.
    */
-  readonly budgetMs?: Millis;
+  readonly budgetMs?: number;
 
   /**
    * Called once per pump that hit the catch-up ceiling, with the seconds thrown away.
@@ -227,7 +227,7 @@ export interface LoopOptions {
    * its own timestamp. Legitimate uses: a perf warning, deciding to skip an expensive
    * re-layout, a "welcome back" panel that mentions no numbers.
    */
-  readonly onStall?: (droppedSeconds: Seconds) => void;
+  readonly onStall?: (droppedSeconds: number) => void;
 
   /**
    * Called when anything the loop **invoked** throws — a subscriber, a timer, a job. The loop
@@ -264,7 +264,7 @@ export interface Loop {
    * looks away, which reads as a bug and is worse than one, because it is a bug you cannot
    * reproduce in the foreground.
    */
-  readonly time: Seconds;
+  readonly time: number;
 
   /**
    * Real seconds the loop has been running. Never pauses, never scales, never clamped.
@@ -273,7 +273,7 @@ export interface Loop {
    * owing nothing, which is the same promise `start()` makes about the wait before the first
    * pump.
    */
-  readonly realTime: Seconds;
+  readonly realTime: number;
 
   /**
    * Fixed steps issued since construction. The replay cursor.
@@ -286,7 +286,7 @@ export interface Loop {
   readonly tick: number;
 
   /** The `dt` every `update` is handed, forever. Computed once; see {@link Loop.stepMs}. */
-  readonly stepSeconds: Seconds;
+  readonly stepSeconds: number;
 
   /**
    * The same step in milliseconds — `stepUs / 1000`, computed once and stable for the life of
@@ -299,7 +299,7 @@ export interface Loop {
    * **breaking change to every recorded session**, exactly as changing a save schema is, and
    * it belongs in a migration note rather than in a tuning pass.
    */
-  readonly stepMs: Millis;
+  readonly stepMs: number;
 
   /**
    * Timers on **sim time**: they pause when the game pauses, scale with `speed`, are clamped
@@ -334,7 +334,7 @@ export interface Loop {
    *
    * The returned disposer removes exactly this subscription and is safe to call twice.
    */
-  onUpdate(fn: (dt: Seconds, tick: number) => void): Disposer;
+  onUpdate(fn: (dt: number, tick: number) => void): Disposer;
 
   /**
    * Attach painting to the paint pump. Every subscriber gets the same `alpha`, `time` and
@@ -343,7 +343,7 @@ export interface Loop {
    * Same prohibitions as {@link LoopOptions.render}: a render subscriber may not mutate
    * simulation state.
    */
-  onRender(fn: (alpha: number, time: Seconds, nowMs: Millis) => void): Disposer;
+  onRender(fn: (alpha: number, time: number, nowMs: number) => void): Disposer;
 
   /**
    * Create a coalescing job: work that must happen soon, at most once per pump, and off the
@@ -485,8 +485,8 @@ export function createLoop(options: LoopOptions): Loop {
   const sim = createTimeline();
   const real = createTimeline();
 
-  const updateSubs: Subscription<(dt: Seconds, tick: number) => void>[] = [];
-  const renderSubs: Subscription<(alpha: number, time: Seconds, nowMs: Millis) => void>[] = [];
+  const updateSubs: Subscription<(dt: number, tick: number) => void>[] = [];
+  const renderSubs: Subscription<(alpha: number, time: number, nowMs: number) => void>[] = [];
   let updateDirty = false;
   let renderDirty = false;
 
@@ -532,7 +532,7 @@ export function createLoop(options: LoopOptions): Loop {
   };
 
   /** @returns `true` if every live subscriber ran; `false` if `stop()` cut the pass short. */
-  const runUpdates = (dt: Seconds, at: number): boolean => {
+  const runUpdates = (dt: number, at: number): boolean => {
     if (updateDirty) {
       compact(updateSubs);
       updateDirty = false;
@@ -547,7 +547,7 @@ export function createLoop(options: LoopOptions): Loop {
     return true;
   };
 
-  const runRenders = (alpha: number, time: Seconds, nowMs: Millis): void => {
+  const runRenders = (alpha: number, time: number, nowMs: number): void => {
     if (renderDirty) {
       compact(renderSubs);
       renderDirty = false;
@@ -735,7 +735,7 @@ export function createLoop(options: LoopOptions): Loop {
       if (typeof fn !== 'function') {
         throw new TypeError(`loop.onUpdate: expected a function, got ${typeof fn}`);
       }
-      const sub: Subscription<(dt: Seconds, at: number) => void> = { fn, live: true };
+      const sub: Subscription<(dt: number, at: number) => void> = { fn, live: true };
       updateSubs.push(sub);
       return () => {
         if (!sub.live) return;
@@ -748,7 +748,7 @@ export function createLoop(options: LoopOptions): Loop {
       if (typeof fn !== 'function') {
         throw new TypeError(`loop.onRender: expected a function, got ${typeof fn}`);
       }
-      const sub: Subscription<(alpha: number, time: Seconds, nowMs: Millis) => void> = { fn, live: true };
+      const sub: Subscription<(alpha: number, time: number, nowMs: number) => void> = { fn, live: true };
       renderSubs.push(sub);
       return () => {
         if (!sub.live) return;

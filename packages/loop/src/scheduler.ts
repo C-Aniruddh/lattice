@@ -46,7 +46,6 @@
  */
 
 import { expectFinite } from '@lattice/core';
-import type { Seconds } from './clock.js';
 
 /**
  * Opaque, never reused within a session, and cheap: a number, not an object.
@@ -110,12 +109,12 @@ function expectCallback(fn: unknown, label: string): (repeats: number) => void {
  *
  * The loop keeps `advance` to itself deliberately: a game that could advance `loop.sim`
  * directly would be the second clock that non-negotiable "one thing decides when work
- * happens" exists to prevent, and it would desynchronise sim timers from the fixed step they
+ * happens" exists to prevent, and it would desynchronize sim timers from the fixed step they
  * are defined against.
  */
 export interface Scheduler {
   /** Current time on this timeline, in seconds since it was created. */
-  readonly time: Seconds;
+  readonly time: number;
 
   /**
    * Live timers. `0` is a fine assertion for "nothing is left running", and the cheapest leak
@@ -136,7 +135,7 @@ export interface Scheduler {
    * integer microseconds.
    * @throws TypeError if `fn` is not a function.
    */
-  after(delay: Seconds, fn: () => void): TimerId;
+  after(delay: number, fn: () => void): TimerId;
 
   /**
    * Fire every `period`.
@@ -157,7 +156,7 @@ export interface Scheduler {
    * an infinite loop, not a fast timer.
    * @throws TypeError if `fn` is not a function.
    */
-  every(period: Seconds, fn: (repeats: number) => void): TimerId;
+  every(period: number, fn: (repeats: number) => void): TimerId;
 
   /**
    * Remove a timer. `true` if a live one was removed.
@@ -187,7 +186,7 @@ export interface Timeline extends Scheduler {
    * @throws RangeError if `dt` is negative, `NaN` or infinite. A negative advance would run
    * timers backwards, which has no meaning: a due time already passed cannot un-pass.
    */
-  advance(dt: Seconds): void;
+  advance(dt: number): void;
 }
 
 /**

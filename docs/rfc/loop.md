@@ -70,18 +70,20 @@ can press play. Each is argued for where it appears.
 
 ### 3.1 `clock` — time as a parameter
 
+**The unit boundary is here and nowhere else: options in milliseconds, callbacks in seconds.**
+A host clock is milliseconds on every platform that has one; a game's own constants ("0.4 s of
+hop", "12 s to build") read wrong in milliseconds and get typo'd by a factor of a thousand.
+
+Both units are a plain `number` and **the parameter name carries the unit** — that convention
+is the whole mechanism, and there is no type that can supplement it. This package exported
+`type Millis = number` and `type Seconds = number` until `K26`; they were deleted because an
+alias over `number` refuses nothing while its name, listed in `.lattice/kit.json` beside `Loop`
+and `Scheduler`, was twice read as a brand that would make `{ stepMs: 16 }` a compile error. A
+brand separates two *kinds* of value and a duration has one kind. `docs/rfc/durations.md` §7
+records this as deliberately absent, and §4 has the tiers for durations that do have an
+authority — the fixed step is taken as `step: loop`, never retyped as a number.
+
 ```ts
-/** Milliseconds. Every duration in this package's *options* is in these. */
-export type Millis = number;
-
-/**
- * Seconds. Every duration in this package's *callbacks* is in these, because a game's own
- * constants ("0.4 s of hop", "12 s to build") read wrong in milliseconds and get typo'd by
- * a factor of a thousand. The boundary between the two units is exactly here: options in,
- * seconds out.
- */
-export type Seconds = number;
-
 /**
  * The host's clock, injected.
  *
@@ -96,7 +98,7 @@ export type Seconds = number;
  * `@lattice/sim` keeps its own epoch timestamp and why this package credits nothing. See §4.1.
  */
 export interface Clock {
-  now(): Millis;
+  now(): number;
 }
 
 /**
@@ -107,12 +109,12 @@ export interface Clock {
  */
 export interface ManualClock extends Clock {
   /** Move forward. Negative values throw — they are always a bug, never a rewind you meant. */
-  advance(ms: Millis): void;
+  advance(ms: number): void;
   /** Jump to an absolute reading. For reproducing a captured trace, not for rewinding. */
-  set(ms: Millis): void;
+  set(ms: number): void;
 }
 
-export function manualClock(startMs?: Millis): ManualClock;
+export function manualClock(startMs?: number): ManualClock;
 ```
 
 ### 3.2 `frames` — when to run, injected (**new module; argued for**)
@@ -172,7 +174,7 @@ export interface BrowserFramesOptions {
    * roughly one second, and Chrome throttles harder still after five minutes. This number
    * is a floor on how stale a hidden game is allowed to get, not a frame rate.
    */
-  readonly idleMs?: Millis;
+  readonly idleMs?: number;
   /** Injected for tests. Defaults to `globalThis`. */
   readonly host?: FrameHost;
 }
@@ -258,7 +260,7 @@ export interface LoopOptions {
    * Optional only because it is shorthand: giving it here is exactly `onUpdate(fn)` called
    * before `start()`, and it is therefore always the first subscriber. See §3.3a.
    */
-  readonly update?: (dt: Seconds, tick: number) => void;
+  readonly update?: (dt: number, tick: number) => void;
 
   /**
    * Draw the world as it stands `alpha` of the way from the last completed step to the next
@@ -280,7 +282,7 @@ export interface LoopOptions {
    *
    * Optional for the same reason `update` is: it is shorthand for `onRender(fn)`.
    */
-  readonly render?: (alpha: number, time: Seconds, nowMs: Millis) => void;
+  readonly render?: (alpha: number, time: number, nowMs: number) => void;
 
   /**
    * Fixed steps per second. Default {@link DEFAULT_HZ}. An idle game is happy at 20.
@@ -292,10 +294,10 @@ export interface LoopOptions {
   readonly hz?: number;
 
   /** Catch-up ceiling. Default {@link DEFAULT_MAX_CATCH_UP_MS}. */
-  readonly maxCatchUpMs?: Millis;
+  readonly maxCatchUpMs?: number;
 
   /** Pump cost above which `stats.overBudget` increments. Default {@link DEFAULT_BUDGET_MS}. */
-  readonly budgetMs?: Millis;
+  readonly budgetMs?: number;
 
   /**
    * Called once per pump that hit the catch-up ceiling, with the seconds thrown away.
@@ -306,7 +308,7 @@ export interface LoopOptions {
    * interval from its own timestamp. Legitimate uses: a "welcome back" panel, a perf
    * warning, deciding to skip an expensive re-layout. See §4.1.
    */
-  readonly onStall?: (droppedSeconds: Seconds) => void;
+  readonly onStall?: (droppedSeconds: number) => void;
 
   /**
    * Called when anything the loop invoked throws — a subscriber, a timer, a job. The loop
@@ -326,13 +328,13 @@ export interface Loop {
   /** Sim-time multiplier. 1 is normal, 2 is fast-forward, 0 is paused. Never negative. */
   readonly speed: number;
   /** Sim seconds elapsed: `tick * stepSeconds`. Pauses, scales, and **lags real time**. */
-  readonly time: Seconds;
+  readonly time: number;
   /** Real seconds since `start()`. Never pauses, never scales, never clamped. */
-  readonly realTime: Seconds;
+  readonly realTime: number;
   /** Fixed steps run since `start()`. The replay cursor. Integer, monotone, never skips. */
   readonly tick: number;
   /** The `dt` every `update` is handed, forever. Computed once; see {@link Loop.stepMs}. */
-  readonly stepSeconds: Seconds;
+  readonly stepSeconds: number;
 
   /**
    * The same step in milliseconds — `stepSeconds * 1000`, computed once and stable for the
@@ -345,7 +347,7 @@ export interface Loop {
    * **breaking change to every recorded session**, exactly as changing a save schema is, and
    * it belongs in a migration note rather than in a tuning pass.
    */
-  readonly stepMs: Millis;
+  readonly stepMs: number;
 
   /**
    * Timers on **sim time**: they pause when the game pauses, scale with `speed`, are clamped
@@ -372,7 +374,7 @@ export interface Loop {
    * an overlay attached later always sees a world that has already moved this step. The
    * returned disposer removes exactly this subscription.
    */
-  onUpdate(fn: (dt: Seconds, tick: number) => void): Disposer;
+  onUpdate(fn: (dt: number, tick: number) => void): Disposer;
 
   /**
    * Attach painting to the paint pump. Every subscriber gets the same `alpha`, `time` and
@@ -381,7 +383,7 @@ export interface Loop {
    * Same prohibitions as `LoopOptions.render`: a render subscriber may not mutate simulation
    * state. This is the crossing that `@lattice/ui`'s `drive` exists to make un-mistakable.
    */
-  onRender(fn: (alpha: number, time: Seconds, nowMs: Millis) => void): Disposer;
+  onRender(fn: (alpha: number, time: number, nowMs: number) => void): Disposer;
 
   /**
    * Create a coalescing job: work that must happen soon, at most once per pump, and off the
@@ -499,12 +501,12 @@ export type TimerId = number;
 
 export interface Scheduler {
   /** Current time on this timeline, in seconds since it was created. */
-  readonly time: Seconds;
+  readonly time: number;
   /** Live timers. `0` is a fine assertion for "nothing is left running". */
   readonly pending: number;
 
   /** Fire once, at or after `delay`. `RangeError` if `delay` is negative or not finite. */
-  after(delay: Seconds, fn: () => void): TimerId;
+  after(delay: number, fn: () => void): TimerId;
 
   /**
    * Fire every `period`. `RangeError` if `period <= 0` — a zero period is an infinite loop,
@@ -515,7 +517,7 @@ export interface Scheduler {
    * call with `repeats === 3600`, not 3600 calls in one frame. Write the body so that it is
    * correct for any `repeats` — `credit(perTick * repeats)`, not `credit(perTick)`.
    */
-  every(period: Seconds, fn: (repeats: number) => void): TimerId;
+  every(period: number, fn: (repeats: number) => void): TimerId;
 
   /** `true` if a live timer was removed. Canceling twice is not an error. */
   cancel(id: TimerId): boolean;
@@ -524,7 +526,7 @@ export interface Scheduler {
 
 /** A scheduler somebody advances. The loop keeps its two to itself and exposes `Scheduler`. */
 export interface Timeline extends Scheduler {
-  advance(dt: Seconds): void;
+  advance(dt: number): void;
 }
 
 /**
@@ -549,7 +551,7 @@ export interface TweenOptions {
   readonly from: number;
   readonly to: number;
   /** Duration. `RangeError` if not finite and > 0; a zero-length tween is an assignment. */
-  readonly seconds: Seconds;
+  readonly seconds: number;
 
   /**
    * Called with the eased value every `step`, and exactly once more with **exactly `to`**
@@ -569,7 +571,7 @@ export interface TweenOptions {
   readonly ease?: Easing | EasingName;
 
   /** Wait this long before the first `onUpdate`. This is the whole sequencing story. */
-  readonly delay?: Seconds;
+  readonly delay?: number;
 
   /**
    * A **slot**, not a tag. Starting a tween with a slot cancels any live tween in the same
@@ -596,7 +598,7 @@ export interface Tweens {
    * should be — a camera tween stepped after the world lags it by a frame, and a tween
    * stepped in `render` is a mutation in the one callback that must not mutate.
    */
-  step(dt: Seconds): void;
+  step(dt: number): void;
 }
 
 export function createTweens(): Tweens;
@@ -713,7 +715,7 @@ export interface ReplaySource {
 export interface ReplayOptions {
   readonly source: ReplaySource;
   /** The same `update` the live game runs. If it is not the same function, nothing is proven. */
-  readonly update: (dt: Seconds, tick: number) => void;
+  readonly update: (dt: number, tick: number) => void;
   /**
    * The state hash the recording used. Must be **Tier A** arithmetic (§3.5): a hash built on
    * `Math.exp` or a smoothed camera value reports divergence between two correct engines.
@@ -807,7 +809,7 @@ the player who looked away, which is the same bug as the economy one wearing a n
 
 ### 3.9 The whole export list
 
-`Millis`, `Seconds`, `Clock`, `ManualClock`, `manualClock`, `PumpKind`, `Pump`, `FrameSource`,
+`Clock`, `ManualClock`, `manualClock`, `PumpKind`, `Pump`, `FrameSource`,
 `FrameHost`, `BrowserFramesOptions`, `browserFrames`, `ManualFrames`, `manualFrames`,
 `Disposer`, `LoopPhase`, `Job`, `LoopOptions`, `Loop`, `createLoop`, `TimerId`, `Scheduler`,
 `Timeline`, `createTimeline`, `TweenId`, `TweenOptions`, `Tweens`, `createTweens`,
@@ -882,7 +884,7 @@ matters. There is deliberately no `loop.epoch`, no second method on `Clock`, and
 
 So, stated for checking against the other two RFCs:
 
-- **The calendar is one function, `() => Millis` since the Unix epoch, owned by the game**, and
+- **The calendar is one function, `() => EpochMillis` since the Unix epoch, owned by the game**, and
   injected — into `persist` (which writes it into the save) and passed to `sim` (which
   integrates from it). It is the game's *second* clock seam, sibling to `LoopOptions.clock`,
   and for the same reason: rule 1 bans `Date.now()` inside every package's `src/`, so somebody

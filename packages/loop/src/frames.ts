@@ -31,7 +31,6 @@
  */
 
 import { expectFinite } from '@lattice/core';
-import type { Millis } from './clock.js';
 
 /**
  * Period of the non-painting pump, in milliseconds. Default for
@@ -39,7 +38,7 @@ import type { Millis } from './clock.js';
  *
  * One second, because browsers clamp background intervals to roughly that and Chrome
  * throttles harder still after five minutes. This is a **floor on how stale a hidden game is
- * allowed to get**, not a frame rate, and lowering it buys nothing the platform will honour.
+ * allowed to get**, not a frame rate, and lowering it buys nothing the platform will honor.
  * It is also the granularity a hidden-tab timer actually has, which is why a sub-second
  * debounce in `@lattice/persist` is meaningless in the background.
  */
@@ -49,7 +48,7 @@ export const DEFAULT_IDLE_PUMP_MS = 1000;
  * Why a pump happened.
  *
  * - `'paint'` — the host is about to display a frame. `render` may run.
- * - `'tick'`  — the host is not painting (hidden tab, occluded window, minimised), but time
+ * - `'tick'`  — the host is not painting (hidden tab, occluded window, minimized), but time
  *               has still passed. `update` runs; `render` does not.
  *
  * A boolean was rejected: `pump(true)` at a call site says nothing, and this distinction is
@@ -110,7 +109,7 @@ export interface BrowserFramesOptions {
    * @throws RangeError at construction if it is not a finite number greater than zero. A zero
    * period is a busy loop wearing a timer's clothes.
    */
-  readonly idleMs?: Millis;
+  readonly idleMs?: number;
 
   /**
    * Injected for tests. Defaults to `globalThis`.

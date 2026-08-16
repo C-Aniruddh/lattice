@@ -358,6 +358,26 @@ it belongs in a migration note rather than in a tuning pass.
 disagrees, it throws rather than reporting a divergence at tick 1 — the two failures deserve
 different words.
 
+## Units
+
+**Options are in milliseconds, callbacks are in seconds, and the boundary is `src/clock.ts`.**
+A host clock is milliseconds on every platform that has one; a game's own constants read as
+"0.4 s of hop" and "12 s to build", and writing those in milliseconds is how a duration gets
+typo'd by a factor of a thousand.
+
+Every duration here is a plain `number` **whose name ends in its unit** — `stepMs`, `budgetMs`,
+`idleMs`, `stepSeconds`, `droppedSeconds`, `TweenOptions.seconds` — and that name is the entire
+defense. `after(3000, …)` on a timeline measured in seconds is fifty minutes; the compiler
+cannot see it and no type can, because both units are `number` and a duration has only one kind.
+
+That is why this package exports **no `Millis` or `Seconds` alias**. It used to, both were
+`= number`, and the doc comment said in as many words that they guarded nothing — but the name
+in `.lattice/kit.json` sat beside `Loop` and `Scheduler` with nothing marking the difference and
+was twice read as a brand that would refuse `{ stepMs: 16 }`. It would not have; `16` is a
+perfectly good `number`. Where a duration has one correct value that something else already
+knows, **take that thing rather than the number** — `@lattice/input` takes `step: loop`, not
+`stepMs`. `docs/rfc/durations.md` has the three tiers.
+
 ## The tick index is a cross-package contract
 
 `tick` is a non-negative integer, starts at 0, increments by exactly one per `update` call, and
@@ -421,6 +441,7 @@ runs in about 40 ms.
 | a frame-rate cap, `requestIdleCallback` | a `maxFps: 30` option is a `FrameSource` — write one in fifteen lines and inject it |
 | `loop.runFor(60)`, workers | `manualClock` + `manualFrames` is three lines; a worker is a message-ordering problem |
 | a global loop, autostart | two live loops driving one canvas is a real failure mode, and Vite's HMR produces it routinely |
+| `Millis`, `Seconds`, `Duration` type aliases | they were `= number`, so they refused nothing — and a type name in the manifest is read as a promise. See [units](#units) |
 
 ---
 

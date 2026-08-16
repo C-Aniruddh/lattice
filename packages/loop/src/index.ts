@@ -55,9 +55,13 @@ export const VERSION = '0.1.0';
 // Options in milliseconds, callbacks in seconds, and the boundary is exactly here. A host
 // clock is milliseconds on every platform; a game's own constants read as "0.4 s of hop" and
 // get typo'd by a factor of a thousand when written the other way.
+//
+// Every duration this package publishes is a plain `number` whose name ends in its unit. No
+// `Millis` or `Seconds` alias is exported, because an alias over `number` refuses nothing and
+// a type name is read as a promise — see `clock.ts` and `docs/rfc/durations.md`.
 
 export { manualClock } from './clock.js';
-export type { Clock, ManualClock, Millis, Seconds } from './clock.js';
+export type { Clock, ManualClock } from './clock.js';
 
 // ── the cadence, injected ───────────────────────────────────────────────────────
 //

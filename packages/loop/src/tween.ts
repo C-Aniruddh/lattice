@@ -36,7 +36,6 @@
  */
 
 import { EASINGS, expectFinite, type Easing, type EasingName } from '@lattice/core';
-import type { Seconds } from './clock.js';
 
 /** Opaque, never reused within a session. Shared allocator, like {@link TimerId}. */
 export type TweenId = number;
@@ -84,7 +83,7 @@ export interface TweenOptions {
    * one microsecond. A zero-length tween is an assignment, and writing it as a tween hides the
    * assignment behind a callback that fires on some later frame.
    */
-  readonly seconds: Seconds;
+  readonly seconds: number;
 
   /**
    * Called with the eased value every `step`, and exactly once more with **exactly `to`**
@@ -111,7 +110,7 @@ export interface TweenOptions {
    *
    * @throws RangeError if negative or not finite.
    */
-  readonly delay?: Seconds;
+  readonly delay?: number;
 
   /**
    * A **slot**, not a tag. Starting a tween with a slot cancels any live tween in the same
@@ -180,7 +179,7 @@ export interface Tweens {
    *
    * @throws RangeError if `dt` is negative, `NaN` or infinite.
    */
-  step(dt: Seconds): void;
+  step(dt: number): void;
 }
 
 /** Resolve `ease` to a curve, or refuse by name. See {@link TweenOptions.ease}. */

@@ -153,7 +153,7 @@ describe('browserFrames', () => {
     expect(host.liveFrames).toBe(1);
   });
 
-  it('defaults the idle period to one second, the granularity a browser will actually honour', () => {
+  it('defaults the idle period to one second, the granularity a browser will actually honor', () => {
     const host = fakeHost();
     browserFrames({ host }).start(() => {});
     expect(host.intervalPeriods).toEqual([DEFAULT_IDLE_PUMP_MS]);

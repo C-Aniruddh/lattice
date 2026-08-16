@@ -46,7 +46,6 @@ import { expectInt } from '@lattice/core';
 import { manualClock } from './clock.js';
 import { manualFrames } from './frames.js';
 import { createLoop, DEFAULT_HZ } from './loop.js';
-import type { Millis, Seconds } from './clock.js';
 
 /**
  * How often {@link ReplayOptions.onProgress} is called during a long log. Not an option: a
@@ -76,7 +75,7 @@ export interface ReplaySource {
    * still line up and mean something completely different, and the two failures deserve
    * different words. `@lattice/persist` refuses on the same comparison by name.
    */
-  readonly stepMs?: Millis;
+  readonly stepMs?: number;
 
   /**
    * Apply everything recorded for `tick` to the live input state. Called exactly once per tick,
@@ -103,7 +102,7 @@ export interface ReplayOptions {
    * The same `update` the live game runs. **If it is not the same function, nothing is
    * proven** — a replay of a reimplementation tests the reimplementation.
    */
-  readonly update: (dt: Seconds, tick: number) => void;
+  readonly update: (dt: number, tick: number) => void;
 
   /**
    * The state hash the recording used.

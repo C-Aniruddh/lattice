@@ -316,7 +316,7 @@ describe('catch-up', () => {
     expect(loop.stats.droppedSeconds).toBe((1_000_000 - 250_000) / 1e6);
   });
 
-  it('honours a custom ceiling, including one below a single step', () => {
+  it('honors a custom ceiling, including one below a single step', () => {
     const clock = manualClock();
     const frames = manualFrames();
     let updates = 0;
@@ -1106,7 +1106,44 @@ describe('the source, as evidence', () => {
       expect(`${name}: ${code(text)}`).not.toMatch(/\bepoch|\bDate\b|stampedAt/i);
     }
     const clockSource = sources.find((s) => s.name === 'clock.ts')?.text ?? '';
-    expect(clockSource).toMatch(/export interface Clock \{\s*now\(\): Millis;\s*\}/);
+    expect(clockSource).toMatch(/export interface Clock \{\s*now\(\): number;\s*\}/);
+  });
+
+  it('publishes no duration alias — every duration is a bare number named for its unit', () => {
+    // `type Millis = number` guarded nothing and said otherwise. It was read twice as a brand
+    // that would refuse `{ stepMs: 16 }`, because `.lattice/kit.json` lists a type by name and
+    // an alias over `number` is indistinguishable there from `core`'s branded `EpochMillis`.
+    // A brand separates two kinds of value; a duration has one kind, so there is nothing to
+    // separate and the parameter name is the whole mechanism. See `docs/rfc/durations.md`.
+    //
+    // This fires if any module reintroduces the alias under this or any other name, which is
+    // the failure mode: the next author reaches for `Duration` instead.
+    for (const { name, text } of sources) {
+      expect(`${name}: ${code(text)}`).not.toMatch(
+        /export\s+type\s+(Millis|Seconds|Duration|Ms|Milliseconds)\b/,
+      );
+    }
+    // Nor may one be imported and used as an annotation — the alias is equally misleading
+    // when it comes from somewhere else.
+    for (const { name, text } of sources) {
+      expect(`${name}: ${code(text)}`).not.toMatch(/:\s*(Millis|Seconds|Duration)\b/);
+    }
+    // The four durations this package publishes are bare numbers, and their names carry the
+    // unit. This fails if any of them is re-typed.
+    const publicDurations: readonly [string, RegExp][] = [
+      ['loop.ts', /readonly stepMs: number;/],
+      ['loop.ts', /readonly budgetMs\?: number;/],
+      ['loop.ts', /readonly maxCatchUpMs\?: number;/],
+      ['frames.ts', /readonly idleMs\?: number;/],
+    ];
+    for (const [file, pattern] of publicDurations) {
+      const source = sources.find((s) => s.name === file)?.text ?? '';
+      expect({ file, pattern: String(pattern), found: pattern.test(source) }).toEqual({
+        file,
+        pattern: String(pattern),
+        found: true,
+      });
+    }
   });
 
   it('I-16/I-20: only frames.ts declares itself browser-only, and no module defines a curve', () => {

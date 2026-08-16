@@ -187,7 +187,7 @@ describe('the smoothed costs', () => {
     expect(loop.stats.overBudget).toBe(1);
   });
 
-  it('honours a custom budget', () => {
+  it('honors a custom budget', () => {
     const clock = manualClock();
     const frames = manualFrames();
     const loop = createLoop({ clock, frames, budgetMs: 2, update: () => clock.advance(3) });

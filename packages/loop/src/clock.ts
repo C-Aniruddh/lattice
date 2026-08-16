@@ -13,32 +13,21 @@
  * clock, meanwhile, is milliseconds on every platform that has one. Converting at the
  * boundary costs one divide and removes the ambiguity from every call site inside.
  *
+ * **Both units are a plain `number`, and the parameter name is the entire defense.** This
+ * package deliberately exports no `Millis` or `Seconds` alias: an alias over `number` checks
+ * nothing, and a name in the manifest that looks like a guarantee is read as one — `Millis`
+ * sat beside `Loop` and `Scheduler` in `.lattice/kit.json` and was twice mistaken for a brand
+ * that would refuse a hand-typed step. A brand separates two *kinds* of value; a duration has
+ * one kind and only a wrong number of them, so there is nothing here for a type to separate.
+ * Write `after(3000, …)` against a callback measured in seconds and you have written fifty
+ * minutes; the last word of the parameter name is what tells you, and nothing else can.
+ * `docs/rfc/durations.md` has the reasoning and the three tiers.
+ *
  * Tier A: `+ - * /` and comparison only. No transcendentals, no platform, no allocation
  * after construction.
  */
 
 import { expectFinite } from '@lattice/core';
-
-/**
- * Milliseconds. Every duration in this package's *options* is in these.
- *
- * A plain `number`, deliberately unbranded: `core`'s branded `MonotonicMillis` guards the
- * seam where a calendar reading could be mistaken for a stopwatch reading, and this type
- * guards nothing — it is documentation attached to a parameter. Mixing it with
- * {@link Seconds} by a factor of a thousand is the mistake it exists to make visible, and
- * the only defense against that is the naming convention above.
- */
-export type Millis = number;
-
-/**
- * Seconds. Every duration in this package's *callbacks* is in these.
- *
- * `update` is handed seconds, `Scheduler.after` takes seconds, `TweenOptions.seconds` is in
- * the name. If you find yourself writing `after(3000, …)` you have written fifty minutes and
- * the compiler cannot tell, because both units are `number`. Read the unit off the parameter
- * name; there is no runtime check that can recover it.
- */
-export type Seconds = number;
 
 /**
  * The host's clock, injected.
@@ -56,7 +45,7 @@ export type Seconds = number;
  * you the date, half the kit starts asking it and the determinism rule becomes advisory.
  */
 export interface Clock {
-  now(): Millis;
+  now(): number;
 }
 
 /**
@@ -75,7 +64,7 @@ export interface ManualClock extends Clock {
    * (I-6), so a test that "rewound" here would be asserting on a code path the loop deletes.
    * Use {@link ManualClock.set} if you genuinely want to reproduce a clock that jumped back.
    */
-  advance(ms: Millis): void;
+  advance(ms: number): void;
 
   /**
    * Jump to an absolute reading.
@@ -88,7 +77,7 @@ export interface ManualClock extends Clock {
    * accumulator permanently and silently: `while (NaN >= step)` is false forever, so the game
    * would stop stepping with no exception anywhere.
    */
-  set(ms: Millis): void;
+  set(ms: number): void;
 }
 
 /**
@@ -99,7 +88,7 @@ export interface ManualClock extends Clock {
  *   somewhere else.
  * @throws RangeError if `startMs` is not finite.
  */
-export function manualClock(startMs: Millis = 0): ManualClock {
+export function manualClock(startMs: number = 0): ManualClock {
   let current = expectFinite(startMs, 'manualClock.startMs');
   return {
     now: () => current,
