@@ -65,9 +65,55 @@ its row is either finished or is a different exhibit.
 | **Replay** | record, scrub, and prove it: the same seed and log land on the same pixel | `loop` `persist` `input` |
 | **Migration** | a v1 save opened by a v5 build, stepping the chain in front of you | `persist` |
 | **Instrument** | sound with no files — a board that shows the synthesis as it plays | `audio` |
+| **Resonance** | a game you play *by ear*: gates hum a chord and you have to answer it | `audio` `draw.light` |
 
-Fourteen. The list is expected to lose one or two that turn out to be dull and gain one or
+Fifteen. The list is expected to lose one or two that turn out to be dull and gain one or
 two nobody has thought of.
+
+### Resonance, because an audio package needs a game and not a demo
+
+`Instrument` shows the synthesis. It does not prove anyone would ever *use* it, and a sound
+board is the kind of exhibit people admire for nine seconds. So one exhibit puts sound on the
+critical path: you walk a dark cavern, every locked gate hums a chord, and you carry a few
+tuned strings. Strike the combination that answers the gate and it opens.
+
+It is the right test of `audio` for reasons a board is not. **You cannot fake it** — the pitch
+relationships have to be actually correct, the attack has to be fast enough to feel like an
+instrument rather than a notification, and voices have to stack without clipping when a player
+mashes all of them at once, which is the first thing anyone does. It also forces the two halves
+together: the bed has to duck under the puzzle tones and come back, which is the one thing a
+board never asks of a mixer.
+
+Pair it with the light field and it earns two exhibits' worth of screen: a cavern lit only by
+what you have opened, and sound as the sense you navigate by.
+
+---
+
+## The control panel
+
+**Every exhibit ships a slider panel that exposes the real parameters underneath it.**
+
+This started as a nicety and is better than that. The kit's configurability is currently
+invisible: it lives in doc comments and RFC tables, and a visitor has no way to discover that
+the camera's zoom clamp, the day length, the offline exponent, a light's radius and falloff,
+the voice ceiling and the tap-versus-drag thresholds are all knobs. A panel that moves them
+live, in a running scene, is better documentation than the paragraph explaining them — and it
+costs one shared module.
+
+It also turns each exhibit into an experiment a visitor can run:
+
+- **Show the failure, not just the setting.** Push the voice ceiling to two and hear a burst
+  choke. Drag the offline exponent to 1.0 and watch a fourteen-hour absence pay out
+  uncapped. Set the tap slop to 1 px and discover you can no longer tap anything on a
+  touchscreen. The knobs that matter are the ones with a visible wrong end.
+- **Every panel value is in the URL**, so a visitor can share the configuration that made the
+  thing look good, and a bug report can be a link.
+- **Nothing in the panel is exhibit-specific plumbing.** A control declares the kit parameter
+  it drives, and reading a panel tells you what the kit lets you change. If an exhibit wants a
+  slider for something the kit does not expose, that is a finding.
+
+It lives in `examples/_shared/`, not in `packages/`. It is a gallery instrument, not a kit
+feature, and `@lattice/ui` is deliberately not a controls library.
 
 ---
 

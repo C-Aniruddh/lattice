@@ -872,7 +872,7 @@
       "id": "G0",
       "phase": "gallery",
       "role": "lattice-architect",
-      "title": "Extract the exhibit bootstrap every example would otherwise hand-roll",
+      "title": "The exhibit bootstrap and the control panel",
       "package": "examples",
       "paths": [
         "examples/_shared/**"
@@ -883,11 +883,16 @@
       "acceptance": [
         "D1 reports what a second exhibit would want to share rather than rewrite — start there",
         "a bootstrap is a gap in the kit if it is more than a few lines; decide whether it belongs in a package instead",
-        "no exhibit may depend on the landing page, and the shared code ships with the examples, not in packages/"
+        "no exhibit may depend on the landing page, and the shared code ships with the examples, not in packages/",
+        "a slider/toggle panel every exhibit shares, exposing the REAL kit parameters underneath it",
+        "a control declares the kit parameter it drives — reading a panel tells you what the kit lets you change",
+        "every panel value is in the URL, so a configuration can be shared and a bug report can be a link",
+        "the knobs chosen are the ones with a visible wrong end: voice ceiling at 2 chokes a burst, offline exponent at 1.0 pays out uncapped, tap slop at 1px makes touch unusable",
+        "if an exhibit wants a slider for something the kit does not expose, that is a finding — report it"
       ],
       "status": "todo",
       "owner": null,
-      "notes": ""
+      "notes": "Lives in examples/_shared/, never in packages/. It is a gallery instrument; @lattice/ui is deliberately not a controls library."
     },
     {
       "id": "G1",
@@ -1221,6 +1226,30 @@
       "status": "todo",
       "owner": null,
       "notes": ""
+    },
+    {
+      "id": "G14",
+      "phase": "gallery",
+      "role": "lattice-designer",
+      "title": "Exhibit: resonance",
+      "package": "resonance",
+      "paths": [
+        "examples/resonance/**"
+      ],
+      "dependsOn": [
+        "G0"
+      ],
+      "acceptance": [
+        "the one idea is: a game played BY EAR — gates hum a chord and you answer it with tuned strings",
+        "sound is on the critical path, not decoration: the pitch relationships must actually be correct",
+        "voices stack without clipping when a player mashes every string at once, which is the first thing anyone does",
+        "the bed ducks under the puzzle tones and comes back — the one thing a sound board never asks of a mixer",
+        "lit only by the gates you have opened, so it earns the light field too",
+        "under 250 lines, most of it art; seed comes from the URL"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "Exists because Instrument shows the synthesis but does not prove anyone would use it. You cannot fake this one."
     }
   ]
 }
