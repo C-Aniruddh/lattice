@@ -10,6 +10,8 @@ import {
   expectSerializable,
   isSerializable,
   unreachable,
+  expectObject,
+  expectRecordOfFinite,
 } from '../src/guard.js';
 
 /** The message contract, from the constitution's rule 9: the label and the value, both. */
@@ -279,5 +281,80 @@ describe('the shape of the module', () => {
     const zoom = expectRange(2, 0.25, 8, 'camera.zoom');
     const octaves = expectInt(4, 'noise.octaves');
     expect(zoom * octaves).toBe(8);
+  });
+});
+
+/**
+ * The two non-numeric guards.
+ *
+ * `persist` found these missing: every save recogniser in the kit was hand-rolling the same
+ * object narrowing, and the two clauses people forget — `typeof null === 'object'` and an
+ * array being an object — are exactly the ones a corrupt save exercises.
+ */
+describe('expectObject', () => {
+  it('returns a plain object unchanged', () => {
+    const value = { a: 1 };
+    expect(expectObject(value, 'save')).toBe(value);
+    expect(expectObject({}, 'save')).toEqual({});
+  });
+
+  // `typeof null` is 'object'. A payload of literal null sails past a naive check and fails
+  // later on a property read, at a point that no longer names the save.
+  it('rejects null, and says so by name rather than as "object"', () => {
+    expect(() => expectObject(null, 'save')).toThrow(TypeError);
+    expect(() => expectObject(null, 'save')).toThrow(/save: expected a plain object, got null/);
+  });
+
+  // An array is an object. A payload serialised as [...] where the schema wanted {...} reads
+  // as valid until a field comes back undefined, which a permissive migration carries forward.
+  it('rejects an array, and names it as an array', () => {
+    expect(() => expectObject([], 'save')).toThrow(/got an array/);
+    expect(() => expectObject([1, 2], 'save')).toThrow(TypeError);
+  });
+
+  it.each([
+    ['a string', 'x'],
+    ['a number', 1],
+    ['a boolean', true],
+    ['undefined', undefined],
+  ])('rejects %s', (_label, value) => {
+    expect(() => expectObject(value, 'save')).toThrow(TypeError);
+  });
+
+  it('names the caller in every message', () => {
+    expect(() => expectObject(null, 'wallet')).toThrow(/^wallet:/);
+  });
+});
+
+describe('expectRecordOfFinite', () => {
+  it('returns a record of finite numbers unchanged', () => {
+    const value = { coin: 12, oil: 0, debt: -3.5 };
+    expect(expectRecordOfFinite(value, 'stocks')).toBe(value);
+    expect(expectRecordOfFinite({}, 'stocks')).toEqual({});
+  });
+
+  it('inherits the object checks', () => {
+    expect(() => expectRecordOfFinite(null, 'stocks')).toThrow(/got null/);
+    expect(() => expectRecordOfFinite([1], 'stocks')).toThrow(/got an array/);
+  });
+
+  // The message names the key. "expected finite numbers" without one sends the reader to
+  // look at all of them, which for a stock vector is every resource in the game.
+  it.each([
+    ['NaN', NaN],
+    ['Infinity', Infinity],
+    ['-Infinity', -Infinity],
+    ['a string', '12'],
+    ['null', null],
+  ])('rejects %s and names the offending key', (_label, bad) => {
+    expect(() => expectRecordOfFinite({ coin: 1, oil: bad }, 'stocks')).toThrow(/stocks\.oil:/);
+    expect(() => expectRecordOfFinite({ coin: 1, oil: bad }, 'stocks')).toThrow(TypeError);
+  });
+
+  // Infinity does not survive JSON.stringify — it becomes null, under a valid checksum — so a
+  // stock reading back as null is evidence of a write that should never have happened.
+  it('rejects a value that a round trip would have destroyed', () => {
+    const written = JSON.parse(JSON.stringify({ coin: Infinity })) as unknown;
+    expect(() => expectRecordOfFinite(written, 'stocks')).toThrow(/stocks\.coin:/);
   });
 });

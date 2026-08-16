@@ -221,3 +221,69 @@ export function expectSafeInteger(value: number, label: string): number {
 export function unreachable(value: never, label: string): never {
   throw new TypeError(`${label}: unhandled case ${show(value)} — a variant was added without a branch here`);
 }
+
+/**
+ * Narrow an unknown to a plain object with string keys.
+ *
+ * The one non-numeric guard here, and it exists because every save recogniser in the kit was
+ * otherwise hand-rolling the same six lines. A recogniser receives whatever `JSON.parse`
+ * produced — which may be `null`, an array, a string, or a number — and has to get from
+ * `unknown` to something it can read a field off. Without this, each one writes its own
+ * `typeof x === 'object' && x !== null && !Array.isArray(x)` and half of them forget one of
+ * the three clauses.
+ *
+ * All three matter, and the two that get forgotten are the interesting ones. **`typeof null`
+ * is `'object'`**, so a save whose payload is the literal `null` sails past a naive check and
+ * fails later on a property read, at a point that no longer names the save. And an **array is
+ * an object**, so a payload that was serialised as `[…]` when the schema expected `{…}` reads
+ * as valid until a field comes back `undefined` — which a permissive migration will then
+ * happily carry forward as a default.
+ *
+ * Returns a `Record<string, unknown>` rather than a generic `T`, deliberately. Narrowing to
+ * the caller's own type is a *claim*, and this function has checked only the shape; handing
+ * back `T` would let a recogniser skip the field checks that are the entire reason it exists.
+ *
+ * @param value - Anything, typically straight out of `JSON.parse`.
+ * @param label - The caller's symbol, for the message.
+ * @throws TypeError naming what arrived instead.
+ */
+export function expectObject(value: unknown, label: string): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    const got = value === null ? 'null' : Array.isArray(value) ? 'an array' : typeof value;
+    throw new TypeError(`${label}: expected a plain object, got ${got} ${show(value)}`);
+  }
+  return value as Record<string, unknown>;
+}
+
+/**
+ * Narrow an unknown to a plain object whose every value is a finite number.
+ *
+ * The shape a stock vector, a resource wallet or a settings blob arrives in, and the one a
+ * recogniser most often wants. Checking the values here rather than at first use is what lets
+ * a corrupt save be *reported* as corrupt instead of turning into `NaN` three subsystems
+ * later — and `NaN` is the value that spreads, so the distance between the bad byte and the
+ * blank screen is otherwise arbitrary.
+ *
+ * Note that this rejects a value that is merely non-finite as firmly as one that is not a
+ * number at all, and it should: `Infinity` does not survive `JSON.stringify` — it becomes
+ * `null`, with a perfectly valid checksum over it — so a stock that reads back as `null` is
+ * evidence of a write that should never have happened.
+ *
+ * @param value - Anything, typically straight out of `JSON.parse`.
+ * @param label - The caller's symbol, for the message.
+ * @throws TypeError if it is not an object, or if any value is not a finite number. The
+ *   message names the offending **key**, because "expected finite numbers" without one sends
+ *   the reader to look at all of them.
+ */
+export function expectRecordOfFinite(value: unknown, label: string): Record<string, number> {
+  const record = expectObject(value, label);
+  for (const key of Object.keys(record)) {
+    const entry = record[key];
+    if (typeof entry !== 'number' || !Number.isFinite(entry)) {
+      throw new TypeError(
+        `${label}.${key}: expected a finite number, got ${typeof entry} ${show(entry)}`,
+      );
+    }
+  }
+  return record as Record<string, number>;
+}

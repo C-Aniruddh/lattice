@@ -152,6 +152,8 @@ export {
   expectSerializable,
   isSerializable,
   expectSafeInteger,
+  expectObject,
+  expectRecordOfFinite,
   unreachable,
 } from './guard.js';
 
