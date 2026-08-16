@@ -1750,7 +1750,7 @@
         "with from? the demo economy drops to a single node — verify that against examples/demo",
         "document that EdgeScale is evaluated once per buildFlow, so the real constraint is piecewise-constant IN TIME rather than linear: square-root and threshold rates were never excluded and the docs implied they were"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": null,
       "notes": "From docs/rfc/sim-rates.md. The division in the exhibit was a tell for this, not for non-linear rates."
     },
@@ -1812,7 +1812,7 @@
         "the bootstrap works around it by filtering on class name, which is exactly the kind of workaround a kit exists to remove",
         "wants InputOptions.overlays, or something better — decide the shape"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": null,
       "notes": "Blocking. Discovered by the gallery bootstrap, one commit after ui was made the mandatory overlay."
     },
@@ -1831,7 +1831,7 @@
         "take the loop, or { stepMs: Millis } structurally — the branded type exists precisely so this substitution cannot compile",
         "also: no input.setProfile, so retuning one threshold means dispose, recreate, and re-register every handler"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": null,
       "notes": "The gallery bootstrap removed the field from its own options entirely and passes loop.stepMs itself, which is the workaround shape."
     },
@@ -2018,6 +2018,27 @@
       "status": "todo",
       "owner": null,
       "notes": ""
+    },
+    {
+      "id": "K23",
+      "phase": "gaps",
+      "role": "lattice-architect",
+      "title": "The kit has no branded duration type, and two briefs assumed it did",
+      "package": "core",
+      "paths": [
+        "docs/rfc/durations.md"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "core exports EpochMillis and MonotonicMillis, both branded — but neither is a DURATION. Millis belongs to @lattice/loop, is a bare number alias, and its own doc comment says it guards nothing",
+        "so a { stepMs: Millis } parameter was never an available shape for a sibling package, and the acceptance criterion I wrote for K13 asserted that it was",
+        "a brand living in loop cannot help any sibling across the DAG. input took the step STRUCTURALLY instead, as the two fields the loop already publishes, and cross-checks them",
+        "decide whether a branded duration belongs in core, or whether structural pairs are the better answer kit-wide — input argues a cross-checked pair is self-verifying in a way a brand is not",
+        "audit how many other briefs and RFCs assume a duration brand exists"
+      ],
+      "notes": "Found by a builder while implementing a criterion I wrote that was false. The interesting question is how many other places carry the same assumption."
     }
   ]
 }
