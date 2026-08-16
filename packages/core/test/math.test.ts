@@ -208,7 +208,9 @@ describe('smoothstep', () => {
     expect(smoothstep(0, 1, 0.5)).toBe(0.5);
     for (let i = 0; i <= 10; i += 1) {
       const t = i / 10;
-      expect(smoothstep(0, 1, t) + smoothstep(0, 1, 1 - t)).toBe(1);
+      // Symmetry is a property of the polynomial, not a promise of the arithmetic: `1 - t`
+      // rounds, so the sum can miss by an ulp. Bounded rather than asserted exactly.
+      within(smoothstep(0, 1, t) + smoothstep(0, 1, 1 - t), 1, 1e-15);
     }
   });
 
@@ -384,7 +386,11 @@ describe('damp (Tier B)', () => {
 
 describe('approx', () => {
   it('is inclusive at the exact boundary', () => {
-    expect(approx(1, 1 + EPSILON, EPSILON)).toBe(true);
+    // A difference of exactly epsilon passes; the next representable step does not. Both
+    // differences here are exact in binary, so this tests the comparison and not the rounding.
+    expect(approx(1, 1.5, 0.5)).toBe(true);
+    expect(approx(1, 1.5, 0.25)).toBe(false);
+    expect(approx(0, EPSILON, EPSILON)).toBe(true);
     expect(approx(0, 1e-9)).toBe(true);
     expect(approx(0, 1.0000001e-9)).toBe(false);
   });

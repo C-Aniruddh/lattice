@@ -13,7 +13,9 @@
  * exactly one way and it is the useful way, so a caller declares everything — variables,
  * fields, scratch, array elements — as `Vec2`, and `ReadonlyVec2` appears only inside
  * signatures, on parameters that are read. Nobody converts and no call site has to choose.
- * There is deliberately no `MutableVec2` in this kit.
+ * There is deliberately no `MutableVec2` in this kit. That one-way rule needs one line of
+ * machinery to be true at all — `readonly` alone does not do it — and the note on
+ * `READONLY_VEC2` below is the one place in the kit that explains why.
  *
  * **The aliasing rule.** Every function here is safe to call with `out` aliasing any input:
  * `v2Add(a, a, b)` and `v2Normalize(a, a)` do what you expect. That is not free — it is why
@@ -32,28 +34,58 @@
 import { EPSILON } from './math.js';
 
 /**
+ * The phantom that makes the one-way assignability real.
+ *
+ * **`readonly` on a property is not enough, and this is the surprise that costs the kit its
+ * whole out-parameter guarantee if it is missed.** TypeScript deliberately ignores `readonly`
+ * property modifiers when it checks assignability between object types: given nothing but
+ * `{ readonly x, readonly y }` and `{ x, y }`, *each* is assignable to the other, so a frozen
+ * shared constant passes as an `out` without a word of complaint and throws a `TypeError` on
+ * the frame that path first executes.
+ *
+ * So the two types carry a phantom optional property whose declared types conflict in exactly
+ * one direction: `never` on the writable side, `true` on the read side. `never` is assignable
+ * to `true`, so `Vec2` still flows into `ReadonlyVec2` — the direction callers need every
+ * line. `true` is not assignable to `never`, so `ReadonlyVec2` does not flow back. Optional on
+ * both, so a plain `{ x: 0, y: 0 }` literal, a class field, and any foreign `{x, y}` still
+ * satisfy either type with nothing to declare.
+ *
+ * It is erased at runtime and costs zero bytes. The one gap worth knowing: `Readonly<Vec2>`
+ * (the utility type) is *not* this type — it keeps the `never` and is still assignable to
+ * `Vec2`. Write `ReadonlyVec2`.
+ */
+declare const READONLY_VEC2: unique symbol;
+
+/**
  * A mutable 2D point — the storage, scratch and output type of the whole kit.
  *
  * Mutable **on purpose**: an out-parameter API cannot take a readonly type, and making the
  * fields `readonly` here would force a second writable interface into every signature that
- * fills one. Declare your variables and your entity fields as this.
+ * fills one. Declare your variables and your entity fields as this — there is deliberately no
+ * `MutableVec2` in the kit, because there is only ever one type a caller declares.
  */
 export interface Vec2 {
   x: number;
   y: number;
+  /** Phantom. Never present at runtime; see `READONLY_VEC2` above for what it buys. */
+  readonly [READONLY_VEC2]?: never;
 }
 
 /**
  * The read side. Use it for any parameter a function does not write to.
  *
- * `Vec2` is assignable to it, so a caller never converts. The reverse is not, which is what
- * stops a frozen shared constant — `const ORIGIN: ReadonlyVec2 = Object.freeze(v2(0, 0))` —
- * being handed in as an output parameter. That rejection happens at compile time, where the
- * alternative is a `TypeError` thrown in strict mode on the one frame that path executes.
+ * `Vec2` is assignable to it, so a caller never converts and no call site has to choose. The
+ * reverse is not, which is what stops a frozen shared constant —
+ * `const ORIGIN: ReadonlyVec2 = Object.freeze(v2(0, 0))` — being handed in as an output
+ * parameter. That rejection happens at compile time, where the alternative is a `TypeError`
+ * thrown in strict mode on the one frame that path executes, in the one build nobody
+ * type-checked.
  */
 export interface ReadonlyVec2 {
   readonly x: number;
   readonly y: number;
+  /** Phantom, and the half of the pair that does the work. See `READONLY_VEC2` above. */
+  readonly [READONLY_VEC2]?: true;
 }
 
 /**
@@ -195,15 +227,24 @@ export function v2Dist(a: ReadonlyVec2, b: ReadonlyVec2): number {
  * A `NaN` or infinite input yields `(0, 0)` for the same reason, as does a vector whose
  * squared length overflows to `Infinity` (components beyond ~1e154) — there is no direction
  * to recover once the sum has saturated, and the alternative is `NaN` again.
+ *
+ * The squared length is also where the precision floor sits: components below ~1e-154 square
+ * into the subnormal range and the direction loses digits, and below ~1e-162 they underflow to
+ * zero and this returns `(0, 0)`. No game coordinate is within a hundred orders of magnitude
+ * of that, which is why the fast form is the right one.
  */
 export function v2Normalize(out: Vec2, a: ReadonlyVec2): Vec2 {
   const ax = a.x;
   const ay = a.y;
   const lenSq = ax * ax + ay * ay;
   if (lenSq > 0 && lenSq < Infinity) {
-    const inv = 1 / Math.sqrt(lenSq);
-    out.x = ax * inv;
-    out.y = ay * inv;
+    // Two divisions rather than one reciprocal and two multiplies. The reciprocal is the
+    // classic optimisation and it is wrong here: `3 * (1 / 5)` is 0.6000000000000001 where
+    // `3 / 5` is 0.6, and a normal that is not exactly axis-aligned puts a wall one ulp off
+    // its own tile edge. Division is correctly rounded by specification, so this stays Tier A.
+    const len = Math.sqrt(lenSq);
+    out.x = ax / len;
+    out.y = ay / len;
     return out;
   }
   out.x = 0;
@@ -222,7 +263,11 @@ export function v2Normalize(out: Vec2, a: ReadonlyVec2): Vec2 {
 export function v2Perp(out: Vec2, a: ReadonlyVec2): Vec2 {
   const ax = a.x;
   const ay = a.y;
-  out.x = -ay;
+  // `0 - ay`, not `-ay`: negating a zero component gives `-0`, which `JSON.stringify` writes
+  // as `"0"` — so a wall normal derived from an axis-aligned edge would come back from a save
+  // as a different value than it went in, and fail an integrity comparison for a reason
+  // nobody finds. Axis-aligned edges are most of them in a tile game.
+  out.x = 0 - ay;
   out.y = ax;
   return out;
 }

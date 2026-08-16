@@ -128,6 +128,13 @@ npm run lint       # the house rules above, enforced. determinism, layering, doc
 
 Scope any of them to one package: `npm run test -- packages/iso`.
 
+**If `tsc` reports only syntax errors, your type-level tests are unverified.** A single
+syntax error anywhere in the program suppresses *semantic* diagnostics repo-wide — including
+`TS2578 Unused '@ts-expect-error'`, which is the assertion every negative type test rests on.
+So a broken bracket in one package's test file silently disarms every `@ts-expect-error` in
+the kit, and they all appear to pass. This has already hidden a real bug for one agent. Get
+to a clean typecheck first, then believe the type tests.
+
 ---
 
 ## House style
@@ -140,6 +147,18 @@ guesses correctly before reading the body.
   a signature — the web platform spells it `color` and matching it is not negotiable.
 - **`readonly` on every interface field that is not deliberately mutated.** `Readonly<T>` on
   every array that crosses a package boundary.
+
+  **But know what `readonly` does not do.** TypeScript *ignores property `readonly`
+  modifiers when checking assignability.* Two interfaces identical but for `readonly` are
+  mutually assignable, so a `Readonly<Vec2>` flows happily into a parameter typed `Vec2` and
+  the callee writes to your frozen constant. `readonly` documents intent and stops direct
+  assignment through that reference; it is **not** a barrier between a read type and a write
+  type. Where the distinction is load-bearing — anywhere a value may be frozen and a callee
+  may use it as an out-parameter — the barrier has to be built, and `core`'s `Vec2` /
+  `ReadonlyVec2` pair shows how: a phantom optional property whose types conflict in exactly
+  one direction. **Import `ReadonlyVec2`; never hand-write `Readonly<Vec2>` and assume it is
+  the same thing.** It is not, and the failure is a `TypeError` on the one frame that path
+  executes.
 - **No `any`. No non-null `!`.** A `!` is a place where the compiler was told to stop
   helping, and in the source game one of them shipped a black screen to half the players.
   If a value can be `undefined`, handle it.

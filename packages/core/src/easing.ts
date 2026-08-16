@@ -112,13 +112,17 @@ export const quartOut: Easing = (t) => {
  * Because it leaves [0, 1], never drive an index, an array position, a colour channel or
  * anything clamped with it — the excursion is the effect, and clamping it away leaves a curve
  * that visibly stalls at its start.
+ *
+ * Written as `t³ + c·t²(t - 1)` rather than the textbook `(c+1)t³ - c·t²`. They are the same
+ * polynomial and they are not the same arithmetic: the textbook form ends at
+ * 0.9999999999999998 and starts at `-0`, and this one is exact at both ends.
  */
-export const backIn: Easing = (t) => t * t * (t + BACK * (t - 1));
+export const backIn: Easing = (t) => t * t * t + BACK * t * t * (t - 1);
 
 /** Overshoots past 1 and settles back. The same warning as `backIn`: it leaves [0, 1]. */
 export const backOut: Easing = (t) => {
   const u = 1 - t;
-  return 1 - u * u * (u + BACK * (u - 1));
+  return 1 - (u * u * u + BACK * u * u * (u - 1));
 };
 
 /**
