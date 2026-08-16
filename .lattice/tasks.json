@@ -4,6 +4,7 @@
     "design",
     "build",
     "audit",
+    "gaps",
     "gallery",
     "skills",
     "ship"
@@ -1558,6 +1559,180 @@
       "status": "todo",
       "owner": null,
       "notes": "This is the last task. Anything it cannot do is the real backlog; everything before it is preparation."
+    },
+    {
+      "id": "K1",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "Elevation across the iso/draw seam — three findings, one fix",
+      "package": "draw",
+      "paths": [
+        "packages/draw/**"
+      ],
+      "dependsOn": [
+        "D1"
+      ],
+      "acceptance": [
+        "a terrain primitive that takes a tile whose four corners are at four different heights — draw has a Terrain PASS and no primitive that fits it, so every heightfield exhibit writes its own",
+        "zPx on drawSprite, SpriteDef massing, Animator and Emitter: on a heightfield every sprite floats or sinks, and the exhibit smuggled ground height through Variant.level as a documented abuse",
+        "zPx on SolidWriter.shadow and contactShadow — a building on a hill currently casts its shadow at sea level",
+        "pxToLevels to pair with levelsToPx: every elevation iso produces is world pixels and every height a sprite author writes is storeys, so  appears at every boundary in game code",
+        "a contract test above iso and draw — both have full coverage and no shared test, which is exactly how this got shipped"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "The single largest gap the exhibit found. Findings 1, 2 and 11 are one fix."
+    },
+    {
+      "id": "K2",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "Framing: camera.fitBounds, and a terrain cull the game can margin",
+      "package": "iso",
+      "paths": [
+        "packages/iso/**",
+        "packages/draw/src/layers.ts"
+      ],
+      "dependsOn": [
+        "D1"
+      ],
+      "acceptance": [
+        "camera.fitBounds(rect, marginPx) — zoomAt takes a FACTOR and a required anchor, which is right for gestures and wrong for framing, and framing a generated world is the first thing every example does",
+        "renderFrame calls visibleTileBounds with no marginTiles, so a 440px summit vanished the moment its base left the screen — expose FrameOpts.maxHeightPx or a margin on Passes.terrain",
+        "the one place draw takes ownership from the game is the one place the game had the number"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "Findings 3 and 9."
+    },
+    {
+      "id": "K3",
+      "phase": "gaps",
+      "role": "lattice-architect",
+      "title": "Decide who owns the drawable bucket",
+      "package": "iso",
+      "paths": [
+        "docs/rfc/depth-bucket.md"
+      ],
+      "dependsOn": [
+        "D1"
+      ],
+      "acceptance": [
+        "DepthSorter deliberately cannot name a drawable, and both packages argued that split well — but the consequence is ~37 lines of index-aligned array in every game",
+        "a misalignment is a silent mis-pick, which is precisely the bug class pickSorted exists to prevent",
+        "decide: an optional item channel on DepthSorter, a shared helper in examples/_shared, or a documented refusal — but ten exhibits writing it ten times is not an answer"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "Finding 6. The design was right and the ergonomics are wrong; those can both be true."
+    },
+    {
+      "id": "K4",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "pathSimplify must not discard the weighted route",
+      "package": "iso",
+      "paths": [
+        "packages/iso/**"
+      ],
+      "dependsOn": [
+        "D1"
+      ],
+      "acceptance": [
+        "its shortcut test is passability, not cost, so an A* result computed over a weighted cost function is straightened back into the straight line the weights existed to avoid",
+        "weighted pathfinding is iso.path headline feature and the only simplifier in the kit undoes it",
+        "the exhibit worked around it by passing a DIFFERENT predicate than its cost function, which nobody should have to discover"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "Finding 5."
+    },
+    {
+      "id": "K5",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "Small sharp edges the exhibit hit",
+      "package": "iso",
+      "paths": [
+        "packages/iso/**",
+        "packages/input/README.md",
+        "packages/draw/**"
+      ],
+      "dependsOn": [
+        "D1"
+      ],
+      "acceptance": [
+        "a failed PathFinder.find leaves an empty Path and pathSample/pathProject throw on one — correct per docs, and it is a white screen at boot the first time a seed puts a river across a gate",
+        "isoWall between two points differing equally in gx and gy has ZERO screen width, silently: world x is (gx-gy)*32. Prayer flags were invisible for a full iteration with nothing saying why",
+        "Vite HMR re-evaluates the module, createInput correctly throws on the double bind, and the FIRST instance keeps rendering — a zombie game with a frozen HUD. One line in input README saves every example an hour",
+        "wallText is hidden by its own roof overhang in the exhibit — either the overhang or the text needs to know about the other"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "Findings 8, 10, 13b, and one drawing finding."
+    },
+    {
+      "id": "K6",
+      "phase": "gaps",
+      "role": "lattice-architect",
+      "title": "An idle economy headline rate is not expressible in sim graph",
+      "package": "sim",
+      "paths": [
+        "docs/rfc/sim-rates.md"
+      ],
+      "dependsOn": [
+        "D1"
+      ],
+      "acceptance": [
+        "edges are d(to)/dt += per x stock(from). The exhibit rate is pilgrims(reach) x k x sqrt(reach) — not linear in anything the graph holds",
+        "the whole rate went through one edge EdgeScale and was divided back out per lamp with a guard; it works, stays Tier A, and the division is the tell",
+        "decide whether the linear-producer shape is the right constraint and the docs should say so loudly, or whether a non-linear edge belongs in the surface"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "Finding 7. EdgeScale is the sanctioned hook, so this may be a docs answer rather than an API one."
+    },
+    {
+      "id": "K7",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "Palette needs game-defined slots",
+      "package": "draw",
+      "paths": [
+        "packages/draw/**"
+      ],
+      "dependsOn": [
+        "D1"
+      ],
+      "acceptance": [
+        "Palette.lerp requires both stop sets to define exactly the same slots, which is right — but there is no way to add a GAME slot that participates in the lerp without redefining all three sets",
+        "the exhibit sand had to live outside the palette entirely, so it does not roll at dusk with everything else"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "Finding 13."
+    },
+    {
+      "id": "K8",
+      "phase": "gaps",
+      "role": "lattice-scribe",
+      "title": "Retire the demo RFC and tidy the exhibit",
+      "package": "demo",
+      "paths": [
+        "docs/rfc/demo.md",
+        "examples/demo/package.json"
+      ],
+      "dependsOn": [
+        "D1"
+      ],
+      "acceptance": [
+        "docs/rfc/demo.md describes a game that no longer exists — offline accrual, presses, rockfall, the shrine ending. Retire it or re-scope it against docs/GALLERY.md",
+        "examples/demo/package.json declares @lattice/persist and @lattice/ui, neither imported",
+        "record what the exhibit cut left with NO consumer at all — persist entirely, sim.offline and sim.schedule in full including the CatchUp.fromSeconds that D2 added and nothing now calls, the whole replay story, FlowField, ChunkGrid, anchor"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "The unused-feature list is the more important half: those are shipped features with zero real usage."
     }
   ]
 }
