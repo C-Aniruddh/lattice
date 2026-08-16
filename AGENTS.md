@@ -13,7 +13,7 @@ agents outnumber humans here. Read it before you touch anything. It is short on 
 
 ---
 
-## The ten non-negotiables
+## The eleven non-negotiables
 
 These are not preferences. A change that breaks one of these is reverted, not debated.
 
@@ -87,6 +87,29 @@ These are not preferences. A change that breaks one of these is reverted, not de
 10. **Green is not evidence.** Every UX-affecting change ends with the demo game actually
     running (`npm run dev`) and someone — human or agent — looking at it. The kit is judged
     by whether a game can be built from it, not by whether its suite passes.
+
+11. **An option a caller supplied is a value they can read back.** Every field of every
+    `*Options` object is readable off the object it configured. No exceptions — a getter over
+    private state costs three lines, has no policy attached, and cannot break an invariant.
+
+    This is a rule because of what its absence does rather than what its presence buys. Every
+    rebuild-on-change path in the gallery's control panel began as a **shadow copy**, and every
+    shadow copy existed because of a missing *getter*, not a missing setter — a value a caller
+    supplied and cannot read back is a value they must store twice, and two copies drift.
+
+    **Settability is a separate question, decided per value**, and the test is not *"is this
+    cheap to change?"* — that is assessed by the person who least wants to do the work and is
+    unfalsifiable in review. The test is: **does anything downstream have a *correctness*
+    claim that this value did not change?** Three forms, first "yes" wins:
+
+    | | the question | verdict |
+    |---|---|---|
+    | **identity** | does something already allocated, handed out, or written down depend on it? | baked — the setter is `new` |
+    | **record** | would a recorded artifact become *invalid*, not merely different? | baked **while a recording is open**, and settable otherwise |
+    | **cost** | is it read on the hot path? | bake what the option *derives*, never the option |
+
+    "It would be work to re-apply" appears nowhere on that list. `docs/rfc/live-options.md`
+    has the reasoning and the worked cases.
 
 ---
 

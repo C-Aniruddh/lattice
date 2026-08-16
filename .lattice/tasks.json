@@ -1792,7 +1792,7 @@
         "the alternative to deleting is naming the game shape that needs it and adding an exhibit that is that shape",
         "a feature with no consumer and no planned consumer is surface we maintain forever for nobody — decide, and write the reason down either way"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": null,
       "notes": "Also fix draw/src/index.ts, whose comment justifies keeping record.ts on the grounds that ui wants it for layout measurement. Nothing in ui references the recording surface."
     },
@@ -1850,7 +1850,7 @@
         "the gallery panel had to keep a shadow copy and rebuild the camera AND the input on every drag of a zoom slider",
         "a value a caller supplied and cannot read back is a value they must store twice, and two copies drift"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": null,
       "notes": ""
     },
@@ -1871,7 +1871,7 @@
         "draw is the arbitrary case: falloff is per-call on add, while scale and bloom are construction-only, with no principle separating them",
         "decide whether this is a kit-wide rule worth stating in AGENTS.md, or a per-package judgement — but the asymmetry should be deliberate rather than accidental"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": null,
       "notes": "The most interesting observation from the gallery bootstrap. It is an architecture question, not a bug."
     },
@@ -1920,6 +1920,104 @@
         "the exhibit lost a full iteration to invisible prayer flags with nothing anywhere saying why"
       ],
       "notes": "Routed from iso."
+    },
+    {
+      "id": "K18",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "audio.maxVoices and maxPan must be live",
+      "package": "audio",
+      "paths": [
+        "packages/audio/**"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "GALLERY.md REQUIRES a voice-ceiling slider, and the current shape means that slider can permanently silence the page: dispose() closes the AudioContext and a document gets about six",
+        "maxVoices is one integer in a comparison — no allocation, no handle to invalidate, nothing downstream with a correctness claim that it did not change",
+        "add the readers too, per the new eleventh non-negotiable"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "The sharpest row in docs/rfc/live-options.md."
+    },
+    {
+      "id": "K19",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "draw.LightField.configure is write-only",
+      "package": "draw",
+      "paths": [
+        "packages/draw/**"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "configure() landed hours ago and shipped HALF the pair — there are no scale/bloom/falloff getters, so a panel showing current bloom beside its slider still keeps a shadow copy",
+        "this is the strongest single piece of evidence for the readback rule: mutability is the interesting half and gets thought about, readback costs three lines and gets skipped",
+        "also fix the record.ts comment in draw/src/index.ts — it claims ui wants the recording surface for layout measurement, and nothing in ui references it. The real justification is a PLANNED consumer, the Replay exhibit, and the replacement text must say planned rather than reading as already-true"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "K20",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "input.setProfile and setActions must both refuse during a recording",
+      "package": "input",
+      "paths": [
+        "packages/input/**"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "setProfile refusing while a recording is open is the right shape — system.ts:639 already uses those words four lines away",
+        "BUT the RFC author found a hole in their own recommendation: making actions live is NOT covered by that refusal. The log stores RawSamples and actions is not in the compatibility triple, so a mid-recording rebind silently changes what a replay DOES with a triple that still matches",
+        "either setActions refuses too, or actions joins the triple — decide and say why"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "Self-caught by the RFC author. A recommendation that finds its own hole is worth more than one that does not."
+    },
+    {
+      "id": "K21",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "Two packages are over the size budget",
+      "package": "*",
+      "paths": [
+        "packages/draw/**",
+        "packages/input/**"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "draw is 12.74 kB against 12; input is 13.88 against its documented 13 kB override",
+        "this is a real gate failure on committed code, not a rounding issue — decide per package: trim, or raise the override with a written reason",
+        "iso frees 0.64 kB when ChunkGrid is deleted, which is more than its entire remaining headroom — that is the shape of the argument to apply here",
+        "do NOT raise the global. A limit that moves outward whenever something exceeds it is not a limit"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "K22",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "Delete iso.ChunkGrid",
+      "package": "iso",
+      "paths": [
+        "packages/iso/**"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "docs/rfc/chunkgrid.md has an 11-step deletion checklist — follow it, including invariants.test.ts expect(checked).toBe(56) becoming 54",
+        "the three doc comments in path.ts and height.ts must be REWORDED to name tileSourceOf, not deleted, or PathOptions.maxNodes loses its stated justification and the next author raises it",
+        "0.64 kB gzipped against iso having 0.45 kB of headroom — it is larger than everything iso has left, spent on the only module with no reader",
+        "record the revisit trigger: a second WRITER, not a bigger map. A bigger map is new TileGrid(512,512); endless procedural terrain is tileSourceOf and free"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
     }
   ]
 }
