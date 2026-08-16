@@ -1601,7 +1601,7 @@
         "renderFrame calls visibleTileBounds with no marginTiles, so a 440px summit vanished the moment its base left the screen — expose FrameOpts.maxHeightPx or a margin on Passes.terrain",
         "the one place draw takes ownership from the game is the one place the game had the number"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-builder",
       "notes": "Findings 3 and 9."
     },
@@ -1643,7 +1643,7 @@
         "weighted pathfinding is iso.path headline feature and the only simplifier in the kit undoes it",
         "the exhibit worked around it by passing a DIFFERENT predicate than its cost function, which nobody should have to discover"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-builder",
       "notes": "Finding 5."
     },
@@ -1667,7 +1667,7 @@
         "Vite HMR re-evaluates the module, createInput correctly throws on the double bind, and the FIRST instance keeps rendering — a zombie game with a frozen HUD. One line in input README saves every example an hour",
         "wallText is hidden by its own roof overhang in the exhibit — either the overhang or the text needs to know about the other"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-builder",
       "notes": "Findings 8, 10, 13b, and one drawing finding."
     },
@@ -1750,7 +1750,7 @@
         "with from? the demo economy drops to a single node — verify that against examples/demo",
         "document that EdgeScale is evaluated once per buildFlow, so the real constraint is piecewise-constant IN TIME rather than linear: square-root and threshold rates were never excluded and the docs implied they were"
       ],
-      "status": "todo",
+      "status": "in_progress",
       "owner": null,
       "notes": "From docs/rfc/sim-rates.md. The division in the exhibit was a tell for this, not for non-linear rates."
     },
@@ -1773,7 +1773,7 @@
         "hud.ts already keeps a Hud interface as the seam — swap the body, keep the call",
         "report honestly if ui made this harder than canvas text did; that is a finding about ui, not a reason to revert"
       ],
-      "status": "todo",
+      "status": "in_progress",
       "owner": null,
       "notes": "A whole package reached 100% coverage with no consumer in the entire plan. This is the fix."
     },
@@ -1792,7 +1792,7 @@
         "the alternative to deleting is naming the game shape that needs it and adding an exhibit that is that shape",
         "a feature with no consumer and no planned consumer is surface we maintain forever for nobody — decide, and write the reason down either way"
       ],
-      "status": "todo",
+      "status": "in_progress",
       "owner": null,
       "notes": "Also fix draw/src/index.ts, whose comment justifies keeping record.ts on the grounds that ui wants it for layout measurement. Nothing in ui references the recording surface."
     },
@@ -1812,7 +1812,7 @@
         "the bootstrap works around it by filtering on class name, which is exactly the kind of workaround a kit exists to remove",
         "wants InputOptions.overlays, or something better — decide the shape"
       ],
-      "status": "todo",
+      "status": "in_progress",
       "owner": null,
       "notes": "Blocking. Discovered by the gallery bootstrap, one commit after ui was made the mandatory overlay."
     },
@@ -1831,7 +1831,7 @@
         "take the loop, or { stepMs: Millis } structurally — the branded type exists precisely so this substitution cannot compile",
         "also: no input.setProfile, so retuning one threshold means dispose, recreate, and re-register every handler"
       ],
-      "status": "todo",
+      "status": "in_progress",
       "owner": null,
       "notes": "The gallery bootstrap removed the field from its own options entirely and passes loop.stepMs itself, which is the workaround shape."
     },
@@ -1850,7 +1850,7 @@
         "the gallery panel had to keep a shadow copy and rebuild the camera AND the input on every drag of a zoom slider",
         "a value a caller supplied and cannot read back is a value they must store twice, and two copies drift"
       ],
-      "status": "todo",
+      "status": "in_progress",
       "owner": null,
       "notes": ""
     },
@@ -1871,7 +1871,7 @@
         "draw is the arbitrary case: falloff is per-call on add, while scale and bloom are construction-only, with no principle separating them",
         "decide whether this is a kit-wide rule worth stating in AGENTS.md, or a per-package judgement — but the asymmetry should be deliberate rather than accidental"
       ],
-      "status": "todo",
+      "status": "in_progress",
       "owner": null,
       "notes": "The most interesting observation from the gallery bootstrap. It is an architecture question, not a bug."
     },
@@ -1887,7 +1887,7 @@
       "dependsOn": [
         "K1"
       ],
-      "status": "todo",
+      "status": "in_progress",
       "owner": null,
       "acceptance": [
         "LIVE BUG FIRST: spriteVolume is called without the ground, so a silhouette is computed at sea level while the building is painted up the hill — taps on tall-standing lamps land in mid-air, partly masked by a hand-written bubble fallback",
@@ -1899,6 +1899,27 @@
         "report the new logic-to-art line split — the whole point of these fixes is that logic should shrink"
       ],
       "notes": "Every item here was a workaround the kit forced, and one of them turned out to be a real bug. That is the argument for extracting workarounds rather than admiring them."
+    },
+    {
+      "id": "K17",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "isoWall should refuse an edge-on wall rather than draw nothing",
+      "package": "draw",
+      "paths": [
+        "packages/draw/**"
+      ],
+      "dependsOn": [
+        "K5"
+      ],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "iso now exports isEdgeOn — the predicate for a wall whose two points have equal gx and gy deltas, which projects to a vertical line and draws zero pixels",
+        "isoWall should assert on it in dev, or refuse and name the two tiles. iso cannot warn: it has no console and no dev/prod distinction, so this is draw side",
+        "the exhibit lost a full iteration to invisible prayer flags with nothing anywhere saying why"
+      ],
+      "notes": "Routed from iso."
     }
   ]
 }
