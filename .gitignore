@@ -6,3 +6,4 @@ coverage/
 .vite/
 .lattice/reports/
 .lattice/doccheck/
+dist-ts/
