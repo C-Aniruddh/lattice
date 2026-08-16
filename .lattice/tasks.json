@@ -449,11 +449,13 @@
         "test/ mirrors src/ one file to one file, >=90% statements (100% for core)",
         "benchmarks exist for every per-frame or per-entity path",
         "README.md opens with an example that has actually been run",
-        "npm run lint -- --fix leaves kit.json accurate"
+        "npm run lint -- --fix leaves kit.json accurate",
+        "CatchUp.fromSeconds is REQUIRED, not optional — advanceOver and solveCrossingOver must resume a partially consumed absence without restarting the warp. A crossing is a phase boundary, discovered rather than scheduled; re-entering with a fresh span pays for K absences instead of one, and each restart is cheaper, so the exploit climbs back in through the function that closes it.",
+        "OfflineCurve.uncappedSeconds documented as a design constraint: if a standing charge accrues on a cycle, U must exceed that cycle period by a wide margin or the cycle is skippable. The designer meets this at the field they are picking a number for."
       ],
       "status": "todo",
       "owner": null,
-      "notes": ""
+      "notes": "From D2. Also: the demo picked exponent 0.625 rather than 0.6 because 5/8 is dyadic, making credited time Tier A via a sqrt chain instead of pow. Check whether the default curve should do the same."
     },
     {
       "id": "B9",
@@ -861,9 +863,9 @@
         "decide whether oil burn is exempt from the warp, or the design changes",
         "whichever it is, the reason is written into the demo RFC"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-designer",
-      "notes": ""
+      "notes": "Refused the exemption: it would mean two ledgers and two anchors, and would make oil(t) non-polynomial so solveCrossingOver no longer applies. Moved the pressure from flow to state instead — a guttered lamp stays out until tapped. Closing the tab is never a win, and the mechanism that makes it a loss is the game thesis evaluated while the player was away."
     }
   ]
 }
