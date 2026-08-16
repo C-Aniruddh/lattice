@@ -253,12 +253,12 @@ The camera is pulled back far enough that **nothing is culled**, so these are wo
 
 | workload | mean | p99 | share of the 8 ms budget |
 |---|---:|---:|---:|
-| 200 sprites × 42 ops, dpr 3 | 1.11 ms | 1.89 ms | **14%** |
-| **400 sprites × 42 ops, dpr 3** | **2.17 ms** | 2.33 ms | **27%** |
-| 1,000 sprites × 42 ops, dpr 3 | 5.45 ms | 5.71 ms | 68% |
-| 400 sprites, dpr 1 | 2.17 ms | 2.34 ms | 27% |
-| 400 buildings + 120 lamps, night mask composited once | 2.20 ms | 2.36 ms | 28% |
-| 2,400 terrain diamonds | 0.44 ms | 0.51 ms | 5.5% |
+| 200 sprites × 42 ops, dpr 3 | 1.06 ms | 1.15 ms | **13%** |
+| **400 sprites × 42 ops, dpr 3** | **2.14 ms** | 2.24 ms | **27%** |
+| 1,000 sprites × 42 ops, dpr 3 | 5.40 ms | 5.57 ms | 68% |
+| 400 sprites, dpr 1 | 2.17 ms | 2.30 ms | 27% |
+| 400 buildings + 120 lamps, night mask composited once | 2.22 ms | 2.33 ms | 28% |
+| 2,400 terrain diamonds | 0.44 ms | 0.49 ms | 5.5% |
 
 The last three rows each answer a question someone would otherwise have to guess at. **The device
 ratio is not in the geometry** — 400 sprites cost the same at dpr 1 and dpr 3, to within the
@@ -274,22 +274,22 @@ and this is the number.**
 
 | | 400 sprites |
 |---|---:|
-| direct path, every sprite drawn from its massing | 2.17 ms |
+| direct path, every sprite drawn from its massing | 2.14 ms |
 | **a perfect cache: key, lookup and blit, 100% hits, no misses** | **0.04 ms** |
-| the most a cache could ever save | 2.13 ms, of an 8 ms budget |
+| the most a cache could ever save | 2.10 ms, of an 8 ms budget |
 
 A cache does not make a frame free; on a hit it still builds the key — sprite id, level, seed,
 flags, quantised progress, palette revision, zoom bucket — looks it up, and submits a blit. So
-the honest comparison is not "2.17 ms versus nothing" but "2.17 ms versus 0.04 ms plus four new
+the honest comparison is not "2.14 ms versus nothing" but "2.14 ms versus 0.04 ms plus four new
 ways to render something stale": zoom buckets, palette revisions, blit snapping, and a
 don't-fill-while-moving rule that exists because filling during a pinch is *strictly worse* than
 no cache at all. Add 8 MiB of resident bitmaps on a phone.
 
-At the demo's real load — two to four hundred sprites — the direct path is 14% to 27% of the
+At the demo's real load — two to four hundred sprites — the direct path is 13% to 27% of the
 budget. That is the "fits with headroom" the RFC set as the test, so the module is not built.
 
 **The condition under which this reopens is in the table above**: a thousand buildings of this
-complexity is 5.45 ms and 68% of the budget, and that is where a cache would start to earn what
+complexity is 5.40 ms and 68% of the budget, and that is where a cache would start to earn what
 it costs. It is a row rather than a footnote so that whoever hits it can point at the number.
 
 Nothing else in the package depended on the decision. `SpriteDef`, `Variant` and the
@@ -303,12 +303,12 @@ A thousand calls each, so a regression can be attributed rather than merely noti
 
 | primitive | per 1,000 | per call | ops submitted |
 |---|---:|---:|---:|
-| `isoRoof` | 0.49 ms | 0.49 µs | 4 |
-| `isoCylinder` | 0.45 ms | 0.45 µs | 4 |
+| `isoRoof` | 0.48 ms | 0.48 µs | 4 |
 | `isoBox` | 0.45 ms | 0.45 µs | 4 |
+| `isoCylinder` | 0.45 ms | 0.45 µs | 4 |
 | `isoTile` | 0.18 ms | 0.18 µs | 1 |
 | `isoPost` | 0.15 ms | 0.15 µs | 1 |
-| `wallText` | 0.11 ms | 0.11 µs | 1 |
+| `wallText` | 0.10 ms | 0.10 µs | 1 |
 | `glowDot` | 0.09 ms | 0.09 µs | 2 |
 | `contactShadow` | 0.07 ms | 0.07 µs | 1 |
 
@@ -321,7 +321,7 @@ what it submits, not what it computes. `isoBox` projects **four** x values for i
 
 | operation | time | notes |
 |---|---:|---|
-| `spriteHeightPx`, 400 sprites | 0.17 ms | a measuring replay of the whole massing. Cache the result per instance; it changes only with the variant |
+| `spriteHeightPx`, 400 sprites | 0.18 ms | a measuring replay of the whole massing. Cache the result per instance; it changes only with the variant |
 | `palette.lerp` across a six-second dusk, 361 calls | 0.05 ms | and it bumps `rev` **32** times, not 361 — the quantisation that stops a transition invalidating everything downstream on every frame of it |
 
 ### Allocation
