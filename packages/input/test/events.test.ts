@@ -57,7 +57,7 @@ describe('the camera as it stood when the tick opened', () => {
     // with it on, the drags would also pan and the second assertion would be about two things.
     const h = harness({ control: false });
     const seen = watch(h.input);
-    // A handler that recentres the camera on what it was given — a perfectly ordinary thing to
+    // A handler that recenters the camera on what it was given — a perfectly ordinary thing to
     // do — must not change where the rest of this bucket resolved to.
     h.input.on('dragstart', () => {
       h.view.centerOn(5000, 5000);

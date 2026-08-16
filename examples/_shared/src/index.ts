@@ -11,9 +11,10 @@
  * make it one — the panel is DOM the gallery owns, styled by the gallery, thrown away if the
  * gallery is.
  *
- * Two modules do the work and they are independent on purpose: {@link bootstrap} is the boot an
- * exhibit would otherwise hand-roll, and {@link controlPanel} is the instrument that makes the
- * kit's parameters visible. An exhibit may take either without the other.
+ * Three modules do the work and they are independent on purpose: {@link bootstrap} is the boot an
+ * exhibit would otherwise hand-roll, {@link controlPanel} is the instrument that makes the kit's
+ * parameters visible, and {@link createBucket} holds the array a `DepthSorter`'s integers index
+ * into. An exhibit may take any one of them without the others.
  *
  * See `README.md` beside this file for the argument about which half of this belongs in a
  * `@lattice/kit` package and which half does not.
@@ -34,6 +35,9 @@ export type {
   ToggleControl,
   Wrong,
 } from './panel.js';
+
+export { createBucket } from './bucket.js';
+export type { Bucket } from './bucket.js';
 
 export { readParams } from './params.js';
 export type { Params } from './params.js';

@@ -75,6 +75,28 @@ export interface CompiledActions<A extends string> {
 const NO_ENTRIES: readonly ActionEntry<never>[] = [];
 
 /**
+ * The refusal every entry point keyed by an action name shares.
+ *
+ * One function rather than the same sentence typed at four call sites, because the value of the
+ * message is the list of names it prints and a copy that forgets to print them is the version
+ * somebody writes when they add the fifth entry point. `fn` is the method the game called, so
+ * the message names `input.held` rather than this file.
+ */
+export function undeclared(fn: string, action: string, names: readonly string[]): RangeError {
+  return new RangeError(`${fn}: '${action}' is not a declared action; declared: ${nameList(names)}`);
+}
+
+/**
+ * The declared names as a reader sees them, or `(none)`.
+ *
+ * A game with no actions at all is legal, and printing an empty string there produces a message
+ * that trails off mid-sentence — which reads like the error itself is broken.
+ */
+export function nameList(names: readonly string[]): string {
+  return names.length === 0 ? '(none)' : names.join(', ');
+}
+
+/**
  * Every `KeyboardEvent.code` this build recognizes.
  *
  * Built rather than typed out, because a hand-written list of 26 letters is a list with a typo
@@ -214,11 +236,7 @@ export function compileActions<A extends string>(
 
     bindings(action: A): readonly ActionBinding[] {
       const found = byAction.get(action);
-      if (found === undefined) {
-        throw new RangeError(
-          `input.bindings: '${String(action)}' is not a declared action; declared: ${names.length === 0 ? '(none)' : names.join(', ')}`,
-        );
-      }
+      if (found === undefined) throw undeclared('input.bindings', String(action), names);
       return found;
     },
 
@@ -232,11 +250,7 @@ export function compileActions<A extends string>(
 
     held(action: A, pressed: boolean, isKeyHeld: (code: string) => boolean): boolean {
       const found = byAction.get(action);
-      if (found === undefined) {
-        throw new RangeError(
-          `input.held: '${String(action)}' is not a declared action; declared: ${names.length === 0 ? '(none)' : names.join(', ')}`,
-        );
-      }
+      if (found === undefined) throw undeclared('input.held', String(action), names);
       for (const binding of found) {
         if (binding === 'tap' || binding === 'longpress') {
           if (pressed) return true;

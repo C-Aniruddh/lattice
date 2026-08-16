@@ -11,7 +11,7 @@
  * | situation | what happens |
  * |---|---|
  * | an event arrives between ticks | it joins the open bucket and is delivered by the next tick |
- * | an event arrives *during* a tick — including one a handler synthesises | it joins the **next** bucket, never the running one. Otherwise delivery order would depend on when the browser dispatched, which is not reproducible, and a handler that submits input could recurse |
+ * | an event arrives *during* a tick — including one a handler synthesizes | it joins the **next** bucket, never the running one. Otherwise delivery order would depend on when the browser dispatched, which is not reproducible, and a handler that submits input could recurse |
  * | a pump runs **no** ticks | nothing is delivered, nothing is lost; the bucket keeps filling |
  * | a pump runs **five** ticks | the first gets the backlog; the other four are normally empty, which is correct — they are catch-up for time that already passed, and a tap did not happen five times |
  * | the bucket reaches `maxBufferedSamples` | consecutive `move`s for one pointer collapse to the newest. **A `down`, `up`, `cancel`, `key` or `wheel` is never dropped**: a stall costs precision, never an event, and one `buffer-overflow` diagnostic is raised |
@@ -22,7 +22,7 @@
  *
  * ## Why there are two representations of a sample
  *
- * {@link RawSample} is the public, serialisable one: a discriminated union of plain objects
+ * {@link RawSample} is the public, serializable one: a discriminated union of plain objects
  * that goes in a log and through JSON unchanged. {@link SampleSlot} is the internal one: a
  * flat, fully-populated record that the buffer owns for ever and overwrites in place. A
  * fixed-shape slot is what makes a thousand `pointermove`s through one tick allocate nothing,
@@ -45,7 +45,7 @@ import type { PointerKind } from './profile.js';
 export const LOG_VERSION = 1;
 
 /**
- * The entire input to the recognizer. Plain data, serialisable, no clock, no DOM.
+ * The entire input to the recognizer. Plain data, serializable, no clock, no DOM.
  *
  * `tick` is how time enters — {@link InputSystem.tick} appends one — which means a log is a
  * complete description of a session's input *including its timing*, expressed on the only axis

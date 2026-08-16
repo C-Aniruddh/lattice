@@ -69,7 +69,7 @@ export interface GestureOut {
 }
 
 /** What the recognizer needs from around it. Two callbacks and two numbers; no objects it owns. */
-export interface RecogniserOptions {
+export interface RecognizerOptions {
   readonly profile: Readonly<GestureProfile>;
   /**
    * The loop's fixed step in milliseconds. Every duration here is a whole number of ticks
@@ -139,11 +139,11 @@ export interface Recognizer {
  * @throws RangeError if `stepMs` is not a finite number greater than zero — every duration in
  *   the profile is measured in ticks of it, so a zero step makes a long press instantaneous.
  */
-export function createRecogniser(options: RecogniserOptions): Recognizer {
+export function createRecognizer(options: RecognizerOptions): Recognizer {
   const { profile, stepMs, emit, onKey } = options;
   if (!(Number.isFinite(stepMs) && stepMs > 0)) {
     throw new RangeError(
-      `createRecogniser: expected stepMs to be a finite number > 0, got ${String(stepMs)} — pass loop.stepMs rather than a literal`,
+      `createRecognizer: expected stepMs to be a finite number > 0, got ${String(stepMs)} — pass loop.stepMs rather than a literal`,
     );
   }
 

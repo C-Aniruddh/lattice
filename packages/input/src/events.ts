@@ -36,7 +36,7 @@ import type { ActionBinding } from './actions.js';
  * The camera, frozen at the instant a tick opened.
  *
  * Every event a tick delivers resolves against this, not against the live camera, and the
- * difference is not academic: a handler that recentres the camera on the tile it was given
+ * difference is not academic: a handler that recenters the camera on the tile it was given
  * would otherwise change where the *next* event in the same tick lands. Same bucket, same
  * frame of reference, whatever the handlers do — which is also what makes the tile a replay
  * resolves identical to the tile the session resolved.

@@ -185,6 +185,42 @@ if (input.hoverTile(tile)) highlight(tile.gx, tile.gy);
 device, always, between taps. A control that only appears on hover does not exist on a phone, and
 this signature exists to make that impossible to forget.
 
+### Rebinding a key
+
+The action map is data, and it moves while the game runs:
+
+```ts
+input.setActions({ collect: ['tap', 'key:Space'], build: ['key:KeyN'] }); // was KeyB
+input.bindings('build'); //                                      ['key:KeyN'] — read it back
+```
+
+Every handler survives, which is the point: rebinding used to mean `dispose`, rebuild, and
+re-register every `onAction` in the game. `bindings()` and `actionNames` are live reads off the
+system, so a shortcut sheet re-renders from the map instead of from a second copy that drifts.
+
+**The names are identity; only the bindings move.** A map that adds a name or drops one is
+refused — `A` was inferred from the constructor's map and every handler is already keyed to it,
+so a new name has no handler list to reach and a vanished one takes a live handler with it.
+Adding an action is a new system. Which *key* produces `build` is what a settings screen moves,
+and that is what this is for.
+
+**And it refuses while a recording is running**, for a reason that is not `setProfile`'s and is
+worth reading once:
+
+> A log records `RawSample`s, and the action map is **not** in the compatibility triple. So a
+> rebind mid-recording changes nothing about what the log *says* and everything about what a
+> replay of it *does* — behind a triple that still matches exactly. Nothing downstream could
+> refuse it, and the replay would report a divergence that is confidently wrong.
+
+The other way out was to put the map in the triple, which is a much larger claim: it would make
+every log ever recorded unreplayable the first time a player rebound a key. Refusing for the
+seconds a recording is open costs one boolean; see `docs/rfc/live-options.md` §6b.
+
+The same reasoning closes the mirror case. `replayCursor` verifies the triple once and then hands
+control to the driver between every tick, so a `setProfile` or `setActions` in that gap would
+replay half a log under rules it was not recorded under. The cursor carries the system's epoch and
+refuses the first `applyAt` that finds it moved.
+
 ### The thresholds
 
 Every number that decides what a gesture is lives in one `GestureProfile`, and every default
@@ -292,7 +328,7 @@ which makes timestamps not merely unnecessary but actively misleading.
   were minutes old.) Picking is `iso`'s `pickSorted`, called from a handler with the coordinates
   this package has already computed.
 - **The gamepad**, cut from 0.1. It is the one input source that cannot answer *where*: a stick is
-  a direction, and making a pad honour `a.gx/gy` needs an on-screen reticle that moves,
+  a direction, and making a pad honor `a.gx/gy` needs an on-screen reticle that moves,
   accelerates, snaps to candidates and is drawn and focus-managed by `ui`. That is a second
   interaction model, not one more row in an action map. It comes back when a game shape asks for
   it — steering a character, or a build targeting a TV — and it comes back with the reticle,

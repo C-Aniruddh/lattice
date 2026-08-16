@@ -1974,7 +1974,7 @@
         "BUT the RFC author found a hole in their own recommendation: making actions live is NOT covered by that refusal. The log stores RawSamples and actions is not in the compatibility triple, so a mid-recording rebind silently changes what a replay DOES with a triple that still matches",
         "either setActions refuses too, or actions joins the triple — decide and say why"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-builder",
       "notes": "Self-caught by the RFC author. A recommendation that finds its own hole is worth more than one that does not."
     },
@@ -1995,7 +1995,7 @@
         "iso frees 0.64 kB when ChunkGrid is deleted, which is more than its entire remaining headroom — that is the shape of the argument to apply here",
         "do NOT raise the global. A limit that moves outward whenever something exceeds it is not a limit"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-builder",
       "notes": ""
     },
@@ -2050,7 +2050,7 @@
         "examples/_shared/**"
       ],
       "dependsOn": [],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-builder",
       "acceptance": [
         "docs/rfc/depth-bucket.md specifies it and assigns it to G0. G0 shipped the bootstrap and the panel without it",
@@ -2121,6 +2121,26 @@
       "status": "todo",
       "owner": null,
       "notes": ""
+    },
+    {
+      "id": "K28",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "DepthSorter needs a sorted flag — it is the only thing blocking a whole invariant",
+      "package": "iso",
+      "paths": [
+        "packages/iso/**"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "the shared Bucket cannot meet its invariant B7 — \"an unsorted each throws\" — from outside the package, and the reason is worth reading: DepthSorter publishes nothing that separates \"not sorted\" from \"sorted, nothing culled\"",
+        "pre-sort, count equals the bucket count and indexAt(i) === i — and an unculled frame filled in depth order is BIT-IDENTICAL to that. Any detector built on the published surface is a false alarm on a real frame",
+        "a public `sorted` flag, lowered by add and clear and raised by sort, is three lines and unblocks it",
+        "the bucket test already asserts the gap as a tripwire, so whoever adds the flag is told where to come back"
+      ],
+      "notes": "A helper outside the package could not close it, and said so rather than shipping a detector that would cry wolf. That is the right call and it routes here."
     }
   ]
 }

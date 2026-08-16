@@ -18,6 +18,7 @@
     "packages/*/test/**/*",
     "packages/*/src/**/*",
     "examples/*/src/**/*",
+    "examples/*/test/**/*",
     "tools/**/*"
   ]
 }

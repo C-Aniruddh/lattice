@@ -17,7 +17,7 @@ export default defineConfig({
   },
   test: {
     include: ['packages/*/test/**/*.test.ts', 'examples/*/test/**/*.test.ts', 'test/**/*.test.ts'],
-    benchmark: { include: ['packages/*/test/**/*.bench.ts'] },
+    benchmark: { include: ['packages/*/test/**/*.bench.ts', 'examples/*/test/**/*.bench.ts'] },
     environment: 'node',
     restoreMocks: true,
     coverage: {

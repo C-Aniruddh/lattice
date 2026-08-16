@@ -8,21 +8,21 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createRecogniser } from '../src/recognize.js';
+import { createRecognizer } from '../src/recognize.js';
 import { DEFAULT_PROFILE } from '../src/profile.js';
 import { down, harness, move, types, up, watch } from './harness.js';
 
-describe('createRecogniser', () => {
+describe('createRecognizer', () => {
   it('refuses a step that would make every duration meaningless', () => {
     const options = {
       profile: DEFAULT_PROFILE,
       emit: (): void => undefined,
       onKey: (): void => undefined,
     };
-    expect(() => createRecogniser({ ...options, stepMs: 0 })).toThrow(
+    expect(() => createRecognizer({ ...options, stepMs: 0 })).toThrow(
       /expected stepMs to be a finite number > 0/,
     );
-    expect(() => createRecogniser({ ...options, stepMs: Number.NaN })).toThrow(RangeError);
+    expect(() => createRecognizer({ ...options, stepMs: Number.NaN })).toThrow(RangeError);
   });
 });
 
@@ -231,7 +231,7 @@ describe('the machine on its own', () => {
   /** A recognizer with no system around it, for the states a sample stream cannot reach. */
   function bare(maxPointers = 2) {
     const emitted: string[] = [];
-    const machine = createRecogniser({
+    const machine = createRecognizer({
       profile: { ...DEFAULT_PROFILE, maxPointers },
       stepMs: 100,
       emit: (g): void => {

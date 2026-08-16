@@ -516,3 +516,169 @@ describe('setProfile', () => {
     expect(() => h.input.setProfile({ longPressMs: 300 })).toThrow(/has been disposed/);
   });
 });
+
+/**
+ * `K20`. Rebinding a key used to cost a full dispose and re-register, which is why the gallery
+ * bootstrap kept a `Binding[]` to replay onto each new system.
+ *
+ * The refusal is the interesting half, and its reason is **not** `setProfile`'s. The log stores
+ * `RawSample`s and the map is not in the compatibility triple, so a mid-recording rebind leaves a
+ * log that replays without complaint and fires different actions than the session it came from —
+ * the only failure in this package that produces no error, no visible defect, and a confident
+ * wrong answer months later.
+ */
+describe('setActions', () => {
+  it('rebinds the key and keeps every handler, which is the whole point', () => {
+    const h = harness<'build'>({ hz: 10, actions: { build: ['key:KeyB'] } });
+    const fired: string[] = [];
+    const scope = h.input.scope();
+    scope.onAction('build', (a) => fired.push(a.binding));
+
+    h.step({ kind: 'key', code: 'KeyB', down: true });
+    expect(fired).toEqual(['key:KeyB']);
+
+    h.input.setActions({ build: ['key:KeyN'] });
+
+    // The old key is dead and the new one fires, through the handler that was never re-registered.
+    h.step({ kind: 'key', code: 'KeyB', down: true }, { kind: 'key', code: 'KeyN', down: true });
+    expect(fired).toEqual(['key:KeyB', 'key:KeyN']);
+    scope.dispose();
+  });
+
+  it('is read back off the system, so a shortcut sheet needs no second copy of the map', () => {
+    const h = harness<'build' | 'collect'>({
+      hz: 10,
+      actions: { collect: ['tap'], build: ['key:KeyB'] },
+    });
+    expect(h.input.bindings('build')).toEqual(['key:KeyB']);
+    h.input.setActions({ collect: ['tap', 'key:Space'], build: ['key:KeyN', 'longpress'] });
+    // Rule 11: the getter reads the field the setter wrote, not a copy taken at construction.
+    expect(h.input.bindings('build')).toEqual(['key:KeyN', 'longpress']);
+    expect(h.input.bindings('collect')).toEqual(['tap', 'key:Space']);
+    expect([...h.input.actionNames].sort()).toEqual(['build', 'collect']);
+  });
+
+  it('refuses a name that was never declared, because a name is identity', () => {
+    const h = harness<'build'>({ hz: 10, actions: { build: ['key:KeyB'] } });
+    expect(() =>
+      h.input.setActions({ sprint: ['key:KeyS'] } as unknown as { build: readonly 'key:KeyS'[] }),
+    ).toThrow(/'sprint' was not declared when this system was built/);
+    // And the message lists what is declared, so the caller does not go looking.
+    expect(() =>
+      h.input.setActions({ sprint: ['key:KeyS'] } as unknown as { build: readonly 'key:KeyS'[] }),
+    ).toThrow(/Declared: build/);
+  });
+
+  it('refuses a map that drops a declared action, rather than muting its handlers', () => {
+    const h = harness<'build' | 'collect'>({
+      hz: 10,
+      actions: { collect: ['tap'], build: ['key:KeyB'] },
+    });
+    expect(() =>
+      h.input.setActions({ collect: ['tap'] } as unknown as {
+        collect: readonly 'tap'[];
+        build: readonly 'tap'[];
+      }),
+    ).toThrow(/declares 1 of this system's 2 actions/);
+  });
+
+  it('validates in the same words as construction, from both entrances', () => {
+    const h = harness<'build'>({ hz: 10, actions: { build: ['key:KeyB'] } });
+    // The near-miss check, the empty-list check and the shape check are one validator, so the
+    // only difference between the two messages is the name of the entrance.
+    expect(() => h.input.setActions({ build: ['key:space'] as never })).toThrow(
+      /input\.setActions\.build: 'key:space' is not a KeyboardEvent\.code; did you mean 'key:Space'\?/,
+    );
+    expect(() => h.input.setActions({ build: [] })).toThrow(
+      /input\.setActions\.build: expected at least one binding/,
+    );
+    expect(() =>
+      createHeadlessInput({ camera: camera(), step: STEP_60, actions: { build: ['key:space'] } }),
+    ).toThrow(/createHeadlessInput\.actions\.build: .* did you mean 'key:Space'\?/);
+  });
+
+  it('changes nothing when it is refused', () => {
+    const h = harness<'build'>({ hz: 10, actions: { build: ['key:KeyB'] } });
+    // A binding this package cannot dispatch. It sits *after* a valid one in the list, so a
+    // validator that applied as it went would leave `build` bound to `tap` and nothing else.
+    expect(() => h.input.setActions({ build: ['tap', 'wiggle' as never] })).toThrow(RangeError);
+    expect(h.input.bindings('build')).toEqual(['key:KeyB']);
+    // Still dispatching through the old map, not a half-applied one.
+    const fired: string[] = [];
+    h.input.onAction('build', (a) => fired.push(a.binding));
+    h.step({ kind: 'key', code: 'KeyB', down: true });
+    expect(fired).toEqual(['key:KeyB']);
+  });
+
+  it('refuses a rebind from inside a handler, mid-bucket', () => {
+    const h = harness<'build'>({ hz: 10, actions: { build: ['key:KeyB'] } });
+    let thrown: unknown;
+    h.input.onAction('build', () => {
+      try {
+        h.input.setActions({ build: ['key:KeyN'] });
+      } catch (error) {
+        thrown = error;
+      }
+    });
+    h.step({ kind: 'key', code: 'KeyB', down: true });
+    expect(String(thrown)).toMatch(/called from inside a handler/);
+    expect(h.input.bindings('build')).toEqual(['key:KeyB']);
+    // And the guard clears, so one refusal does not brick the knob.
+    h.input.setActions({ build: ['key:KeyN'] });
+    expect(h.input.bindings('build')).toEqual(['key:KeyN']);
+  });
+
+  it('refuses while a recording is running, for a reason the triple does not cover', () => {
+    const h = harness<'build'>({ hz: 10, actions: { build: ['key:KeyB'] } });
+    const tape = record(h.input);
+    expect(() => h.input.setActions({ build: ['key:KeyN'] })).toThrow(
+      /a recording is running.*not in the compatibility triple/s,
+    );
+
+    // The proof that the refusal is load-bearing: had it gone through, the log's triple would be
+    // byte-identical to the one a fresh system reports, so nothing downstream could have refused
+    // the replay — `actions` is not in the triple, and the log records samples rather than
+    // actions. That is the whole of the hole this refusal closes.
+    const log = tape.stop();
+    h.input.setActions({ build: ['key:KeyN'] });
+    expect(createLog(h.input).profile).toBe(log.profile);
+    expect(createLog(h.input).stepMs).toBe(log.stepMs);
+    expect(createLog(h.input).version).toBe(log.version);
+  });
+
+  it('refuses after dispose, rather than storing a map nothing dispatches through', () => {
+    const h = harness<'build'>({ hz: 10, actions: { build: ['key:KeyB'] } });
+    h.input.dispose();
+    expect(() => h.input.setActions({ build: ['key:KeyN'] })).toThrow(/has been disposed/);
+  });
+
+  it('needs no gesture to end first, because an action map holds no live state', () => {
+    const h = harness<'build'>({ hz: 10, actions: { build: ['tap'] } });
+    const seen = watch(h.input);
+    h.step(down(1, 400, 300), move(1, 460, 300));
+    expect(types(seen)).toEqual(['dragstart']);
+    // Unlike `setProfile`, which must end the drag under the thresholds that recognized it: the
+    // drag here is unaffected, because nothing about it was dispatched through the map.
+    h.input.setActions({ build: ['longpress'] });
+    expect(types(seen)).toEqual(['dragstart']);
+    h.step(up(1, 460, 300));
+    expect(types(seen)).toEqual(['dragstart', 'dragend']);
+  });
+
+  it('answers held through the map in force, which is what held means', () => {
+    const h = harness<'build'>({ hz: 10, actions: { build: ['key:KeyB'] } });
+    h.step({ kind: 'key', code: 'KeyB', down: true });
+    expect(h.input.held('build')).toBe(true);
+    h.input.setActions({ build: ['key:KeyN'] });
+    // KeyB is still physically down; it is simply no longer what `build` means.
+    expect(h.input.keyHeld('KeyB')).toBe(true);
+    expect(h.input.held('build')).toBe(false);
+  });
+
+  it('is legal on a system with no actions, and says so when asked for one', () => {
+    const h = harness({ hz: 10 });
+    h.input.setActions({});
+    expect(h.input.actionNames).toEqual([]);
+    expect(() => h.input.bindings('nope' as never)).toThrow(/declared: \(none\)/);
+  });
+});

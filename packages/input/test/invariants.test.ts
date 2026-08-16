@@ -54,7 +54,7 @@ describe('I2 — travel beyond the slop for the device is never a tap', () => {
     expect(types(touchSeen)).toEqual(['tap']);
   });
 
-  it('disarms the hold as the finger starts travelling', () => {
+  it('disarms the hold as the finger starts traveling', () => {
     const h = harness({ hz: 10 });
     const seen = watch(h.input);
     h.step(down(1, 400, 300, 'touch'));

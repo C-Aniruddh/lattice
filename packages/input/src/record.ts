@@ -26,6 +26,23 @@
  *
  * Read the triple off {@link createLog} rather than typing it at a call site, so the recorded
  * and the current cannot drift apart in a refactor.
+ *
+ * ## What the triple does not cover, and who covers it instead
+ *
+ * The triple is `version`, `stepMs`, `profile` — three things that decide **what the log says**.
+ * The action map decides what a replay *does* with what the log says, and it is deliberately not
+ * a fourth member: putting it there would make every log ever recorded unreplayable the first
+ * time a player rebound a key, which is a far larger claim than the defect warrants. It is
+ * covered from the other end instead — `InputSystem.setActions` refuses while a recording is
+ * open, and {@link replayCursor} refuses if either setter fires while a replay is in flight.
+ *
+ * Which leaves this file with one rule worth stating plainly:
+ *
+ * > **A log is verified once, and the thing verifying it must stay the same afterwards.**
+ * > {@link replay} gets that for free — it is synchronous, and the only code that could run
+ * > during it is a handler, which both setters already refuse. {@link replayCursor} does not,
+ * > because the driver runs the whole game between two `applyAt` calls, so it carries the
+ * > system's epoch and re-checks it.
  */
 
 import { LOG_VERSION } from './sample.js';
@@ -124,9 +141,27 @@ export function record<A extends string>(system: InputSystem<A>): InputRecording
 /**
  * Refuse a log this system cannot reproduce, naming the field that differs.
  *
+ * ## The elements are checked too, and that is a contract with `@lattice/persist`
+ *
+ * `persist` stores a log **verbatim** — it owns the envelope, the version and the integrity
+ * digest, and it deliberately never inspects a sample. So this is the last place that can refuse
+ * a `samples` array which survived the digest and is still not a list of samples: a hole from a
+ * hand-built `Array(n)`, a `null` from a serializer that dropped a field, an element a migration
+ * mangled. The argument is the one already made for the array itself one line up, and it does not
+ * get weaker one level down: **an event that is missing replays as a session in which the player
+ * did not do it**, which diverges, and the divergence report blames the game for a hole somebody
+ * else made. One `typeof` per sample, once, before a replay that will do far more work than that
+ * per sample, is the whole price.
+ *
+ * It is deliberately shallow. Whether a `down` carries a finite `sx` is `InputSystem.submit`'s
+ * question and it asks it on every sample anyway; whether the log is the one that was saved is
+ * `persist`'s. This asks only that every element is an object, which is the claim the two loops
+ * below and {@link ReplayCursor.applyAt} each depend on and none of them could make for itself.
+ *
  * @throws RangeError on any of the three. `TypeError` if the log is not an object with a
- *   `samples` array — a log that arrived as `undefined` from a storage miss would otherwise
- *   replay as a session in which the player did nothing, and report green.
+ *   `samples` array, or if any element of that array is not one — a log that arrived as
+ *   `undefined` from a storage miss would otherwise replay as a session in which the player did
+ *   nothing, and report green.
  */
 export function checkCompatible<A extends string>(system: InputSystem<A>, log: InputLog): void {
   const internals = internalsOf(system);
@@ -134,6 +169,14 @@ export function checkCompatible<A extends string>(system: InputSystem<A>, log: I
     throw new TypeError(
       'replay: expected an InputLog with a samples array — a missing log replays as a session in which the player did nothing, and reports green',
     );
+  }
+  for (let i = 0; i < log.samples.length; i++) {
+    const sample: RawSample | undefined = log.samples[i];
+    if (sample === null || typeof sample !== 'object') {
+      throw new TypeError(
+        `replay: log.samples[${String(i)}] is ${String(sample)}, not a sample — an element that is missing replays as a session in which the player did not do it, and the divergence lands on the game rather than on the log`,
+      );
+    }
   }
   if (log.version !== LOG_VERSION) {
     throw new RangeError(
@@ -179,25 +222,54 @@ export function replay<A extends string>(system: InputSystem<A>, log: InputLog):
  * records; where they do not — a recording started mid-game — what matters is that the *gaps*
  * between markers are preserved, and consuming exactly one marker per call preserves them.
  *
+ * ## It verifies once and then checks that the verification still holds
+ *
+ * The compatibility triple is compared here, at the moment the cursor opens — and then the driver
+ * gets control back between every pair of `applyAt` calls, and runs the whole game in the gap.
+ * That gap is a hole the recording refusals cannot reach: `setProfile` and `setActions` refuse
+ * while a *recording* is open and a replay is not a recording, so without this a game could retune
+ * itself half way through replaying its own log and the second half would be recognized, or
+ * dispatched, under rules the log was never recorded under. Nothing would throw, and the report
+ * at the end would be confidently wrong.
+ *
+ * So the cursor remembers the system's epoch and refuses the first `applyAt` that finds it moved.
+ * `@lattice/loop`'s driver does not have to know this exists; it is the same refusal a setter
+ * would have made, one tick later, from the only place that can still make it.
+ *
  * @throws RangeError naming the mismatch if the compatibility triple differs.
  */
 export function replayCursor<A extends string>(
   system: InputSystem<A>,
   log: InputLog,
 ): ReplayCursor {
+  const internals = internalsOf(system);
   checkCompatible(system, log);
   const samples: readonly RawSample[] = log.samples;
   let ticks = 0;
   for (const sample of samples) if (sample.kind === 'tick') ticks += 1;
+  const epoch = internals.epoch;
   let cursor = 0;
 
   return {
     ticks,
     stepMs: log.stepMs,
     applyAt(tick: number): void {
+      if (internals.epoch !== epoch) {
+        throw new RangeError(
+          `replay: setProfile or setActions moved between two applyAt calls, at tick ${String(tick)}. The log was checked once, when the cursor opened; the ticks already delivered were replayed under those rules and the rest would not be. Rebuild the cursor after a retune.`,
+        );
+      }
       while (cursor < samples.length) {
         const sample = samples[cursor];
-        if (sample === undefined) break;
+        if (sample === undefined) {
+          // `checkCompatible` proved every element was a sample when the cursor opened, so the
+          // only way here is a caller who deleted one from the log's own array afterwards. It
+          // used to `break`, which silently truncated the replay and then reported green — the
+          // exact outcome the check above exists to prevent, reached from one line lower down.
+          throw new RangeError(
+            `replay: log.samples[${String(cursor)}] was removed while the replay was running. Delivering the rest reports a divergence that blames the game for a hole somebody else made.`,
+          );
+        }
         cursor += 1;
         if (sample.kind === 'tick') {
           system.tick(tick);

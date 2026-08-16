@@ -18,6 +18,7 @@ import { createAudio, type Audio } from '@lattice/audio';
 import type { OfflineCurve } from '@lattice/sim';
 import { offlineCredit } from '@lattice/sim';
 import { bootstrap } from './bootstrap.js';
+import { createBucket } from './bucket.js';
 import { controlPanel } from './panel.js';
 import * as knobs from './knobs.js';
 import type { Box } from './knobs.js';
@@ -104,6 +105,35 @@ boot.onAction('poke', () => {
   for (const b of blocks) b.hit = 1;
 });
 
+// ── the frame bucket ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Every drawable this frame, in `boot.order`'s own index space.
+ *
+ * Built once, beside the sorter it fills, and it is the only thing that ever calls
+ * `boot.order.add`. This scene is homogeneous — eleven blocks and nothing else — so the desync
+ * the bucket prevents could not arise here even by hand; it is used anyway because this file is
+ * the shape an exhibit copies, and the exhibit that copies it will have walkers.
+ */
+const bucket = createBucket<Block>(boot.order);
+
+/**
+ * The pen the current frame is painting into.
+ *
+ * `Bucket.each` hands the visitor an item and a position and nothing else, so a visitor that
+ * needs the pen must either close over it — a closure per frame — or read it from here. This is
+ * the wart, and it is written down rather than hidden: see this folder's README.
+ */
+let framePen: Pen | undefined;
+
+/** Hoisted, so `each` costs no allocation. Reads {@link framePen} rather than capturing one. */
+function paintBlock(b: Block): void {
+  const pen = framePen;
+  if (pen === undefined) return;
+  isoBox(pen, b.gx, b.gy, b.w, b.d, { color: b.lamp ? 'brand' : 'glass', h: b.h + b.hit * 0.3 });
+  if (b.lamp) glowDot(pen, b.gx + b.w / 2, b.gy + b.d / 2, b.h, 'warn', 7, 1 - daylight);
+}
+
 const passes: Passes = {
   terrain(pen, visible) {
     for (let gy = visible.gy0; gy <= visible.gy1; gy++) {
@@ -114,16 +144,9 @@ const passes: Passes = {
     }
   },
   maxHeightPx: 6 * 26,
-  solids(pen, order) {
-    for (let i = 0; i < order.count; i++) {
-      const b = blocks[order.indexAt(i)];
-      if (b === undefined) continue;
-      isoBox(pen, b.gx, b.gy, b.w, b.d, {
-        color: b.lamp ? 'brand' : 'glass',
-        h: b.h + b.hit * 0.3,
-      });
-      if (b.lamp) glowDot(pen, b.gx + b.w / 2, b.gy + b.d / 2, b.h, 'warn', 7, 1 - daylight);
-    }
+  solids(pen) {
+    framePen = pen;
+    bucket.each(paintBlock);
   },
 };
 
@@ -135,8 +158,10 @@ boot.onRender((pen: Pen) => {
   for (const b of blocks) {
     if (b.lamp) boot.light.add(b.gx + b.w / 2, b.gy + b.d / 2, b.h * 26, 5.5, 1 - daylight, 'warn');
   }
-  boot.order.clear();
-  for (const b of blocks) boot.order.add(b.gx, b.gy, b.w, b.d, b.h * 26);
+  // One clear for the pair — `bucket.clear()` drops the sorter's items too, so there is no
+  // second statement to forget and no order for the two of them to be written in.
+  bucket.clear();
+  for (const b of blocks) bucket.add(b, b.gx, b.gy, b.w, b.d, b.h * 26);
   renderFrame(pen, passes, boot.order);
 });
 

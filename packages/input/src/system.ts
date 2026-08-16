@@ -37,7 +37,7 @@ import { createScope, expectInt } from '@lattice/core';
 import type { Scope, Vec2 } from '@lattice/core';
 import { screenToTile } from '@lattice/iso';
 import type { Camera, GridPoint } from '@lattice/iso';
-import { compileActions } from './actions.js';
+import { compileActions, nameList, undeclared } from './actions.js';
 import type { ActionBinding, ActionEntry, ActionMap, CompiledActions } from './actions.js';
 import { createCameraControl } from './cameracontrol.js';
 import type { CameraControl, CameraController } from './cameracontrol.js';
@@ -52,7 +52,7 @@ import {
 import type { AnyActionHandler } from './events.js';
 import { profileFingerprint, resolveProfile } from './profile.js';
 import type { GestureProfile, ProfileOverrides } from './profile.js';
-import { createRecogniser } from './recognize.js';
+import { createRecognizer } from './recognize.js';
 import type { GestureOut, Recognizer } from './recognize.js';
 import { resolveStep } from './step.js';
 import type { FixedStep } from './step.js';
@@ -92,6 +92,10 @@ export interface HeadlessInputOptions<A extends string> {
    *
    * The names are inferred from this object, so `onAction`, `held` and `bindings` accept only
    * names that exist. This object is also the single source of truth for a shortcut sheet.
+   *
+   * **The names are identity and the bindings are policy**, and the split is enforced:
+   * {@link InputSystem.setActions} rebinds any of them at any time and keeps every handler, and
+   * cannot add or remove a name — see its doc comment for why.
    */
   readonly actions?: ActionMap<A>;
 
@@ -177,18 +181,63 @@ export interface InputSystem<A extends string = never> extends InputScope<A> {
    */
   setProfile(overrides: ProfileOverrides | undefined): Readonly<GestureProfile>;
 
+  /**
+   * Rebind every action, and keep every handler.
+   *
+   * ```ts
+   * input.setActions({ collect: ['tap', 'key:Space'], build: ['key:KeyN'] }); // was KeyB
+   * ```
+   *
+   * **A full replacement of the map, compiled exactly as construction compiles it** — the same
+   * validator, the same errors, the same `unknown-key-code` diagnostic. A binding an action had
+   * and this map does not name is gone; there is no patch form, for `setProfile`'s reason.
+   *
+   * ## The names are identity; only the bindings move
+   *
+   * Passing a map whose names are not exactly the declared ones throws. `A` was inferred from
+   * the constructor's map and has already been handed out — every `onAction` handler is keyed to
+   * one of those names, `actionNames` has been read into a shortcut sheet, and the type of this
+   * very argument is derived from it. A name that appeared would have no handler list and no way
+   * to acquire one; a name that vanished would take a live handler with it and look, from the
+   * game's side, exactly like a handler that stopped being called. Adding an action is a new
+   * system. Which *key* produces `build` is the thing a settings screen moves, and that is what
+   * this method is for.
+   *
+   * Unlike {@link setProfile} this ends nothing first, because an action map holds no live
+   * state: actions fire on the press edge, so every press that has already fired has already
+   * been delivered under the map that was in force when it fired. {@link held} is answered
+   * through the *new* map from the next call onward, which is the honest reading of "is the key
+   * bound to `build` down".
+   *
+   * @throws RangeError if a binding is malformed, if the map names an action that was not
+   *   declared or omits one that was — **before anything changes**; if called from inside a
+   *   handler, because half of the bucket being delivered would dispatch through each map; if a
+   *   recording is running; or if the system has been disposed.
+   *
+   *   The recording refusal is the one worth reading twice, because the reason is *not*
+   *   `setProfile`'s. A log stores {@link RawSample}s, and `actions` is **not** in the
+   *   compatibility triple — so a mid-recording rebind changes nothing about what the log says
+   *   and everything about what a replay of it *does*, behind a triple that still matches
+   *   exactly. `setProfile` refuses to keep the log's declared identity true; this refuses
+   *   because there is no declared identity here to keep true, and the alternative is a
+   *   divergence report that is confidently wrong. See `docs/rfc/live-options.md` §6b.
+   */
+  setActions(actions: ActionMap<A>): void;
+
   /** The fixed step every duration is counted in. Fixed for the life of the system: changing it
    *  would re-time every gesture and invalidate every log, which is a new system, not a knob. */
   readonly stepMs: number;
 
-  /** Every declared action, in declaration order. */
+  /** Every declared action, in declaration order. A live read: after {@link setActions} the
+   *  order is the new map's, and the set is necessarily the same one. */
   readonly actionNames: readonly A[];
 
   /**
-   * What is bound to an action.
+   * What is bound to an action **right now**.
    *
    * Exists so a keyboard-shortcut sheet is rendered *from* the map rather than transcribed
-   * beside it.
+   * beside it — and so that a sheet re-rendered after {@link setActions} shows the new keys
+   * without the game keeping a second copy of the map to read them from.
    *
    * @throws RangeError naming an action that was never declared.
    */
@@ -268,6 +317,21 @@ export interface SystemInternals {
   /** The canonical encoding of the profile **in force**, for a log's compatibility triple. Read
    *  at the moment a log is sealed, so a system retuned by `setProfile` seals the truth. */
   readonly fingerprint: string;
+  /**
+   * How many times this system's recognition or dispatch rules have been replaced.
+   *
+   * Incremented by `setProfile` and by `setActions`, and read by `replayCursor` — which is the
+   * one caller that verifies a log's compatibility **once** and then hands control back to a
+   * driver between every tick. A recording is protected by both setters refusing while one is
+   * open; a *cursor* cannot be protected that way, because nothing tells the system when a
+   * driver has finished with one. So the cursor remembers the number it opened under and refuses
+   * the first `applyAt` that finds it changed, which is the same refusal one tick later than a
+   * setter would have made it.
+   *
+   * An integer rather than a re-comparison of the fingerprint because `actions` is not in the
+   * fingerprint — and it is the half of this that a triple comparison could never have caught.
+   */
+  readonly epoch: number;
   /**
    * The system's own diagnostic sink, deduplicated per code.
    *
@@ -352,7 +416,12 @@ export function createSystem<A extends string>(
   // are recorded and no second copy that can lag behind a retune.
   let profile = resolveProfile(options.profile, `${label}.profile`);
   let fingerprint = profileFingerprint(profile);
-  const actions: CompiledActions<A> = compileActions(options.actions, `${label}.actions`, diagnose);
+  // `let`, and every reader names it: `setActions` replaces it, and a reader that captured the
+  // compiled object would dispatch through a map the game has already replaced — which is the
+  // stale-local loophole the readback rule's third invariant exists to close.
+  let actions: CompiledActions<A> = compileActions(options.actions, `${label}.actions`, diagnose);
+  /** See {@link SystemInternals.epoch}. Bumped by `setProfile` and `setActions`, read by a replay. */
+  let epoch = 0;
 
   const owner: Scope = createScope();
   const gestures: GestureLists = createGestureLists();
@@ -365,7 +434,7 @@ export function createSystem<A extends string>(
   const zoomEvent = new ZoomGestureEvent();
   const actionEvent = new ActionEventImpl();
   const focusPoint: Vec2 = { x: 0, y: 0 };
-  /** Scratch for normalising a submitted sample into a log entry. Only used while recording. */
+  /** Scratch for normalizing a submitted sample into a log entry. Only used while recording. */
   const recordScratch = createSampleSlot();
 
   let currentTick = 0;
@@ -409,7 +478,30 @@ export function createSystem<A extends string>(
   /** A touch cannot hover: when its press ends the pointer is gone. A mouse is still there. */
   let hoverIsTouch = false;
 
-  /** Dispatch one gesture to its handlers, then to the camera, honouring `claim`. */
+  /**
+   * The two refusals `setProfile` and `setActions` share, in one function and one voice.
+   *
+   * The third — *a recording is running* — is deliberately **not** here. The two setters refuse a
+   * recording for genuinely different reasons: `setProfile` because the fingerprint it would move
+   * is a third of the log's declared identity, and `setActions` because what it moves is in no
+   * part of that identity at all. Folding them together would hide exactly the distinction that
+   * makes the second refusal necessary, so each states its own.
+   *
+   * @param fn The method the game called, so the message never names this helper.
+   * @param mid Why a mid-bucket call is wrong for *this* setter, as one sentence.
+   */
+  function guardLive(fn: string, mid: string): void {
+    if (disposed) {
+      throw new RangeError(
+        `${fn}: this system has been disposed — nothing feeds the recognizer and nothing drives the camera, so this would store a value no path reads and appear to have worked`,
+      );
+    }
+    if (delivering) {
+      throw new RangeError(`${fn}: called from inside a handler. ${mid} Call it after the tick returns.`);
+    }
+  }
+
+  /** Dispatch one gesture to its handlers, then to the camera, honoring `claim`. */
   function deliverGesture(out: GestureOut): void {
     switch (out.type) {
       case 'tap':
@@ -516,7 +608,7 @@ export function createSystem<A extends string>(
   // `let`, and every reader names it rather than closing over the value: `setProfile` replaces
   // the recognizer, and the camera controller's `keyHeld` bridge below would otherwise keep
   // asking the retired one which keys are down.
-  let recognizer: Recognizer = createRecogniser({
+  let recognizer: Recognizer = createRecognizer({
     profile,
     stepMs,
     emit: deliverGesture,
@@ -527,11 +619,7 @@ export function createSystem<A extends string>(
     gestures,
     actionList(action: A): HandlerList<AnyActionHandler> {
       const list = actionLists.get(action);
-      if (list === undefined) {
-        throw new RangeError(
-          `input.onAction: '${String(action)}' is not a declared action; declared: ${actions.names.length === 0 ? '(none)' : actions.names.join(', ')}`,
-        );
-      }
+      if (list === undefined) throw undeclared('input.onAction', String(action), actions.names);
       return list;
     },
     nextScopeOrder(): number {
@@ -595,16 +683,10 @@ export function createSystem<A extends string>(
     },
 
     setProfile(overrides: ProfileOverrides | undefined): Readonly<GestureProfile> {
-      if (disposed) {
-        throw new RangeError(
-          'input.setProfile: this system has been disposed — the thresholds would be stored on a recognizer nothing feeds and a camera nothing drives, and the retune would appear to have worked',
-        );
-      }
-      if (delivering) {
-        throw new RangeError(
-          'input.setProfile: called from inside a handler. The bucket being delivered was recognized under the thresholds in force when the tick opened, and the samples behind this one would meet a recognizer that never saw their press. Retune after the tick returns.',
-        );
-      }
+      guardLive(
+        'input.setProfile',
+        'The bucket being delivered was recognized under the thresholds in force when the tick opened, and the samples behind this one would meet a recognizer that never saw their press.',
+      );
       if (recording !== undefined) {
         throw new RangeError(
           'input.setProfile: a recording is running, and the profile fingerprint is one third of a log\'s identity — a log whose rules changed half way through describes no session that can be replayed. Stop the recording, retune, and start a new one.',
@@ -633,13 +715,54 @@ export function createSystem<A extends string>(
       // pointer slots are all *sized* from the profile, and a machine that resized itself while
       // holding live state would be a second state machine to get right for no gain. It is one
       // small allocation on a call a game makes when someone moves a slider.
-      recognizer = createRecogniser({ profile: next, stepMs, emit: deliverGesture, onKey });
+      recognizer = createRecognizer({ profile: next, stepMs, emit: deliverGesture, onKey });
+      epoch += 1;
       return next;
     },
 
+    setActions(next: ActionMap<A>): void {
+      guardLive(
+        'input.setActions',
+        'The bucket being delivered is half dispatched, and the presses behind this one would fire through a map their gesture was not recognized under.',
+      );
+      if (recording !== undefined) {
+        // The K20 refusal, and its reason is not `setProfile`'s. A log stores `RawSample`s, and
+        // `actions` is not in the compatibility triple — so this changes nothing about what the
+        // log *says* and everything about what a replay of it *does*, behind a triple that still
+        // matches. The alternative was to put `actions` in the triple, which would make every log
+        // ever recorded unreplayable after any rebind. See `docs/rfc/live-options.md` §6b.
+        throw new RangeError(
+          'input.setActions: a recording is running. A log records samples, not actions, and the bindings are not in the compatibility triple — so a rebind here leaves a log that replays without complaint and fires different actions than the session it came from. Stop the recording, rebind, and start a new one.',
+        );
+      }
+      // Compiled *before* anything is touched, and the name check reads the compiled result, so a
+      // map with both a bad binding and a missing action reports the binding — the mistake nearest
+      // the caller's keyboard — and the system is left exactly as it was either way.
+      const compiled = compileActions(next, 'input.setActions', diagnose);
+      for (const name of compiled.names) {
+        if (actionLists.has(name)) continue;
+        throw new RangeError(
+          `input.setActions: '${String(name)}' was not declared when this system was built, and an action's name is its identity — every onAction handler is keyed to a declared one and there is no list for this to reach. Rebinding is this method; adding an action is a new system. Declared: ${nameList(actions.names)}`,
+        );
+      }
+      if (compiled.names.length !== actions.names.length) {
+        throw new RangeError(
+          `input.setActions: this map declares ${String(compiled.names.length)} of this system's ${String(actions.names.length)} actions. An action it leaves out keeps its handlers and loses every way to fire them, which reads exactly like a handler that quietly stopped being called. Pass every one. Declared: ${nameList(actions.names)}`,
+        );
+      }
+      actions = compiled;
+      epoch += 1;
+    },
+
     stepMs,
-    actionNames: actions.names,
-    bindings: actions.bindings,
+
+    get actionNames(): readonly A[] {
+      return actions.names;
+    },
+
+    bindings(action: A): readonly ActionBinding[] {
+      return actions.bindings(action);
+    },
 
     get buffered(): number {
       return buffer.buffered;
@@ -676,7 +799,7 @@ export function createSystem<A extends string>(
       currentTick = index;
       if (recording !== undefined) recording.push({ kind: 'tick', index });
 
-      // Freeze the camera *before* anything is delivered. A handler that recentres the camera
+      // Freeze the camera *before* anything is delivered. A handler that recenters the camera
       // must not change where a later event in this same bucket resolved to.
       frame.capture(camera);
       recognizer.setView(camera.viewW, camera.viewH);
@@ -756,6 +879,10 @@ export function createSystem<A extends string>(
     // while one is running — so this can never disagree with the samples it is sealed beside.
     get fingerprint(): string {
       return fingerprint;
+    },
+    // A getter for the same reason, and read by `replayCursor` on every tick rather than once.
+    get epoch(): number {
+      return epoch;
     },
     diagnose,
     start(): void {

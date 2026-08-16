@@ -13,8 +13,8 @@
     "maxFrameBudgetMs": 8,
     "overrides": {
       "input": {
-        "maxGzipKb": 13,
-        "reason": "12.33 kB against a 12 kB default. Granted rather than absorbed by raising the global, because a limit that moves outward whenever something exceeds it is not a limit. Two facts make it defensible: the size tool strips comments but does not mangle identifiers, so it reads HIGH of real minified output, and input carries gesture recognition, an action map, a camera controller AND the per-tick recorder a replay is driven from \u2014 four subsystems where most packages have one. Revisit if it passes 13, which would mean something new landed rather than the existing surface drifting."
+        "maxGzipKb": 15,
+        "reason": "14.43 kB against a 13 kB override that was itself against a 12 kB default. This is input's second raise and it should be its last. The first override predicted this exactly: 'past 13 kB means something new landed rather than the existing surface drifting, and that is a different conversation.' Something new did land, in three funded tasks — the overlay declaration and its diagnostic, the step module and setProfile, setActions and the two replay guards. None of it is drift. What was checked before asking: every export in src/ has a reader and every index.ts entry is consumed outside the package or is a zero-cost type, so there is no ChunkGrid here to delete; 2.83 kB is behind a declared browser adapter a headless consumer never loads; and 2.9 kB is error and diagnostic prose, the highest in the kit by 1.1 kB, which non-negotiable 9 is what puts there. Revisit at 15 — and the revisit does not start by proposing 16. It starts with the two things already measured and priced: the known-code table plus its suggestion helper (0.43 kB), and the covered-by-overlay message (0.25 kB). If neither is worth selling, the answer is that input is two packages — its browser adapter sits behind one named entry point a headless replay never loads — and not that the number moves again."
       }
     }
   },
@@ -176,7 +176,7 @@
         "Two tiers of determinism. Tier A uses only arithmetic ECMA-262 specifies exactly (+ - * /, Math.sqrt, Math.imul, bitwise) and is bit-identical everywhere. Tier B uses sin/cos/pow/exp/log, which the spec does not require to be correctly rounded, and is presentation-only: never hashed, never persisted, never replayed. Every Tier B site declares itself with `@tier-b`.",
         "No module-level mutable state. There is no global Rng, deliberately, and no id counter.",
         "Sub-streams fork from a stream's identity, not its cursor, so a draw made out of order elsewhere cannot reshuffle this one.",
-        "Validators return their argument rather than taking a boolean \u2014 a boolean has already discarded the value that was wrong, so it cannot name it in the error."
+        "Validators return their argument rather than taking a boolean — a boolean has already discarded the value that was wrong, so it cannot name it in the error."
       ],
       "entryPoints": [
         "createRng",
@@ -208,8 +208,6 @@
         "Anchor",
         "Camera",
         "CameraOptions",
-        "ChunkGrid",
-        "ChunkGridOptions",
         "DIR_DX",
         "DIR_DY",
         "DepthSorter",
@@ -288,7 +286,7 @@
         "worldToTile"
       ],
       "invariants": [
-        "Three coordinate spaces \u2014 grid, world, screen \u2014 never conflated. Every conversion is a named function taking an output parameter.",
+        "Three coordinate spaces — grid, world, screen — never conflated. Every conversion is a named function taking an output parameter.",
         "Tile lookup floors, never rounds. Rounding snaps to the nearest lattice vertex and picks the wrong tile for three quarters of every diamond.",
         "Hit-testing is computed from state and camera, never cached during a draw pass. pick() is a method on the sorted Scene, so 'reverse of paint order' is structural rather than remembered.",
         "Tile size is fixed at 64x32. Any other uniform size is exactly a camera zoom, and parameterising it would infect draw, input and ui signatures permanently.",
@@ -494,7 +492,7 @@
         "replay"
       ],
       "invariants": [
-        "Simulation advances on the wall clock, never on frame deltas \u2014 rAF is 0 Hz in a hidden tab.",
+        "Simulation advances on the wall clock, never on frame deltas — rAF is 0 Hz in a hidden tab.",
         "Catch-up is clamped at 250ms per pump and the excess is dropped, not deferred. The loop advances callbacks; sim advances value.",
         "loop.time deliberately drifts below real time while hidden. Anything that must be truthful about the player's wall clock is a timestamp in state, never a duration accumulated on the fixed step.",
         "The clock and the frame source are both injected, so every test runs at whatever speed it likes with no timers.",
@@ -572,10 +570,10 @@
         "replayCursor"
       ],
       "invariants": [
-        "Input never learns what is in the world. No option, method or callback takes state, a rect, a pickable flag or a hit \u2014 so there is nowhere to cache a hit box and nothing that would read one.",
+        "Input never learns what is in the world. No option, method or callback takes state, a rect, a pickable flag or a hit — so there is nowhere to cache a hit box and nothing that would read one.",
         "Gestures are delivered on simulation ticks, never on frames, and never from a clock this package read itself.",
         "Every event carries the tile it resolved to, through the camera as it stood when the tick opened.",
-        "Zoom is anchored to the pointer, and zoom is not publicly assignable \u2014 zoomAt is the only mutator, so skipping the anchoring is unavailable rather than discouraged.",
+        "Zoom is anchored to the pointer, and zoom is not publicly assignable — zoomAt is the only mutator, so skipping the anchoring is unavailable rather than discouraged.",
         "There is no free-function binder. Listeners come only from a scope, so an unowned listener cannot be constructed.",
         "A tick sees a bucket closed before it started. Mid-tick arrivals go to the next bucket; overflow collapses moves and never drops a down, up, cancel, key or wheel."
       ],
@@ -639,10 +637,10 @@
       ],
       "invariants": [
         "No AudioContext exists until a user gesture unlocks it.",
-        "Silent, not throwing, where there is no WebAudio. play() in a headless run produces no sound and still reports acceptance \u2014 the policy above is pure and testable, the rendering below is not.",
+        "Silent, not throwing, where there is no WebAudio. play() in a headless run produces no sound and still reports acceptance — the policy above is pure and testable, the rendering below is not.",
         "A hard voice ceiling. Summed gains above 1 clip into a click, and twenty voices never sound twenty times better.",
         "A layer is one fixed chain of ten numbers, not author-defined routing. The moment routing is author-defined the clipping ceiling can no longer be validated statically.",
-        "This package stores nothing. The mixer returns a versioned snapshot and the game hands it to persist \u2014 there is no edge between two layer-1 packages."
+        "This package stores nothing. The mixer returns a versioned snapshot and the game hands it to persist — there is no edge between two layer-1 packages."
       ],
       "entryPoints": [
         "createAudio",
@@ -719,7 +717,7 @@
       "invariants": [
         "The chain IS the version. createStore reads the head off the migration chain, so declaring version 7 and shipping a chain that ends at 6 is inexpressible.",
         "Every migration steps exactly one rung, and every rung carries a recogniser. A save can never be orphaned.",
-        "Writes flush on visibilitychange, not beforeunload \u2014 mobile Safari does not reliably deliver the latter. reset() closes handles BEFORE removing the key, or the autosave writes the live state back over the clear.",
+        "Writes flush on visibilitychange, not beforeunload — mobile Safari does not reliably deliver the latter. reset() closes handles BEFORE removing the key, or the autosave writes the live state back over the clear.",
         "A corrupt save degrades to a fresh one with one of seven closed reasons, returned as a value. Never a thrown exception on boot.",
         "A save from the future makes the store read-only. A stale deploy must not eat a good save.",
         "A replay log is evidence, not progress: it is never migrated. A version, stepMs or profile mismatch is refused by name, because a migrated recording would produce a confident wrong answer."
@@ -802,7 +800,7 @@
       ],
       "invariants": [
         "Closed form, never a loop. maxBuyable is O(1) and 12x faster than a 400-step buy loop; the loop is legitimate only as a test oracle.",
-        "The economy has no tick. State is (stocks, rates, lastTimestamp) and is integrated on read. sim reads no clock and accepts no delta \u2014 every call that moves the anchor takes a required epoch timestamp.",
+        "The economy has no tick. State is (stocks, rates, lastTimestamp) and is integrated on read. sim reads no clock and accepts no delta — every call that moves the anchor takes a required epoch timestamp.",
         "The topological order is computed by Kahn and therefore proven. Declared storage order stays separate from evaluation order, so a v4 node cannot move a v1 save's fields.",
         "Cycles and self-loops are refused at construction, naming the cycle. A numerical fallback would be a second implementation of the economy that diverges silently on exactly the saves that matter.",
         "Offline progress warps time, never yield, and a plan is never re-based. Credit for a resumed absence is W(span) - W(from), which telescopes; restarting the warp at each discovered crossing would pay for K absences instead of one, and each restart is cheaper.",
@@ -817,7 +815,7 @@
     },
     "ui": {
       "name": "@lattice/ui",
-      "purpose": "DOM overlay primitives \u2014 a declarative element builder, panels, toasts, number rolls, and thumbnails rendered from the draw kit. Deliberately not a framework.",
+      "purpose": "DOM overlay primitives — a declarative element builder, panels, toasts, number rolls, and thumbnails rendered from the draw kit. Deliberately not a framework.",
       "environment": "browser",
       "dependsOn": [
         "core",
@@ -886,7 +884,7 @@
         "No virtual DOM. The whole overlay is a few dozen nodes that change a few times a second.",
         "The package ships no stylesheet at all. The root is inline pointer-events:none and interactivity is granted per node, so the specificity fight that swallows taps on the world has no rule to lose to.",
         "State updates on the interval cadence, never inside the render callback. If render never runs, every number on screen is still right.",
-        "Anything that is not painting must survive a hidden tab. The loop's update callback IS the interval \u2014 a second setInterval here recreates the poll-races-settle data-loss bug."
+        "Anything that is not painting must survive a hidden tab. The loop's update callback IS the interval — a second setInterval here recreates the poll-races-settle data-loss bug."
       ],
       "entryPoints": []
     }

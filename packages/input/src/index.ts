@@ -43,7 +43,7 @@
  * ## What is deliberately absent
  *
  * Hit-testing (above). **The gamepad** — cut from 0.1, because it is the one input source that
- * cannot answer *where*: a stick is a direction, and making a pad honour `ActionEvent.gx/gy`
+ * cannot answer *where*: a stick is a direction, and making a pad honor `ActionEvent.gx/gy`
  * needs a virtual reticle that moves, accelerates, snaps to candidates and is drawn and
  * focus-managed by `ui`. That is a second interaction model, not one more row in an action map,
  * and the kit has not designed one; adding `pad:` bindings without it would give a game a
