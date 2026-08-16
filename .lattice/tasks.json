@@ -4,7 +4,7 @@
     "design",
     "build",
     "audit",
-    "game",
+    "gallery",
     "ship"
   ],
   "tasks": [
@@ -730,7 +730,7 @@
       "id": "D1",
       "phase": "game",
       "role": "lattice-designer",
-      "title": "Build the demo game from nothing but the kit",
+      "title": "Lamplighter: the first gallery exhibit",
       "package": "demo",
       "paths": [
         "examples/demo/**"
@@ -747,14 +747,15 @@
         "B9"
       ],
       "acceptance": [
-        "runs with npm run dev and is playable within ten seconds of load",
-        "no runtime dependency outside @lattice/*, and no asset files of any kind",
-        "deterministic: same seed, same world",
-        "the ranked list of kit gaps it hit is the primary deliverable"
+        "the OPENING FRAME on a cleared save is saturated, framed so the valley fills the viewport, and immediately legible",
+        "setback massing, a window rhythm, thin details, contact shadows under everything including people",
+        "pilgrims read as individuals and move before the visitor does anything",
+        "one to two minutes end to end — no ending, no meta progression, no settings",
+        "reports the logic-to-art line split and where the kit fought back"
       ],
       "status": "in_progress",
       "owner": "lattice-designer",
-      "notes": ""
+      "notes": "Scope changed mid-build: this is one exhibit in a 10-15 item gallery, not the demo. See docs/GALLERY.md."
     },
     {
       "id": "E1",
@@ -866,6 +867,360 @@
       "status": "done",
       "owner": "lattice-designer",
       "notes": "Refused the exemption: it would mean two ledgers and two anchors, and would make oil(t) non-polynomial so solveCrossingOver no longer applies. Moved the pressure from flow to state instead — a guttered lamp stays out until tapped. Closing the tab is never a win, and the mechanism that makes it a loss is the game thesis evaluated while the player was away."
+    },
+    {
+      "id": "G0",
+      "phase": "gallery",
+      "role": "lattice-architect",
+      "title": "Extract the exhibit bootstrap every example would otherwise hand-roll",
+      "package": "examples",
+      "paths": [
+        "examples/_shared/**"
+      ],
+      "dependsOn": [
+        "D1"
+      ],
+      "acceptance": [
+        "D1 reports what a second exhibit would want to share rather than rewrite — start there",
+        "a bootstrap is a gap in the kit if it is more than a few lines; decide whether it belongs in a package instead",
+        "no exhibit may depend on the landing page, and the shared code ships with the examples, not in packages/"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "G1",
+      "phase": "gallery",
+      "role": "lattice-designer",
+      "title": "Exhibit: island",
+      "package": "island",
+      "paths": [
+        "examples/island/**"
+      ],
+      "dependsOn": [
+        "G0"
+      ],
+      "acceptance": [
+        "the one idea is: terrain, shoreline, trees, and a full day/night cycle in ninety seconds",
+        "the opening frame is saturated, fills the viewport, and is legible in one second",
+        "something moves before the visitor does anything",
+        "under 250 lines, most of it art; seed comes from the URL",
+        "stresses draw iso — report where it fought back and the logic-to-art split"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "G2",
+      "phase": "gallery",
+      "role": "lattice-designer",
+      "title": "Exhibit: city",
+      "package": "city",
+      "paths": [
+        "examples/city/**"
+      ],
+      "dependsOn": [
+        "G0"
+      ],
+      "acceptance": [
+        "the one idea is: dense setback massing and a window rhythm",
+        "the opening frame is saturated, fills the viewport, and is legible in one second",
+        "something moves before the visitor does anything",
+        "under 250 lines, most of it art; seed comes from the URL",
+        "stresses draw — report where it fought back and the logic-to-art split"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "G3",
+      "phase": "gallery",
+      "role": "lattice-designer",
+      "title": "Exhibit: terraces",
+      "package": "terraces",
+      "paths": [
+        "examples/terraces/**"
+      ],
+      "dependsOn": [
+        "G0"
+      ],
+      "acceptance": [
+        "the one idea is: elevation, and why picking must be terrain-aware",
+        "the opening frame is saturated, fills the viewport, and is legible in one second",
+        "something moves before the visitor does anything",
+        "under 250 lines, most of it art; seed comes from the URL",
+        "stresses iso — report where it fought back and the logic-to-art split"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "G4",
+      "phase": "gallery",
+      "role": "lattice-designer",
+      "title": "Exhibit: harbour",
+      "package": "harbour",
+      "paths": [
+        "examples/harbour/**"
+      ],
+      "dependsOn": [
+        "G0"
+      ],
+      "acceptance": [
+        "the one idea is: tall thin objects and depth sorting",
+        "the opening frame is saturated, fills the viewport, and is legible in one second",
+        "something moves before the visitor does anything",
+        "under 250 lines, most of it art; seed comes from the URL",
+        "stresses iso — report where it fought back and the logic-to-art split"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "G5",
+      "phase": "gallery",
+      "role": "lattice-designer",
+      "title": "Exhibit: orbit",
+      "package": "orbit",
+      "paths": [
+        "examples/orbit/**"
+      ],
+      "dependsOn": [
+        "G0"
+      ],
+      "acceptance": [
+        "the one idea is: no ground at all — platforms, stars, a cold palette",
+        "the opening frame is saturated, fills the viewport, and is legible in one second",
+        "something moves before the visitor does anything",
+        "under 250 lines, most of it art; seed comes from the URL",
+        "stresses draw — report where it fought back and the logic-to-art split"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "G6",
+      "phase": "gallery",
+      "role": "lattice-designer",
+      "title": "Exhibit: caverns",
+      "package": "caverns",
+      "paths": [
+        "examples/caverns/**"
+      ],
+      "dependsOn": [
+        "G0"
+      ],
+      "acceptance": [
+        "the one idea is: the light field alone: pools that meet without a bright seam",
+        "the opening frame is saturated, fills the viewport, and is legible in one second",
+        "something moves before the visitor does anything",
+        "under 250 lines, most of it art; seed comes from the URL",
+        "stresses draw — report where it fought back and the logic-to-art split"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "G7",
+      "phase": "gallery",
+      "role": "lattice-designer",
+      "title": "Exhibit: crowd",
+      "package": "crowd",
+      "paths": [
+        "examples/crowd/**"
+      ],
+      "dependsOn": [
+        "G0"
+      ],
+      "acceptance": [
+        "the one idea is: two hundred walkers from one closed-form expression",
+        "the opening frame is saturated, fills the viewport, and is legible in one second",
+        "something moves before the visitor does anything",
+        "under 250 lines, most of it art; seed comes from the URL",
+        "stresses iso — report where it fought back and the logic-to-art split"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "G8",
+      "phase": "gallery",
+      "role": "lattice-designer",
+      "title": "Exhibit: wayfinding",
+      "package": "wayfinding",
+      "paths": [
+        "examples/wayfinding/**"
+      ],
+      "dependsOn": [
+        "G0"
+      ],
+      "acceptance": [
+        "the one idea is: a flow field re-routing a moving crowd as the map changes",
+        "the opening frame is saturated, fills the viewport, and is legible in one second",
+        "something moves before the visitor does anything",
+        "under 250 lines, most of it art; seed comes from the URL",
+        "stresses iso — report where it fought back and the logic-to-art split"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "G9",
+      "phase": "gallery",
+      "role": "lattice-designer",
+      "title": "Exhibit: builder",
+      "package": "builder",
+      "paths": [
+        "examples/builder/**"
+      ],
+      "dependsOn": [
+        "G0"
+      ],
+      "acceptance": [
+        "the one idea is: footprints, a ghost, validity, and the tap-to-tile seam",
+        "the opening frame is saturated, fills the viewport, and is legible in one second",
+        "something moves before the visitor does anything",
+        "under 250 lines, most of it art; seed comes from the URL",
+        "stresses iso input — report where it fought back and the logic-to-art split"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "G10",
+      "phase": "gallery",
+      "role": "lattice-designer",
+      "title": "Exhibit: idle",
+      "package": "idle",
+      "paths": [
+        "examples/idle/**"
+      ],
+      "dependsOn": [
+        "G0"
+      ],
+      "acceptance": [
+        "the one idea is: closed-form cost curves, then fourteen hours of offline in one frame",
+        "the opening frame is saturated, fills the viewport, and is legible in one second",
+        "something moves before the visitor does anything",
+        "under 250 lines, most of it art; seed comes from the URL",
+        "stresses sim — report where it fought back and the logic-to-art split"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "G11",
+      "phase": "gallery",
+      "role": "lattice-designer",
+      "title": "Exhibit: replay",
+      "package": "replay",
+      "paths": [
+        "examples/replay/**"
+      ],
+      "dependsOn": [
+        "G0"
+      ],
+      "acceptance": [
+        "the one idea is: record, scrub, and prove the same seed lands on the same pixel",
+        "the opening frame is saturated, fills the viewport, and is legible in one second",
+        "something moves before the visitor does anything",
+        "under 250 lines, most of it art; seed comes from the URL",
+        "stresses loop persist input — report where it fought back and the logic-to-art split"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "G12",
+      "phase": "gallery",
+      "role": "lattice-designer",
+      "title": "Exhibit: migration",
+      "package": "migration",
+      "paths": [
+        "examples/migration/**"
+      ],
+      "dependsOn": [
+        "G0"
+      ],
+      "acceptance": [
+        "the one idea is: a v1 save opened by a v5 build, stepping the chain in front of you",
+        "the opening frame is saturated, fills the viewport, and is legible in one second",
+        "something moves before the visitor does anything",
+        "under 250 lines, most of it art; seed comes from the URL",
+        "stresses persist — report where it fought back and the logic-to-art split"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "G13",
+      "phase": "gallery",
+      "role": "lattice-designer",
+      "title": "Exhibit: instrument",
+      "package": "instrument",
+      "paths": [
+        "examples/instrument/**"
+      ],
+      "dependsOn": [
+        "G0"
+      ],
+      "acceptance": [
+        "the one idea is: sound with no files, with the synthesis shown as it plays",
+        "the opening frame is saturated, fills the viewport, and is legible in one second",
+        "something moves before the visitor does anything",
+        "under 250 lines, most of it art; seed comes from the URL",
+        "stresses audio — report where it fought back and the logic-to-art split"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "G99",
+      "phase": "gallery",
+      "role": "lattice-scribe",
+      "title": "The landing page",
+      "package": "*",
+      "paths": [
+        "site/**"
+      ],
+      "dependsOn": [
+        "G1",
+        "G2",
+        "G3",
+        "G4",
+        "G5",
+        "G6",
+        "G7",
+        "G8",
+        "G9",
+        "G10",
+        "G11",
+        "G12",
+        "G13"
+      ],
+      "acceptance": [
+        "clean, minimal, dark, IBM Plex Mono throughout",
+        "the gallery IS the page — exhibits are the content and prose is the caption",
+        "every exhibit runs live and links to its source",
+        "the page is not part of the kit and is not bound by the zero-asset rule; nothing it does leaks into packages/"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
     }
   ]
 }
