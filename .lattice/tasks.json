@@ -203,9 +203,9 @@
         "names the kit capabilities it needs, package by package — this is the real acceptance test for the RFCs",
         "stays under a few hundred lines of game code by design"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-designer",
-      "notes": ""
+      "notes": "Ten gaps found and routed to the nine in-flight architects. Top three: iso path arc-length sampling (out-param), draw emissive light + night mask, sim piecewise alternating rates + closed-form depletion time."
     },
     {
       "id": "B1",
