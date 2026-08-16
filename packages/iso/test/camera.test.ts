@@ -287,6 +287,180 @@ describe('the clamp', () => {
   });
 });
 
+describe('the policy, read back and moved', () => {
+  it('reports every option it was constructed with, and every default', () => {
+    // The failure this catches is not a wrong number, it is a caller keeping a second copy:
+    // before these getters existed the gallery panel shadowed all three and rebuilt the camera
+    // — and the input system bound to it — on every drag of a zoom slider.
+    const given = createCamera(960, 540, { minZoom: 0.25, maxZoom: 8, keepVisible: 0.6 });
+    expect(given.minZoom).toBe(0.25);
+    expect(given.maxZoom).toBe(8);
+    expect(given.keepVisible).toBe(0.6);
+
+    const defaulted = createCamera(960, 540);
+    expect(defaulted.minZoom).toBe(0.5);
+    expect(defaulted.maxZoom).toBe(4);
+    expect(defaulted.keepVisible).toBe(0.35);
+  });
+
+  it('round-trips what the setters put in, so there is nothing left worth shadowing', () => {
+    const cam = createCamera(960, 540, { minZoom: 0.25, maxZoom: 8, keepVisible: 0.6 });
+    cam.setZoomLimits(1, 3);
+    cam.setKeepVisible(0.1);
+    expect([cam.minZoom, cam.maxZoom, cam.keepVisible]).toEqual([1, 3, 0.1]);
+  });
+
+  it('I27: the policy is readable but not assignable, exactly like the position', () => {
+    const cam = createCamera(960, 540, { bounds: huge() });
+    expect(() => {
+      // @ts-expect-error — a getter over private state. `setZoomLimits` is the only route in,
+      // because it is the only one that re-clamps the zoom and the center in the same
+      // statement; a bare assignment would leave the camera outside its own declared limits.
+      cam.minZoom = 2;
+    }).toThrow(TypeError);
+    expect(() => {
+      (cam as { maxZoom: number }).maxZoom = 2;
+    }).toThrow(TypeError);
+    expect(() => {
+      // @ts-expect-error — and the same for the clamp fraction.
+      cam.keepVisible = 1;
+    }).toThrow(TypeError);
+    expect([cam.minZoom, cam.maxZoom, cam.keepVisible]).toEqual([0.5, 4, 0.35]);
+  });
+
+  it('setZoomLimits names the caller mistake and changes nothing when it refuses', () => {
+    const cam = createCamera(960, 540, { bounds: huge(), zoom: 2 });
+    expect(() => cam.setZoomLimits(0, 4)).toThrow(
+      /camera\.setZoomLimits: expected minZoom to be a finite number > 0, got 0/,
+    );
+    expect(() => cam.setZoomLimits(Number.NaN, 4)).toThrow(/minZoom.*got NaN/);
+    expect(() => cam.setZoomLimits(1, Infinity)).toThrow(
+      /camera\.setZoomLimits: expected maxZoom to be a finite number > 0, got Infinity/,
+    );
+    expect(() => cam.setZoomLimits(1, -1)).toThrow(/maxZoom.*got -1/);
+    expect(() => cam.setZoomLimits(4, 2)).toThrow(
+      /camera\.setZoomLimits: expected minZoom <= maxZoom, got minZoom 4 and maxZoom 2/,
+    );
+    // A rejected policy change is not a partial one: the pair is validated before either half
+    // is stored, so `setZoomLimits(1, -1)` does not leave `minZoom` at 1.
+    expect([cam.minZoom, cam.maxZoom, cam.zoom]).toEqual([0.5, 4, 2]);
+  });
+
+  it('leaves the view untouched when the new range still contains the current zoom', () => {
+    const cam = createCamera(960, 540, { bounds: huge(), zoom: 2 });
+    cam.centerOn(300, -400);
+    cam.setZoomLimits(0.25, 8);
+    expect(cam.zoom).toBe(2);
+    expect(cam.x).toBe(300);
+    expect(cam.y).toBe(-400);
+    expect([cam.minZoom, cam.maxZoom]).toEqual([0.25, 8]);
+  });
+
+  it('clamps a zoom left outside the new limits, anchoring the viewport center', () => {
+    const cam = createCamera(960, 540, { bounds: huge() });
+    cam.centerOn(300, -400);
+    expect(cam.zoom).toBe(1);
+
+    // Raising minZoom past the current zoom pushes the view *in*. The world point in the
+    // middle of the screen is the anchor and does not move — the same contract `zoomAt` has
+    // with the pointer and `fitBounds` has with the rectangle's center.
+    cam.setZoomLimits(2, 4);
+    expect(cam.zoom).toBe(2);
+    expect(cam.toWorldX(480)).toBe(300);
+    expect(cam.toWorldY(270)).toBe(-400);
+    // …and everything else did move: screen 0 saw world 300 - 960/2 = -180 at zoom 1 and sees
+    // 300 - 960/4 = 60 at zoom 2. Exact, because both zooms are powers of two.
+    expect(cam.toWorldX(0)).toBe(60);
+
+    // Lowering maxZoom below it pulls the view back out, same anchor.
+    cam.setZoomLimits(0.5, 0.5);
+    expect(cam.zoom).toBe(0.5);
+    expect(cam.toWorldX(480)).toBe(300);
+    expect(cam.toWorldY(270)).toBe(-400);
+  });
+
+  it('re-clamps the center too, which is how a slider drag moves the view', () => {
+    const cam = createCamera(400, 400, {
+      bounds: rectSet(rect(), -1000, -1000, 1000, 1000),
+      keepVisible: 1,
+      zoom: 2,
+    });
+    cam.centerOn(1e9, 0);
+    // keepVisible 1 requires the viewport inside the bounds, so the center lives in
+    // [minX + half, maxX - half]; half is 400 / (2 * 2) = 100 world px, giving [-900, 900].
+    expect(cam.x).toBe(900);
+
+    cam.setZoomLimits(0.5, 0.5);
+    expect(cam.zoom).toBe(0.5);
+    // The half-viewport is now 400 / (2 * 0.5) = 400 world px, so the same clamp reads
+    // [-600, 600] and the camera travelled 300 world px with nobody panning. Documented
+    // rather than discovered: a live minZoom slider rescales the world under the finger, and
+    // a panel that does not want that should commit on release.
+    expect(cam.x).toBe(600);
+  });
+
+  it('setZoomLimits(z, z) does move the zoom with no pointer, and freezes it doing so', () => {
+    // The escape the doc admits to. It is not a back door worth using: the camera can no
+    // longer zoom at all afterwards, which is the loudest symptom available.
+    const cam = createCamera(960, 540, { bounds: huge() });
+    cam.setZoomLimits(2, 2);
+    expect(cam.zoom).toBe(2);
+    cam.zoomAt(4, 0, 0);
+    expect(cam.zoom).toBe(2);
+    cam.zoomAt(0.1, 0, 0);
+    expect(cam.zoom).toBe(2);
+  });
+
+  it('I4: the pointer anchor still holds at a zoom the old limits forbade', () => {
+    const cam = createCamera(960, 540, { bounds: huge(), minZoom: 0.5, maxZoom: 4 });
+    cam.setZoomLimits(0.1, 16);
+    cam.centerOn(500, -300);
+    const sx = 137;
+    const sy = 421;
+    const wx = cam.toWorldX(sx);
+    const wy = cam.toWorldY(sy);
+    cam.zoomAt(8, sx, sy);
+    // 8 is past the maxZoom this camera was built with, so a widened limit is genuinely in
+    // force rather than merely stored.
+    expect(cam.zoom).toBe(8);
+    // Exact rather than within a tolerance: the anchor arithmetic is a divide by 8 and a
+    // multiply by 8 on values below 1e4, and 8 is a power of two, so every intermediate is
+    // representable and the round trip is bit-for-bit.
+    expect(cam.toScreenX(wx)).toBe(sx);
+    expect(cam.toScreenY(wy)).toBe(sy);
+  });
+
+  it('setKeepVisible re-clamps in the same statement, and rejects a NaN slider', () => {
+    const cam = createCamera(400, 400, {
+      bounds: rectSet(rect(), -1000, -1000, 1000, 1000),
+      keepVisible: 0,
+    });
+    cam.centerOn(1e9, 0);
+    // At 0 the map may leave the screen entirely: the center reaches maxX + half, and half is
+    // 400 / 2 = 200 world px at the default zoom of 1.
+    expect(cam.x).toBe(1200);
+
+    cam.setKeepVisible(1);
+    expect(cam.keepVisible).toBe(1);
+    // [minX + 2·half - half, maxX + half - 2·half] = [-800, 800], applied now rather than at
+    // the next pan — a camera showing a view its own policy forbids is the failure `setBounds`
+    // already refuses.
+    expect(cam.x).toBe(800);
+
+    expect(() => cam.setKeepVisible(-0.001)).toThrow(
+      /camera\.setKeepVisible: expected keepVisible in \[0, 1\], got -0\.001/,
+    );
+    expect(() => cam.setKeepVisible(1.5)).toThrow(RangeError);
+    // NaN is what an unparsed slider value arrives as, and it would otherwise poison both axes
+    // of the clamp and put the camera nowhere.
+    expect(() => cam.setKeepVisible(Number.NaN)).toThrow(
+      /camera\.setKeepVisible: expected keepVisible in \[0, 1\], got NaN/,
+    );
+    expect(cam.keepVisible).toBe(1);
+    expect(cam.x).toBe(800);
+  });
+});
+
 describe('culling', () => {
   it('is generous by one tile on each axis rather than exact', () => {
     const cam = createCamera(400, 300, { bounds: huge() });

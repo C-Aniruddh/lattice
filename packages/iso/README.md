@@ -46,6 +46,10 @@ const camera = createCamera(960, 540, {
 // The 96 is the tallest thing on the map: content height reaches a framing decision
 // through the rectangle and nowhere else, and a 0 there frames it as though it were flat.
 camera.fitBounds(tileBounds(0, 0, 48, 48, 96, worldRect), 24);
+// An accessibility setting widens the zoom-out limit later in the session. The limits read
+// back off the camera, so nothing else has to remember them, and the setter re-clamps in the
+// same statement — no rebuilt camera, and nothing bound to one is invalidated.
+camera.setZoomLimits(camera.minZoom / 2, camera.maxZoom);
 
 // ── one frame ───────────────────────────────────────────────────────────────
 const buildings = [
@@ -92,6 +96,7 @@ const screen = anchorToScreen(camera, label, v2());
 ```
 
 ```
+zoom 0.30, limits now 0.125 to 4
 paint order: 0, 1, 2
 tapped building 1
 tile under the middle of the screen: 22, 22
@@ -146,6 +151,46 @@ flags, and say which two tiles were asked for.
 
 ---
 
+## The camera's policy is readable and live, and its position is not
+
+`CameraOptions` is the camera's *opening* configuration, not a set of values baked into it.
+Every field except `zoom` reads back off the camera under its own name and moves through a setter
+that re-clamps in the same statement:
+
+| option | read | move |
+|---|---|---|
+| `minZoom`, `maxZoom` | `camera.minZoom`, `camera.maxZoom` | `camera.setZoomLimits(min, max)` |
+| `keepVisible` | `camera.keepVisible` | `camera.setKeepVisible(f)` |
+| `bounds` | `camera.bounds` | `camera.setBounds(rect)` |
+| `zoom` | `camera.zoom` | `zoomAt` / `fitBounds` — **no setter**, on purpose |
+
+The asymmetry is the design, not an oversight. **Position and policy are different kinds of
+value.** `zoom` moves under a pointer sixty times a second, and the rule `zoomAt` enforces is
+that no path may move it without naming what stays put — origin-anchored zoom is the single most
+common reason a tile-game camera feels broken, and a `set zoom` accessor is exactly a path that
+names nothing. Making the assignment unrepresentable is what turns that from a documented rule
+into a testable one. The limits are policy: set by a settings screen or a level load, a handful
+of times a session, by code holding no pointer to anchor to — and `setZoomLimits` does name an
+anchor, the viewport center.
+
+Two consequences worth knowing before you meet them:
+
+- **A limit change clamps the current zoom on the spot, and that can move the view.** Raising
+  `minZoom` past the current zoom pushes the camera in; lowering `maxZoom` below it pulls the
+  camera out; either then changes the half-viewport in world units, so `keepVisible` may move
+  `x` and `y` too. A `minZoom` slider dragged live therefore rescales the world under the finger.
+  The alternative is worse — a camera sitting outside its own declared limits until the player's
+  next wheel notch snaps it, at a moment they did not cause — but a control panel that wants a
+  still view should commit on release.
+- **`setZoomLimits(z, z)` does move `zoom` with no pointer involved.** It also freezes the zoom
+  permanently, which is a loud symptom and useless as a way to smuggle a gesture through. The
+  no-setter rule makes the common mistake unrepresentable; it is not a security boundary.
+
+Read the policy rather than keeping your own copy of it. A value a caller supplied and cannot
+read back is a value stored twice, and two copies drift.
+
+---
+
 ## The allocation contract
 
 **No function here returns a point, a rectangle, or any other object the caller did not hand
@@ -176,7 +221,7 @@ field-only shapes, so write the literal once at setup and reuse it. `Vec2` comes
 | module | what |
 |---|---|
 | `projection` | `TILE_W`/`TILE_H`, grid ↔ world both ways and both axes, `worldToTile`, `depthOf`, `isEdgeOn`, `tileDiamond`, `footprintBounds`, and the kit's `Rect` |
-| `camera` | pan, pointer-anchored zoom, `fitBounds` for framing, a clamp that does not invert, `visibleTileBounds`, `visibleWorldBounds`, `normalizedX` for stereo pan |
+| `camera` | pan, pointer-anchored zoom, `fitBounds` for framing, a clamp that does not invert, `visibleTileBounds`, `visibleWorldBounds`, `normalizedX` for stereo pan, and a policy that reads back and moves live |
 | `depth` | `DepthSorter` — fed footprints, hands back a permutation — and `pickSorted`, which walks the same instance backwards |
 | `tilemap` | `TileGrid` (the island), `ChunkGrid` (the infinite world), `tileSourceOf` (procedural), all behind one two-method interface |
 | `height` | one value per grid **vertex**, sampled bilinearly; `slopeAt` for movement cost; `unitsToPx`/`pxToUnits`, the one conversion between the game's height units and this package's world pixels |

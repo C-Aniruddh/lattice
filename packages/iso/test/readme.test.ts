@@ -51,6 +51,13 @@ describe('the README example', () => {
     // 96 is the tallest thing on the map: content height reaches a framing decision
     // through the rectangle and nowhere else, and a 0 there frames it as though it were flat.
     camera.fitBounds(tileBounds(0, 0, 48, 48, 96, worldRect), 24);
+    // An accessibility setting widens the zoom-out limit later in the session. The limits read
+    // back off the camera, so nothing else has to remember them, and the setter re-clamps in
+    // the same statement — no rebuilt camera, and nothing bound to one is invalidated.
+    camera.setZoomLimits(camera.minZoom / 2, camera.maxZoom);
+    out.push(
+      `zoom ${camera.zoom.toFixed(2)}, limits now ${String(camera.minZoom)} to ${String(camera.maxZoom)}`,
+    );
 
     // ── one frame ─────────────────────────────────────────────────────────────
     const buildings = [
@@ -107,6 +114,7 @@ describe('the README example', () => {
     out.push(`label at ${screen.x.toFixed(0)}, ${screen.y.toFixed(0)} CSS px`);
 
     expect(out).toEqual([
+      'zoom 0.30, limits now 0.125 to 4',
       'paint order: 0, 1, 2',
       'tapped building 1',
       'tile under the middle of the screen: 22, 22',

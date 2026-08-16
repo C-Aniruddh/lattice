@@ -18,6 +18,22 @@
  * unavailable turns a documented rule into an unrepresentable state, which is why this module
  * exports an interface and a factory rather than a class with public fields.
  *
+ * **The policy, though, is readable and settable, and that is not a hole in the rule above.**
+ * Every field of {@link CameraOptions} except `zoom` has a getter, and each has a setter that
+ * re-clamps in the same statement — `setZoomLimits`, `setKeepVisible`, `setBounds`, `resize`.
+ * The line between the two halves is what a value *is*, not how much it is worth protecting:
+ *
+ * | | what moves it | why it is shaped this way |
+ * |---|---|---|
+ * | **position** — `x`, `y`, `zoom` | a gesture, sixty times a second | every mutator has to decide what stays put under the pointer, and a setter is a path that does not decide |
+ * | **policy** — the zoom limits, `keepVisible`, `bounds`, the viewport | a settings screen, a level load, a slider | changing it is a whole-camera decision made a handful of times a session, from code holding no pointer |
+ *
+ * A value a caller supplied and cannot read back is a value they have to store twice, and two
+ * copies drift: before these getters existed the gallery's control panel kept a shadow copy of
+ * all three zoom-policy numbers and rebuilt the camera — and the input system bound to it — on
+ * every drag of a slider. That is the cost of baking an option that was never expensive to
+ * move.
+ *
  * No inertia, no drag handling, no pinch, no edge-scroll, no smooth follow, no shake. Feel
  * needs a clock and a pointer and both live in `@lattice/input`, which drives this camera
  * through `panByScreen`, `zoomAt` and `centerOn`. A camera that eases itself cannot be
@@ -35,12 +51,20 @@ import { HALF_H, HALF_W, TILE_H, TILE_W } from './projection.js';
 const DEFAULT_EXTENT = 1e4;
 
 /**
- * What a camera is allowed to do, decided once at construction.
+ * What a camera is allowed to do — the opening value of every policy, none of them baked.
  *
- * Every field here is a policy rather than a state: the camera's *position* moves through
- * `panByScreen`, `zoomAt` and `centerOn`, and nothing in this object moves after the camera
- * exists. `bounds` is the exception a game changes at runtime, and it changes through
- * {@link Camera.setBounds} so that the clamp is re-applied in the same statement.
+ * Every field here except `zoom` is a *policy* rather than a state: the camera's position
+ * moves through `panByScreen`, `zoomAt` and `centerOn`, and nothing in this object moves with
+ * it. But policy is not frozen either — each field has a getter of the same name on
+ * {@link Camera} and a setter that re-applies the clamp in the same statement, so a caller
+ * never has to keep a second copy of a number it already handed over.
+ *
+ * | option | read it back | move it |
+ * |---|---|---|
+ * | `minZoom`, `maxZoom` | {@link Camera.minZoom}, {@link Camera.maxZoom} | {@link Camera.setZoomLimits} |
+ * | `keepVisible` | {@link Camera.keepVisible} | {@link Camera.setKeepVisible} |
+ * | `bounds` | {@link Camera.bounds} | {@link Camera.setBounds} |
+ * | `zoom` | {@link Camera.zoom} | `zoomAt` / `fitBounds` only — it is a position, not a policy |
  */
 export interface CameraOptions {
   /** How far out you may pull. Below this the art stops being readable and the depth sort
@@ -50,7 +74,8 @@ export interface CameraOptions {
   readonly maxZoom?: number;
   /** Starting zoom. Default `1`. Clamped into `[minZoom, maxZoom]` at construction rather
    *  than rejected, because a saved zoom outliving a change to the limits is a migration
-   *  problem and not a reason to refuse to open the game. */
+   *  problem and not a reason to refuse to open the game — and {@link Camera.setZoomLimits}
+   *  applies that same rule for the rest of the camera's life. */
   readonly zoom?: number;
   /**
    * The world rectangle the player is allowed to look at. Default ±{@link DEFAULT_EXTENT}.
@@ -95,6 +120,25 @@ export interface Camera {
   readonly bounds: Readonly<Rect>;
 
   /**
+   * The zoom-out limit in force — `CameraOptions.minZoom`, or the default `0.5`, or whatever
+   * {@link Camera.setZoomLimits} last set.
+   *
+   * It exists so that nobody has to keep a second copy. A settings panel that draws the zoom
+   * slider needs the range the slider is allowed to span; a "zoom out" button needs to know
+   * whether it should be disabled; a save file needs to record the policy it was played
+   * under. Each of those, given no reader, keeps its own copy of a number this object already
+   * holds — and the copies drift the first time anything else moves the limits.
+   */
+  readonly minZoom: number;
+  /** The zoom-in limit in force. See {@link Camera.minZoom}. */
+  readonly maxZoom: number;
+  /** The fraction of the viewport that must still show {@link Camera.bounds} after any
+   *  gesture — `CameraOptions.keepVisible`, or the default `0.35`, or whatever
+   *  {@link Camera.setKeepVisible} last set. Read it to *show* the clamp you are subject to:
+   *  it is the one number that explains why a pan stopped where it did. */
+  readonly keepVisible: number;
+
+  /**
    * Re-clamps against a new viewport size. Call it on every viewport change including an
    * orientation flip: the clamp depends on the half-viewport in world units, so a camera that
    * is not told the window shrank keeps letting the player look outside the map.
@@ -106,6 +150,63 @@ export interface Camera {
   /** Replace the reachable rectangle — the island grew, the level loaded — and re-clamp at
    *  once, so no frame is ever drawn against bounds the camera has not been checked against. */
   setBounds(bounds: Readonly<Rect>): void;
+
+  /**
+   * Replace the zoom limits — a settings change, a difficulty tier, an accessibility option —
+   * and re-clamp at once.
+   *
+   * **Why this exists beside a `zoom` that is deliberately unassignable.** They are not the
+   * same kind of thing. `zoom` is a *position*: it moves under a pointer, and the rule
+   * `zoomAt` enforces is that no path may move it without deciding what stays put — origin-
+   * anchored zoom is the single most common reason a tile-game camera feels broken, and a
+   * `set zoom` accessor is precisely a path that decides nothing. The limits are *policy*:
+   * they say what the player is allowed to do, they are set by configuration rather than by a
+   * gesture, and this method does decide what stays put — the **viewport center**, exactly as
+   * `fitBounds` decides on the rectangle's center. The invariant was never "zoom is
+   * immutable"; it was "nothing changes zoom without naming an anchor", and this names one.
+   *
+   * The escape it opens is real and worth stating rather than hiding: `setZoomLimits(2, 2)`
+   * does force `zoom` to `2` with no pointer involved. It also freezes the zoom permanently,
+   * which is a loud symptom and useless as a way to sneak a gesture through. The rule makes
+   * the common mistake unrepresentable; it is not a security boundary and was never sold as
+   * one.
+   *
+   * **If the current zoom falls outside the new range it is clamped on the spot, and that can
+   * move the view.** Raising `minZoom` past the current zoom pushes the camera *in*; lowering
+   * `maxZoom` below it pulls the camera *out*; and either can then move `x`/`y`, because the
+   * half-viewport in world units changed and the {@link Camera.keepVisible} clamp is computed
+   * from it. So a `minZoom` slider dragged live rescales the world under the finger. That is
+   * the correct behavior — the alternative is a camera sitting outside its own declared limits
+   * until the player's next wheel notch snaps it, at a moment they did not cause and cannot
+   * connect to anything — but a panel that does not want the view moving mid-drag should
+   * commit on release. It is the same rule `CameraOptions.zoom` already applies to a stale
+   * saved zoom at construction, applied for the rest of the camera's life.
+   *
+   * Both limits are taken together, not one at a time, because `minZoom <= maxZoom` is a
+   * relation between them: a single-field setter would have to either reject the halfway state
+   * of a slider drag that crosses the other limit, or silently reorder the pair. Taking both
+   * makes the invariant a thing the caller states and this method checks.
+   *
+   * @throws RangeError if either limit is not a finite number greater than zero, or if
+   *   `minZoom > maxZoom`. The message shape is `createCamera`'s, with this method's name.
+   */
+  setZoomLimits(minZoom: number, maxZoom: number): void;
+
+  /**
+   * Replace the fraction of the viewport that must keep showing {@link Camera.bounds}, and
+   * re-clamp at once.
+   *
+   * **Re-clamping is the point, and it means this call can move the camera.** Raising the
+   * fraction while the player is near a map edge pulls them back toward it in the same
+   * statement — with nothing in flight, no animation, no next frame required. Deferring
+   * instead would leave a camera showing a view its own policy forbids until the next pan,
+   * which is the failure {@link Camera.setBounds} already refuses for the same reason.
+   *
+   * @throws RangeError if `keepVisible` is outside `[0, 1]` — `NaN` included, which is what an
+   *   unparsed slider value arrives as and which would otherwise turn the clamp into `NaN` on
+   *   both axes and put the camera nowhere.
+   */
+  setKeepVisible(keepVisible: number): void;
 
   /**
    * world → screen x. **Takes `wx` alone**, because screen x depends on world x alone.
@@ -264,6 +365,38 @@ function expectPositiveViewport(value: number, fn: string, param: string): numbe
 }
 
 /**
+ * Reject a zoom-limit pair. Shared by `createCamera` and `camera.setZoomLimits` for the same
+ * reason as {@link expectPositiveViewport}: the two are the *same* mistake made at two moments,
+ * and a caller who has met the message once should not have to read a second wording of it.
+ *
+ * The pair is checked together because the ordering is the interesting half — `minZoom` alone
+ * cannot be wrong, only wrong relative to its partner.
+ */
+function expectZoomLimits(min: number, max: number, fn: string): void {
+  if (!(Number.isFinite(min) && min > 0)) {
+    throw new RangeError(`${fn}: expected minZoom to be a finite number > 0, got ${String(min)}`);
+  }
+  if (!(Number.isFinite(max) && max > 0)) {
+    throw new RangeError(`${fn}: expected maxZoom to be a finite number > 0, got ${String(max)}`);
+  }
+  if (min > max) {
+    throw new RangeError(
+      `${fn}: expected minZoom <= maxZoom, got minZoom ${String(min)} and maxZoom ${String(max)}`,
+    );
+  }
+}
+
+/** Reject a `keepVisible` fraction. Written as `!(v >= 0 && v <= 1)` rather than
+ *  `v < 0 || v > 1` so that `NaN` — an unparsed slider value — is rejected rather than passed
+ *  through to poison both axes of the clamp. */
+function expectKeepVisible(value: number, fn: string): number {
+  if (!(value >= 0 && value <= 1)) {
+    throw new RangeError(`${fn}: expected keepVisible in [0, 1], got ${String(value)}`);
+  }
+  return value;
+}
+
+/**
  * Build a camera.
  *
  * @throws RangeError if `viewW`/`viewH` are not finite and positive, if `minZoom` or
@@ -275,29 +408,10 @@ export function createCamera(viewW: number, viewH: number, options?: CameraOptio
   let vw = expectPositiveViewport(viewW, 'createCamera', 'viewW');
   let vh = expectPositiveViewport(viewH, 'createCamera', 'viewH');
 
-  const minZoom = options?.minZoom ?? 0.5;
-  const maxZoom = options?.maxZoom ?? 4;
-  if (!(Number.isFinite(minZoom) && minZoom > 0)) {
-    throw new RangeError(
-      `createCamera: expected minZoom to be a finite number > 0, got ${String(minZoom)}`,
-    );
-  }
-  if (!(Number.isFinite(maxZoom) && maxZoom > 0)) {
-    throw new RangeError(
-      `createCamera: expected maxZoom to be a finite number > 0, got ${String(maxZoom)}`,
-    );
-  }
-  if (minZoom > maxZoom) {
-    throw new RangeError(
-      `createCamera: expected minZoom <= maxZoom, got minZoom ${String(minZoom)} and maxZoom ${String(maxZoom)}`,
-    );
-  }
-  const keepVisible = options?.keepVisible ?? 0.35;
-  if (!(keepVisible >= 0 && keepVisible <= 1)) {
-    throw new RangeError(
-      `createCamera: expected keepVisible in [0, 1], got ${String(keepVisible)}`,
-    );
-  }
+  let minZoom = options?.minZoom ?? 0.5;
+  let maxZoom = options?.maxZoom ?? 4;
+  expectZoomLimits(minZoom, maxZoom, 'createCamera');
+  let keepVisible = expectKeepVisible(options?.keepVisible ?? 0.35, 'createCamera');
 
   let zoom = clamp(options?.zoom ?? 1, minZoom, maxZoom);
   if (!Number.isFinite(zoom)) {
@@ -357,6 +471,15 @@ export function createCamera(viewW: number, viewH: number, options?: CameraOptio
     get bounds() {
       return bounds;
     },
+    get minZoom() {
+      return minZoom;
+    },
+    get maxZoom() {
+      return maxZoom;
+    },
+    get keepVisible() {
+      return keepVisible;
+    },
 
     resize(nextW: number, nextH: number): void {
       vw = expectPositiveViewport(nextW, 'camera.resize', 'viewW');
@@ -369,6 +492,24 @@ export function createCamera(viewW: number, viewH: number, options?: CameraOptio
       bounds.minY = next.minY;
       bounds.maxX = next.maxX;
       bounds.maxY = next.maxY;
+      reclamp();
+    },
+
+    setZoomLimits(nextMin: number, nextMax: number): void {
+      expectZoomLimits(nextMin, nextMax, 'camera.setZoomLimits');
+      minZoom = nextMin;
+      maxZoom = nextMax;
+      // `cx`/`cy` are left alone, which is what makes the viewport center the anchor: the
+      // projection is centered on them, so the world point in the middle of the screen is the
+      // one point a zoom change cannot move. `reclamp` may then move both, because the
+      // half-viewport in world units just changed and the keepVisible clamp is computed from
+      // it — a limit change that pushes the camera in can uncover map it must now stay near.
+      zoom = clamp(zoom, minZoom, maxZoom);
+      reclamp();
+    },
+
+    setKeepVisible(next: number): void {
+      keepVisible = expectKeepVisible(next, 'camera.setKeepVisible');
       reclamp();
     },
 
