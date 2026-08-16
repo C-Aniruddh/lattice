@@ -64,9 +64,9 @@
         "every signature type-checks if pasted into a .ts file",
         "the deliberately-absent section names at least three things and says why"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-architect",
-      "notes": ""
+      "notes": "Deleted its own DrawList once iso delivered Scene/DepthSorter — exactly one pass in seven sorts. Surface seam is 13 methods, each one tested against: could a WebGL backend implement this in under fifty lines without lying. Won the LEVEL_H dispute against my ruling."
     },
     {
       "id": "A4",
@@ -164,9 +164,9 @@
         "every signature type-checks if pasted into a .ts file",
         "the deliberately-absent section names at least three things and says why"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-architect",
-      "notes": ""
+      "notes": "Kahn-computed topological order, so it is proven rather than maintained. Cycles refused at construction. Two capacity curves, not one: a wall and a queue, and confusing them is the difference between a brownout you can ignore and a road that destroys pilgrims. Found that a time warp discounts standing charges as well as income, so the demo currently rewards closing the tab at night."
     },
     {
       "id": "A9",
@@ -749,6 +749,53 @@
         "the draw architect found that a game still authors every silhouette from primitives — most of the distance between installing the kit and having a game",
         "decide: a tenth package, examples/demo with an explicit copy-paste promise, or a documented refusal",
         "whatever is chosen, the reason is written down so cycle three does not relitigate it"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "C12",
+      "phase": "audit",
+      "role": "lattice-auditor",
+      "title": "Write the four cross-package contract tests",
+      "package": "*",
+      "paths": [
+        "test/contracts/**"
+      ],
+      "dependsOn": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5"
+      ],
+      "acceptance": [
+        "one test per row in the table in docs/SEAMS.md, each failing if either side drifts",
+        "the pick-is-reverse-of-paint test must fail if draw re-sorts, re-buckets or stably partitions after sort()",
+        "the six-point silhouette test asserts iso is the definition and draw is the conformer",
+        "the tick-index test spans loop, input and persist in one assertion"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "D2",
+      "phase": "game",
+      "role": "lattice-designer",
+      "title": "Fix the night-tab exploit the sim architect found",
+      "package": "demo",
+      "paths": [
+        "docs/rfc/demo.md"
+      ],
+      "dependsOn": [
+        "A8"
+      ],
+      "acceptance": [
+        "a time warp discounts standing charges as well as income, so LAMP ROAD currently rewards closing the tab during the night",
+        "decide whether oil burn is exempt from the warp, or the design changes",
+        "whichever it is, the reason is written into the demo RFC"
       ],
       "status": "todo",
       "owner": null,

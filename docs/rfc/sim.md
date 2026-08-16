@@ -193,12 +193,12 @@ export interface Economy<N extends string, G extends string = never> {
  *   terminates on a strictly forward graph; a feedback loop is a purchase (an action at an
  *   instant), not an edge.`
  */
-export function defineEconomy<N extends string, G extends string = never>(
+export declare function defineEconomy<N extends string, G extends string = never>(
   spec: EconomySpec<N, G>,
 ): Economy<N, G>;
 
 /** A fresh, fully-populated, all-zero vector. Every key present, so the shape stays monomorphic. */
-export function zeroStocks<N extends string, G extends string>(eco: Economy<N, G>): StockVec<N>;
+export declare function zeroStocks<N extends string, G extends string>(eco: Economy<N, G>): StockVec<N>;
 
 /**
  * The degree of `node`'s trajectory in `t`: the longest path *into* it, so `1` is linear and
@@ -206,7 +206,7 @@ export function zeroStocks<N extends string, G extends string>(eco: Economy<N, G
  * and a game is entitled to know, at design time, whether the instant it wants to report is
  * algebraically available or found by bisection.
  */
-export function degreeOf<N extends string, G extends string>(eco: Economy<N, G>, node: N): number;
+export declare function degreeOf<N extends string, G extends string>(eco: Economy<N, G>, node: N): number;
 ```
 
 ### 3.2 `flow` — rates and the integrator
@@ -224,13 +224,13 @@ export interface Flow {
   readonly rates: Float64Array;
 }
 
-export function createFlow<N extends string, G extends string>(eco: Economy<N, G>): Flow;
+export declare function createFlow<N extends string, G extends string>(eco: Economy<N, G>): Flow;
 
 /** The ratios in force, one per declared gate. `1` is healthy; `0` stops the tagged edges. */
 export type GateRatios<G extends string> = Readonly<Record<G, number>>;
 
 /** For an economy with no gates. */
-export const NO_GATES: GateRatios<never>;
+export declare const NO_GATES: GateRatios<never>;
 
 /**
  * Fold `per × scale(stocks) × gateRatio` into `out.rates`.
@@ -244,7 +244,7 @@ export const NO_GATES: GateRatios<never>;
  *   `undefined` ratio becomes `NaN`, and a `NaN` in a stock vector is a corrupted save that no
  *   later call can repair.
  */
-export function buildFlow<N extends string, G extends string>(
+export declare function buildFlow<N extends string, G extends string>(
   eco: Economy<N, G>,
   stocks: Stocks<N>,
   gates: GateRatios<G>,
@@ -267,7 +267,7 @@ export function buildFlow<N extends string, G extends string>(
  * @throws RangeError if `seconds` is not finite. Silently producing `NaN` stocks corrupts a save.
  * @returns `out`, so a caller can chain. Allocates nothing.
  */
-export function integrate<N extends string, G extends string>(
+export declare function integrate<N extends string, G extends string>(
   eco: Economy<N, G>,
   stocks: Stocks<N>,
   flow: Flow,
@@ -284,7 +284,7 @@ export function integrate<N extends string, G extends string>(
  * more the better they are doing. To answer "how much in the next minute", integrate 60 and
  * subtract.
  */
-export function ratesOf<N extends string, G extends string>(
+export declare function ratesOf<N extends string, G extends string>(
   eco: Economy<N, G>,
   stocks: Stocks<N>,
   flow: Flow,
@@ -308,7 +308,7 @@ export interface Ledger<N extends string> {
 }
 
 /** `(atMs − ledger.atMs) / 1000`, clamped at zero. The one place the ms→s conversion lives. */
-export function elapsedSeconds<N extends string>(ledger: Ledger<N>, atMs: EpochMillis): number;
+export declare function elapsedSeconds<N extends string>(ledger: Ledger<N>, atMs: EpochMillis): number;
 
 /**
  * Integrate to an instant **without committing**, into a caller-owned vector.
@@ -321,7 +321,7 @@ export function elapsedSeconds<N extends string>(ledger: Ledger<N>, atMs: EpochM
  *
  * @returns the seconds integrated — `elapsedSeconds(ledger, atMs)`, i.e. `0` for a backwards clock.
  */
-export function project<N extends string, G extends string>(
+export declare function project<N extends string, G extends string>(
   eco: Economy<N, G>,
   ledger: Ledger<N>,
   flow: Flow,
@@ -338,10 +338,16 @@ export function project<N extends string, G extends string>(
  * package permitted to apply a warp, because distributing one across phases is the thing you
  * must not do by hand (§3.5).
  *
+ * An `atMs` earlier than the anchor returns the ledger **unchanged** — it neither credits nor
+ * moves the anchor backwards, because an anchor that can be walked back is an interval that can
+ * be credited twice. Correcting a bad clock is {@link reanchor}, deliberately a different call.
+ *
  * Allocates one `Ledger` and one vector. It is a boundary call — an action, a save, a hydrate —
  * not a per-frame one.
+ *
+ * @throws RangeError if the resulting vector is not finite, naming the node — see below.
  */
-export function advance<N extends string, G extends string>(
+export declare function advance<N extends string, G extends string>(
   eco: Economy<N, G>,
   ledger: Ledger<N>,
   flow: Flow,
@@ -366,7 +372,7 @@ export function advance<N extends string, G extends string>(
  * NTP correction) calls this, keeps its stocks, forfeits nothing it had earned, and is running
  * again on the next frame.
  */
-export function reanchor<N extends string>(ledger: Ledger<N>, atMs: EpochMillis): Ledger<N>;
+export declare function reanchor<N extends string>(ledger: Ledger<N>, atMs: EpochMillis): Ledger<N>;
 ```
 
 #### What a ledger may contain
@@ -387,7 +393,7 @@ back with a hole in it. A closed-form integrator is exactly the thing that can p
  *
  * @throws RangeError naming the first offending node: `sim.load: stocks.oil is not finite (null)`.
  */
-export function expectFiniteStocks<N extends string, G extends string>(
+export declare function expectFiniteStocks<N extends string, G extends string>(
   eco: Economy<N, G>,
   stocks: Stocks<N>,
   label: string,
@@ -513,7 +519,7 @@ export interface OfflineCurve {
  *   `e ∉ (0,1]`, `F < U`) — a balance pass is a data diff, so a bad number arrives as data and
  *   must be caught where it is read, not three hours into a run.
  */
-export function offlineCredit(elapsedSeconds: number, curve: OfflineCurve): number;
+export declare function offlineCredit(elapsedSeconds: number, curve: OfflineCurve): number;
 
 /**
  * `W⁻¹` — the real elapsed time at which `creditedSeconds` of credit had accrued.
@@ -526,17 +532,17 @@ export function offlineCredit(elapsedSeconds: number, curve: OfflineCurve): numb
  * @returns `Infinity` for a credit above `maxOfflineCredit(curve)` — no amount of real time
  *   reaches it, which is what "flat" means.
  */
-export function offlineElapsed(creditedSeconds: number, curve: OfflineCurve): number;
+export declare function offlineElapsed(creditedSeconds: number, curve: OfflineCurve): number;
 
 /** The most any absence can ever be worth. Derived from the curve, never restated. */
-export function maxOfflineCredit(curve: OfflineCurve): number;
+export declare function maxOfflineCredit(curve: OfflineCurve): number;
 
 /**
  * `dW/dt` — "the next second away is worth this much of a second". A read for the UI; the
  * integrator never needs it. Reported as the *right* derivative at the knot, because what a
  * player wants to know is what the next second pays: it steps 1 → `exponent` at `U`.
  */
-export function offlineCreditRate(elapsedSeconds: number, curve: OfflineCurve): number;
+export declare function offlineCreditRate(elapsedSeconds: number, curve: OfflineCurve): number;
 ```
 
 **`W` does not compose, and must never be asked to.** It is strictly concave, therefore
@@ -656,7 +662,7 @@ export interface CatchUp<G extends string> {
  *   economy did not declare.
  * @throws RangeError if the resulting vector is not finite, naming the node — see §3.3.
  */
-export function advanceOver<N extends string, G extends string>(
+export declare function advanceOver<N extends string, G extends string>(
   eco: Economy<N, G>,
   ledger: Ledger<N>,
   flow: Flow,
@@ -673,7 +679,7 @@ subdividing a piece returns a bit-identical answer (invariant I4). A schedule wi
 one step, however long the absence.
 
 **The schedule itself is the game's.** `sim` does not generate one, does not know what a day is,
-and has no calendar. A22's own capability matrix calls a cycle clock "~8 lines of game code,
+and has no calendar. A10's own capability matrix calls a cycle clock "~8 lines of game code,
 acceptable"; the eight lines produce `Phase[]`, and this package consumes them.
 
 ### 3.6 Crossings — solving for the instant a stock runs out
@@ -717,7 +723,7 @@ and finding it by ticking is what the no-tick invariant forbids.
  *   side it started on.
  * @returns seconds from `stocks`, or `Infinity`. Never negative, never `NaN`.
  */
-export function solveCrossing<N extends string, G extends string>(
+export declare function solveCrossing<N extends string, G extends string>(
   eco: Economy<N, G>,
   stocks: Stocks<N>,
   flow: Flow,
@@ -748,7 +754,7 @@ export interface Crossing {
  *
  * Allocates one `Crossing`. A hydrate-boundary call.
  */
-export function solveCrossingOver<N extends string, G extends string>(
+export declare function solveCrossingOver<N extends string, G extends string>(
   eco: Economy<N, G>,
   ledger: Ledger<N>,
   flow: Flow,
@@ -805,7 +811,7 @@ export interface CapacityCurve {
  *
  * `supply <= 0` with any demand is `0`. `demand <= 0` is `1`. Tier A.
  */
-export function capacityWall(supply: number, demand: number, curve: CapacityCurve): number;
+export declare function capacityWall(supply: number, demand: number, curve: CapacityCurve): number;
 
 /**
  * The share: `min(1, supply / demand)`. A queue, not a wall — everyone present gets a slice and
@@ -816,14 +822,14 @@ export function capacityWall(supply: number, demand: number, curve: CapacityCurv
  * capacity. Using the share where you meant the wall makes a brownout a tax you can ignore for
  * forty minutes. Tier A.
  */
-export function capacityShare(supply: number, demand: number): number;
+export declare function capacityShare(supply: number, demand: number): number;
 
 /**
  * `demand / supply`, for the meter — the number a HUD paints amber at 0.8 so that 18 of 20 does
  * not look like 6 of 20. `0` when demand is zero, `Infinity` when supply is zero and demand is
  * not; never `NaN`, because a `NaN` reaches the player as an empty progress bar.
  */
-export function capacityLoad(supply: number, demand: number): number;
+export declare function capacityLoad(supply: number, demand: number): number;
 ```
 
 **Where supply and demand come from is the game's business, and that is the design.** `sim`
@@ -884,7 +890,7 @@ export interface CostCurve {
  *
  * @throws RangeError on a non-integer `owned` or a non-finite curve parameter.
  */
-export function costOfNext(curve: CostCurve, owned: number): number;
+export declare function costOfNext(curve: CostCurve, owned: number): number;
 
 /**
  * `b · r^k · (r^n − 1)/(r − 1)` — the price of `count` more, starting from `owned`. Tier A, for
@@ -895,7 +901,7 @@ export function costOfNext(curve: CostCurve, owned: number): number;
  *   silently making it free.
  * @throws RangeError on a non-integer `count` or a non-finite parameter.
  */
-export function bulkCost(curve: CostCurve, owned: number, count: number): number;
+export declare function bulkCost(curve: CostCurve, owned: number, count: number): number;
 
 /**
  * `floor( log_r( c(r−1)/(b·r^k) + 1 ) )`, corrected for float rounding, clamped to `cap`.
@@ -917,7 +923,7 @@ export function bulkCost(curve: CostCurve, owned: number, count: number): number
  * @param budget - Zero, negative and `NaN` all yield `0` rather than throwing: an empty wallet
  *   is a normal state, not an error.
  */
-export function maxBuyable(
+export declare function maxBuyable(
   curve: CostCurve,
   owned: number,
   budget: number,
@@ -937,7 +943,7 @@ export interface Milestones {
  * function of a number so a game can also use it on a shop card, which is where players actually
  * learn the mechanic exists.
  */
-export function milestoneMultiplier(owned: number, milestones: Milestones): number;
+export declare function milestoneMultiplier(owned: number, milestones: Milestones): number;
 ```
 
 ### 3.9 `ids` — identity for a simulated world
@@ -966,7 +972,7 @@ export interface IdSource {
 }
 
 /** @throws RangeError if `next` is not a non-negative integer — a corrupt save, caught at load. */
-export function createIdSource(next?: number): IdSource;
+export declare function createIdSource(next?: number): IdSource;
 
 /**
  * Take the next id. Monotone, and **never reused**.
@@ -981,7 +987,7 @@ export function createIdSource(next?: number): IdSource;
  * counter is here and not derived from a clock or an `Rng` — a time-derived id cannot replay,
  * and a random one would consume a stream that the rest of the game is also drawing from.
  */
-export function mintId(source: IdSource): EntityId;
+export declare function mintId(source: IdSource): EntityId;
 
 /**
  * Narrow a number that came back from a save.
@@ -993,7 +999,7 @@ export function mintId(source: IdSource): EntityId;
  *
  * @throws RangeError naming the id and the counter it exceeded.
  */
-export function asEntityId(value: number, source: IdSource, label: string): EntityId;
+export declare function asEntityId(value: number, source: IdSource, label: string): EntityId;
 ```
 
 **Across a save/load boundary:** the counter is saved *with* the entities, in the same write, and
@@ -1055,7 +1061,7 @@ Values (31): `VERSION`, `defineEconomy`, `zeroStocks`, `degreeOf`, `createFlow`,
 `capacityLoad`, `costOfNext`, `bulkCost`, `maxBuyable`, `milestoneMultiplier`, `createIdSource`,
 `mintId`, `asEntityId`.
 
-Types (17): `Stocks`, `StockVec`, `EdgeScale`, `EdgeSpec`, `EconomySpec`, `Edge`, `Economy`,
+Types (19): `Stocks`, `StockVec`, `EdgeScale`, `EdgeSpec`, `EconomySpec`, `Edge`, `Economy`,
 `Flow`, `GateRatios`, `Ledger`, `Phase`, `CatchUp`, `Crossing`, `OfflineCurve`, `CapacityCurve`,
 `CostCurve`, `Milestones`, `EntityId`, `IdSource`.
 
@@ -1113,7 +1119,7 @@ Note the interaction with §3.9: ids come from a counter precisely so that minti
 draw from a stream something else is also drawing from.
 
 **8. A schedule generator.** No day/night cycle, no `phaseAt`, no calendar. `sim` consumes
-`Phase[]`; it does not know what a day is. A22 budgeted eight lines of game code for this and it
+`Phase[]`; it does not know what a day is. A10 budgeted eight lines of game code for this and it
 is the right eight lines to write in the game.
 
 **9. An action/commit layer.** The source's best structural idea — *the offline-progress function
@@ -1425,7 +1431,7 @@ the orchestrator may want persist's wording aligned to "the game owns the calend
    closed-form depletion time (§3.6, exact at degree 1 — which oil is, since presses and lamps are
    counts, not products of the flow). The pilgrim clamp is `capacityShare`, the oil gate is
    `capacityWall`, and nightfall is a gate ratio of 0 or 1. What I need from you in return is the
-   `Phase[]` generator, which is yours by §4.8.
+   `Phase[]` generator, which is yours by §4 item 8.
 
 **Unowned, and it should be somebody's:** the rate breakdown (§4.12) — one line per multiplier
 with a running total, so a player who cannot see why a number moved can still make a decision

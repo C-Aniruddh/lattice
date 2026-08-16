@@ -45,7 +45,7 @@ Read the five option lines as the five promises this package makes.
 | `clock` | time is a parameter. The kit never reads a global clock, so `lint` can ban `Date.now()` in every `src/` and mean it. |
 | `frames` | *when to run* is a parameter too, and the browser adapter is deliberately not one source but two — see §6.1. |
 | `update` | `dt` is the same number every call, forever. Nothing else in this package matters as much. |
-| `render` | `alpha ∈ [0, 1]`, and it is the *only* thing render is told about time that update is not. |
+| `render` | `alpha ∈ [0, 1]` blends the last step into the next. Render is told more about time than update is, and allowed to do less with it. |
 | `loop.start()` | nothing runs on import. There is no ambient loop, no singleton, no autostart. |
 
 A test of the same game, with no timers anywhere:
@@ -62,8 +62,11 @@ clock.advance(1000); frames.pump('paint');   // one second of game, instantly
 
 ## 3. The full public surface
 
-Five modules — `clock`, `loop`, `scheduler`, `tween`, `stats` — plus one the brief did not
-list. **I am proposing a sixth module, `frames`,** and arguing for it in §3.2.
+Five modules — `clock`, `loop`, `scheduler`, `tween`, `stats` — plus two the brief did not
+list. **I am proposing `frames`** (§3.2), because a loop that reaches for
+`requestAnimationFrame` itself is wrong in every hidden tab; **and `replay`** (§3.7), because
+`persist` records sessions and `input` keys them by tick, and this is the only package that
+can press play. Each is argued for where it appears.
 
 ### 3.1 `clock` — time as a parameter
 
@@ -662,7 +665,7 @@ export interface FrameStats {
 }
 ```
 
-### 3.7 `replay` — **yes, the driver is mine** (a sixth module, `src/replay.ts`)
+### 3.7 `replay` — **yes, the driver is mine** (a seventh module, `src/replay.ts`)
 
 `@lattice/persist` asked whether this package will own the thing that steps a recorded
 session forward, feeds buffered inputs at their recorded tick indices, and compares
@@ -991,6 +994,12 @@ Each is phrased so that its failure is a specific, writable test.
 | I-18 | Every duration argument rejects nonsense by name. | `setSpeed(-1)`, `every(0, …)`, `after(NaN, …)`, `hz: 0` must each throw a `RangeError` naming the parameter and the value, per constitution rule 9. |
 | I-19 | Nothing exported here can tell a caller the date. | Any symbol or field returning an epoch time. `Clock` has exactly one method; `grep -rn 'epoch\|Date' packages/loop/src` returns only prose saying it does not do this (§4.1a). |
 | I-20 | This package defines no easing curve and no easing name. | `grep -rn 'ease\(In\|Out\)' packages/loop/src` finds only the type `EasingName` from `core`. An unknown name passed to `start` throws a `RangeError` naming the valid ones; it must never silently run linear, because a level file with a typo would then ship feeling wrong and passing. |
+| I-21 | A job runs at most once per pump, however many times it was requested. | Request one inside every step of a pump that runs fifteen catch-up steps: the job body runs exactly once. Fifty `request()` calls in one drag produce one sweep. |
+| I-22 | Subscribers run in registration order, the constructor pair first, and a disposer removes exactly one. | An overlay subscribed after the game seeing last step's world; a disposer that removes two subscriptions or none; a subscriber added inside a firing pass that runs in that same pass. |
+| I-23 | **`real` is interval-backed, never rAF-backed.** | Drive a loop with `'tick'` pumps only for a simulated minute: a `real.after(5, save)` has fired. If it has not, every autosave in the kit dies in a hidden tab. Also assert `browserFrames` keeps pumping with `requestAnimationFrame` stubbed to never call back. |
+| I-24 | `tick` is a non-negative integer, starts at 0, and increments by exactly one. | Any gap, repeat or fractional value breaks the join between `input`'s buckets and `persist`'s envelope. |
+| I-25 | `stepMs` is stable for the life of a loop and equal for equal `hz`. | Read it before and after a thousand pumps, a pause, a speed change and a stall; all readings identical. Two loops at the same `hz` report the same number. |
+| I-26 | A replay of a recorded session reproduces it, and a nondeterministic game fails it. | `replay()` over a log recorded from a correct game returns `divergedAt === -1`; add one `Math.random()` to `update` and it must return the tick where it first diverged, not a pass. |
 
 ---
 
@@ -1010,6 +1019,18 @@ their production "resets" when they switch tabs.
 The fix is structural and it is why `FrameSource` exists: two sources, one that paints and one
 that only ticks. A builder who "simplifies" `browserFrames` down to rAF alone will pass every
 test that runs in the foreground.
+
+**And it would stop the kit saving.** `@lattice/persist` schedules its debounced autosave
+through `loop.real.after`, and every timer in this package advances only when a pump arrives.
+So the interval half of `browserFrames` is what keeps autosave alive in a hidden tab — which
+is precisely when tabs get closed. Delete it and the failure mode is not a stutter: the game
+stops saving at the exact moment saving matters most, silently, on the one code path nobody
+watches. This is why I-23 exists as a separate invariant rather than as a line in I-2:
+`real` must be interval-backed, never rAF-backed, and a one-line "optimisation" here has a
+total consequence. Two related facts for `persist`: a hidden tab's timer granularity is
+`idleMs` (~1 s, browser-clamped), so a sub-second debounce is meaningless in the background;
+and `loop.stop()` stops the pumps and therefore the timers, so a flush on `visibilitychange`
+— which `persist` already owns — remains necessary and is not made redundant by any of this.
 
 Second-order: a diagnosis of "nothing animates" from an automated browser pass is worthless
 until `document.visibilityState` has been checked — the source project threw away two full
@@ -1121,8 +1142,6 @@ interval, and a restarted loop must not end up with two chains. `input`'s "every
 returns a disposer" is the same rule; this package's version is that `FrameSource.stop` is
 not optional and is tested by starting and stopping a hundred times.
 
----
-
 ### 6.12 A smoothed value that reaches a save file
 
 `core`'s `damp` is Tier B — it is built on `Math.exp`, which ECMA-262 does not require to be
@@ -1134,30 +1153,86 @@ kit acquires a save that fails its own integrity check on a different browser. T
 go to pixels. If a smoothed value must be restored across a reload, round it at the boundary
 and treat the rounded number as authored data, not as a continuation.
 
+### 6.13 A second clock beside `update`
+
+`@lattice/ui`'s first draft had `createOverlay` install its own `setInterval`. It was the
+right instinct — the overlay must not freeze with the renderer — aimed at the wrong
+mechanism, and it would have shipped the kit two clocks: one advancing the world on the fixed
+step, one advancing the HUD on a period that shares no factor with it. That is §6.3 with the
+serial numbers filed off, in the package most likely to hold a one-shot dialog, and the
+source game has already shown what it costs.
+
+The general rule, now that `onUpdate` exists: **a Lattice game contains exactly one thing
+that decides when work happens, and it is the loop.** A package that needs to advance
+something exposes a `tick`-shaped method and lets somebody drive it; it does not go and find
+a clock. `ui` removed the interval and now advances only when driven, which is the correct
+shape and worth more than the API that enabled it.
+
+### 6.14 Replay traps
+
+Four ways to build a replay driver that reports the wrong answer, all of them worse than a
+crash because they produce a confident verdict:
+
+- **Applying a tick's inputs after its update.** Every tick is then one late, the world
+  diverges immediately, and the report blames the game for the driver.
+- **Rendering during a replay.** It makes the run frame-rate dependent, slower by two orders
+  of magnitude, and — if any render pass mutates anything — capable of *hiding* a divergence
+  by writing the same wrong value on both runs.
+- **Hashing a Tier B value.** A frame-integrated camera, a `damp`ed meter, anything built on
+  `Math.exp`: two correct engines disagree in the last bits and the replay fails forever, on
+  a machine the author does not have. §3.5's table is the rule; the camera is outside the
+  contract on purpose (§3.7).
+- **Replaying with a different `hz`.** The tick indices still line up and mean something
+  completely different. `replay()` throws on a `stepMs` mismatch rather than reporting a
+  divergence at tick 1, because the two failures deserve different words.
+
 ---
 
 ## Notes routed to the orchestrator
 
-These are outside `docs/rfc/loop.md`'s ownership and are for other packages' owners:
+These are outside `docs/rfc/loop.md`'s ownership and are for other packages' owners. The
+first group is settled — another package asked, this RFC answered, and the answer is in the
+surface above. The second group is still open.
 
-1. **`input` needs a per-tick sample buffer.** DOM events arrive on the browser's schedule,
-   not the fixed step's. A fixed-step `update` that reads live listener state consumes a
-   different input depending on how many steps ran that pump, which breaks replay. Somebody
-   must own "drain events into a snapshot at the tick boundary"; it is not `loop`, because
-   `loop` must not know what an event is, and it does not appear in `input`'s module list.
+**Answered, and now binding on this package:**
+
+- **`ui` keeps `drive`.** `onUpdate`/`onRender` exist and return disposers; the structural
+  interface `ui` should declare is in §3.3a verbatim. The constructor pair is defined as a
+  subscription registered first, so ordering is guaranteed rather than incidental.
+- **`iso` gets coalesced off-frame work.** `loop.coalesce(fn)` (§3.3b), guaranteed at most
+  once per **pump** — not per step — which is the bound the flow-field sweep needs.
+- **`persist` gets the replay driver and an interval-backed `real`.** §3.7 takes the driver,
+  defined against a structural `ReplaySource` so nothing imports upward; I-23 pins `real` to
+  the interval half of `browserFrames` so autosave survives a hidden tab.
+- **`input` gets all three asks.** `tick` is an integer that never skips (I-24) and is the
+  documented join between its buckets and `persist`'s envelope; `render` now carries `nowMs`,
+  this pump's single monotonic clock reading, for the frame-integrated camera; `stepMs` is
+  readable, stable for the life of the loop (I-25), and documented as a compatibility
+  constant whose change is a breaking change to every recorded session.
+
+- **`core`'s easing vocabulary is adopted whole.** `TweenOptions.ease` is `Easing |
+  EasingName`, resolved through `core`'s `EASINGS`; this package defines no curve and owns no
+  name. An unknown name throws a `RangeError` listing the table rather than falling back to
+  linear (I-20), and there are no sine or expo easings in the kit at all, so no example, test
+  or default here may reach for one.
+
+**Still outstanding:**
+
+1. **`input`'s per-tick sample buffer now has a second customer.** It was already needed so a
+   fixed-step `update` consumes a snapshot rather than live listener state; it is now also the
+   producer side of `replay`. `ReplaySource.applyAt(tick)` is the seam it must satisfy, and
+   the three packages should agree on it before any of them is built.
 2. **`persist`'s debounced write and `loop.real` are the same feature.** `persist` cannot
    import `loop` (both layer 1), so either it takes a `schedule` callback the game wires to
    `loop.real.after`, or it keeps its own timer and the kit has two timer implementations.
-   I would rather it took the callback.
+   I would rather it took the callback — and if it does, §6.1's note about `idleMs`
+   granularity in a hidden tab belongs in its docs too.
 3. **`ui`'s third invariant should say "not inside the render callback"**, not "on an
    interval". With this design, `update` *is* the interval, and a `ui` that starts its own
    `setInterval` re-creates §6.3 in the one package most likely to hold one-shot dialogs.
-4. **Accepted from `core` (routing 2): `TweenOptions.ease` is `Easing | EasingName`,
-   resolved through `core`'s `EASINGS`.** This package defines no curve and owns no name.
-   Two consequences I am holding the builder to: an unknown name throws a `RangeError`
-   listing the table rather than falling back to linear, and there are no sine or expo
-   easings in the kit at all, so no example, test or default here may reach for one.
-5. **`core` should export the calendar type that `loop` refuses to own** — one line,
+   `ui` has already removed the interval; the invariant's wording still points at the old
+   mechanism and will invite it back.
+4. **`core` should export the calendar type that `loop` refuses to own** — one line,
    `export type EpochMillis = number;` and `export type Now = () => EpochMillis;` — so that
    `persist`'s writer parameter and `sim`'s integrate parameter are visibly the same seam
    rather than two coincidentally-shaped numbers (see §4.1a). `loop` does not use it and does

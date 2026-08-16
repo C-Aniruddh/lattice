@@ -1168,10 +1168,10 @@ shape is the goal; five packages extending a base class is a different and worse
 export declare const VERSION: string;
 ```
 
-**Export count: 85** — 8 types, 3 classes, 60 functions, 14 constants. That is the budget,
-and §4 exists to keep it there.
+**Export count: 99** — 13 types and interfaces, 3 classes, 65 functions, 18 constants. That
+is the budget, and §4 exists to keep it there.
 
-Two thirds of it is `vec2` (20) and `easing` (17), which are one-liners by nature. The
+Just over half of it is `vec2` (20) and `easing` (17), which are one-liners by nature. The
 easing curves are exported *individually as well as* through `EASINGS`, which looks like
 duplication and is not: a bundler can drop an unreferenced `const bounceOut`, but it cannot
 drop an entry of a record that something imported. A game that names one curve pays for one
@@ -1685,6 +1685,58 @@ shape invites.
     costs on every import of the package, including in a test that only wanted `clamp`. The
     tables here are literals.
 
+28. **Stamping a monotonic reading into a save.** `performance.now()`'s origin is the
+    document, so the number means nothing after a reload — offline accrual computed from it
+    is the time since the *page* loaded, which is usually a few seconds, so the bug presents
+    as "offline progress is broken" and not as a type error. The brand on `EpochMillis` makes
+    this the one direction that cannot compile.
+
+29. **Using calendar time as a frame delta.** `Date.now()` moves backwards on an NTP
+    correction, a timezone change, or a player setting the clock forward to skip a build
+    timer. A negative `dt` runs the integrator backwards. `loop` clamps, but the fix is to
+    inject the right clock: `MonotonicNow` for cadence, `Now` for the calendar.
+
+30. **Epoch seconds where epoch milliseconds are expected.** `Math.floor(Date.now() / 1000)`
+    is ~1.7e9 and a millisecond epoch is ~1.7e12; mixing them dates a save to 1970 and makes
+    offline accrual credit fifty years. `asEpochMillis` deliberately does *not* range-check
+    for this (it would reject `0`, which every manual clock in every test starts at), so the
+    unit lives in the name and nowhere else. Never divide an `EpochMillis` by 1000 and keep
+    the type.
+
+31. **`value as EpochMillis` on something read from storage.** The brand is erased at
+    runtime, so a cast is a claim about data you did not produce. A save hand-edited to
+    `"lastSeen": null` becomes an `EpochMillis` of `null` and every later subtraction is
+    `NaN`. Re-validate at the load boundary with `asEpochMillis`, which is a real check.
+
+32. **Writing `Infinity` to a save.** `JSON.stringify` turns it into `null` and the checksum
+    still matches — the failure §4.8 exists for. It arrives from `Math.exp` overflowing in a
+    closed-form integrator or a division by a zero rate, and it must be clamped where it is
+    produced. `expectSerializable` at the write boundary is the backstop, not the fix.
+
+33. **A disposer that is not idempotent.** Releasing a pooled handle twice, or removing an
+    element by index after the list has shifted, undoes something that belongs to somebody
+    else. Scopes call disposers exactly once, but a game holding one from `Scope.add` may
+    also call it early — which is a supported thing to do, and only safe because of this rule.
+
+34. **Subscribing inside a disposer.** A teardown that emits, whose listener subscribes, adds
+    to a scope that is mid-dispose. Without the run-immediately rule (invariant 36), that
+    subscription is unreachable and permanent — the leak that survives its own scene.
+
+35. **One scope per package instead of one per scene.** The failure this module exists to
+    prevent, restated: five teardown vocabularies means a game tears down four of them. If a
+    package hands back anything other than a `Disposer`, it has reintroduced the problem.
+
+36. **`hashBytes` over a `Float32Array`.** Every value between -1 and 1 truncates to zero, so
+    the digest of a normalised buffer is effectively a digest of its length — two completely
+    different frames compare equal. View the bytes:
+    `new Uint8Array(f.buffer, f.byteOffset, f.byteLength)`.
+
+37. **A comparator that returns 0 for ties.** The §4.9 ordering rule in its most common
+    disguise: `sort((a, b) => a.cost - b.cost)` is stable in `Array.prototype.sort` and
+    *not* stable through a binary heap's sift. Tied grid routes then resolve by sift order,
+    and A\* returns a different path on a different engine. Break ties on insertion
+    sequence, and expose no comparator at all.
+
 ---
 
 ## Appendix: gaps this RFC found that belong elsewhere
@@ -1715,3 +1767,35 @@ Recorded here because the architect brief asks for them; they are **not** core's
   and must document that a 32-bit digest detects corruption and does not authenticate.
 - **Nothing owns entity identity.** `sim` is the natural home for a monotonic, save-stable
   id allocator; core deliberately does not provide one (§4.7).
+
+### Requests answered without new exports
+
+Recorded so the next builder searches the RFC instead of the npm registry, and so nobody
+adds a second spelling of something that already exists.
+
+| asked for | by | answer |
+|---|---|---|
+| `clamp` | `audio` | exists, §3.5. Three packages want it; it is not going anywhere. |
+| a finite-number assertion with rule-9 text | `audio` | `expectFinite(value, label)`, §3.11. |
+| `hash32` | `draw` | no such symbol — every function in `hash` returns a uint32. Use `hashString`/`hashParts` for keys, `hashBytes` for a frame digest (§3.2). |
+| `rngFrom(seed)` | `draw` | `createRng(key)` already is it, and is the right one. Pass the key, not a pre-hash of it (§3.3). |
+| named sub-streams | `demo` | `derive(label)`, and it is stronger than a convention (§3.3). |
+| a stateless roll over `(bar, step, track)` | `audio` | `hash3`, and `hashStep` for any higher arity (§3.2). |
+| a deterministic priority queue | `iso` | **refused, and routed back to `iso`** — core takes the ordering *contract* instead (§4.9). |
+
+### Alignments this RFC creates, for the orchestrator to route
+
+- **`loop`**: `Clock.now()` currently returns `loop`'s own `Millis`. Returning core's
+  `MonotonicMillis` would make "injected `Date.now()` into the loop's clock" a compile error
+  rather than a clamped stall. Core's types are additive here — `MonotonicMillis` is still a
+  `number`, so `loop` compiles unchanged either way and simply forgoes the protection. One
+  line, `loop`'s call.
+- **`persist`**: owns both storage boundaries for §4.8 — `expectSerializable` on write,
+  `isSerializable` on read (it may not throw on boot), and `asEpochMillis` rather than a cast
+  on the save's timestamp.
+- **`iso`**: owns the priority queue, and its heap must implement the ordering rule in §4.9 —
+  insertion tie-break, no comparator parameter. Its own invariant I13 already says so; this
+  makes it kit-wide.
+- **Every package**: return a core `Disposer` from anything that binds, and take a `Scope`
+  rather than shipping a free-function binder. `input` has already built this shape and it is
+  now the kit's.

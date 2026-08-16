@@ -414,6 +414,54 @@ export type Cancel = () => void;
  */
 export type Schedule = (afterMs: number, fn: () => void) => Cancel;
 
+/**
+ * What is wrong with this store right now, as a **condition rather than a message**.
+ *
+ * `@lattice/ui` latches player-facing notices on this value, so the contract is narrow and
+ * strict:
+ *
+ * - **It is stable while the condition is.** A bare member of this union, always. It never
+ *   carries a timestamp, an attempt count, a byte size or a version number. Interpolating a
+ *   detail would defeat the latch in exactly the case the latch exists for — the autosave
+ *   rediscovers full storage every four seconds, and a status that differs each time is shown
+ *   each time. The details live on `lastWrite`, `rejected()` and `OpenResult.failure`, where a
+ *   game reads them when it wants them; the status is the key, not the payload.
+ * - **It is readable the moment `open()` returns**, before a single `tick`. The newer-save case
+ *   has to reach a player whose session has not started, and a report about a session that is
+ *   not running must not depend on the session running.
+ * - **One value, most severe first**, in the order listed below. `refusing-newer` masks
+ *   `not-persistent` and that is correct rather than a compromise: a store that is refusing to
+ *   write has nothing to say about whether its writes would have survived.
+ */
+export type StoreStatus =
+  /** Reading and writing normally. The overwhelmingly common value. */
+  | 'ok'
+  /**
+   * A save exists that this build cannot read and must not overwrite (§4.2). Nothing is being
+   * written and nothing this session will survive.
+   *
+   * Set by `open()`, cleared only by `reset()` or by opening a store that no longer finds a
+   * newer save. **What the player loses by missing it: the entire session, silently.**
+   */
+  | 'refusing-newer'
+  /**
+   * Writes are being attempted and rejected — quota, or storage revoked mid-session. Set on a
+   * failed write, cleared by the next successful one, so it is stable exactly as long as the
+   * condition is.
+   *
+   * **What the player loses by missing it: everything since the last successful write**, which
+   * grows for as long as they keep playing.
+   */
+  | 'write-failing'
+  /**
+   * The adapter is not durable — private mode, or storage refused at boot. The session plays
+   * and will not be there tomorrow.
+   *
+   * **What the player loses by missing it: this session, once they close the tab.** Known at
+   * boot, and it never changes for the life of the store.
+   */
+  | 'not-persistent';
+
 export interface StoreOptions<Head extends number, T> {
   /**
    * The storage key, and with it the lifetime. **One store, one key, and no store ever reads
@@ -513,6 +561,15 @@ export interface Store<T> {
   readonly version: number;
   readonly phase: 'new' | 'open' | 'closed';
   readonly writable: boolean;
+  /**
+   * The current condition, safe to read on every frame and every `update` (§4.11).
+   *
+   * A plain property returning a string literal: no allocation, no event subscription, no
+   * disposer to leak. `ui` polls it, latches on it, and decides for itself what a given
+   * condition is worth interrupting a player for — which is the correct division, because this
+   * package cannot know what the player is in the middle of.
+   */
+  readonly status: StoreStatus;
   /** Read storage and produce a state. Never throws, for any content whatsoever. Calling it
    *  twice re-reads; calling it after `reset()` reopens the store. */
   open(): OpenResult<T>;
@@ -1086,6 +1143,47 @@ Three consequences a builder must not blur:
 returns a plain versioned snapshot; the game passes that snapshot to a settings store it owns.
 That indirection is the layering working, not the layering getting in the way.
 
+### 4.11 Conditions, not messages — and severity is not ours to set
+
+`ui` refused a dialog system and shipped two primitives instead: `acknowledge()`, one modal with
+one button and no way past it, and `ToastHost.once(key, text)`, a session-scoped latch. Both need
+an input, and the input is a **condition**, not a rendered string. `store.status` is it.
+
+This package renders no text at a player, which has been true since §4.5, and it is worth saying
+why once more now that something is actually consuming the result: a library that writes player-
+facing prose writes it in one voice, one language and one register, and a game then has a
+sentence in its UI that it cannot change without patching a dependency. `persist` reports what is
+true. The game says it in its own words.
+
+The observation `ui` sent back belongs in this document because it is really about these failure
+modes: **severity is not a property of the message, it is a property of what the player loses by
+missing it.** That is why `StoreStatus` documents the loss on every member rather than a
+priority number, and it is why the mapping below is a recommendation to a game rather than a rule
+this package enforces:
+
+| status | what the player loses by missing it | fits |
+|---|---|---|
+| `refusing-newer` | the whole session, silently, and they cannot tell | `acknowledge()` — the correct action is to reload, and a notice that can be dismissed by accident is a notice that did not work |
+| `write-failing` | everything since the last good write, growing | `acknowledge()` if it persists; the player is losing progress *now* |
+| `not-persistent` | this session, when the tab closes | `ToastHost.once` — a first-time player must not be blocked behind a modal about a hypothetical |
+
+Put the storage warning in a modal and a first-time player is stopped at the door by a dialog
+about something that has not happened. Put the newer-save notice in a toast and it expires unread
+while the player keeps building a campus that will not exist tomorrow — having been told, in a
+way that did not work. The two mistakes are symmetrical and both come from ranking messages by
+how alarming they sound rather than by what is actually at stake.
+
+Two mechanical consequences for the builder:
+
+1. **`status` is set inside `open()`, before it returns.** Not on the first tick, not on a
+   microtask. `ui` has made `acknowledge()` work before the first `tick()` precisely so the
+   newer-save case can be reported to a session that has not begun, and a status that only
+   becomes true once the loop is running would waste that.
+2. **`status` is stable while its condition is.** Repeated discovery of the same condition
+   produces the same value, byte for byte. The failing test is easy to write and easy to forget:
+   let the autosave hit a full quota twenty times and assert the status was the same string all
+   twenty, so a latch keyed on it fires once.
+
 ## 5. What is deliberately absent
 
 This section is the one that stops the next agent adding it back.
@@ -1206,7 +1304,13 @@ Each is phrased so the failing case is obvious. All run in Node against `memoryS
     restoring that snapshot and driving the same inputs, produces identical digests at every
     checkpoint. *Fails when:* the log stored a seed but not the cursor — the failure this
     invariant exists to catch, because it looks correct for the first few draws.
-17. **An input log survives storage unchanged.** Round-trip a `ReplayLog` through a replay store
+17. **A condition is stable and early.** `store.status` is set before `open()` returns — assert
+    it on the line after, with no tick in between. Then let a full-quota adapter reject twenty
+    consecutive autosave writes and assert the status was the identical string on all twenty,
+    and that one successful write returns it to `'ok'`. *Fails when:* a detail was interpolated
+    into the status, which shows a latched notice every four seconds in the one situation the
+    latch was written for.
+18. **An input log survives storage unchanged.** Round-trip a `ReplayLog` through a replay store
     and assert the stored `inputs` is deep-equal to what went in, field order included where it
     is observable. And a replay written at format `N` read by a build at format `N + 1` returns
     `reason: 'orphaned'` — **not** a migrated log. *Fails when:* someone gives the replay store a
@@ -1339,11 +1443,11 @@ settings lifetime (§4.10), and the injected scheduler (§4.6). What follows is 
 - **`core` — a number representation that survives JSON and exceeds `Number.MAX_SAFE_INTEGER`.**
   Idle economies pass 2^53 routinely; JSON turns `Infinity` into `null` with a valid checksum
   (trap §7.8), and `format` will have to render those numbers anyway.
-- **`ui` — two notices with nowhere to live.** "Your browser will not keep this save"
-  (`durable: false`, shown once, not every thirty seconds) and "this save was made by a newer
-  version of the game" (`writable: false`, which needs a blocking dialog rather than a toast,
-  because the correct action is to reload and the wrong action is to keep playing). Both are the
-  correct response to a field on `OpenResult` and neither has a primitive today.
+- ~~**`ui` — two notices with nowhere to live.**~~ **Resolved.** `ui` added `acknowledge()` and
+  `ToastHost.once(key, text)`; this package answers with `store.status` (§4.11), a stable
+  condition readable before the first tick. The wiring is three lines in the demo and belongs to
+  neither package. `ui`'s observation that severity is a property of what the player loses, not
+  of the message, is recorded in §4.11 because it is really about these failure modes.
 - **`tools/lint` — a rung without a fixture should fail the build.** Invariant §6.4 is worth
   exactly what its fixtures are worth. Lint can read the chain head as a literal and check that
   a fixture exists for every version from floor to head. Two further rules worth adding while

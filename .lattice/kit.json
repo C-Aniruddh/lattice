@@ -59,7 +59,9 @@
         "events",
         "pool",
         "format",
-        "guard"
+        "guard",
+        "time",
+        "dispose"
       ],
       "exports": [
         "VERSION"
@@ -113,10 +115,13 @@
       "modules": [
         "surface",
         "canvas2d",
+        "record",
         "color",
         "palette",
         "solids",
+        "sprite",
         "shadow",
+        "light",
         "text",
         "layers",
         "cache"
@@ -143,7 +148,8 @@
         "loop",
         "scheduler",
         "tween",
-        "stats"
+        "stats",
+        "replay"
       ],
       "exports": [
         "VERSION"
@@ -244,19 +250,23 @@
         "core"
       ],
       "modules": [
-        "cost",
         "graph",
         "flow",
         "offline",
-        "capacity"
+        "capacity",
+        "cost",
+        "ids"
       ],
       "exports": [
         "VERSION"
       ],
       "invariants": [
         "Closed form, never a loop. 'Buy max' at 4,000 owned must not be 4,000 iterations on a hot path.",
-        "The economy has no tick. State is (stocks, rates, lastTimestamp), integrated on read.",
-        "Offline progress warps time, never yield \u2014 scaling the output lets a player return with more than their producers could have made."
+        "The economy has no tick. State is (stocks, rates, lastTimestamp) and is integrated on read.",
+        "Cycles and self-loops are refused at construction, naming the cycle. A numerical fallback would be a second implementation of the economy that diverges silently on exactly the saves that matter.",
+        "The topological order is computed and therefore proven, never a hand-maintained array. Declared node order stays separate from evaluation order, so a v4 node cannot move a v1 save's fields.",
+        "Offline progress warps time, never yield. Scaling the output lets a player return with more than their producers could have made.",
+        "sim reads no clock and exposes no function that accepts a delta. Every call that moves the anchor takes a required epoch timestamp, so a frame delta has nowhere to go."
       ]
     },
     "ui": {
@@ -286,5 +296,44 @@
         "Anything that is not painting must survive a hidden tab. The loop's update callback IS the interval \u2014 a second setInterval here recreates the poll-races-settle data-loss bug."
       ]
     }
-  }
+  },
+  "contracts": [
+    {
+      "claim": "draw must not reorder after iso's sort()",
+      "packages": [
+        "iso",
+        "draw"
+      ],
+      "breaksAs": "the tap opens the building behind the one under the finger",
+      "test": "test/contracts/"
+    },
+    {
+      "claim": "draw's stroke traces boxSilhouette's six points in order",
+      "packages": [
+        "iso",
+        "draw"
+      ],
+      "breaksAs": "hit-testing and pixels diverge with no test in either package noticing",
+      "test": "test/contracts/"
+    },
+    {
+      "claim": "the tick index starts at 0, increments by one, never skips or repeats",
+      "packages": [
+        "loop",
+        "input",
+        "persist"
+      ],
+      "breaksAs": "a replay that reports a confident wrong answer",
+      "test": "test/contracts/"
+    },
+    {
+      "claim": "stepMs is a compatibility constant appearing in recorded sessions",
+      "packages": [
+        "loop",
+        "persist"
+      ],
+      "breaksAs": "a log recorded at 60Hz replayed at 50Hz diverges for reasons no stack trace shows",
+      "test": "test/contracts/"
+    }
+  ]
 }

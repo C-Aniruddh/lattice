@@ -99,18 +99,21 @@ If a reviewer finds a function here that returns a fresh point, it is a defect, 
 
 ### 3.0 Shared types
 
+`Vec2` and `ReadonlyVec2` come from `@lattice/core`, which delivered them in exactly the shape
+this package and `ui` asked for: `Vec2` assignable to `ReadonlyVec2` and not the reverse, so
+there is one type callers declare and one that appears only in signatures, and no
+`MutableVec2` anywhere in the kit. `iso` imports them and re-exports neither — one definition,
+one owner. They are reproduced here only so this document type-checks on its own:
+
 ```ts
-/**
- * A mutable point, used as an output parameter.
- *
- * Deliberately not `readonly`: every hot-path conversion in this package writes into a
- * caller-owned point instead of returning a fresh one. Four hundred sprites × sixty frames
- * is 24,000 objects a second, which is a garbage collector pause with a pleasant signature.
- */
-export interface Vec2 {
-  x: number;
-  y: number;
-}
+// from @lattice/core — not redeclared by iso.
+export interface Vec2 { x: number; y: number; }
+export interface ReadonlyVec2 { readonly x: number; readonly y: number; }
+
+// For its own structural types — Rect, GridPoint, Anchor — iso writes `Readonly<T>` rather
+// than declaring a second named interface. For plain field-only shapes the two are identical
+// to the compiler, and the mapped form costs no exports. Core's named `ReadonlyVec2` is used
+// wherever core's type is, because there the definition is core's to make.
 
 /**
  * A position in **grid** space, fractional or integer. Mutable, for the same reason as
@@ -236,22 +239,10 @@ export declare const TILE_H: 32;
 export declare const HALF_W: 32;
 export declare const HALF_H: 16;
 
-/**
- * World pixels per unit of building height. *(Requested by `@lattice/draw`, which would
- * otherwise re-derive it — see §4.3 for why I changed my mind about owning this.)*
- *
- * Deliberately **not** {@link TILE_H}. A storey exactly one tile tall reads as a cube, and
- * cubes read as programmer art; 26 makes buildings slightly squat, which is the
- * cartoon-isometric proportion — heavy base, small top. The source game shipped on this
- * number.
- *
- * A recommended unit, not a law: every function in this package takes `heightPx` and none of
- * them knows what a level is. A game with taller storeys multiplies by its own constant and
- * nothing here notices. What the export buys is that `draw`, `iso` and the game agree on the
- * default, which is the one thing that has to be true for a building's culling box and its
- * painted silhouette to be the same height.
+/*
+ * There is deliberately no `LEVEL_H` here. It is `@lattice/draw`'s, and §4.3 has the
+ * argument — including the two rulings that went the other way first.
  */
-export declare const LEVEL_H: 26;
 
 /**
  * grid → world, x only.
@@ -529,8 +520,10 @@ export interface Camera {
    * screen (trap T9). The returned range over-covers by roughly 2×; that is the correct
    * trade against per-tile diamond intersection tests.
    *
-   * @param marginTiles Extra tiles on every side. Pass the tallest thing on your map divided
-   *   by `LEVEL_H`, or roofs will pop in along the top edge.
+   * @param marginTiles Extra tiles on every side. Pass the height of the tallest thing on
+   *   your map in world pixels, divided by {@link TILE_H}, or roofs will pop in along the top
+   *   edge. In world pixels because that is the only height unit this package has — a storey
+   *   is not a thing `iso` can count (§4.3).
    */
   visibleTileBounds(out: TileRange, marginTiles?: number): TileRange;
 
@@ -1374,14 +1367,27 @@ No canvas, no colour, no sprite, no `CanvasRenderingContext2D`, no `devicePixelR
 because the depth sort and the pathfinder are the two things most worth testing and neither
 should need a DOM to test.
 
-**Except `LEVEL_H`, and I have reversed myself on it.** An earlier draft pushed the storey
-height to `draw` as an art proportion. `draw` asked for it back rather than re-deriving it, and
-it is right, for a reason that is really an argument about consistency: **I already own
-`TILE_W = 64` and `TILE_H = 32`, which are exactly as much art constants as `LEVEL_H = 26` is.**
-Owning two thirds of a proportion and disowning the third is not a principle, it is an
-inconsistency with a justification attached. All three are the *units of the lattice*, and the
-lattice is this package. The line that still holds is the one about behaviour: `iso` exports
-the number and never uses it — every function here takes `heightPx`.
+**Including `LEVEL_H`, the storey height, which went back and forth twice and is `draw`'s.**
+Worth recording the whole exchange, because the final distinction is the useful part and the
+losing argument was mine:
+
+1. I pushed it to `draw` as an art proportion.
+2. `draw` asked for it back rather than re-deriving it. I reversed, on consistency: I own
+   `TILE_W` and `TILE_H`, so owning two thirds of a proportion and disowning the third looked
+   like an inconsistency with a justification attached.
+3. `draw` disputed the reversal and won it. **`iso`'s entire height vocabulary is world
+   pixels** — `gridToScreen` takes `zPx`, `Volume` carries `zPx`/`hPx`, `heightAt` returns
+   pixels, and `footprintBounds`, the case my consistency argument actually rested on, already
+   takes a `heightPx` that has *been* converted. There is no signature in this package a storey
+   could enter through. Exporting it would therefore remove no conversion and instead publish a
+   number the package never reads, which is its own way for a constant to drift.
+
+The distinction that survives is real rather than convenient: **`TILE_W` and `TILE_H` are
+projection facts** — the 2:1 that makes the inverse exact, the diamond two half-planes and the
+depth key a sum — **and `LEVEL_H` is an art proportion**, tuned beside face-shading constants
+that live in `draw` and mean nothing here. My instinct that the split looked arbitrary was
+sound; the resolution is that the line falls between *projection* and *proportion*, not between
+two thirds and one third.
 
 ### 4.4 Camera feel
 
@@ -1451,6 +1457,41 @@ caller shape — a screen position — so there is no `nextSelectableFrom(index,
 focus order over a `DepthSorter`, and no notion of a selected item at all. Worth recording
 rather than leaving implicit, because "find the nearest object north-east of this one" is a
 plausible-sounding request that would drag selection state into a package that has none.
+
+### 4.12 A priority queue, as an export
+
+`iso` builds a binary heap for A\* and Dijkstra, and **does not export it.** `core` refused to
+own it (its §4.9) and I accept the refusal: applying its own charter question — *point at the
+RFCs, not at a guess about who might want one later* — `loop` explicitly refuses priority
+queues in its §4.7 and `sim` is closed-form by construction, so there is exactly one confirmed
+consumer, and one consumer means the consumer owns it. That is the same answer `Rect` and
+entity ids got, and it would be incoherent to want a different one here just because my request
+came with a better argument attached. Their shape distinction is the sharper half anyway:
+`Scope` and `EpochMillis` are *vocabulary* that makes other packages' guarantees enforceable, a
+heap is a generic *container*, and admitting one container admits `Deque` and `RingBuffer` on
+identical reasoning.
+
+Owning it does not mean publishing it. It is one internal module behind `PathFinder` and
+`FlowField`, and exporting it would promise a general-purpose container from a package about
+isometric space.
+
+**It is built to the Lattice ordering rule, which `core` did take**, and which is worth
+restating here because two things in this package are bound by it:
+
+> Anything ordering by a numeric key breaks ties by **insertion sequence** and exposes **no
+> comparator parameter**. A comparator that may return `0` reintroduces the ambiguity the rule
+> exists to remove, and a caller cannot supply a total order over an insertion sequence it
+> cannot see.
+
+That governs the path heap (I13) *and* `DepthSorter`'s ready set (I8) — which is why neither
+takes a comparator, and why `DepthSorter.add` returns the insertion index rather than keeping
+it private. My determinism argument won on the substance and lost on the placement; it survives
+as a kit-wide contract instead of a shared implementation, which is the better outcome, because
+a contract binds the code `draw` writes too.
+
+**The named trigger for revisiting:** the day a second package needs a priority queue it
+**moves** to `core` rather than being written twice. The move is cheap precisely because the
+contract above is already fixed, so what moves is code and not a decision.
 
 ---
 
@@ -1546,7 +1587,7 @@ pop in and out along the bottom edge of the screen.
 **T9 — The visible region is a diamond in grid space, not a rectangle.** Deriving the terrain
 loop from a grid-space rectangle misses the two side corners of the screen and leaves triangular
 holes of unpainted ground when the camera is off-axis. Project the four *screen* corners into
-grid space and take the min/max — `Camera.visibleTiles` does this and over-covers by about 2×,
+grid space and take the min/max — `Camera.visibleTileBounds` does this and over-covers by about 2×,
 which is far cheaper than being clever.
 
 **T10 — `!` is a place where the compiler was told to stop helping.** In the source game
@@ -1650,6 +1691,16 @@ honest cost of being the kit's spatial layer; if the reviewer wants it shorter, 
 to cut are the `rect*` helpers (`draw` and `ui` would then each write four of them) and the
 scalar `gridToWorldX`/`Y` forms (at a measurable per-frame cost).
 
+Two of `iso`'s three listed invariants in `kit.json` should also be restated, because the
+routings sharpened them:
+
+- *"Hit-testing is computed from state and camera, never cached during a draw pass"* — still
+  right, and now joined by **"picking walks the same sorted order that painted, backwards"**,
+  which is the half that `draw` and `iso` have to agree on (I9).
+- Add: **"No public function returns a freshly constructed object"** (I26). It is the
+  constitution's rule 7 restated as something a reviewer can check by reading the `.d.ts`, and
+  `draw` has made the case that it is load-bearing rather than stylistic.
+
 ### 7.2 What still has no owner
 
 Things a game developer would otherwise hand-roll on top of Lattice. None is mine to build.
@@ -1658,7 +1709,9 @@ Things a game developer would otherwise hand-roll on top of Lattice. None is min
 1. **`Vec2` must have mutable fields.** `interface Vec2 { x: number; y: number }`. An
    out-parameter API cannot be handed a `Readonly<Vec2>`, and if core exports the readonly form
    the whole kit ends up with two point types. Core should export the mutable interface and a
-   `freeze`-free convention, not `readonly` fields.
+   `freeze`-free convention, not `readonly` fields. Four packages now want this; I have taken
+   `GridPoint` (§3.0) on the same terms and will re-export `Vec2` from wherever `core` lands it,
+   so that there is exactly one of each in the kit.
 2. **A deterministic binary heap / priority queue with an explicit insertion tie-break.** A* needs
    one, `sim` will want one for its scheduler, and it is core-shaped, not iso-shaped. If core
    does not export it, `iso` will have to, and then two packages own a heap.
