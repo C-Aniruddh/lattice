@@ -313,7 +313,7 @@
         "README.md opens with an example that has actually been run",
         "npm run lint -- --fix leaves kit.json accurate"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-builder",
       "notes": ""
     },
@@ -336,8 +336,8 @@
         "README.md opens with an example that has actually been run",
         "npm run lint -- --fix leaves kit.json accurate"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-builder",
       "notes": ""
     },
     {
@@ -359,7 +359,7 @@
         "README.md opens with an example that has actually been run",
         "npm run lint -- --fix leaves kit.json accurate"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-builder",
       "notes": ""
     },
@@ -382,8 +382,8 @@
         "README.md opens with an example that has actually been run",
         "npm run lint -- --fix leaves kit.json accurate"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-builder",
       "notes": ""
     },
     {
@@ -405,7 +405,7 @@
         "README.md opens with an example that has actually been run",
         "npm run lint -- --fix leaves kit.json accurate"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-builder",
       "notes": ""
     },
@@ -428,7 +428,7 @@
         "README.md opens with an example that has actually been run",
         "npm run lint -- --fix leaves kit.json accurate"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-builder",
       "notes": ""
     },
@@ -453,7 +453,7 @@
         "CatchUp.fromSeconds is REQUIRED, not optional — advanceOver and solveCrossingOver must resume a partially consumed absence without restarting the warp. A crossing is a phase boundary, discovered rather than scheduled; re-entering with a fresh span pays for K absences instead of one, and each restart is cheaper, so the exploit climbs back in through the function that closes it.",
         "OfflineCurve.uncappedSeconds documented as a design constraint: if a standing charge accrues on a cycle, U must exceed that cycle period by a wide margin or the cycle is skippable. The designer meets this at the field they are picking a number for."
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-builder",
       "notes": "From D2. Also: the demo picked exponent 0.625 rather than 0.6 because 5/8 is dyadic, making credited time Tier A via a sqrt chain instead of pow. Check whether the default curve should do the same."
     },
