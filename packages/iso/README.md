@@ -222,7 +222,7 @@ field-only shapes, so write the literal once at setup and reuse it. `Vec2` comes
 |---|---|
 | `projection` | `TILE_W`/`TILE_H`, grid ↔ world both ways and both axes, `worldToTile`, `depthOf`, `isEdgeOn`, `tileDiamond`, `footprintBounds`, and the kit's `Rect` |
 | `camera` | pan, pointer-anchored zoom, `fitBounds` for framing, a clamp that does not invert, `visibleTileBounds`, `visibleWorldBounds`, `normalizedX` for stereo pan, and a policy that reads back and moves live |
-| `depth` | `DepthSorter` — fed footprints, hands back a permutation — and `pickSorted`, which walks the same instance backwards |
+| `depth` | `DepthSorter` — fed footprints, hands back a permutation, and says with `sorted` whether that permutation is still valid for its contents — and `pickSorted`, which walks the same instance backwards |
 | `tilemap` | two storages behind one two-method read interface: `TileGrid` (a bounded world, one typed array) and `tileSourceOf` (an **unbounded** one — a function is defined everywhere, so it has no edge and costs no memory). Writing is `TileGrid` only |
 | `height` | one value per grid **vertex**, sampled bilinearly; `slopeAt` for movement cost; `unitsToPx`/`pxToUnits`, the one conversion between the game's height units and this package's world pixels |
 | `footprint` | occupancy, overlap, flatness, base height, and the anchor a label hangs from |
@@ -284,6 +284,41 @@ by hanging.
 Elevation deliberately does **not** enter the sort. `add` takes `heightPx` for culling only. In
 a 2:1 projection what occludes what is decided entirely on the ground plane; height moves a
 sprite up the screen, it does not move it towards the viewer.
+
+---
+
+## Reading the permutation before it is one
+
+`order.sorted` answers "is this permutation valid for these contents", and `indexAt` and
+`pickSorted` both refuse when it is false — a `TypeError` naming the missing `sort()`, not an
+index.
+
+That refusal is the point, because the state it refuses is *invisible from outside*. Before a
+sort, `count` is the fill count and `indexAt(i)` is `i` — and a sorted, unculled frame whose
+items happened to arrive in depth order is bit-identical to that. So no caller could write the
+check: every detector built on `count` and `indexAt` is a false alarm on a real frame, and the
+frame bucket in `examples/_shared` correctly shipped none and asked for this bit instead. It is
+one boolean, lowered by `add`, `addPoint` and `clear` and raised by `sort`, and because those
+three are the only ways the contents can move it is a statement about the order rather than a
+memory of a call.
+
+| after | `sorted` | `indexAt` / `pickSorted` |
+|---|---|---|
+| `new DepthSorter()` | `false` | throw |
+| `add` / `addPoint` | `false` | throw |
+| `clear` | `false` | throw — `count` is 0, so an unguarded pick would have said "empty ground" |
+| `sort()` | `true` | the permutation |
+| `sort()` that culled everything | `true` | `count` is 0 and a pick is honestly `-1` |
+
+A caller who wants the tolerant version — a tap that can arrive before the first frame has
+rendered — writes `if (order.sorted) …` and decides for itself what silence means. That is the
+other thing publishing the bit is for: the refusal is the default because it is the answer that
+cannot mislead, not because there is only one reasonable policy.
+
+It does **not** claim the cull still matches the camera. A camera that pans after `sort()`
+leaves the survivor set stale, and paint and pick read that same stale set from the same
+instance — so they still agree with each other, which is the property the contract below rests
+on.
 
 ---
 
@@ -357,7 +392,12 @@ side is individually correct and jointly broken:
 
 - **`pickSorted` walks the same `DepthSorter` instance that painted, backwards.** `draw` must
   not reorder after `sort()`. Break it and the tap opens the building *behind* the one under
-  the finger — silent, intermittent, and unreproducible from a screenshot.
+  the finger — silent, intermittent, and unreproducible from a screenshot. **`sorted` now holds
+  up one half of this**: a frame that adds to the sorter, or clears and refills it, between the
+  paint and the tap gets a `TypeError` from `pickSorted` rather than an answer. The other half —
+  a pass that partitions or re-walks `draw`'s *own* item array while leaving the sorter alone —
+  is invisible from here and stays a contract test above both packages. Knowing which half is
+  enforced is worth more than assuming both are.
 - **`boxSilhouette` defines the six-point order** — north-top, east-top, east-base, south-base,
   west-base, west-top — and `draw`'s stroke must trace the same six points in the same order.
   Break it and hit-testing and pixels diverge with no test in either package noticing, because

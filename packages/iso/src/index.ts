@@ -120,7 +120,9 @@ export type { Camera, CameraOptions } from './camera.js';
 //
 // `pickSorted` walks the same sorter instance that painted, backwards. That is a contract with
 // `@lattice/draw`, which must not reorder after `sort()`, and it is why picking is structural
-// rather than a comment someone has to remember.
+// rather than a comment someone has to remember. `DepthSorter.sorted` holds up the half of it
+// that is visible from this side: a sorter refilled between the paint and the tap refuses to be
+// read at all, rather than answering with a permutation that no longer describes the frame.
 
 export { DepthSorter, pickSorted } from './depth.js';
 

@@ -16,6 +16,7 @@ import { describe, expect, it } from 'vitest';
 import { createRng } from '@lattice/core';
 import { DepthSorter, pickSorted } from '../src/depth.js';
 import { createCamera } from '../src/camera.js';
+import type { Camera } from '../src/camera.js';
 import { rectSet } from '../src/projection.js';
 import type { Rect } from '../src/projection.js';
 
@@ -96,7 +97,9 @@ describe('adding', () => {
     s.add(0, 0, 1, 1, 0);
     s.clear();
     expect(s.count).toBe(0);
-    expect(() => s.indexAt(0)).toThrow(/integer index in \[0, 0\), got 0/);
+    // The permutation is a permutation of nothing, so the refusal names *that* rather than the
+    // range — the caller's next step is to refill and sort, not to pick a smaller index.
+    expect(() => s.indexAt(0)).toThrow(/is not sorted/);
     s.add(3, 3, 1, 1, 0);
     expect(s.count).toBe(1);
   });
@@ -111,11 +114,20 @@ describe('adding', () => {
     expect(s.indexAt(0)).toBe(0);
   });
 
-  it('is insertion order before a sort, which is defined rather than useful', () => {
+  it('refuses to be read before a sort, where it used to answer insertion order', () => {
+    // This is the case the whole `sorted` flag is for. Read pre-sort, the permutation below is
+    // `[0, 1]` — and so is a *sorted*, unculled frame whose two items happened to arrive
+    // back-to-front. The two states are bit-identical from outside, so no caller could tell
+    // them apart, and the one that read this one painted a frame in fill order that looked
+    // very nearly right.
     const s = new DepthSorter(4);
     s.add(9, 9, 1, 1, 0);
     s.add(0, 0, 1, 1, 0);
-    expect(permutation(s)).toEqual([0, 1]);
+    expect(() => s.indexAt(0)).toThrow(TypeError);
+    expect(() => s.indexAt(0)).toThrow(/is not sorted — sort\(\) has not run since the last add\(\) or clear\(\)/);
+    // And the same scene sorted: the answer the pre-sort read was impersonating.
+    s.sort();
+    expect(permutation(s)).toEqual([1, 0]);
   });
 });
 
@@ -391,5 +403,141 @@ describe('pickSorted', () => {
     const s = new DepthSorter(4);
     s.sort();
     expect(pickSorted(s, () => true)).toBe(-1);
+  });
+
+  it('refuses a sorter that was refilled after it painted, rather than answering', () => {
+    // The `draw`-side half of I9 that this package can actually see: paint, then add, then
+    // tap. The permutation no longer covers the contents, so every answer it could give names
+    // an item at a slot the sort never placed.
+    const s = new DepthSorter(8);
+    s.add(0, 0, 1, 1, 0);
+    s.add(4, 4, 1, 1, 0);
+    s.sort();
+    expect(pickSorted(s, () => true)).toBe(1);
+    s.add(8, 8, 1, 1, 0);
+    expect(() => pickSorted(s, () => true)).toThrow(TypeError);
+    expect(() => pickSorted(s, () => true)).toThrow(/pickSorted: this order is not sorted/);
+  });
+
+  it('refuses a cleared sorter instead of reporting empty ground', () => {
+    // `count` is 0 here, so the walk below would never reach `indexAt` and the guard in
+    // `pickSorted` is the only thing between the caller and a `-1`. That `-1` is the dangerous
+    // shape: it does not look like a failure, it looks like the player tapping grass.
+    const s = new DepthSorter(4);
+    s.add(0, 0, 1, 1, 0);
+    s.sort();
+    s.clear();
+    expect(s.count).toBe(0);
+    expect(() => pickSorted(s, () => true)).toThrow(/is not sorted/);
+  });
+});
+
+describe('the sorted flag', () => {
+  /**
+   * What the flag asserts is not "sort has been called" but "the permutation is valid for the
+   * contents", and the difference is the whole design: `add`, `addPoint` and `clear` are the
+   * only three ways the contents can move, so lowering it in those three makes the cheap bit
+   * and the honest question the same bit. These tests are written against the honest question.
+   */
+  it('is false on a new sorter, true after a sort, and false again after any fill', () => {
+    const s = new DepthSorter(4);
+    expect(s.sorted).toBe(false);
+    s.sort();
+    expect(s.sorted).toBe(true);
+    s.add(0, 0, 1, 1, 0);
+    expect(s.sorted).toBe(false);
+    s.sort();
+    expect(s.sorted).toBe(true);
+    s.addPoint(2, 2, 0);
+    expect(s.sorted).toBe(false);
+    s.sort();
+    s.clear();
+    expect(s.sorted).toBe(false);
+  });
+
+  it('survives reading the permutation, and a second sort', () => {
+    // Reads do not consume it: `each` and a pick in the same frame are two walks of one sort.
+    const s = new DepthSorter(4);
+    s.add(0, 0, 1, 1, 0);
+    s.add(3, 3, 1, 1, 0);
+    s.sort();
+    expect(s.indexAt(0)).toBe(0);
+    expect(pickSorted(s, () => true)).toBe(1);
+    expect(s.sorted).toBe(true);
+    s.sort();
+    expect(s.sorted).toBe(true);
+  });
+
+  it('stays raised through a rejected add, which stored nothing', () => {
+    // A throwing `add` leaves the contents untouched, so the permutation is still valid for
+    // them. Lowering the flag there would turn one named error into two — the argument error
+    // the caller has to fix, and a spurious "not sorted" on the next read.
+    const s = new DepthSorter(4);
+    s.add(0, 0, 1, 1, 0);
+    s.sort();
+    expect(() => s.add(0, 0, 0, 1, 0)).toThrow(RangeError);
+    expect(s.sorted).toBe(true);
+    expect(s.indexAt(0)).toBe(0);
+    expect(s.count).toBe(1);
+  });
+
+  it('stays down when the caller’s camera throws mid-cull', () => {
+    // `#cull` runs the caller's `isVisible` and writes `#order` as it goes, so a throw from
+    // there leaves a permutation of neither the old contents nor the new. Raising the flag on
+    // entry to `sort` would publish that wreckage as sorted.
+    const cam = createCamera(400, 300, { bounds: rectSet(rect(), -1e6, -1e6, 1e6, 1e6) });
+    let calls = 0;
+    const flaky: Camera = {
+      ...cam,
+      isVisible(): boolean {
+        calls += 1;
+        if (calls > 1) throw new RangeError('the camera said no');
+        return true;
+      },
+    };
+    const s = new DepthSorter(4);
+    s.add(0, 0, 1, 1, 0);
+    s.add(3, 3, 1, 1, 0);
+    expect(() => s.sort(flaky)).toThrow(/the camera said no/);
+    expect(s.sorted).toBe(false);
+    expect(() => s.indexAt(0)).toThrow(TypeError);
+    // And it recovers: the contents were never touched, so a sort that completes is enough.
+    s.sort();
+    expect(permutation(s)).toEqual([0, 1]);
+  });
+
+  it('is true after a cull that removed everything — sorted and empty is a state, not a gap', () => {
+    // The distinction the flag exists to draw, in its sharpest form: `count` is 0 here for the
+    // same reason it is 0 on a cleared sorter, and only `sorted` separates "nothing survived
+    // the cull" from "nothing has been ordered". A pick answers `-1` here and throws there.
+    const cam = createCamera(400, 300, { bounds: rectSet(rect(), -1e6, -1e6, 1e6, 1e6) });
+    cam.centerOnTile(0, 0);
+    const s = new DepthSorter(4);
+    s.add(900, 900, 1, 1, 0);
+    s.sort(cam);
+    expect(s.count).toBe(0);
+    expect(s.sorted).toBe(true);
+    expect(pickSorted(s, () => true)).toBe(-1);
+  });
+
+  it('separates an unsorted frame from a sorted, unculled one that is bit-identical to it', () => {
+    // The reason a detector could not be written above this package. Two sorters, same three
+    // footprints added in depth order; one is sorted and one is not, and `count` and every
+    // `indexAt` agree on both. `sorted` is the only bit that differs.
+    const boxes = [
+      { gx: 0, gy: 0, w: 1, d: 1, h: 0 },
+      { gx: 2, gy: 2, w: 1, d: 1, h: 0 },
+      { gx: 4, gy: 4, w: 1, d: 1, h: 0 },
+    ] as const;
+    const unsorted = new DepthSorter(8);
+    const sorted = new DepthSorter(8);
+    fill(unsorted, boxes);
+    fill(sorted, boxes);
+    sorted.sort();
+    expect(unsorted.count).toBe(sorted.count);
+    expect(permutation(sorted)).toEqual([0, 1, 2]);
+    expect(unsorted.sorted).toBe(false);
+    expect(sorted.sorted).toBe(true);
+    expect(() => unsorted.indexAt(0)).toThrow(TypeError);
   });
 });

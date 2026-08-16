@@ -6,8 +6,11 @@
  * modules are proved by `src/harness.ts` on :5183 instead. `bucket.ts` is pure, so it gets the
  * treatment every other pure module in this repo gets.
  *
- * Each test names the invariant it stands for. Two of them (B6, B7) are not clean passes and say
- * so in their own titles rather than in a comment somebody has to go looking for.
+ * Each test names the invariant it stands for. B6 is not a clean pass and says so in its own
+ * title rather than in a comment somebody has to go looking for. B7 was the other one: it could
+ * not be met from outside `@lattice/iso` and asserted the gap as a tripwire until
+ * `DepthSorter.sorted` arrived. It is a clean pass now, and its block records why it could not
+ * have been one before.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -400,46 +403,68 @@ describe('B6 — a thousand frames of fill/sort/each/pick stay correct and stay 
   });
 });
 
-describe('B7 — NOT MET: an unsorted each paints insertion order instead of throwing', () => {
+describe('B7 — an unsorted each throws instead of painting insertion order', () => {
   /**
-   * `DepthSorter` publishes `count`, `clear`, `add`, `addPoint`, `sort` and `indexAt`, and none of
-   * them distinguishes "not sorted" from "sorted and nothing culled" — before `sort()`,
-   * `order.count === bucket.count` and `indexAt(i) === i`, and a legitimate uncculled frame whose
-   * fill happened to be in depth order is bit-identical to it. The only false-positive-free
-   * detector would be a `sorted` flag on `DepthSorter`, which is `packages/iso`.
+   * This was the one invariant that could not be met from outside `@lattice/iso`, and the
+   * tripwire that said so lived here until the flag arrived.
    *
-   * So this test asserts the **gap**, deliberately, as a tripwire: when `iso` grows the flag and
-   * `each` starts throwing, this test fails and whoever made the change is told where to update.
+   * The reason it could not: `DepthSorter` published `count`, `clear`, `add`, `addPoint`, `sort`
+   * and `indexAt`, and none of them distinguished "not sorted" from "sorted and nothing culled"
+   * — before `sort()`, `order.count === bucket.count` and `indexAt(i) === i`, and a legitimate
+   * unculled frame whose fill happened to be in depth order was bit-identical to it. Every
+   * detector assembled from that surface was a false alarm on a real frame, so this file shipped
+   * none and asserted the gap instead.
+   *
+   * `DepthSorter.sorted` is that missing bit: lowered by `add`, `addPoint` and `clear`, raised by
+   * `sort`, so it answers "is the permutation valid for these contents" rather than "was `sort`
+   * ever called". The throw below comes from `indexAt` inside the bucket's walk — `iso` refuses
+   * to hand out an index from an invalid permutation at all, so the bucket does not need a check
+   * of its own and could not have written a better one.
    */
-  it('walks insertion order when sort() was never called — the wrong picture, quietly', () => {
+  it('throws when sort() was never called, instead of painting the wrong picture quietly', () => {
     const order = new DepthSorter(8);
     const bucket = createBucket<string>(order);
     bucket.add('near', 0, 4, 2, 2, 0);
     bucket.add('far', 0, 0, 2, 2, 0);
+    expect(() => bucket.each(() => undefined)).toThrow(TypeError);
+    expect(() => bucket.each(() => undefined)).toThrow(/is not sorted/);
+    // And sorted, the same scene paints ['far', 'near'] — see the B5 case with the same scene.
+    order.sort();
     const seen: string[] = [];
     bucket.each((item) => {
       seen.push(item);
     });
-    // Sorted, this is ['far', 'near'] — see the B5 case with the same scene.
-    expect(seen).toEqual(['near', 'far']);
+    expect(seen).toEqual(['far', 'near']);
   });
 
-  it('the single-item case is undetectable and also harmless', () => {
-    // With one item the sorted and unsorted permutations are the same array, so nothing could
-    // distinguish them and nothing needs to: the picture is identical either way.
+  it('throws on the single-item case too, where the picture would have been identical', () => {
+    // With one item the sorted and unsorted permutations are the same array, so this throw
+    // costs a caller who was going to be lucky. That is the right trade: the flag is a property
+    // of the order, not of the scene, and a rule that held for every frame except the ones with
+    // one item in them would be a rule nobody could rely on.
     const order = new DepthSorter(8);
     const bucket = createBucket<string>(order);
     bucket.add('only', 0, 0, 1, 1, 0);
-    const before: string[] = [];
-    bucket.each((item) => {
-      before.push(item);
-    });
+    expect(() => bucket.each(() => undefined)).toThrow(/is not sorted/);
     order.sort();
     const after: string[] = [];
     bucket.each((item) => {
       after.push(item);
     });
-    expect(before).toEqual(after);
+    expect(after).toEqual(['only']);
+  });
+
+  it('throws from pick as well, where the answer would have been a confident wrong item', () => {
+    // `pick` walks the same order backwards, so the same bit governs it. Unsorted, the walk
+    // would have named whatever item held the last slot — "the player tapped this" about a
+    // permutation that no sort produced.
+    const order = new DepthSorter(8);
+    const bucket = createBucket<string>(order);
+    bucket.add('near', 0, 4, 2, 2, 0);
+    bucket.add('far', 0, 0, 2, 2, 0);
+    expect(() => bucket.pick(() => true)).toThrow(/is not sorted/);
+    order.sort();
+    expect(bucket.pick(() => true)).toBe('near');
   });
 
   it('an item added by hand with no bucket fill still throws, by the count guard', () => {

@@ -8,6 +8,25 @@
  * is genuinely ours is narrower and sharper — *given a set of ground footprints, what order do
  * they occlude in* — and that is a permutation of integers with no notion of an item at all.
  *
+ * ## The frame-bucket rule
+ *
+ * The integers handed back here index **one** array, and the caller owns it:
+ *
+ * > One sorter per frame, one item array per sorter, and every drawable in the frame goes
+ * > through the same fill. `add` returns the slot to write the item into; `indexAt` and
+ * > `pickSorted` hand that same slot back.
+ *
+ * It is stated here rather than left to each caller because breaking it does not crash. An
+ * insertion index is an index into the *fill*, not into any of the collections that fed it, so
+ * a frame that keeps buildings in one array and walkers in another has to translate — and the
+ * `items[index - buildings.length]` that does the translating is a guess about how many items
+ * the first collection contributed this frame. It is right until the frame the counts differ,
+ * and then a tap opens the building *behind* the one under the finger: intermittent, invisible
+ * in a screenshot, and with nothing in either array to say which one is wrong.
+ *
+ * `docs/rfc/depth-bucket.md` is the long version, and `examples/_shared`'s `createBucket` is
+ * the helper that makes the two writes a single call so they cannot drift apart.
+ *
  * ## Why this is not a comparison sort
  *
  * The isometric occlusion rule is
@@ -100,6 +119,9 @@ export class DepthSorter {
 
   #added = 0;
   #count = 0;
+  /** Whether `#order[0, #count)` is a sort's output over the current contents. See the getter
+   *  — the whole value of this bit is in what lowers it, not in what raises it. */
+  #sorted = false;
 
   /** @param capacity Items to pre-allocate for. Grows by doubling; sized right it never
    *   grows, which is the difference between an allocation-free frame and one that pauses
@@ -127,11 +149,43 @@ export class DepthSorter {
     return this.#count;
   }
 
+  /**
+   * Whether the permutation is currently valid for the contents — the only question a reader
+   * of {@link DepthSorter.indexAt} needs answered, and the reason it is phrased that way.
+   *
+   * Not "has `sort` ever been called". {@link DepthSorter.add}, `addPoint` and
+   * {@link DepthSorter.clear} lower it, because they change the set the permutation is a
+   * permutation *of*, and those three are the only ways the contents can move. So the honest
+   * question and the cheap flag are the same bit, and the name is about the order rather than
+   * about a call in the past.
+   *
+   * **It exists because nothing else on this surface can tell the two states apart.** Before a
+   * sort, `count` is the fill count and `indexAt(i)` is `i` — and an unculled frame whose items
+   * happened to arrive in depth order is bit-identical to that. Every detector assembled from
+   * `count` and `indexAt` is therefore a false alarm on a real frame, which is why the frame
+   * bucket above this package shipped no detector at all and routed the gap back here: one bit
+   * that only this class can set closes it, and nothing outside could.
+   *
+   * What it deliberately does **not** claim is that the cull still matches the camera. A camera
+   * that pans after `sort()` leaves the survivor set stale, and that is not this flag's
+   * business: paint and pick read the same stale set from the same instance, so they still
+   * agree with each other, and agreement is the property the contract with `@lattice/draw`
+   * actually rests on.
+   */
+  get sorted(): boolean {
+    return this.#sorted;
+  }
+
   /** Drop every item, keeping the buffers. Call it once at the top of the frame — a sorter
    *  that is not cleared paints last frame's world underneath this one's. */
   clear(): void {
     this.#added = 0;
     this.#count = 0;
+    // The permutation is now a permutation of nothing. `add` lowers the flag too, so no
+    // *index* read could survive this line either way — what this lowering buys is that the
+    // flag is honest in the window between the clear and the first add, where `count` is 0 and
+    // an unguarded `pickSorted` would answer "nothing is there" about a world it has not seen.
+    this.#sorted = false;
   }
 
   #grow(): void {
@@ -170,8 +224,12 @@ export class DepthSorter {
    *   plus the object's own height. Under-declare it and the roof pops as the base leaves the
    *   screen; over-declare it and you draw a few items you did not need to. The sort never
    *   reads it.
-   * @returns the insertion index. **Keep it**: it is how the caller maps a sorted position
-   *   back to its own item, and it is the sort's final tie-break.
+   * @returns the insertion index. **Keep it in the frame's one item array, at exactly this
+   *   slot** — `items[order.add(…)] = thing` — because that slot is what `indexAt` hands back
+   *   at paint time and what `pickSorted` answers with on a tap. Keeping it anywhere else (a
+   *   second array, a map keyed by something else, an offset into the collection this item
+   *   came from) is the frame-bucket rule in this module's header, broken. It is also the
+   *   sort's final tie-break.
    * @throws RangeError if `w` or `d` is not a positive finite number. A zero-extent footprint
    *   is incomparable with everything that shares either of its spans, which is not a corner
    *   case but the exact condition the readiness test in this module's header relies on being
@@ -197,6 +255,11 @@ export class DepthSorter {
     this.#depth[i] = gx + w + (gy + d);
     this.#order[i] = i;
     this.#count = this.#added;
+    // The permutation no longer covers the contents — it is short by this item. Lowered here
+    // rather than on entry so that a *rejected* add, which stored nothing, leaves a sorted
+    // order sorted: the caller's mistake was the argument, and invalidating a good permutation
+    // as a side effect of throwing would turn one named error into two.
+    this.#sorted = false;
     return i;
   }
 
@@ -225,10 +288,17 @@ export class DepthSorter {
    * them would forget the height, which pops skylines in and out along the bottom edge.
    *
    * @param camera Omit to sort without culling — useful for tests and for offscreen passes.
+   *   Culling reads `camera.isVisible`, which is the caller's code; if it throws, this method
+   *   leaves {@link DepthSorter.sorted} down rather than half-raised.
    */
   sort(camera?: Camera): void {
     const n = this.#cull(camera);
     this.#count = n;
+    // Raised after the cull, not on entry: `#cull` calls the caller's `camera.isVisible`, and a
+    // throw from there leaves `#order` half-rewritten — a permutation of neither the old
+    // contents nor the new. Everything below this line is arithmetic over typed arrays and
+    // cannot throw, so this is the first point at which the flag would be true.
+    this.#sorted = true;
     if (n <= 1) return;
 
     const x0 = this.#x0;
@@ -323,14 +393,32 @@ export class DepthSorter {
    * The **insertion index** at sorted position `i`, `0 ≤ i < count`, back to front.
    *
    * This is the whole output: `for (let i = 0; i < s.count; i++) paint(items[s.indexAt(i)])`
-   * is the painter's algorithm, correctly. Before {@link DepthSorter.sort} it is insertion
-   * order, which is a defined answer rather than a useful one.
+   * is the painter's algorithm, correctly.
    *
-   * @throws RangeError outside `[0, count)`. An out-of-range read would return `undefined`
-   *   from the typed array, and the `!` someone would reach for to silence that is how a
-   *   renderer ships a black screen.
+   * @throws TypeError if {@link DepthSorter.sorted} is false — before the first `sort()`, or
+   *   after an `add` or a `clear` invalidated the permutation. This used to return insertion
+   *   order, "a defined answer rather than a useful one", and defined was the problem: it is
+   *   indistinguishable from a sorted, unculled frame, so the caller got a plausible integer,
+   *   painted a plausible-looking frame in fill order, and picked from a permutation that no
+   *   longer described their items. There is no longer any expression that yields an index
+   *   from an invalid permutation — this method and `pickSorted` are the only two readers, and
+   *   both refuse. A `TypeError` rather than a `RangeError` because `i` is not the wrong value:
+   *   the receiver is in the wrong state, the same kind of mistake as releasing a pooled
+   *   instance twice.
+   * @throws RangeError outside `[0, count)`. Checked second, because before a sort `count` is
+   *   the fill count rather than the survivor count, and a range reported against it would name
+   *   a bound that the caller's next correct step is about to change.
+   *   An out-of-range read would return `undefined` from the typed array, and the `!` someone
+   *   would reach for to silence that is how a renderer ships a black screen.
    */
   indexAt(i: number): number {
+    if (!this.#sorted) {
+      throw new TypeError(
+        `DepthSorter.indexAt: this order is not sorted — sort() has not run since the last add() or clear(). ` +
+          `The permutation here is insertion order wearing a sorted order's clothes: painting it paints ` +
+          `the frame in fill order, and picking from it answers with whatever item happens to hold that slot.`,
+      );
+    }
     if (!Number.isInteger(i) || i < 0 || i >= this.#count) {
       throw new RangeError(
         `DepthSorter.indexAt: expected an integer index in [0, ${String(this.#count)}), got ${String(i)}`,
@@ -388,12 +476,36 @@ export class DepthSorter {
  * broken, which is why the contract is written down above both packages rather than left as a
  * comment each side hopes the other read.
  *
+ * {@link DepthSorter.sorted} now holds up one half of it. A frame that adds, or clears and
+ * refills, between the paint and the tap has changed the permutation under the pick, and that
+ * is the half this can see: it throws instead of answering. The other half — a pass that
+ * partitions or re-walks `draw`'s *own* item array while leaving the sorter alone — is
+ * invisible from here, because nothing about it touches this object; it stays a contract test
+ * above both packages. Knowing which half is enforced is worth more than believing both are.
+ *
+ * @param order the sorter that painted. Named for what it is rather than for its state, now
+ *   that the state is a property on it.
  * @param test receives the insertion index. Hoist it out of the frame — a closure allocated
  *   per tap is a closure allocated per tap, and on a drag that is per pointer event.
+ * @throws TypeError if `order` is not sorted. The loop below would throw from `indexAt` on its
+ *   first step anyway — but not when `count` is 0, and that is the case this guard is really
+ *   for. An unsorted sorter with a count of 0 is an *empty* one, so `-1` would be a true
+ *   statement about the sorter and a false one about the frame: it reads as "the player tapped
+ *   empty ground" when the honest answer is "this order does not know what was painted". A
+ *   caller who genuinely wants the tolerant version — a tap that can arrive before the first
+ *   frame has rendered — writes `if (order.sorted) …` and gets to decide what silence means,
+ *   which is the other thing publishing the bit is for.
  */
-export function pickSorted(sorted: DepthSorter, test: (index: number) => boolean): number {
-  for (let i = sorted.count - 1; i >= 0; i--) {
-    const index = sorted.indexAt(i);
+export function pickSorted(order: DepthSorter, test: (index: number) => boolean): number {
+  if (!order.sorted) {
+    throw new TypeError(
+      `pickSorted: this order is not sorted — sort() has not run since the last add() or clear(). ` +
+        `A pick has to walk the permutation that painted; walking any other one names the wrong item ` +
+        `under the finger, which is the exact bug this function exists to prevent.`,
+    );
+  }
+  for (let i = order.count - 1; i >= 0; i--) {
+    const index = order.indexAt(i);
     if (test(index)) return index;
   }
   return -1;
