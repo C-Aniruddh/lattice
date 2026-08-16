@@ -28,6 +28,14 @@
  * whichever one the bracket happened to contain: a stock that dips, is rescued, and drains again
  * must report the dip.
  *
+ * A **source edge raises the degree of everything downstream by one**, and that changes the root
+ * structure rather than merely the arithmetic: a stock that was constant becomes linear, one that
+ * was linear becomes a parabola with a turning point, and a drain that would never have recovered
+ * now might. All of that is handled — the coefficients come from the same augmented matrix the
+ * integrator uses, and the unit slot is seeded in `coefficients` — but it is the reason a
+ * depletion solve written against "the lowest-order term is linear" is wrong once a game adds its
+ * first flat drip.
+ *
  * Above degree 4 there is no algebraic alternative to want — Abel–Ruffini says the general
  * quintic has no solution in radicals, so "closed form for any graph" is not a thing anyone can
  * ship. That is a theorem, not a budget.
@@ -216,6 +224,10 @@ function coefficients<N extends string, G extends string>(
     term[read] = stocks[id];
     read += 1;
   }
+  // The reserved unit slot every source edge multiplies by. Seeding it here is what makes a
+  // constant inflow appear as a genuine `c₁` in the polynomial rather than as a dropped term —
+  // and a dropped term is a shorter polynomial that still returns a plausible instant.
+  term[eco.order.length] = 1;
   const at = eco.index[node];
   poly[0] = coeff(term, at);
 

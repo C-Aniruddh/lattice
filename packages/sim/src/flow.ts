@@ -21,6 +21,21 @@
  * exponential" never calls `exp` — it is `+ − × ÷` throughout, which is **Tier A**: bit-
  * identical on every conforming engine given the same rates.
  *
+ * ## Sources, and the one extra number in the workspace
+ *
+ * An edge with no `from` is a **source**: `d(to)/dt += rate`, multiplying nothing. That is an
+ * affine term, and an affine term is the *same object* as a node pinned to `1` — `b = A·e` for a
+ * hidden unit node `e` with no incoming edges. So the workspace carries one extra element past
+ * the last node, seeded to `1` at the top of every integration, and `Edge.fromIndex` points a
+ * source at it. Nothing produces `e`, so it sorts first, `A` stays strictly triangular, the
+ * matrix stays nilpotent and the polynomial still terminates — one degree later along a
+ * source-fed chain, which `Economy.depth` already counts. The inner loop never learns that
+ * sources exist.
+ *
+ * The extra slot is workspace and nothing else: it is not a node, it is not in `Economy.nodes`,
+ * and it cannot reach a stock vector or a save. That is the whole point — the workaround it
+ * replaces (a real node held at `1`, or a real node divided back out) *did* reach the save.
+ *
  * ## What a `Flow` is, and the two ways to break it
  *
  * A `Flow` is a mutable scratchpad belonging to exactly one simulated world. Two states advanced
@@ -62,7 +77,7 @@ function slot(array: Float64Array | Int32Array, index: number): number {
 export interface Flow {
   /** Effective rate per edge, parallel to `Economy.edges`. Never resized. */
   readonly rates: Float64Array;
-  /** Workspace: `Economy.index[edge.from]` per edge slot. Opaque. */
+  /** Workspace: `Edge.fromIndex` per edge slot — a node's index, or the unit slot. Opaque. */
   readonly edgeFrom: Int32Array;
   /** Workspace: `Economy.index[edge.to]` per edge slot. Opaque. */
   readonly edgeTo: Int32Array;
@@ -71,7 +86,12 @@ export interface Flow {
   /** Workspace: the polynomial coefficients of a single node's trajectory. Opaque. */
   readonly poly: Float64Array;
   /**
-   * Workspace: `A^k x₀` and `A^(k+1) x₀`.
+   * Workspace: `A^k x₀` and `A^(k+1) x₀`, **one element longer than the node count**.
+   *
+   * The extra element is the reserved unit slot every source edge multiplies by; see the module
+   * header. It is seeded to `1` whenever a vector is read in and is zero from the first matrix
+   * application onwards, because the unit node's row of `A` is empty — which is exactly what
+   * makes an affine term compose like a linear one.
    *
    * Deliberately mutable and deliberately a pair — the integrator swaps the two references
    * rather than copying a vector on every matrix application, which is what keeps the hot path
@@ -94,17 +114,19 @@ export function createFlow<N extends string, G extends string>(eco: Economy<N, G
   const edgeFrom = new Int32Array(count);
   const edgeTo = new Int32Array(count);
   for (const edge of eco.edges) {
-    edgeFrom[edge.slot] = eco.index[edge.from];
+    edgeFrom[edge.slot] = edge.fromIndex;
     edgeTo[edge.slot] = eco.index[edge.to];
   }
+  // `term` and `next` carry the reserved unit slot at `width`; `acc` does not, because nothing
+  // ever accumulates into it and it is never written out.
   return {
     rates: new Float64Array(count),
     edgeFrom,
     edgeTo,
     acc: new Float64Array(width),
     poly: new Float64Array(eco.depth + 1),
-    term: new Float64Array(width),
-    next: new Float64Array(width),
+    term: new Float64Array(width + 1),
+    next: new Float64Array(width + 1),
   };
 }
 
@@ -178,7 +200,10 @@ export function buildFlow<N extends string, G extends string>(
     const scale = edge.scale;
     if (scale !== undefined) {
       const factor = scale(stocks);
-      expectFinite(factor, `sim.buildFlow: scale for edge ${edge.from} → ${edge.to}`);
+      // `source → coin`, never `undefined → coin`: a designer reading the second one greps their
+      // spec for a node they never wrote, and the word `undefined` in a message about *their*
+      // data reads as a bug in this package rather than a description of their edge.
+      expectFinite(factor, `sim.buildFlow: scale for edge ${edge.from ?? 'source'} → ${edge.to}`);
       rate *= factor;
     }
     const gate = edge.gate;
@@ -233,6 +258,10 @@ export function integrate<N extends string, G extends string>(
     term[read] = value;
     read += 1;
   }
+  // The reserved unit slot: `A⁰x̃₀` has a `1` there, and every later power has a `0`, because the
+  // unit node's row of the augmented matrix is empty and `next` is cleared each term. Set it
+  // unconditionally — an economy with no sources simply never reads it.
+  term[width] = 1;
 
   if (seconds > 0) {
     const rates = flow.rates;
@@ -299,9 +328,11 @@ export function ratesOf<N extends string, G extends string>(
     term[read] = stocks[node];
     read += 1;
   }
+  term[eco.order.length] = 1;
   for (const node of eco.order) out[node] = 0;
   for (const edge of eco.edges) {
-    out[edge.to] += slot(flow.rates, edge.slot) * slot(term, eco.index[edge.from]);
+    // `fromIndex`, not `index[from]`: a source reads the unit slot and this loop never branches.
+    out[edge.to] += slot(flow.rates, edge.slot) * slot(term, edge.fromIndex);
   }
   return out;
 }

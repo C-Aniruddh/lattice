@@ -24,6 +24,51 @@ A boundary is not a tick. A tick's cost scales with elapsed time; a boundary's c
 **how many interesting things happened**, and this package's job is to find those instants exactly
 rather than to walk past them at 60 Hz hoping to notice.
 
+### "Linear" does not mean your rate has to be a straight line
+
+Read this before concluding your square root, threshold or milestone is unsupported. It is not,
+and a game built on this kit once wrote a division to work around a restriction that was never
+there.
+
+> **A rate may be any expression you like — `√`, thresholds, milestones, capacity shares, a curve
+> read off a design spreadsheet — as long as it is *piecewise constant in time*.** `EdgeScale` is
+> where those expressions go, and it is the sanctioned way to write them rather than an escape
+> hatch: it is evaluated **once per `buildFlow`** and frozen for the integration that follows, so
+> rebuild at every boundary. The one rate `sim` refuses is one that reads a **stock this graph
+> produces**, because that is a discontinuity inside an integral and it makes the same save answer
+> two ways.
+
+What matters is what the rate is a function *of*, never what shape it has:
+
+| a real idle-game rate | function of | legal |
+|---|---|---|
+| every 10th press doubles all presses | a purchased count | yes — `scale: () => milestoneMultiplier(bought, MILESTONES)` |
+| output scales with `√(prestige)` | a banked, player-facing total | yes — `scale: () => Math.sqrt(prestige)` |
+| producers above 100 get a 3× bonus | a purchased count | yes — a threshold inside `scale` |
+| income scales with how far the road reaches | a length the player extends by tapping | yes — and with no `from`, it is a **source** |
+| output ∝ `√(coin you currently hold)` | **a stock this graph produces** | **no, and it must stay no** |
+
+And a rate may multiply **nothing at all**. An edge with no `from` is a *source* —
+`d(to)/dt += per × scale × gate` — which is what an idle economy's headline rate usually is: the
+tick income, the base drip, the thing that pays while the player owns zero of everything.
+
+```ts
+edges: [
+  { to: 'coin', per: 1, gate: 'night', scale: () => coinRate(reach) },  // ← no `from`
+  { from: 'lamp', to: 'coin', per: 0.5 },                               // a plain producer
+]
+```
+
+Written any other way, that first line has to nominate an arbitrary `from` and divide it back out
+inside `scale`, guard the zero so the division is not `0/0`, and keep the nominated node in
+`nodes` — **which is the save's field order**. The workaround reaches the save file. That is why
+`from` is optional.
+
+A source costs the closed form nothing. It is an affine term, and an affine term is the same
+object as a node pinned to `1`: nothing produces that node, so it sorts first, the matrix stays
+strictly triangular and nilpotent, and the polynomial still terminates — one degree later along a
+source-fed chain, which `Economy.depth` counts for you.
+
 ---
 
 ## An evening in a lamplighter's economy
@@ -41,11 +86,14 @@ import {
 import type { CatchUp, Ledger, OfflineCurve, Phase } from '@lattice/sim';
 
 // ── declare the economy once, at load ───────────────────────────────────────
+const prestige = 9;                          // a banked total. changes only when the player acts
 const eco = defineEconomy({
   nodes: ['press', 'coin', 'lamp', 'oil'],   // storage order: a save's field order
   gates: ['dark'],
   edges: [
-    { from: 'press', to: 'coin', per: 0.5 },              // presses make coin, always
+    { to: 'coin', per: 2, gate: 'dark' },                 // a SOURCE: pilgrims tip after dark
+    { from: 'press', to: 'coin', per: 0.5,                // a √ rate, and entirely legal
+      scale: () => Math.sqrt(prestige) },
     { from: 'lamp', to: 'oil', per: -1, gate: 'dark' },   // lamps burn oil, only at night
   ],
 });
@@ -102,21 +150,25 @@ console.log('welcome back:', 'coin', led.stocks.coin.toFixed(0),
 
 ```
 evaluation order: press → coin → lamp → oil | depth 1
-after 60 s of night: coin 240 | oil 720
+after 60 s of night: coin 840 | oil 720
 next press costs 17.18
 buy max with 5,000 coin: 45
 nine hours away credits 5.96 hours
   a lamp guttered 525 s in (real), 525 s credited, during phase 9
   a lamp guttered 11197 s in (real), 11047 s credited, during phase 213
-welcome back: coin 85839 | lamps 1 | oil 6050
+welcome back: coin 282016 | lamps 1 | oil 6050
 ```
 
-Four things to notice in that output.
+Five things to notice in that output.
 
 - **The evaluation order was computed, not declared.** `nodes` is the order a *save* writes its
   fields in, and it never changes; the order the integrator uses comes from Kahn's algorithm over
   the edges. Append a node in v4 and every v1 save still deserialises with its fields where they
   were.
+- **840 coin in that first minute is `8 × 0.5 × √9 × 60` plus `2 × 60`** — a square root and a
+  source, both in closed form, in a graph that is still depth 1. Neither one is a special case and
+  neither one costs an integration step. The save has four fields, which is the four nodes: the
+  source's multiplicand is a workspace slot, not a stock.
 - **Nine hours credited 5.96.** That is the softcap, applied to *time* rather than to yield — so
   every edge in the graph sees the same shortened interval and there is no way to return with more
   of a downstream resource than the producers could have made.
@@ -335,7 +387,10 @@ fail state is a dead save rather than a stake.
 
 **A tick**, and its absence is the package. **A clock, and any signature that accepts a delta.**
 **Cycles, and a numerical fallback for them.** **Consuming edges and self-loops**, and therefore
-exponential decay — a *linear* drain is fully supported and is a forward edge with a negative `per`.
+exponential decay — a *linear* drain is fully supported and is a forward edge with a negative `per`,
+and a flat standing charge is a **source** with a negative `per`. **Any rate that reads a stock this
+graph produces**, which is the one thing `EdgeScale` may not close over; everything else about a
+rate's shape is yours.
 **Clamping**: solve for the crossing and put a boundary there instead, so the clamp becomes a game
 event with a time the player can be told about. **Big-number arithmetic** — a game whose numbers
 approach 9e15 has a prestige problem, not an arithmetic problem. **Randomness** — the economy is a

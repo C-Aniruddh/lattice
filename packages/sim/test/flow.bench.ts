@@ -140,3 +140,50 @@ describe('per absence', () => {
     );
   });
 });
+
+/**
+ * The same fourteen-node graph with one **source** added: a flat drip into `sand`, the root of
+ * the deepest chain, which raises `eco.depth` from 4 to 5.
+ *
+ * The question these two answer is whether a source costs the hot loop anything. It should cost
+ * exactly one more edge and — here, because the source lands on the root of the longest chain —
+ * one more term of the Taylor sum. There is no branch on `from === undefined` anywhere in
+ * `integrate`; a source is a slot index like any other, pointing one past the last node.
+ */
+const sourcedEco = defineEconomy<Node, 'grid'>({
+  nodes: NODES,
+  gates: ['grid'],
+  edges: [
+    { to: 'sand', per: 4 },
+    { from: 'campus', to: 'cluster', per: 0.05 },
+    { from: 'cluster', to: 'agent', per: 0.2, gate: 'grid' },
+    { from: 'agent', to: 'researcher', per: 0.4, gate: 'grid' },
+    { from: 'researcher', to: 'capability', per: 1.1 },
+    { from: 'capability', to: 'capital', per: 0.3 },
+    { from: 'compute', to: 'capability', per: 0.2, gate: 'grid' },
+    { from: 'narrative', to: 'capital', per: 0.05 },
+    { from: 'sand', to: 'memory', per: 0.01 },
+    { from: 'memory', to: 'compute', per: 0.02 },
+    { from: 'power', to: 'compute', per: 0.03, gate: 'grid' },
+    { from: 'water', to: 'power', per: 0.004 },
+    { from: 'lamp', to: 'oil', per: -1, gate: 'grid' },
+  ],
+});
+
+const sourcedFlow = createFlow(sourcedEco);
+buildFlow(sourcedEco, stocks, { grid: 0.85 }, sourcedFlow);
+const sourcedOut = zeroStocks(sourcedEco);
+
+describe('sources', () => {
+  bench(`integrate — 14 nodes, one source, depth ${String(sourcedEco.depth)}`, () => {
+    integrate(sourcedEco, stocks, sourcedFlow, 50_400, sourcedOut);
+  });
+
+  bench('buildFlow — 13 edges, one of them a source', () => {
+    buildFlow(sourcedEco, stocks, { grid: 0.85 }, sourcedFlow);
+  });
+
+  bench('ratesOf — with a source in the graph', () => {
+    ratesOf(sourcedEco, stocks, sourcedFlow, sourcedOut);
+  });
+});

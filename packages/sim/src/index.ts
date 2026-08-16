@@ -18,6 +18,31 @@
  * **how many interesting things happened**, and this package's job is to find those instants
  * exactly rather than to walk past them at 60 Hz hoping to notice.
  *
+ * ## What "linear" does and does not rule out — read this before concluding your rate is impossible
+ *
+ * > **A rate may be any expression you like — `√`, thresholds, milestones, capacity shares, a
+ * > curve read off a spreadsheet — as long as it is *piecewise constant in time*.** `EdgeScale` is
+ * > where those expressions go, and it is the sanctioned way to write them, not a workaround: it
+ * > is evaluated **once per {@link buildFlow}** and frozen for the integration that follows, so
+ * > rebuild at every boundary. The one rate `sim` refuses is one that reads a **stock this graph
+ * > produces**, because that is a discontinuity inside an integral and it makes the same save
+ * > answer two ways.
+ *
+ * The distinction is what the rate is a function *of*, never what shape it has:
+ *
+ * | a real idle-game rate | function of | legal |
+ * |---|---|---|
+ * | every 10th press doubles all presses | a purchased count | yes — `scale: () => milestoneMultiplier(bought, MILESTONES)` |
+ * | output scales with `√(prestige)` | a banked, player-facing total | yes — `scale: () => Math.sqrt(prestige)` |
+ * | producers above 100 get 3× | a purchased count | yes — a threshold inside `scale` |
+ * | income scales with how far the road reaches | a length the player extends by tapping | yes — and with no `from`, it is a **source** |
+ * | output ∝ `√(coin you currently hold)` | **a stock this graph produces** | **no, and it must stay no** |
+ *
+ * And a rate may multiply **nothing at all**: an {@link EdgeSpec} with no `from` is a *source*,
+ * `d(to)/dt += per × scale × gate`. That is what an idle economy's headline rate usually is, and
+ * writing it any other way — nominating a `from` and dividing it back out in `scale` — puts a
+ * node in `EconomySpec.nodes`, which is *the save's field order*, purely to be a multiplicand.
+ *
  * Isomorphic — it runs unchanged in Node with no shims, reads no clock, and takes no delta.
  *
  * The public surface of this package. Every symbol a consumer may use is re-exported here and

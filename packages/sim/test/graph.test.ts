@@ -34,7 +34,10 @@ describe('defineEconomy — the order is computed, never declared', () => {
   it('puts every producer strictly before everything it produces (I1)', () => {
     const eco = defineEconomy(DIAMOND);
     for (const edge of eco.edges) {
-      expect(eco.index[edge.from]).toBeLessThan(eco.index[edge.to]);
+      expect(edge.from).toBeDefined();
+      // Narrowed rather than asserted: `from` is optional on the spec, so reading it as a node id
+      // has to survive the possibility that this edge is a source. None of these are.
+      if (edge.from !== undefined) expect(eco.index[edge.from]).toBeLessThan(eco.index[edge.to]);
     }
   });
 
@@ -416,6 +419,153 @@ describe('defineEconomy — what it refuses, and what the message says', () => {
       edges: [{ from: 'lamp', to: 'oil', per: -1 }],
     });
     expect(eco.depth).toBe(1);
+  });
+});
+
+describe('defineEconomy — the source edge', () => {
+  it('accepts an edge with no `from` and records it as a source', () => {
+    const eco = defineEconomy({ nodes: ['coin'], edges: [{ to: 'coin', per: 3 }] });
+    expect(eco.edges[0]?.from).toBeUndefined();
+    expect(eco.edges[0]?.to).toBe('coin');
+    expect(eco.edges[0]?.per).toBe(3);
+  });
+
+  it('points a source at the reserved unit slot, one past the last node', () => {
+    // The slot is `order.length`, which is the index no node has. That is the whole implementation:
+    // a source is a node pinned to 1, and the workspace is one element longer than the vector.
+    const eco = defineEconomy({
+      nodes: ['coin', 'ore'],
+      edges: [
+        { to: 'coin', per: 3 },
+        { from: 'coin', to: 'ore', per: 1 },
+      ],
+    });
+    expect(eco.order).toEqual(['coin', 'ore']);
+    expect(eco.edges[0]?.fromIndex).toBe(2);
+    expect(eco.edges[1]?.fromIndex).toBe(eco.index.coin);
+  });
+
+  it('counts a source in `depth`, so the polynomial is not truncated (S2)', () => {
+    // A node nothing feeds is constant; a source makes it linear. One edge, one degree.
+    expect(defineEconomy({ nodes: ['coin'], edges: [{ to: 'coin', per: 3 }] }).depth).toBe(1);
+    // And a source into a chain raises everything downstream: `b` is quadratic here, not linear.
+    // The failure this pins is silent — a truncated series still returns a plausible number.
+    const chained = defineEconomy({
+      nodes: ['a', 'b'],
+      edges: [
+        { to: 'a', per: 1 },
+        { from: 'a', to: 'b', per: 1 },
+      ],
+    });
+    expect(chained.depth).toBe(2);
+    expect(degreeOf(chained, 'a')).toBe(1);
+    expect(degreeOf(chained, 'b')).toBe(2);
+  });
+
+  it('does not raise an indegree, so a fed node is still a valid Kahn root', () => {
+    // If a source counted towards indegree, nothing would ever decrement it and this graph would
+    // be reported as a cycle it does not contain.
+    const eco = defineEconomy({
+      nodes: ['coin', 'lamp'],
+      edges: [
+        { to: 'coin', per: 1 },
+        { to: 'lamp', per: 1 },
+        { from: 'lamp', to: 'coin', per: 1 },
+      ],
+    });
+    expect(eco.order).toEqual(['lamp', 'coin']);
+    expect(eco.depth).toBe(2);
+  });
+
+  it('sorts sources first and leaves a source-free spec exactly as it was (S6)', () => {
+    // The existing suite pins DIAMOND's order and edge sequence; this pins that *adding* a source
+    // only prepends. A reordered edge list moves the last bit of every stock in every save.
+    const withSource = defineEconomy({
+      nodes: DIAMOND.nodes,
+      edges: [...DIAMOND.edges, { to: 'bloom', per: 9 }],
+    });
+    const without = defineEconomy(DIAMOND);
+    expect(withSource.order).toEqual(without.order);
+    expect(withSource.edges[0]?.from).toBeUndefined();
+    expect(withSource.edges.slice(1).map((e) => `${String(e.from)}->${e.to}@${String(e.per)}`)).toEqual(
+      without.edges.map((e) => `${String(e.from)}->${e.to}@${String(e.per)}`),
+    );
+  });
+
+  it('is not a self-loop, however the target is named', () => {
+    // `from === to` is the self-loop test, and `undefined === 'heat'` is false. A source into the
+    // node the workaround would have divided by is the case that used to be unspellable.
+    const eco = defineEconomy({ nodes: ['heat'], edges: [{ to: 'heat', per: 1 }] });
+    expect(eco.depth).toBe(1);
+  });
+
+  it('accepts a gated source, and refuses one naming a gate nobody declared (S4)', () => {
+    const gated = defineEconomy({
+      nodes: ['coin'],
+      gates: ['night'],
+      edges: [{ to: 'coin', per: 1, gate: 'night' }],
+    });
+    expect(gated.edges[0]?.gate).toBe('night');
+
+    // Gate validation is keyed on the edge, not on its `from` — so an economy with no gates at all
+    // still accepts a source, and a source naming a phantom gate is still named.
+    expect(defineEconomy({ nodes: ['coin'], edges: [{ to: 'coin', per: 1 }] }).gates).toEqual([]);
+    const message = messageOf(() =>
+      defineEconomy({
+        nodes: ['coin'],
+        gates: ['night'],
+        edges: [{ to: 'coin', per: 1, gate: 'dawn' } as unknown as EdgeSpec<'coin', 'night'>],
+      }),
+    );
+    expect(message).toContain("spec.edges[0].gate names 'dawn', which is not a declared gate");
+  });
+
+  it('refuses an edge with no `to`, and says so by name (S5)', () => {
+    // `to` is where the production lands and there is nowhere else to put it. It never becomes
+    // optional, and the message must name the field rather than reporting a missing node.
+    const message = messageOf(() =>
+      defineEconomy({ nodes: ['coin'], edges: [{ per: 3 } as unknown as EdgeSpec<'coin', never>] }),
+    );
+    expect(message).toBe(
+      'sim.defineEconomy: expected spec.edges[0].to to be a node id string, got undefined',
+    );
+    expect(() =>
+      defineEconomy({ nodes: ['coin'], edges: [{ per: 3 } as unknown as EdgeSpec<'coin', never>] }),
+    ).toThrow(TypeError);
+  });
+
+  it('treats only *absence* as a source — a `from` of null is still a mistake', () => {
+    // The distinction matters because `null` is what a JSON-shaped spec produces for a field
+    // someone meant to fill in, and silently reading it as "no producer" would turn a typo into a
+    // free income stream.
+    expect(
+      messageOf(() =>
+        defineEconomy({
+          nodes: ['a', 'b'],
+          edges: [{ from: null, to: 'b', per: 1 } as unknown as EdgeSpec<'a' | 'b', never>],
+        }),
+      ),
+    ).toBe('sim.defineEconomy: expected spec.edges[0].from to be a node id string, got null');
+  });
+
+  it('still refuses a source whose `to` is not a declared node', () => {
+    expect(
+      messageOf(() =>
+        defineEconomy({
+          nodes: ['coin'],
+          edges: [{ to: 'ghost', per: 1 } as unknown as EdgeSpec<'coin', never>],
+        }),
+      ),
+    ).toContain("spec.edges[0].to names 'ghost', which is not a declared node");
+  });
+
+  it('keeps the save to exactly the declared nodes (S7)', () => {
+    // The finding this whole field exists for: the workaround put a node in `nodes` — which *is*
+    // the save's field order — purely to be a multiplicand. The unit slot is workspace and cannot
+    // be addressed from a stock vector.
+    const eco = defineEconomy({ nodes: ['coin'], edges: [{ to: 'coin', per: 3 }] });
+    expect(JSON.stringify(zeroStocks(eco))).toBe('{"coin":0}');
+    expect(Object.keys(zeroStocks(eco))).toHaveLength(1);
   });
 });
 

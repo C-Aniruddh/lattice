@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { defineEconomy, zeroStocks } from '../src/graph.js';
+import { defineEconomy, degreeOf, zeroStocks } from '../src/graph.js';
 import type { Economy } from '../src/graph.js';
 import { NO_GATES, buildFlow, createFlow, integrate } from '../src/flow.js';
 import { solveCrossing } from '../src/crossing.js';
@@ -308,5 +308,72 @@ describe('solveCrossing — the guttering loop it exists for', () => {
     expect(gutteredAt[0]).toBe(25);
     // 100/4 = 25, then 10/3, then 10/2, then 10/1 — each exact.
     expect(gutteredAt[3]).toBe(25 + 10 / 3 + 5 + 10);
+  });
+});
+
+describe('solveCrossing — a source edge in the root finder', () => {
+  /** A well filling at 3/s from nowhere, and nothing else. `water(t) = w₀ + 3t`, degree 1. */
+  function well(): Economy<'water', never> {
+    return defineEconomy({ nodes: ['water'], edges: [{ to: 'water', per: 3 }] });
+  }
+
+  it('makes a constant stock linear, and solves it with one divide', () => {
+    // Without the source this node is degree 0 and every level except its own returns Infinity.
+    // The affine term is what gives it a slope at all, so this is the assertion that would notice
+    // a source dropped between `integrate` and `coefficients`.
+    const eco = well();
+    const flow = buildFlow(eco, zeroStocks(eco), NO_GATES, createFlow(eco));
+    expect(solveCrossing(eco, { water: 0 }, flow, 'water', 15, 1000)).toBe(5);
+    expect(solveCrossing(eco, { water: 6 }, flow, 'water', 15, 1000)).toBe(3);
+    // Exact, not bisected: `(15 − 0)/3` is one division in doubles.
+    expect(solveCrossing(eco, { water: 0 }, flow, 'water', 1, 1000)).toBe(1 / 3);
+    // Backwards is still refused as unreachable rather than answered with a negative instant.
+    expect(solveCrossing(eco, { water: 100 }, flow, 'water', 15, 1000)).toBe(Infinity);
+  });
+
+  it('reports the level as reached at zero when the stock is already there', () => {
+    const eco = well();
+    const flow = buildFlow(eco, zeroStocks(eco), NO_GATES, createFlow(eco));
+    expect(solveCrossing(eco, { water: 15 }, flow, 'water', 15, 1000)).toBe(0);
+  });
+
+  it('finds the *first* root of the parabola a source turns a drain into (T5)', () => {
+    // A cistern draining at 4 per bucket per second while a spring refills it at 1/s, with the
+    // buckets themselves being delivered by a second source. `bucket(t) = 1 + t`, so
+    //   water(t) = 30 + ∫ (1 − 4(1 + s)) ds = 30 − 3t − 2t².
+    // That is a downward parabola whose positive root is (−3 + √(9 + 240))/4 = 3.19…, and whose
+    // other root is negative. A solver that assumed the lowest-order term was linear — which is
+    // what "no sources" let it assume — finds 10, the root of `30 − 3t`, and reports a cistern
+    // that lasts three times as long as it does.
+    const eco = defineEconomy({
+      nodes: ['bucket', 'water'],
+      edges: [
+        { to: 'bucket', per: 1 },
+        { to: 'water', per: 1 },
+        { from: 'bucket', to: 'water', per: -4 },
+      ],
+    });
+    expect(degreeOf(eco, 'water')).toBe(2);
+    const flow = buildFlow(eco, zeroStocks(eco), NO_GATES, createFlow(eco));
+    const t = solveCrossing(eco, { bucket: 1, water: 30 }, flow, 'water', 0, 1000);
+    const expected = (-3 + Math.sqrt(9 + 240)) / 4;
+    // Both sides are the same quadratic formula in doubles; the package's is the cancellation-safe
+    // branch and this one is the textbook one, so they differ by at most a few ulps of 3.2 —
+    // ~1e-15. 1e-12 is three orders of margin and eight below the 10 a linear-only solve returns.
+    expect(Math.abs(t - expected) / expected).toBeLessThan(1e-12);
+    expect(t).toBeLessThan(4);
+    // And the answer is a real crossing: integrate to it and the stock is at the level.
+    const at = integrate(eco, { bucket: 1, water: 30 }, flow, t, zeroStocks(eco));
+    // The trajectory's own scale is 30, so an ulp of the instant moves the stock by ~1e-13. 1e-9
+    // is four orders of margin on that and still far below any structural error.
+    expect(Math.abs(at.water)).toBeLessThan(1e-9);
+  });
+
+  it('is unreachable for a source that carries the stock away from the level', () => {
+    const eco = defineEconomy({ nodes: ['debt'], edges: [{ to: 'debt', per: -2 }] });
+    const flow = buildFlow(eco, zeroStocks(eco), NO_GATES, createFlow(eco));
+    expect(solveCrossing(eco, { debt: 0 }, flow, 'debt', 5, 1000)).toBe(Infinity);
+    // A flat standing charge is the honest spelling of a negative source, and it does reach zero.
+    expect(solveCrossing(eco, { debt: 50 }, flow, 'debt', 0, 1000)).toBe(25);
   });
 });

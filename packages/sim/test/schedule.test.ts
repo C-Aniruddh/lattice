@@ -712,3 +712,72 @@ describe('advanceOver — an economy without gates', () => {
     expect(zeroStocks(eco)).toEqual({ a: 0, b: 0 });
   });
 });
+
+describe('the schedule walk with a source edge', () => {
+  /**
+   * The same stopwatch as `world()`, with the clock spelled as a **source** rather than as a node
+   * held at 1. `tick` is still the total credited seconds; there is just no `clock` in the save.
+   */
+  function sourcedWorld(): Economy<'tick' | 'lamp' | 'oil', 'dark'> {
+    return defineEconomy({
+      nodes: ['tick', 'lamp', 'oil'],
+      gates: ['dark'],
+      edges: [
+        { to: 'tick', per: 1 },
+        { from: 'lamp', to: 'oil', per: -1, gate: 'dark' },
+      ],
+    });
+  }
+
+  it('credits a source exactly as it credits a node pinned to one', () => {
+    // The equivalence that makes the optional safe, carried all the way through the phase walk,
+    // the warp and the re-anchoring: two spellings of the same term, agreeing to the bit.
+    const withNode = world();
+    const withSource = sourcedWorld();
+    const nodeFlow = createFlow(withNode);
+    const sourceFlow = createFlow(withSource);
+    const phases = dayNight(24 * HOUR);
+    const plan: CatchUp<'dark'> = {
+      fromSeconds: 0,
+      spanSeconds: 9 * HOUR,
+      phases,
+      curve: CURVE,
+    };
+    const a = advanceOver(withNode, ledgerAt(1e6, 3), nodeFlow, plan, at(9 * HOUR));
+    const b = advanceOver(
+      withSource,
+      { stocks: { tick: 0, lamp: 3, oil: 1e6 }, atMs: asEpochMillis(BASE) },
+      sourceFlow,
+      plan,
+      at(9 * HOUR),
+    );
+    expect(b.stocks.tick).toBe(a.stocks.tick);
+    expect(b.stocks.oil).toBe(a.stocks.oil);
+    // And the save is one field shorter, which is the entire point of the field being optional.
+    expect(Object.keys(b.stocks)).toEqual(['tick', 'lamp', 'oil']);
+  });
+
+  it('finds a crossing on a stock a source feeds (T5)', () => {
+    // `tick` climbs at 1/s from nothing but the source, so the instant it reaches 500 is the
+    // instant 500 credited seconds have passed — a fact the walk has to agree with, and one that
+    // only exists at all if the source survived into `solveCrossingOver`'s coefficients.
+    const eco = sourcedWorld();
+    const flow = createFlow(eco);
+    const start: Ledger<'tick' | 'lamp' | 'oil'> = {
+      stocks: { tick: 0, lamp: 1, oil: 1e6 },
+      atMs: asEpochMillis(BASE),
+    };
+    const plan: CatchUp<'dark'> = {
+      fromSeconds: 0,
+      spanSeconds: 2 * HOUR,
+      phases: [{ atSeconds: 0, gates: LIT }],
+      curve: CURVE,
+    };
+    const crossing = solveCrossingOver(eco, start, flow, plan, 'tick', 500);
+    // Inside the uncapped window, so real and credited seconds are the same number.
+    expect(crossing.creditedSeconds).toBe(500);
+    expect(crossing.atSeconds).toBe(500);
+    const led = advanceOver(eco, start, flow, { ...plan, spanSeconds: crossing.atSeconds }, at(500));
+    expect(led.stocks.tick).toBe(500);
+  });
+});
