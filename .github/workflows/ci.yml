@@ -1,0 +1,52 @@
+name: verify
+
+# The gate, run on every push and every pull request. `npm run verify` is the same command
+# an agent runs locally before it commits, so a green local run and a green CI run mean the
+# same thing — which is the only way a gate stays trusted.
+
+on:
+  push: { branches: [main] }
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20.19', '22', '24']
+    name: node ${{ matrix.node }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
+      - name: size budget
+        run: npm run size
+
+  determinism:
+    runs-on: ubuntu-latest
+    name: bit-identical across runs
+    # Determinism is the kit's first non-negotiable, and the failure mode is a test suite
+    # that passes on one machine and drifts on another. Running the suite twice in separate
+    # processes and diffing the recorded streams is what catches a Set iteration order or a
+    # stray Date.now() that a single run cannot.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24', cache: npm }
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test -- --reporter=json --outputFile=/tmp/run-a.json
+      - run: npm run test -- --reporter=json --outputFile=/tmp/run-b.json
+      - name: same tests, same results
+        run: |
+          node -e "
+            const a = require('/tmp/run-a.json'), b = require('/tmp/run-b.json');
+            const key = r => r.testResults.flatMap(f => f.assertionResults.map(t => t.fullName + ':' + t.status)).sort().join('\n');
+            if (key(a) !== key(b)) { console.error('two runs disagreed'); process.exit(1); }
+            console.log('identical across', a.numTotalTests, 'tests');
+          "

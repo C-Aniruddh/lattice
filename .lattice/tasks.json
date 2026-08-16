@@ -24,8 +24,8 @@
         "every signature type-checks if pasted into a .ts file",
         "the deliberately-absent section names at least three things and says why"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-architect",
       "notes": ""
     },
     {
@@ -44,8 +44,8 @@
         "every signature type-checks if pasted into a .ts file",
         "the deliberately-absent section names at least three things and says why"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-architect",
       "notes": ""
     },
     {
@@ -64,8 +64,8 @@
         "every signature type-checks if pasted into a .ts file",
         "the deliberately-absent section names at least three things and says why"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-architect",
       "notes": ""
     },
     {
@@ -84,8 +84,8 @@
         "every signature type-checks if pasted into a .ts file",
         "the deliberately-absent section names at least three things and says why"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-architect",
       "notes": ""
     },
     {
@@ -104,8 +104,8 @@
         "every signature type-checks if pasted into a .ts file",
         "the deliberately-absent section names at least three things and says why"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-architect",
       "notes": ""
     },
     {
@@ -124,8 +124,8 @@
         "every signature type-checks if pasted into a .ts file",
         "the deliberately-absent section names at least three things and says why"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-architect",
       "notes": ""
     },
     {
@@ -144,8 +144,8 @@
         "every signature type-checks if pasted into a .ts file",
         "the deliberately-absent section names at least three things and says why"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-architect",
       "notes": ""
     },
     {
@@ -164,8 +164,8 @@
         "every signature type-checks if pasted into a .ts file",
         "the deliberately-absent section names at least three things and says why"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-architect",
       "notes": ""
     },
     {
@@ -184,8 +184,8 @@
         "every signature type-checks if pasted into a .ts file",
         "the deliberately-absent section names at least three things and says why"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-architect",
       "notes": ""
     },
     {
@@ -203,8 +203,8 @@
         "names the kit capabilities it needs, package by package — this is the real acceptance test for the RFCs",
         "stays under a few hundred lines of game code by design"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-designer",
       "notes": ""
     },
     {

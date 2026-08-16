@@ -19,6 +19,11 @@ git log --oneline -5
 
 ## 2. Choose this cycle's batch
 
+**First, check for work already in flight.** If any task is `in_progress`, a previous cycle
+dispatched it and it may still be running. Do not dispatch a second agent for it — that is how
+two agents end up in one directory. Either wait for the completion notification, or, if the
+agent is gone and its paths are untouched, reset the task to `todo` and take it this cycle.
+
 A task is **runnable** when its `status` is `todo` and every id in its `dependsOn` is `done`.
 From the runnable set take every task whose `paths` are disjoint from the others you are
 taking — up to **six at once**. Never dispatch two agents whose paths can overlap; they share
