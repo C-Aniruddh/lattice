@@ -23,6 +23,21 @@ These are not preferences. A change that breaks one of these is reverted, not de
    `npm run lint`. A game built on Lattice must be able to replay a session from a seed and
    an input log and land on the same pixel.
 
+   **And it has two tiers, because the language only promises so much.** ECMA-262 specifies
+   `+ - * /`, `Math.sqrt`, `Math.imul` and the bitwise operators exactly. It explicitly does
+   *not* require `sin`, `cos`, `pow`, `exp` or `log` to be correctly rounded, so two
+   conforming engines may disagree in the last bit.
+
+   | | arithmetic | promise | may reach |
+   |---|---|---|---|
+   | **Tier A** | `+ - * /`, `sqrt`, `imul`, bitwise | bit-identical on every engine | hashes, save files, replays, anything |
+   | **Tier B** | `sin`, `cos`, `pow`, `exp`, `log`, … | correct to within an ulp or so | pixels only — never hashed, never persisted |
+
+   Tier B is not banned; a cost curve is `b · r^k` and there is no honest way around that.
+   It is required to **declare itself**: mark the site `@tier-b` and the linter is satisfied.
+   That makes every one of them greppable, so an auditor can ask of each in turn whether it
+   ever reaches a save file.
+
 2. **`@lattice/core` has no dependencies — and neither does anything else.** Not on npm, not
    on each other except along the layering below, not on the DOM unless the package name
    says so. The entire kit installs in one `npm i` with nothing transitive.

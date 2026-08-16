@@ -24,9 +24,9 @@
         "every signature type-checks if pasted into a .ts file",
         "the deliberately-absent section names at least three things and says why"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-architect",
-      "notes": ""
+      "notes": "Two manifest amendments applied: hash split out of rng, assert renamed guard (validators return their argument). Colour maths ruled into draw, not core. Two-tier determinism rule adopted into AGENTS.md and enforced by lint via @tier-b markers. Found the replay gap — routed to persist."
     },
     {
       "id": "A2",

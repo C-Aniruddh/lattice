@@ -3,9 +3,9 @@
  * The house rules, enforced.
  *
  * AGENTS.md lists ten non-negotiables. A rule that is only written down is a rule that is
- * followed until the first hurry, so the seven of them that a machine can check are checked
- * here — determinism, layering, environment purity, import hygiene, doc coverage, the
- * banned-syntax list, and whether `.lattice/kit.json` still describes the code.
+ * followed until the first hurry, so the eight of them that a machine can check are checked
+ * here — determinism and its two tiers, layering, environment purity, import hygiene, doc
+ * coverage, the banned-syntax list, and whether `.lattice/kit.json` still describes the code.
  *
  * This is deliberately a few hundred lines of regex rather than a typed-AST rule set on top
  * of a linter framework. The kit ships with zero dependencies and the tooling holds itself
@@ -136,7 +136,26 @@ for (const [id] of Object.entries(kit.packages)) {
         fail(rel, at, 'determinism', `${nondet[1]} — take a seeded Rng or a timestamp parameter instead`);
       }
 
-      // 2. Environment purity.
+      // 2. The two tiers of determinism.
+      //
+      //    ECMA-262 specifies `+ - * /`, `Math.sqrt`, `Math.imul` and the bitwise operators
+      //    exactly. It explicitly does *not* require `sin`, `cos`, `pow`, `exp` or `log` to
+      //    be correctly rounded, so two conforming engines may disagree in the last bit —
+      //    which is fine for a pixel and fatal for a hash, a save file or a replay.
+      //
+      //    They are not banned, because a cost curve is `b · r^k` and there is no honest way
+      //    around that. They are required to *declare themselves*: mark the site `@tier-b`
+      //    and the result becomes greppable, so an auditor can ask of every one of them
+      //    whether it ever reaches a save file.
+      const transcendental = line.match(/\bMath\.(sin|cos|tan|asin|acos|atan|atan2|pow|exp|log|log2|log10|cbrt|hypot|sinh|cosh|tanh)\b/);
+      if (transcendental) {
+        const window = rawLines.slice(Math.max(0, n - 4), n + 1).join('\n');
+        if (!window.includes('@tier-b')) {
+          fail(rel, at, 'determinism', `Math.${transcendental[1]} is not correctly rounded by spec — mark the site \`@tier-b\` (presentation only, never hashed or persisted) or use Tier A arithmetic`);
+        }
+      }
+
+      // 3. Environment purity.
       if (ISOMORPHIC.has(id)) {
         const dom = line.match(DOM_GLOBALS);
         if (dom) {
@@ -144,7 +163,7 @@ for (const [id] of Object.entries(kit.packages)) {
         }
       }
 
-      // 3. Layering, via the declared dependency set.
+      // 4. Layering, via the declared dependency set.
       const cross = line.match(/from\s+'@lattice\/([a-z0-9-]+)'/);
       if (cross) {
         const dep = cross[1];
@@ -154,7 +173,7 @@ for (const [id] of Object.entries(kit.packages)) {
         }
       }
 
-      // 4. Import hygiene: NodeNext needs the extension, and barrels build invisible cycles.
+      // 5. Import hygiene: NodeNext needs the extension, and barrels build invisible cycles.
       const relImport = line.match(/from\s+'(\.[^']*)'/);
       if (relImport) {
         const spec = relImport[1];
@@ -166,7 +185,7 @@ for (const [id] of Object.entries(kit.packages)) {
         }
       }
 
-      // 5. Banned syntax. `any` erases the type system; `!` turns the compiler off exactly
+      // 6. Banned syntax. `any` erases the type system; `!` turns the compiler off exactly
       //    where it was about to be useful.
       if (/(^|[^.\w])any\b(?!\s*=)/.test(line) && /:\s*any\b|<any>|as any\b/.test(line)) {
         fail(rel, at, 'types', "no `any` — use `unknown` and narrow, or name the type");
@@ -175,7 +194,7 @@ for (const [id] of Object.entries(kit.packages)) {
         fail(rel, at, 'types', 'no non-null assertion — handle the undefined case');
       }
 
-      // 6. Doc coverage on the public surface.
+      // 7. Doc coverage on the public surface.
       const decl = line.match(/^export\s+(?:declare\s+)?(?:abstract\s+)?(?:const|function|class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/);
       if (decl) {
         exported.add(decl[1]);
@@ -198,7 +217,7 @@ for (const [id] of Object.entries(kit.packages)) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 7. kit.json describes the code that exists
+// 8. kit.json describes the code that exists
 // ─────────────────────────────────────────────────────────────────────────────
 
 let kitStale = false;

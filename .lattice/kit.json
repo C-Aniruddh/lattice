@@ -51,6 +51,7 @@
       "dependsOn": [],
       "modules": [
         "rng",
+        "hash",
         "noise",
         "math",
         "easing",
@@ -58,15 +59,17 @@
         "events",
         "pool",
         "format",
-        "assert"
+        "guard"
       ],
       "exports": [
         "VERSION"
       ],
       "invariants": [
         "Zero dependencies and zero DOM references.",
-        "Bit-identical output across platforms: all RNG arithmetic stays in uint32 via Math.imul/>>>/^.",
-        "No module-level mutable state. There is no global Rng, deliberately."
+        "Two tiers of determinism. Tier A uses only arithmetic ECMA-262 specifies exactly (+ - * /, Math.sqrt, Math.imul, bitwise) and is bit-identical everywhere. Tier B uses sin/cos/pow/exp/log, which the spec does not require to be correctly rounded, and is presentation-only: never hashed, never persisted, never replayed. Every Tier B site declares itself with `@tier-b`.",
+        "No module-level mutable state. There is no global Rng, deliberately, and no id counter.",
+        "Sub-streams fork from a stream's identity, not its cursor, so a draw made out of order elsewhere cannot reshuffle this one.",
+        "Validators return their argument rather than taking a boolean \u2014 a boolean has already discarded the value that was wrong, so it cannot name it in the error."
       ]
     },
     "iso": {
