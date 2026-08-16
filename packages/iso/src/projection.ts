@@ -284,7 +284,7 @@ export function footprintBounds(
   // The extreme world x values are at the west corner (gx, gy+d) and the east corner
   // (gx+w, gy); the extreme y values are at the north corner (gx, gy) and the south corner
   // (gx+w, gy+d). Writing them as four expressions rather than four projections and a
-  // min/max is not micro-optimisation — a min/max over projected corners is where a sign
+  // min/max is not micro-optimization — a min/max over projected corners is where a sign
   // error hides, because it still produces a plausible rectangle.
   out.minX = (gx - gy - d) * HALF_W;
   out.maxX = (gx + w - gy) * HALF_W;
@@ -351,7 +351,7 @@ export function rectHeight(r: Readonly<Rect>): number {
   return r.maxY - r.minY;
 }
 
-/** Centre x. Written as `min/2 + max/2` rather than `(min + max) / 2` — or `min + (max -
+/** Center x. Written as `min/2 + max/2` rather than `(min + max) / 2` — or `min + (max -
  *  min) / 2`, which overflows the same way — so that the default ±1e4 bounds scaled up to a
  *  really large world still finds its own middle instead of `Infinity`. Halving is exact in
  *  binary, so this loses nothing for ordinary values. */
@@ -359,7 +359,7 @@ export function rectCenterX(r: Readonly<Rect>): number {
   return r.minX * 0.5 + r.maxX * 0.5;
 }
 
-/** Centre y. See {@link rectCenterX}. */
+/** Center y. See {@link rectCenterX}. */
 export function rectCenterY(r: Readonly<Rect>): number {
   return r.minY * 0.5 + r.maxY * 0.5;
 }

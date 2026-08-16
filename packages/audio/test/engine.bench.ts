@@ -14,7 +14,7 @@ import type { SoundDef } from '../src/sounds.js';
  * allocates if the plan object is ever replaced by a fresh literal.
  *
  * All three are measured with **no device**, which is the honest measurement of the policy
- * layer: the renderer's cost is WebAudio's, and it is not this package's to optimise.
+ * layer: the renderer's cost is WebAudio's, and it is not this package's to optimize.
  */
 
 const TABLE: Record<string, SoundDef> = {

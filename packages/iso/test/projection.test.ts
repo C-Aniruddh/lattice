@@ -258,7 +258,7 @@ describe('Rect', () => {
     expect(rectFromSize(rect(), 1, 2, 4, 6)).toEqual(r);
   });
 
-  it('centres without overflowing on a huge rectangle', () => {
+  it('centers without overflowing on a huge rectangle', () => {
     // `(min + max) / 2` and `min + (max - min) / 2` both overflow to Infinity here;
     // `min/2 + max/2` does not, and halving is exact in binary so nothing is lost.
     const r = rectSet(rect(), -1e308, -1e308, 1e308, 1e308);

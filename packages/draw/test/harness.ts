@@ -20,7 +20,7 @@ import type { Pen } from '../src/surface.js';
 export interface Scene {
   /** The recording backend, so a failure reads as a list of draw calls. */
   readonly surface: RecordingSurface;
-  /** Centred on the origin unless a test moves it. */
+  /** Centered on the origin unless a test moves it. */
   readonly camera: Camera;
   /** `BASE_SLOTS`, live. */
   readonly palette: Palette;

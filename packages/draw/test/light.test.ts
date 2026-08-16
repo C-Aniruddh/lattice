@@ -233,7 +233,7 @@ describe('the composite', () => {
     expect(opsOf(surface, 'alpha')).toHaveLength(0);
   });
 
-  it('takes a packed colour for the tint as readily as a slot', () => {
+  it('takes a packed color for the tint as readily as a slot', () => {
     const { surface, pen } = scene();
     const field = createLightField(surface);
     field.begin(pen, 1, rgba(9, 9, 9));

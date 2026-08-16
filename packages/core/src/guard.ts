@@ -44,8 +44,8 @@ function show(value: unknown): string {
  *
  * Takes `unknown` rather than `number`, which is the whole reason the two public guards below
  * can be used on the save path. A value out of `JSON.parse` is `unknown`, and a guard typed
- * `(value: number)` cannot be applied to one without a cast — so a recogniser either casts
- * (defeating the check it was reaching for) or hand-rolls a `typeof`. The runtime behaviour
+ * `(value: number)` cannot be applied to one without a cast — so a recognizer either casts
+ * (defeating the check it was reaching for) or hand-rolls a `typeof`. The runtime behavior
  * was always correct here; only the signature was refusing the callers it was written for.
  */
 function expectNumber(value: unknown, label: string): number {
@@ -157,11 +157,11 @@ export function expectNonEmpty<T>(items: readonly T[], label: string): readonly 
  * an infinite stock silently returns as nothing. No layer downstream can detect it, which is
  * why the check belongs at the moment of writing rather than the moment of reading.
  *
- * Normalises `-0` to `0`, because `JSON.stringify(-0)` is `"0"` and a value that changes
+ * Normalizes `-0` to `0`, because `JSON.stringify(-0)` is `"0"` and a value that changes
  * across a round trip fails an integrity comparison for a reason nobody will ever find.
  *
  * **This is not a magnitude cap.** `2 ** 60` and `1e308` pass, and they round-trip through
- * JSON exactly — 2^53 is an *arithmetic* limit, not a serialisation one, and the guard for
+ * JSON exactly — 2^53 is an *arithmetic* limit, not a serialization one, and the guard for
  * that is `expectSafeInteger`.
  *
  * @throws RangeError naming the caller and the value.
@@ -230,8 +230,8 @@ export function unreachable(value: never, label: string): never {
 /**
  * Narrow an unknown to a plain object with string keys.
  *
- * The one non-numeric guard here, and it exists because every save recogniser in the kit was
- * otherwise hand-rolling the same six lines. A recogniser receives whatever `JSON.parse`
+ * The one non-numeric guard here, and it exists because every save recognizer in the kit was
+ * otherwise hand-rolling the same six lines. A recognizer receives whatever `JSON.parse`
  * produced — which may be `null`, an array, a string, or a number — and has to get from
  * `unknown` to something it can read a field off. Without this, each one writes its own
  * `typeof x === 'object' && x !== null && !Array.isArray(x)` and half of them forget one of
@@ -240,13 +240,13 @@ export function unreachable(value: never, label: string): never {
  * All three matter, and the two that get forgotten are the interesting ones. **`typeof null`
  * is `'object'`**, so a save whose payload is the literal `null` sails past a naive check and
  * fails later on a property read, at a point that no longer names the save. And an **array is
- * an object**, so a payload that was serialised as `[…]` when the schema expected `{…}` reads
+ * an object**, so a payload that was serialized as `[…]` when the schema expected `{…}` reads
  * as valid until a field comes back `undefined` — which a permissive migration will then
  * happily carry forward as a default.
  *
  * Returns a `Record<string, unknown>` rather than a generic `T`, deliberately. Narrowing to
  * the caller's own type is a *claim*, and this function has checked only the shape; handing
- * back `T` would let a recogniser skip the field checks that are the entire reason it exists.
+ * back `T` would let a recognizer skip the field checks that are the entire reason it exists.
  *
  * @param value - Anything, typically straight out of `JSON.parse`.
  * @param label - The caller's symbol, for the message.
@@ -264,7 +264,7 @@ export function expectObject(value: unknown, label: string): Record<string, unkn
  * Narrow an unknown to a plain object whose every value is a finite number.
  *
  * The shape a stock vector, a resource wallet or a settings blob arrives in, and the one a
- * recogniser most often wants. Checking the values here rather than at first use is what lets
+ * recognizer most often wants. Checking the values here rather than at first use is what lets
  * a corrupt save be *reported* as corrupt instead of turning into `NaN` three subsystems
  * later — and `NaN` is the value that spreads, so the distance between the bad byte and the
  * blank screen is otherwise arbitrary.

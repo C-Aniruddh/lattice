@@ -34,7 +34,7 @@ describe('screenToTile', () => {
     const out = tile();
     for (let gx = 5; gx < 16; gx++) {
       for (let gy = 0; gy < 10; gy++) {
-        // The centre of the tile, projected, must resolve back to that tile.
+        // The center of the tile, projected, must resolve back to that tile.
         const s = gridToScreen(cam, gx + 0.5, gy + 0.5, 0, v2());
         screenToTile(cam, s.x, s.y, out);
         expect([out.gx, out.gy]).toEqual([gx, gy]);
@@ -242,7 +242,7 @@ describe('screenToTileOnHeights', () => {
     const cam = createCamera(800, 600, { bounds: huge() });
     cam.centerOnTile(10, 10);
     const out = tile();
-    // Project the centre of the plateau tile (10, 10) at its own surface height.
+    // Project the center of the plateau tile (10, 10) at its own surface height.
     const s = gridToScreen(cam, 10.5, 10.5, maxHeightPx, v2());
     expect(screenToTileOnHeights(cam, s.x, s.y, field, maxHeightPx, out)).toBe(true);
     expect(out).toEqual({ gx: 10, gy: 10 });

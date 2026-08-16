@@ -59,7 +59,7 @@
  * elevation itself *is* here, as a layer. Anything that draws, including `LEVEL_H`, which is
  * an art proportion and `@lattice/draw`'s. Camera feel: inertia, pinch, edge-scroll and smooth
  * follow need a clock and a pointer, and both live in `@lattice/input`. Steering, avoidance
- * and anything that owns a walker. Entities, components and any scene graph. Serialisation.
+ * and anything that owns a walker. Entities, components and any scene graph. Serialization.
  * Fog of war and line of sight. An incremental replanner — recompute is a few tens of
  * microseconds against an 8 ms budget, and `MutableTileSource.version` makes it happen exactly
  * once. And a priority queue as an export: `iso` builds one, and does not publish it.

@@ -49,7 +49,7 @@ import { MinHeap } from './heap.js';
  *
  * A cost function is the right place to combine layers: terrain type from one `TileGrid`,
  * slope from a `HeightField`, occupancy from another. It is called once per examined
- * neighbour, so keep it arithmetic — no allocation, no `Math.pow`.
+ * neighbor, so keep it arithmetic — no allocation, no `Math.pow`.
  */
 export type TileCost = (gx: number, gy: number) => number;
 
@@ -85,7 +85,7 @@ const TAN_22_5 = 0.4142135623730951;
 /**
  * How a search is allowed to move, shared by {@link PathFinder} and {@link FlowField}.
  *
- * All four fields are *determinism* controls as much as behaviour ones: change any of them
+ * All four fields are *determinism* controls as much as behavior ones: change any of them
  * and the same query returns a different — still optimal — route, so a recorded session
  * replayed against different options diverges at the first junction. Pick them once, per
  * game, and keep them with the save.
@@ -94,7 +94,7 @@ export interface PathOptions {
   /** Allow 8-way movement. Default `true`. */
   readonly diagonals?: boolean;
   /**
-   * Allow a diagonal step when a shared orthogonal neighbour is blocked. Default `false`, and
+   * Allow a diagonal step when a shared orthogonal neighbor is blocked. Default `false`, and
    * leave it false: `true` walks agents through the corner where two walls meet, which looks
    * exactly like clipping through the building.
    */
@@ -427,7 +427,7 @@ export function pathProject(path: Path, gx: number, gy: number): number {
  *
  * A raw 8-way A\* result is a stair of unit steps — a road across open ground comes back as
  * alternating east and south-east moves — and a walker sampled along it weaves from side to
- * side like someone finding their keys in the dark. The artefact reads as "the pathfinder is
+ * side like someone finding their keys in the dark. The artifact reads as "the pathfinder is
  * broken" when the path is in fact optimal. The same staircase also makes `arcLength` about 8%
  * longer than the road looks, which quietly overpays a `reach`-based economy.
  *
@@ -488,12 +488,12 @@ export function pathSimplify(path: Path, cost?: TileCost): void {
 /**
  * Is every tile the straight line from `(x0, y0)` to `(x1, y1)` touches passable?
  *
- * **The line between the node coordinates, not between cell centres.** That distinction is the
+ * **The line between the node coordinates, not between cell centers.** That distinction is the
  * whole of this function's correctness and it cost a bug to find: a Bresenham walk between
- * *tile indices* traces the line between the centres of those tiles, which is a different line
+ * *tile indices* traces the line between the centers of those tiles, which is a different line
  * from the one {@link pathSample} interpolates between the nodes themselves. Pulling a route
  * from `(9, 10)` to `(14, 13)` passes through tile `(10, 11)` on the node line and misses it
- * entirely on the centre line — so the check passed and the crowd walked through the wall.
+ * entirely on the center line — so the check passed and the crowd walked through the wall.
  *
  * A grid-traversal DDA instead: step to whichever axis boundary the ray reaches first, and at
  * an exact corner crossing — which is every crossing on a diagonal between whole nodes —
@@ -548,7 +548,7 @@ function segmentPassable(
       iy += stepY;
     } else {
       // Exactly through a lattice corner with both axes still to cover. Both diagonal
-      // neighbours must be clear, or this is the join of two walls — the same rule the search
+      // neighbors must be clear, or this is the join of two walls — the same rule the search
       // applies with `cutCorners: false`, so a pull can never legalise a step it refused.
       if (!(cost(ix + stepX, iy) > 0)) return false;
       if (!(cost(ix, iy + stepY) > 0)) return false;
@@ -636,7 +636,7 @@ export class PathFinder {
    *   be walked by mistake.
    * @throws RangeError if the cost function returns a non-integer weight for a passable tile.
    *   Float costs are the replay divergence this module's header is about, and one comparison
-   *   per examined neighbour is a cheap price for a bug whose only symptom is two players
+   *   per examined neighbor is a cheap price for a bug whose only symptom is two players
    *   seeing different roads.
    */
   find(
@@ -710,7 +710,7 @@ export class PathFinder {
         }
         const diagonal = (code & 1) === 0;
         if (diagonal && !cutCorners) {
-          // **Both** shared orthogonal neighbours must be passable. Checking only one lets an
+          // **Both** shared orthogonal neighbors must be passable. Checking only one lets an
           // agent slip through the join of two walls from whichever side was not checked.
           if (!(cost(cgx + dx, cgy) > 0) || !(cost(cgx, cgy + dy) > 0)) continue;
         }
@@ -953,8 +953,8 @@ export class FlowField {
       const base = this.#cost[index] as number;
       const gx = this.#gx0 + (index % w);
       const gy = this.#gy0 + ((index / w) | 0);
-      // The sweep runs outward *from* the goals, so what a neighbour pays to reach this tile is
-      // the cost of entering *this* one. Reading the neighbour's weight instead is the classic
+      // The sweep runs outward *from* the goals, so what a neighbor pays to reach this tile is
+      // the cost of entering *this* one. Reading the neighbor's weight instead is the classic
       // off-by-one-tile in a reverse Dijkstra, and it makes a road that is cheap in one
       // direction and expensive in the other.
       const enter = cost(gx, gy);
@@ -981,8 +981,8 @@ export class FlowField {
         const known = this.#cost[nIndex] as number;
         if (known !== -1 && known <= next) continue;
         this.#cost[nIndex] = next;
-        // The neighbour steps back towards this tile, which is the reverse of the direction the
-        // sweep travelled: the codes run round a circle, so the reverse of `c` is `c + 4`
+        // The neighbor steps back towards this tile, which is the reverse of the direction the
+        // sweep traveled: the codes run round a circle, so the reverse of `c` is `c + 4`
         // wrapped into 1..8.
         this.#dir[nIndex] = ((code + 3) % 8) + 1;
         this.#queue.push(nIndex, next, nIndex);

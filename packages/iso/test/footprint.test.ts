@@ -142,7 +142,7 @@ describe('footprintBase', () => {
 });
 
 describe('footprintAnchor', () => {
-  it('hangs from the centre, not the origin corner', () => {
+  it('hangs from the center, not the origin corner', () => {
     // On a 3x3 those are most of a building apart, and anchoring to the corner is what makes
     // a confirm button appear to belong to the building next door.
     const out = anchor();
@@ -150,7 +150,7 @@ describe('footprintAnchor', () => {
     expect(out).toEqual({ gx: 5.5, gy: 7.5, zPx: 40 });
   });
 
-  it('centres a 1x1 at the middle of its own tile', () => {
+  it('centers a 1x1 at the middle of its own tile', () => {
     const out = footprintAnchor(fp(0, 0, 1, 1), 0, anchor());
     expect(out).toEqual({ gx: 0.5, gy: 0.5, zPx: 0 });
   });

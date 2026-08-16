@@ -132,7 +132,7 @@ describe('lerp', () => {
     }
   });
 
-  it('normalises a negative-zero endpoint to +0, which is what survives a round trip', () => {
+  it('normalizes a negative-zero endpoint to +0, which is what survives a round trip', () => {
     // `JSON.stringify(-0)` is `"0"`, so a -0 that came back as -0 would fail an integrity
     // comparison after a save. The multiply form gives +0 here, and that is the better answer.
     expect(Object.is(lerp(-0, 5, 0), 0)).toBe(true);
@@ -260,7 +260,7 @@ describe('mod', () => {
     expect(mod(-0.25, 1)).toBe(0.75);
   });
 
-  it('never returns a negative zero, which would compare equal but serialise differently', () => {
+  it('never returns a negative zero, which would compare equal but serialize differently', () => {
     expect(Object.is(mod(-8, 8), 0)).toBe(true);
     expect(Object.is(mod(-0, 8), 0)).toBe(true);
   });

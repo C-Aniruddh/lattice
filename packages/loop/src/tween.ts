@@ -119,13 +119,13 @@ export interface TweenOptions {
    *
    * Two tweens writing one property is the commonest animation bug there is: each writes its
    * own idea of the value on alternate steps and the thing shudders between two paths.
-   * `slot: 'panel.y'` makes re-targeting mid-flight the default behaviour instead of a thing
+   * `slot: 'panel.y'` makes re-targeting mid-flight the default behavior instead of a thing
    * you remember to do.
    */
   readonly slot?: string;
 
   /**
-   * Fires once, after the final `onUpdate`. **Never fires for a cancelled or slot-displaced
+   * Fires once, after the final `onUpdate`. **Never fires for a canceled or slot-displaced
    * tween** — which is what makes it safe to put "the panel has arrived, enable the buttons"
    * in here, because a re-target must not enable them halfway.
    */
@@ -174,8 +174,8 @@ export interface Tweens {
    * Advance every live tween by `dt` seconds.
    *
    * A tween started from inside an `onUpdate` or `onDone` does **not** step in the same pass,
-   * and one cancelled from inside one never runs again — the classic
-   * mutation-during-iteration crash, and the cancelled-callback-that-fires-once-anyway bug,
+   * and one canceled from inside one never runs again — the classic
+   * mutation-during-iteration crash, and the canceled-callback-that-fires-once-anyway bug,
    * both closed here rather than left to the caller.
    *
    * @throws RangeError if `dt` is negative, `NaN` or infinite.

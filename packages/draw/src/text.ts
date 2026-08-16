@@ -33,7 +33,7 @@
  * It is sound because of a property of this projection specifically: **an axis-aligned vertical
  * face is sheared but not foreshortened.** One world pixel along the wall is one screen pixel,
  * and one world pixel up the wall is one screen pixel, so a unit basis is the wall's own metric
- * and not an approximation of it. Applying the squeeze *on top of* a normalised basis — the
+ * and not an approximation of it. Applying the squeeze *on top of* a normalized basis — the
  * mistake this note exists to prevent — squashes the text horizontally on every long wall.
  */
 
@@ -43,7 +43,7 @@ import { levelsToPx } from './solids.js';
 import type { Pen, TextStyle } from './surface.js';
 
 /**
- * The kit's default text run: a system stack, semibold, centred both ways.
+ * The kit's default text run: a system stack, semibold, centered both ways.
  *
  * Semibold rather than regular because every string this kit draws is either a name on a
  * building at thumbnail size or a number over a rooftop, and regular weight disappears against
@@ -61,8 +61,8 @@ export const DEFAULT_TEXT: TextStyle = Object.freeze({
  * Below this many CSS pixels of wall height, glyphs are mush and {@link wallText} draws nothing
  * at all.
  *
- * Drawing them anyway is what gives a zoomed-out campus a rash of grey smears, which reads as a
- * rendering artefact rather than as text that is too small.
+ * Drawing them anyway is what gives a zoomed-out campus a rash of gray smears, which reads as a
+ * rendering artifact rather than as text that is too small.
  */
 export const MIN_WALL_TEXT_PX = 12;
 
@@ -100,7 +100,7 @@ const SIZED: { size: number; weight: number; family: string; align: -1 | 0 | 1; 
  *
  * The segment `(ax, ay) → (bx, by)` is in grid coordinates and runs along the wall; the band
  * hangs from `ztop` down by `heightLevels`, both in **storeys** like every other height in this
- * package. The text is centred in the band and shrunk to fit if it would overrun the segment.
+ * package. The text is centered in the band and shrunk to fit if it would overrun the segment.
  *
  * **Backends disagree about `measure`** — the recording surface has no fonts and estimates — so
  * a golden test may assert that the shrink branch ran and may not assert where a glyph landed.
@@ -145,7 +145,7 @@ export function wallText(
   SIZED.family = style.family;
   SIZED.align = 0;
   SIZED.baseline = 0;
-  // The advance is already in screen pixels, because the basis below is normalised. A backend
+  // The advance is already in screen pixels, because the basis below is normalized. A backend
   // that has no fonts estimates it, which is why a golden may assert that this branch ran and
   // may not assert where a glyph landed.
   const advance = pen.surface.measure(value, SIZED);

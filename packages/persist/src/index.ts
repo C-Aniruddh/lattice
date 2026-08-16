@@ -59,7 +59,7 @@ export { webStorage, memoryStorage } from './adapters.js';
 export type { StorageLike, StorageAdapter } from './adapters.js';
 
 export { migrations } from './migrate.js';
-export type { Increment, Recognise, MigrationStep, MigrationChain, ChainBuilder } from './migrate.js';
+export type { Increment, Recognize, MigrationStep, MigrationChain, ChainBuilder } from './migrate.js';
 
 export { createStore, inspect, elapsedSince, scheduleFrom } from './store.js';
 export type {

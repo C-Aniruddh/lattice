@@ -9,7 +9,7 @@
  *   a text run — which is the bug that shipped a half-scale campus in the source game;
  * - **`begin` resets everything** — alpha, dash, composite, joins — so a frame can never inherit
  *   the previous one's leak;
- * - **the radial ramp is cached per colour pair**, so a contact shadow under every building is
+ * - **the radial ramp is cached per color pair**, so a contact shadow under every building is
  *   not a `createRadialGradient` under every building.
  */
 
@@ -174,7 +174,7 @@ describe('begin resets every piece of state', () => {
     expect(names.indexOf('clearRect')).toBeLessThan(names.indexOf('fillRect'));
   });
 
-  it('erases and does not fill when the clear colour is transparent', () => {
+  it('erases and does not fill when the clear color is transparent', () => {
     const { surface, canvas } = screen();
     canvas.ctx.calls.length = 0;
     surface.begin(0);
@@ -269,7 +269,7 @@ describe('the primitives', () => {
 });
 
 describe('the radial ramp cache', () => {
-  it('renders one ramp per colour pair, not one per call', () => {
+  it('renders one ramp per color pair, not one per call', () => {
     // `softEllipse` is the contact shadow under every building; a fresh `createRadialGradient`
     // here would be an allocation under every building, every frame.
     const { surface } = screen();
@@ -281,12 +281,12 @@ describe('the radial ramp cache', () => {
   });
 
   it('drops the whole cache rather than growing without bound', () => {
-    // The branch that stops a caller generating colours per frame from turning a cache into a
+    // The branch that stops a caller generating colors per frame from turning a cache into a
     // leak wearing a cache's name.
     const { surface } = screen();
     const first = rgba(3, 5, 7, 200);
     surface.softEllipse(0, 0, 4, 2, first, 0);
-    // Fill past the limit, then ask for the first colour again: if the map had merely grown, it
+    // Fill past the limit, then ask for the first color again: if the map had merely grown, it
     // would still be there and no new ramp would be rendered.
     for (let i = 0; i < 200; i++) surface.softEllipse(0, 0, 4, 2, rgba(i, 200 - i, i, 201), 0);
     const before = dom?.created.length ?? 0;

@@ -154,7 +154,7 @@ describe('held keys', () => {
     expect(camera.x).toBe(-DEFAULT_PROFILE.keyPanPxPerS * 1.5);
   });
 
-  it('normalises the diagonal', () => {
+  it('normalizes the diagonal', () => {
     const { camera, control: c } = control(new Set(['ArrowRight', 'ArrowDown']));
     c.integrate(1000);
     const expected = DEFAULT_PROFILE.keyPanPxPerS / Math.sqrt(2);

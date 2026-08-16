@@ -1,7 +1,7 @@
 {
   "name": "@lattice/input",
   "version": "0.1.0",
-  "description": "Normalised input: pointer, touch, keyboard and gamepad into one event stream, plus gestures, an action map, and a camera controller.",
+  "description": "Normalized input: pointer, touch, keyboard and gamepad into one event stream, plus gestures, an action map, and a camera controller.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",

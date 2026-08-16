@@ -115,11 +115,11 @@ export const FLAG_GHOST = 8;
  */
 export interface SolidWriter {
   /**
-   * The frame's palette, for a massing that genuinely has to branch on a colour.
+   * The frame's palette, for a massing that genuinely has to branch on a color.
    *
    * **A measuring replay has no frame**, so it sees the kit's `BASE_SLOTS` rather than the
    * game's live palette. Branch on {@link Variant}, which is guaranteed identical in both
-   * replays; branching on a colour here means `spriteBounds` can disagree with the pixels.
+   * replays; branching on a color here means `spriteBounds` can disagree with the pixels.
    */
   readonly palette: Palette;
   /** A flat tile diamond. See `isoTile`. */
@@ -215,7 +215,7 @@ export interface SpriteDef {
    * buffer, and separate from `massing` because light is never static. This is the answer to
    * "how does a lamp's radius reach the night mask without the mask knowing what a lamp is": it
    * does not — the lamp posts a pool, and a pool is a position, a radius, an intensity and a
-   * colour.
+   * color.
    */
   readonly emit?: Emitter | undefined;
 }
@@ -315,7 +315,7 @@ class PenWriter implements SolidWriter {
   ox = 0;
   /** See {@link PenWriter.ox}. */
   oy = 0;
-  /** When set, every fill becomes this colour — the placement ghost's legality tint. */
+  /** When set, every fill becomes this color — the placement ghost's legality tint. */
   tint: Rgba | undefined = undefined;
   /** Storeys added to every height, so a ghost floats clear of the ground it is testing. */
   lift = 0;
@@ -323,7 +323,7 @@ class PenWriter implements SolidWriter {
    *  composes, so the composition has to happen here. */
   fade = 1;
 
-  /** A `BoxOpts` the writer owns, so overriding a colour or a height costs no object. Handed
+  /** A `BoxOpts` the writer owns, so overriding a color or a height costs no object. Handed
    *  straight to `isoBox`, which never retains it. */
   private readonly opts: {
     color: Ink;

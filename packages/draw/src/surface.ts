@@ -61,7 +61,7 @@ export type BlitMode = 'over' | 'add' | 'cut';
  * Per call and not as state, because a font left set on a 2D context is the classic Canvas2D
  * leak: the next caller inherits it and the symptom appears somewhere unrelated to the cause.
  *
- * `align` and `baseline` are `-1 | 0 | 1` (start | centre | end) rather than strings, so a
+ * `align` and `baseline` are `-1 | 0 | 1` (start | center | end) rather than strings, so a
  * backend switches on a number and a golden log records an integer rather than a word that
  * two backends might spell differently.
  */
@@ -73,7 +73,7 @@ export interface TextStyle {
   /** CSS font family list. The kit ships no fonts — rule 8 — so this is always a stack of
    *  system faces, and a golden test must not assert glyph positions because of it. */
   readonly family: string;
-  /** Horizontal anchor: -1 start, 0 centre, 1 end. */
+  /** Horizontal anchor: -1 start, 0 center, 1 end. */
   readonly align: -1 | 0 | 1;
   /** Vertical anchor: -1 top, 0 middle, 1 bottom. */
   readonly baseline: -1 | 0 | 1;
@@ -141,7 +141,7 @@ export interface Surface {
   /**
    * Fill a **convex** polygon given as `count` xy pairs from the start of `xy`.
    *
-   * Convex is the contract, not an optimisation: it is what lets a GPU backend fan-triangulate
+   * Convex is the contract, not an optimization: it is what lets a GPU backend fan-triangulate
    * in place with no tessellation library. Every face of every iso solid in this kit is convex;
    * if a shape is not, the sprite author splits it, because they know how and a general
    * tessellator does not.
@@ -149,11 +149,11 @@ export interface Surface {
   poly(xy: Float64Array, count: number, fill: Rgba): void;
 
   /**
-   * Fill a convex polygon with a linear colour ramp along the screen-space segment
+   * Fill a convex polygon with a linear color ramp along the screen-space segment
    * `(x0,y0) → (x1,y1)`.
    *
    * Two stops, no gradient object. This is the cylinder body and the sky backdrop, and it is
-   * per-vertex colour on a GPU. A `createLinearGradient`-shaped API would allocate an object
+   * per-vertex color on a GPU. A `createLinearGradient`-shaped API would allocate an object
    * per cylinder per frame and hand WebGL something it cannot honour.
    */
   polyRamp(
@@ -188,7 +188,7 @@ export interface Surface {
   ellipse(cx: number, cy: number, rx: number, ry: number, fill: Rgba): void;
 
   /**
-   * An ellipse with a radial falloff from `inner` at the centre to `outer` at the rim.
+   * An ellipse with a radial falloff from `inner` at the center to `outer` at the rim.
    *
    * The single most load-bearing call in the kit's look: it is the contact shadow that grounds
    * a building and the halo on a glow dot. A primitive rather than a gradient object because a
@@ -283,7 +283,7 @@ export interface Pen {
   readonly surface: Surface;
   /** The transform. `draw` reads it and never moves it — panning is `input`'s. */
   readonly camera: Camera;
-  /** Slot → colour for this frame. Its `rev` is what keeps any cache honest. */
+  /** Slot → color for this frame. Its `rev` is what keeps any cache honest. */
   readonly palette: Palette;
   /** Seconds since the session began. The only clock in this package, and it arrives here as a
    *  parameter — nothing under `src/` reads one. */
@@ -330,7 +330,7 @@ export interface FrameOpts {
   readonly surface: Surface;
   /** The transform for this frame. */
   readonly camera: Camera;
-  /** Slot colours for this frame. */
+  /** Slot colors for this frame. */
   readonly palette: Palette;
   /** Seconds since the session began. From `loop`; this package never reads a clock. */
   readonly t: number;
@@ -391,7 +391,7 @@ export function beginFrame(opts: FrameOpts): Pen {
   opts.surface.begin(clear);
   const snap = opts.snap !== false;
   const ratio = opts.surface.pixelRatio;
-  // The world origin rather than the camera centre: the camera centre projects to the middle
+  // The world origin rather than the camera center: the camera center projects to the middle
   // of the viewport by definition and carries no information about the pan at all, so snapping
   // to it would be a no-op that looked like a fix.
   return {

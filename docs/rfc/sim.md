@@ -377,7 +377,7 @@ export declare function reanchor<N extends string>(ledger: Ledger<N>, atMs: Epoc
 
 #### What a ledger may contain
 
-Raised by `persist`: **`Infinity` serialises to `null` in JSON, with a perfectly valid
+Raised by `persist`: **`Infinity` serializes to `null` in JSON, with a perfectly valid
 checksum** — the worst possible failure, because every layer reports success and the state comes
 back with a hole in it. A closed-form integrator is exactly the thing that can produce one.
 
@@ -509,7 +509,7 @@ export interface OfflineCurve {
  * credited window — a dupe with a plausible-looking formula. Warping the clock cannot, because
  * every edge in the graph sees the same shortened interval.
  *
- * The `U^(1−e)` normalisation is the whole trick; see §6 for the two near-misses.
+ * The `U^(1−e)` normalization is the whole trick; see §6 for the two near-misses.
  *
  * @tier B in general — a fractional `**`. **Tier A when `exponent` is a dyadic rational with
  *   denominator ≤ 64** (0.5, 0.75, 0.625, …), which the implementation must compute as a chain
@@ -578,7 +578,7 @@ Three things that follow, because the cap alone is not enough:
    wrong.
 3. **Reporting the gap and crediting it are different questions.** `sim` never rewrites the raw
    elapsed time; a game showing "you were away for a year" from a bad device clock is a copy
-   problem, and a game that wants to say something sceptical instead compares the gap against its
+   problem, and a game that wants to say something skeptical instead compares the gap against its
    own plausibility threshold. Only the game knows its session cadence, so only the game can set
    that number.
 
@@ -906,7 +906,7 @@ export declare function bulkCost(curve: CostCurve, owned: number, count: number)
 /**
  * `floor( log_r( c(r−1)/(b·r^k) + 1 ) )`, corrected for float rounding, clamped to `cap`.
  *
- * **Closed form on day one, not as an optimisation.** "Buy max" at 4,000 owned is 4,000
+ * **Closed form on day one, not as an optimization.** "Buy max" at 4,000 owned is 4,000
  * `Math.pow` calls on a hot path, run once per frame to render a button's *label*. The naive
  * loop is a legitimate oracle in a test and a performance bug in a build.
  *
@@ -1130,7 +1130,7 @@ and I am not porting it: it requires an action vocabulary and a kit has no busin
 **10. Formatting.** `4.72M` is `core`'s `format`. Related trap for whoever owns it: `toFixed(0)`
 switches to exponential at 1e21 and puts `e+` into a UI string.
 
-**11. Serialisation and migration.** `Ledger` and `IdSource` are JSON-shaped by construction and
+**11. Serialization and migration.** `Ledger` and `IdSource` are JSON-shaped by construction and
 that is the entire contribution; versioning them is `persist`'s.
 
 **12. A rate breakdown.** "Why is my number what it is" — one line per multiplier with running
@@ -1235,7 +1235,7 @@ pause above the frame budget; `project`, `integrate`, `ratesOf` and `buildFlow` 
 one that moves the anchor takes a required `atMs`. *Fails as:* the first `advanceBy(seconds)`
 convenience someone adds.
 
-**I23 — floating point, stated as a boundary rather than a defence.**
+**I23 — floating point, stated as a boundary rather than a defense.**
 
 A `double` holds every integer exactly up to `2^53` (9,007,199,254,740,992;
 `Number.MAX_SAFE_INTEGER` is one below). Past that the spacing is 2, then 4, then 128 by `2^60`,
@@ -1288,7 +1288,7 @@ answers, neither reproducible.
 **T5 — scaling yield instead of time for offline.** A dupe with a plausible formula. Warp the
 clock, not the output.
 
-**T6 — the two offline near-misses.** `W(T) = U + T^e` drops the `U^(1−e)` normalisation and jumps
+**T6 — the two offline near-misses.** `W(T) = U + T^e` drops the `U^(1−e)` normalization and jumps
 by `U^e` at the knot — about 259 credited seconds at the shipping numbers — so returning at
 3h00m01s pays more than at 2h59m59s: a visible, farmable step. `W(T) = U + (T−U)^e` is continuous
 and wrong more subtly: its slope at `U⁺` is *infinite* because `e < 1`, so for the first seconds
@@ -1371,7 +1371,7 @@ save that looks fine. Detect a backwards gap larger than a plausible NTP correct
 The field is required-and-nullable precisely so this is a visible decision, and `null` on the
 load path means a device clock jump finishes the game.
 
-**T24 — `Infinity` in a save.** It serialises to `null`, checksums cleanly, and loads as a hole.
+**T24 — `Infinity` in a save.** It serializes to `null`, checksums cleanly, and loads as a hole.
 Never persist a derived read that can be infinite (`capacityLoad` is the one in this surface), and
 run `expectFiniteStocks` on anything that came out of `JSON.parse`. The upstream cause is nearly
 always a balance with no sink, compounding across sessions rather than within one.

@@ -28,7 +28,7 @@
 
 import { worldToTile } from '@lattice/iso';
 import type { Camera, GridPoint } from '@lattice/iso';
-import type { GestureName, ZoomSource } from './recognise.js';
+import type { GestureName, ZoomSource } from './recognize.js';
 import type { PointerKind } from './profile.js';
 import type { ActionBinding } from './actions.js';
 
@@ -52,7 +52,7 @@ export class TickFrame {
   private viewW = 0;
   private viewH = 0;
 
-  /** Copy the camera's transform. Called once per tick, before any sample is recognised. */
+  /** Copy the camera's transform. Called once per tick, before any sample is recognized. */
   capture(camera: Camera): void {
     this.cx = camera.x;
     this.cy = camera.y;
@@ -128,7 +128,7 @@ export interface TapGesture extends GestureBase {
 }
 
 /**
- * A press that travelled. One `dragstart`, zero or more `drag`, and **exactly one `dragend`** —
+ * A press that traveled. One `dragstart`, zero or more `drag`, and **exactly one `dragend`** —
  * including when the system takes the gesture away, because a drag with no end is a camera that
  * pans for ever.
  */
@@ -142,7 +142,7 @@ export interface DragGesture extends GestureBase {
    *
    * Averaged, not differenced: a finger that pauses before lifting has a last-two-points
    * velocity of nearly zero or of nearly anything, and both make flicks feel random. **Always
-   * zero on a cancelled `dragend`** — an interrupted gesture must not fling.
+   * zero on a canceled `dragend`** — an interrupted gesture must not fling.
    */
   readonly vx: number;
   readonly vy: number;
@@ -153,7 +153,7 @@ export interface DragGesture extends GestureBase {
  *
  * One gesture for wheel, trackpad pinch, two-finger pinch and the zoom keys, because the camera
  * does not care which it was and neither does a game. `sx, sy` is the anchor: the pointer, the
- * midpoint between two fingers, or the viewport centre for a source with no position. `dx, dy`
+ * midpoint between two fingers, or the viewport center for a source with no position. `dx, dy`
  * carries the midpoint's own travel, so a two-finger gesture pans and zooms at once the way a
  * map does.
  */
@@ -181,7 +181,7 @@ export interface GestureMap {
  *
  * **The coordinates are always populated, which is the point.** A pointer-sourced action carries
  * where the finger was; a key-sourced one carries the game's `focus` — its current selection —
- * falling back to the viewport centre. Without that rule the keyboard path either does nothing
+ * falling back to the viewport center. Without that rule the keyboard path either does nothing
  * or does something different from the touch path, and the keyboard path is the one nobody
  * tests. It is also the seam a gamepad needs: a positionless source is already a solved case.
  */

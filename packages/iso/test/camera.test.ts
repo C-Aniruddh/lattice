@@ -66,7 +66,7 @@ describe('createCamera', () => {
 });
 
 describe('world <-> screen', () => {
-  it('puts the camera centre at the middle of the viewport', () => {
+  it('puts the camera center at the middle of the viewport', () => {
     const cam = createCamera(960, 540, { bounds: huge() });
     cam.centerOn(100, 200);
     expect(cam.toScreenX(100)).toBe(480);
@@ -202,7 +202,7 @@ describe('zoomAt', () => {
 
 describe('the clamp', () => {
   it('keeps the required fraction of the viewport on the map', () => {
-    // keepVisible 0.5 means half the viewport must show bounds, so the centre may reach the
+    // keepVisible 0.5 means half the viewport must show bounds, so the center may reach the
     // bounds edge exactly and no further.
     const cam = createCamera(400, 400, {
       bounds: rectSet(rect(), -1000, -1000, 1000, 1000),
@@ -231,7 +231,7 @@ describe('the clamp', () => {
     expect(tight.x).toBe(1000 - 200);
   });
 
-  it('T7: pins to the bounds centre when the map is smaller than what must be covered', () => {
+  it('T7: pins to the bounds center when the map is smaller than what must be covered', () => {
     // keepVisible 1 requires the viewport inside the bounds, which a 100-wide map cannot do
     // for a 400-wide viewport. The naive `clamp(v, min, max)` with min > max returns whichever
     // endpoint it tests last, so the camera jitters between two positions on every pan.
@@ -271,14 +271,14 @@ describe('the clamp', () => {
     cam.centerOn(1000, 0);
     expect(cam.x).toBe(1000);
     // The new map is 20 wide and the half-viewport is 200, so half a viewport of map is not
-    // available at all: the centre pins to the bounds centre rather than to an inverted range.
+    // available at all: the center pins to the bounds center rather than to an inverted range.
     cam.setBounds(rectSet(rect(), -10, -10, 10, 10));
     expect(cam.x).toBe(0);
     cam.setBounds(rectSet(rect(), -1000, -1000, 1000, 1000));
     cam.centerOn(1e9, 0);
     expect(cam.x).toBe(1000);
     cam.resize(4000, 4000);
-    // The viewport is now far bigger than the map: pinned to the centre again.
+    // The viewport is now far bigger than the map: pinned to the center again.
     expect(cam.x).toBe(0);
     expect(cam.viewW).toBe(4000);
     expect(() => cam.resize(0, 100)).toThrow(/camera.resize: expected viewW/);

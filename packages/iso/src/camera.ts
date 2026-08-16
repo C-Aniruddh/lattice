@@ -78,10 +78,10 @@ export interface CameraOptions {
  * only mutation is through the five mutators, all of which re-clamp.
  */
 export interface Camera {
-  /** World x at the centre of the viewport. Read-only, and not merely by convention — see
+  /** World x at the center of the viewport. Read-only, and not merely by convention — see
    *  the module header for why the field is unavailable rather than discouraged. */
   readonly x: number;
-  /** World y at the centre of the viewport. See {@link Camera.x}. */
+  /** World y at the center of the viewport. See {@link Camera.x}. */
   readonly y: number;
   /** World pixels per CSS pixel. Moved only by {@link Camera.zoomAt}, so the pointer anchor
    *  cannot be skipped. */
@@ -122,7 +122,7 @@ export interface Camera {
   toScreen(wx: number, wy: number, out: Vec2): Vec2;
 
   /**
-   * Where a world x sits **across** the viewport: `-1` at the left edge, `0` at the centre,
+   * Where a world x sits **across** the viewport: `-1` at the left edge, `0` at the center,
    * `+1` at the right, continuing past them rather than clamping.
    *
    * The third member of the projection family, and it exists because `@lattice/audio` needs
@@ -165,10 +165,10 @@ export interface Camera {
    */
   zoomAt(factor: number, sx: number, sy: number): void;
 
-  /** Put a world point at the centre of the viewport immediately, then clamp. */
+  /** Put a world point at the center of the viewport immediately, then clamp. */
   centerOn(wx: number, wy: number): void;
 
-  /** Put a tile at the centre. The form callers actually want after loading a save, and the
+  /** Put a tile at the center. The form callers actually want after loading a save, and the
    *  one that stops every game writing `gridToWorld` into a scratch vector to do it. */
   centerOnTile(gx: number, gy: number): void;
 
@@ -214,7 +214,7 @@ export interface Camera {
 }
 
 /** Reject a viewport dimension. Named separately so `createCamera` and `resize` produce the
- *  identical message shape — an error a caller learns to recognise is worth more than one
+ *  identical message shape — an error a caller learns to recognize is worth more than one
  *  tailored to its site. */
 function expectPositiveViewport(value: number, fn: string, param: string): number {
   if (!(Number.isFinite(value) && value > 0)) {
@@ -273,14 +273,14 @@ export function createCamera(viewW: number, viewH: number, options?: CameraOptio
   let cy = 0;
 
   /**
-   * Confine one axis of the centre.
+   * Confine one axis of the center.
    *
    * `half` is the half-viewport in world units and `need` is how much of the viewport must
-   * still show the bounds. Where the overlap can be satisfied at all the centre lives in
+   * still show the bounds. Where the overlap can be satisfied at all the center lives in
    * `[min + need - half, max + half - need]`; where it cannot — a map narrower than the part
    * of the viewport that has to be covered — the range would invert, `min > max`, and a naive
    * two-sided clamp returns whichever endpoint it tests last, so the camera jitters between
-   * two positions on every pan. Detect it and pin to the bounds centre instead.
+   * two positions on every pan. Detect it and pin to the bounds center instead.
    */
   function clampAxis(value: number, min: number, max: number, half: number): number {
     const need = 2 * half * keepVisible;

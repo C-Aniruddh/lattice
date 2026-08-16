@@ -154,8 +154,8 @@ describe('the source itself', () => {
     }
   });
 
-  it('has no serialisation, and must never grow any', () => {
-    // The moment this package can write a colour to a save, someone writes a presentation-tier
+  it('has no serialization, and must never grow any', () => {
+    // The moment this package can write a color to a save, someone writes a presentation-tier
     // value into a document that travels between engines. Store the hue; derive on load.
     for (const [name, code] of sources) {
       expect(/JSON\.parse/.test(code), `${name} parses JSON`).toBe(false);
@@ -273,7 +273,7 @@ describe('I9: the frame path allocates nothing', () => {
       }
     }
     expect(checked).toBe(51);
-    // …and the bodies found are the right ones, not a neighbouring block the matcher wandered
+    // …and the bodies found are the right ones, not a neighboring block the matcher wandered
     // into. `isoBox` computes four x projections; `PenWriter.box` calls `isoBox`.
     expect(bodyOf(sources.get('solids.ts') ?? '', 'isoBox')).toContain('toScreenX');
     expect(bodyOf(sources.get('sprite.ts') ?? '', 'class PenWriter::box')).toContain('isoBox');
@@ -304,7 +304,7 @@ describe('I9: the frame path allocates nothing', () => {
   it('confines every remaining allocation to setup, to a pool that fills once, or to the recorder', () => {
     // Everything that does allocate, named. `record.ts` is the one module in this package
     // permitted to allocate freely, because it never runs in a frame; `canvas2d.ts` allocates a
-    // gradient object per ramped polygon and a ramp canvas per colour pair, both documented at
+    // gradient object per ramped polygon and a ramp canvas per color pair, both documented at
     // the site; the rest build their buffers once and reuse them for ever.
     const allowed = new Set([
       'beginFrame',

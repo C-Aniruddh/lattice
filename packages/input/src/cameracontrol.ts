@@ -80,7 +80,7 @@ const LN2 = Math.LN2;
  *
  * There is deliberately **no `setZoom`**. The only way to change scale is {@link zoomBy},
  * whose anchor is a required parameter — so origin-anchored zoom is not somewhere you can
- * arrive by accident, only by deliberately typing the viewport centre. Origin-anchored zoom is
+ * arrive by accident, only by deliberately typing the viewport center. Origin-anchored zoom is
  * the single most common reason tile-game cameras feel broken: the thing you are looking at
  * slides out from under you as you zoom towards it.
  */
@@ -230,7 +230,7 @@ export function createCameraControl(options: CameraControlOptions): CameraContro
         ky += direction[1];
       }
       if (kx !== 0 || ky !== 0) {
-        // Normalise the diagonal, or holding two keys pans 41% faster than holding one and the
+        // Normalize the diagonal, or holding two keys pans 41% faster than holding one and the
         // map appears to speed up when the player changes direction. `sqrt` is Tier A.
         const scale = keyPanPxPerS * dtS * (kx !== 0 && ky !== 0 ? 1 / Math.sqrt(2) : 1);
         camera.panByScreen(kx * scale, ky * scale);

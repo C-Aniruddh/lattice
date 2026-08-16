@@ -665,7 +665,7 @@ and the honest answer is *half of it does*:
 - **Panning by screen x is actively bad as the camera moves.** Drag the camera and a stationary
   sound sweeps across the stereo field, which reads as a fault. The mitigation is not to fix the
   mapping, it is to only ever pan *transients*: a sound that lasts 200 ms cannot sweep. Anything
-  continuous — the bed, the music — is centre, always, which is why `BedLayer` has no pan field.
+  continuous — the bed, the music — is center, always, which is why `BedLayer` has no pan field.
 - **Hard pan is fatiguing on headphones,** which is where most of these games are played. Hence
   `maxPan = 0.6`. Full-width panning is a gimmick; two thirds of the width is atmosphere.
 - **The half that carries more than pan is gain.** An off-screen sound made *quieter* is far more
@@ -698,7 +698,7 @@ The consequence for a test author is that everything interesting is assertable w
 all**: install an `onScheduled` listener, drive `now`, call `play` twice inside the gap, and count
 the plans. Coverage is then a question about the renderer alone, which is the only part that
 genuinely needs a browser — and a `happy-dom` run with a hand-written stub of the eight node types
-the renderer actually uses is a reasonable way to cover *those* lines, in one file, clearly labelled
+the renderer actually uses is a reasonable way to cover *those* lines, in one file, clearly labeled
 as covering node construction and nothing else.
 
 The price is the one departure from the source game: **`play()` returns `true` in a headless run.**
@@ -751,7 +751,7 @@ needs an argument that beats the one written next to it.
     an alarm. Absent for v1 only because it needs a policy — which sounds duck, how far, for how
     long — and I would rather the demo tell us than guess. **First thing to add in v2.**
 11. **Offline rendering (`OfflineAudioContext`) to bake a sound into a buffer.** A real
-    optimisation for `tap`, refused for now because it makes the ladder impossible (each step is a
+    optimization for `tap`, refused for now because it makes the ladder impossible (each step is a
     different render) and because 24 oscillators is not a measured problem. If `perf` measures one,
     this is the fix.
 12. **Music that is generated rather than authored — Markov chains, generative harmony.** A seeded
@@ -875,7 +875,7 @@ Mined from `foom-simple-ui/src/core/audio.ts`, its config, and `PLAYBOOK.md`.
     which are the sounds doing actual work. So `createAudio` starts with the music bus *unmuted* and
     no deck running: a game that restores a saved mixer with `music` muted and then calls
     `deck.play()` will otherwise never work out why nothing happened.
-15. **A sound declared and never played.** The source project hit this class of defect — an artefact
+15. **A sound declared and never played.** The source project hit this class of defect — an artifact
     correct in isolation that lies about the game — five separate times. `validateSounds` cannot see
     it. The recipe belongs in the demo's tests and in the README: grep `src` for every key of the
     table. Worth stating because every game built on this kit needs the same test.
@@ -921,5 +921,5 @@ Routed rather than fixed, per `docs/LOOP.md` rule 5.
 - **The demo should answer the ducking question** (§4.10). If its brownout alarm — or whatever
   carries urgency in the valley — cannot be heard over a theme, that is the evidence v2 needs.
 - **The demo's day/night parameter is the bed's `tone`, and the palette's lerp input is the same
-  number.** Worth stating in `docs/rfc/demo.md` as a shared contract, so the sound and the colour
+  number.** Worth stating in `docs/rfc/demo.md` as a shared contract, so the sound and the color
   cannot drift apart: one `daylight` value, two consumers.

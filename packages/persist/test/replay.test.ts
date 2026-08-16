@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { asEpochMillis, createRng, hashParts, type RngSnapshot } from '@lattice/core';
 import { memoryStorage } from '../src/adapters.js';
-import { migrations, type Recognise } from '../src/migrate.js';
+import { migrations, type Recognize } from '../src/migrate.js';
 import { createStore } from '../src/store.js';
 import {
   createRecorder,
@@ -404,7 +404,7 @@ describe('a replay round-trips its rng, and diverges when the cursor is dropped'
 // ── the doctrine: a replay is evidence, and evidence is never migrated ───────────
 
 describe('a replay store is an ordinary store whose chain has no rungs', () => {
-  const isLog: Recognise<ReplayLog<Log>> = (value) => {
+  const isLog: Recognize<ReplayLog<Log>> = (value) => {
     const log = value as Partial<ReplayLog<Log>>;
     if (typeof log.kit !== 'string' || log.checkpoints === undefined || log.inputs === undefined) {
       throw new TypeError('replay: expected a ReplayLog with kit, inputs and checkpoints');

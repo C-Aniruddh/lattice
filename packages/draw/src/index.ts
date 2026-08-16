@@ -1,8 +1,8 @@
 /**
- * `@lattice/draw` — one colour and one grid footprint into a stylised isometric solid, on a
+ * `@lattice/draw` — one color and one grid footprint into a stylised isometric solid, on a
  * surface it does not own.
  *
- * The two halves of that sentence are the two things this package is for. *One colour* is the
+ * The two halves of that sentence are the two things this package is for. *One color* is the
  * art direction: three-tone faces derived from a single hex, cool shadows, warm highlights, a
  * silhouette stroke on everything. *A surface it does not own* is the engineering: **nothing in
  * this package, and nothing above it, ever holds a `CanvasRenderingContext2D`** — so the same
@@ -34,7 +34,7 @@
  * declarative and its motion explicit.
  *
  * **Bezier paths, concave polygons, clipping, a general composite API, a transform stack,
- * filters, images the kit did not render, and perceptual colour interpolation.** Each is either
+ * filters, images the kit did not render, and perceptual color interpolation.** Each is either
  * something a WebGL backend could not honour in fifty lines without lying, or something that
  * would change every screenshot in the kit and improve none of them. `docs/rfc/draw.md` §4 has
  * the reason for each, which is what stops the next agent adding it back.
@@ -49,18 +49,18 @@
  * would cost more than everything else in the package put together. This is the largest honest
  * limitation here.
  *
- * **A serialisation format for colour.** `draw` has no serialisation and must never grow any:
- * the moment it can write a colour to a save, someone writes a presentation-tier value into a
+ * **A serialization format for color.** `draw` has no serialization and must never grow any:
+ * the moment it can write a color to a save, someone writes a presentation-tier value into a
  * document that travels between engines. **Store the hue; derive the tokens on load.**
  */
 
 /** The kit version this package was built as part of. */
 export const VERSION = '0.1.0';
 
-// ── colour ──────────────────────────────────────────────────────────────────────
+// ── color ──────────────────────────────────────────────────────────────────────
 //
-// One colour model, packed sRGB in a uint32, and `hexOf` / `cssOf` / `hueToHex` are renderings
-// of it rather than alternatives to it. `core` has no colour at all, deliberately, so that this
+// One color model, packed sRGB in a uint32, and `hexOf` / `cssOf` / `hueToHex` are renderings
+// of it rather than alternatives to it. `core` has no color at all, deliberately, so that this
 // stays true — a second implementation anywhere above this line is the bug, not the convenience.
 
 export {

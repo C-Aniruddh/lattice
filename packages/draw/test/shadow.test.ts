@@ -14,13 +14,13 @@ import { contactShadow, wash } from '../src/shadow.js';
 import { firstOp, scene } from './harness.js';
 
 describe('contactShadow', () => {
-  it('is one soft ellipse, 2:1, centred on the footprint', () => {
+  it('is one soft ellipse, 2:1, centered on the footprint', () => {
     const { surface, pen } = scene({ snap: false });
     contactShadow(pen, 0, 0, 2, 2);
     expect(surface.ops).toHaveLength(1);
     const op = firstOp(surface, 'softEllipse');
     expect(op.xy[3]).toBeCloseTo((op.xy[2] ?? 0) / 2, 6);
-    // A 2×2 footprint centred at (1,1) sits at world x 0, which is the centre of the viewport.
+    // A 2×2 footprint centered at (1,1) sits at world x 0, which is the center of the viewport.
     expect(op.xy[0]).toBeCloseTo(200, 6);
   });
 
@@ -34,7 +34,7 @@ describe('contactShadow', () => {
     expect(firstOp(surface, 'softEllipse').xy[2] as number).toBeGreaterThan(small);
   });
 
-  it('fades from a cool tint at the centre to nothing at the rim', () => {
+  it('fades from a cool tint at the center to nothing at the rim', () => {
     const { surface, pen } = scene();
     contactShadow(pen, 0, 0, 1, 1);
     const op = firstOp(surface, 'softEllipse');

@@ -1,7 +1,7 @@
 /**
- * The system: the buffer, the recogniser, the action map and the camera controller, wired.
+ * The system: the buffer, the recognizer, the action map and the camera controller, wired.
  *
- * **Nothing in this file names a browser global.** It is the same recogniser a game runs, fed
+ * **Nothing in this file names a browser global.** It is the same recognizer a game runs, fed
  * only by {@link InputSystem.submit}, which is how the package is tested and how a replay runs
  * in Node. The pure half of an input package genuinely is pure, and hiding that behind a DOM
  * constructor would waste it.
@@ -52,8 +52,8 @@ import {
 import type { AnyActionHandler } from './events.js';
 import { profileFingerprint, resolveProfile } from './profile.js';
 import type { GestureProfile, ProfileOverrides } from './profile.js';
-import { createRecogniser } from './recognise.js';
-import type { GestureOut, Recogniser } from './recognise.js';
+import { createRecogniser } from './recognize.js';
+import type { GestureOut, Recognizer } from './recognize.js';
 import { SampleBuffer, createSampleSlot, toRawSample, writeSlot } from './sample.js';
 import type { Diagnostic, DiagnosticCode, DiagnosticSink, RawSample } from './sample.js';
 import { HandlerList, createGestureLists, createInputScope } from './scope.js';
@@ -73,7 +73,7 @@ export interface HeadlessInputOptions<A extends string> {
   /**
    * The loop's fixed step, in milliseconds. **Must be the same number the loop uses.**
    *
-   * The recogniser counts ticks and multiplies by this; it never reads a clock. Get it wrong
+   * The recognizer counts ticks and multiplies by this; it never reads a clock. Get it wrong
    * and every duration in the profile is wrong by the same ratio — so pass `loop.stepMs` rather
    * than a literal.
    */
@@ -97,7 +97,7 @@ export interface HeadlessInputOptions<A extends string> {
    * Where a keyboard action points.
    *
    * Write the screen point of the current selection into `out` and return `true`; return
-   * `false` and the viewport centre is used. This is the seam between "the player pressed
+   * `false` and the viewport center is used. This is the seam between "the player pressed
    * Space" and "at what", and a game that leaves it unimplemented is still playable — it just
    * collects from the middle.
    */
@@ -114,7 +114,7 @@ export interface HeadlessInputOptions<A extends string> {
 }
 
 /**
- * A recogniser, an action map and a camera controller over one camera.
+ * A recognizer, an action map and a camera controller over one camera.
  *
  * Obtained from `createHeadlessInput` or from `createInput`. It **is** an {@link InputScope}:
  * the root of the teardown tree, so `input.dispose()` is the only call a scene needs.
@@ -167,7 +167,7 @@ export interface InputSystem<A extends string = never> extends InputScope<A> {
   frame(nowMs: number): void;
 
   /**
-   * Feed the recogniser directly. The DOM binding is a producer of these and nothing more.
+   * Feed the recognizer directly. The DOM binding is a producer of these and nothing more.
    *
    * The sample is copied, so a producer may reuse one object for every event it makes.
    *
@@ -336,7 +336,7 @@ export function createSystem<A extends string>(
     keyPanPxPerS: profile.keyPanPxPerS,
     flingMinPxPerS: profile.flingMinPxPerS,
     flingHalfLifeMs: profile.flingHalfLifeMs,
-    keyHeld: (code: string): boolean => recogniser.isKeyHeld(code),
+    keyHeld: (code: string): boolean => recognizer.isKeyHeld(code),
     enabled: options.control ?? true,
   });
 
@@ -440,7 +440,7 @@ export function createSystem<A extends string>(
     const entries = actions.forKey(code);
     if (entries.length === 0) return;
     // A positionless source still has to answer "where". The game's current selection if it has
-    // one, the viewport centre if it does not — never nothing, or the keyboard path does
+    // one, the viewport center if it does not — never nothing, or the keyboard path does
     // something different from the touch path and the keyboard path is the one nobody tests.
     const focus = options.focus;
     let sx = frame.w / 2;
@@ -452,7 +452,7 @@ export function createSystem<A extends string>(
     fireActions(entries, 'key', sx, sy);
   }
 
-  const recogniser: Recogniser = createRecogniser({
+  const recognizer: Recognizer = createRecogniser({
     profile,
     stepMs,
     emit: deliverGesture,
@@ -568,17 +568,17 @@ export function createSystem<A extends string>(
       // Freeze the camera *before* anything is delivered. A handler that recentres the camera
       // must not change where a later event in this same bucket resolved to.
       frame.capture(camera);
-      recogniser.setView(camera.viewW, camera.viewH);
+      recognizer.setView(camera.viewW, camera.viewH);
 
       const closed = buffer.close();
       for (let i = 0; i < closed.count; i++) {
         const slot = closed.slots[i];
         if (slot === undefined) continue;
-        recogniser.feed(slot, index);
+        recognizer.feed(slot, index);
       }
       // After the bucket, so a press released this tick is a tap rather than a hold that
       // matured a moment before the release arrived.
-      recogniser.mature(index);
+      recognizer.mature(index);
     },
 
     frame(nowMs: number): void {
@@ -594,11 +594,11 @@ export function createSystem<A extends string>(
     },
 
     held(action: A): boolean {
-      return actions.held(action, recogniser.pressed, recogniser.isKeyHeld);
+      return actions.held(action, recognizer.pressed, recognizer.isKeyHeld);
     },
 
     keyHeld(code: string): boolean {
-      return recogniser.isKeyHeld(code);
+      return recognizer.isKeyHeld(code);
     },
 
     hoverTile(out: GridPoint): boolean {
@@ -621,10 +621,10 @@ export function createSystem<A extends string>(
       // The one place a gesture is delivered outside a tick, and it is not an exception to the
       // rule so much as the last act of the tick that was running: every live drag gets its
       // `dragend` and every held key its release **before** the handlers are torn down, because
-      // a recogniser left latched is a camera that pans for ever and a handler that never
+      // a recognizer left latched is a camera that pans for ever and a handler that never
       // learns the drag ended is a placement ghost stuck to the cursor.
       frame.capture(camera);
-      recogniser.releaseAll();
+      recognizer.releaseAll();
       control.stop();
       disposed = true;
       owner.dispose();

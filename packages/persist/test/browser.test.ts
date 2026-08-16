@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { asEpochMillis } from '@lattice/core';
 import { memoryStorage, type StorageLike } from '../src/adapters.js';
-import { migrations, type Recognise } from '../src/migrate.js';
+import { migrations, type Recognize } from '../src/migrate.js';
 import { createStore, type Autosave, type WriteResult } from '../src/store.js';
 import { browserStorage, installFlushTriggers, type FlushTargets, type ListenerTarget } from '../src/browser.js';
 
@@ -110,7 +110,7 @@ describe('installFlushTriggers', () => {
   it('is the other half of the reset trap: a reset survives every teardown event', () => {
     // The whole trap in one test. The game has a live autosave wired to page events; the
     // player hits START OVER; the page is then hidden and unloaded. Storage must stay empty.
-    const isState: Recognise<{ readonly coin: number }> = (value) => {
+    const isState: Recognize<{ readonly coin: number }> = (value) => {
       const coin = (value as { coin?: unknown }).coin;
       if (typeof coin !== 'number') throw new TypeError('save.coin: expected a number');
       return { coin };

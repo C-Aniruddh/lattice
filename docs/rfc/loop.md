@@ -517,7 +517,7 @@ export interface Scheduler {
    */
   every(period: Seconds, fn: (repeats: number) => void): TimerId;
 
-  /** `true` if a live timer was removed. Cancelling twice is not an error. */
+  /** `true` if a live timer was removed. Canceling twice is not an error. */
   cancel(id: TimerId): boolean;
   cancelAll(): void;
 }
@@ -577,12 +577,12 @@ export interface TweenOptions {
    *
    * Two tweens writing one property is the commonest animation bug there is: each one
    * writes its own idea of the value on alternate steps and the thing shudders between two
-   * paths. `slot: 'panel.y'` makes re-targeting mid-flight the default behaviour instead of
+   * paths. `slot: 'panel.y'` makes re-targeting mid-flight the default behavior instead of
    * a thing you remember to do.
    */
   readonly slot?: string;
 
-  /** Fires once, after the final `onUpdate`. **Never fires for a cancelled tween.** */
+  /** Fires once, after the final `onUpdate`. **Never fires for a canceled tween.** */
   readonly onDone?: () => void;
 }
 
@@ -618,7 +618,7 @@ The consequence for tweens, stated as a rule a reviewer can apply:
 | tier | what it is | may drive | may **not** drive |
 |---|---|---|---|
 | A | the whole `EASINGS` table, and every number this package computes about time | anything, including simulation state and hashes | — |
-| B | `core`'s `damp` and anything else marked presentation-only | pixels, colours, camera, audio gain | a save file, a hash, a replay, a checksum, an economy input |
+| B | `core`'s `damp` and anything else marked presentation-only | pixels, colors, camera, audio gain | a save file, a hash, a replay, a checksum, an economy input |
 
 A tween whose curve comes from `EASINGS` is Tier A and is therefore safe to run inside
 `update` and to have write simulation state — which is exactly why `Tweens.step` takes the
@@ -984,8 +984,8 @@ Each is phrased so that its failure is a specific, writable test.
 | I-8 | Sim timers pause; real timers do not. | With the loop paused for a simulated minute: a `loop.sim.every(1, …)` has fired zero times and a `loop.real.every(1, …)` has fired once with `repeats === 60`. |
 | I-9 | No scheduler callback runs more than once per pump, on either timeline. | An hour advanced in one pump must produce one call per timer, with `repeats` carrying the count. A test that counts invocations, not repeats. |
 | I-10 | Timers due in the same advance fire in due-time order, then registration order, every run. | Register three timers due at the same instant across two runs with different pump patterns and compare the call sequences. |
-| I-11 | A timer or tween registered inside a firing callback does not run in that same fire; one cancelled inside it never runs at all. | The classic mutation-during-iteration crash, or a cancelled callback that fires once anyway. |
-| I-12 | A cancelled or slot-displaced tween never calls `onDone`; a completed one calls `onUpdate` with exactly `to` before `onDone`, and `onDone` exactly once. | An `onDone` after a cancel, or a final value of `0.9999999`. |
+| I-11 | A timer or tween registered inside a firing callback does not run in that same fire; one canceled inside it never runs at all. | The classic mutation-during-iteration crash, or a canceled callback that fires once anyway. |
+| I-12 | A canceled or slot-displaced tween never calls `onDone`; a completed one calls `onUpdate` with exactly `to` before `onDone`, and `onDone` exactly once. | An `onDone` after a cancel, or a final value of `0.9999999`. |
 | I-13 | Two tweens can never share a slot. | Start two in slot `'x'`; `active === 1` and only the second one's values are ever seen. |
 | I-14 | The loop stops itself when a callback throws, and says so. | A throwing `update` that leaves `running === true`, or a second `update` call after the throw. |
 | I-15 | `loop.stats` is the same object identity on every read, and reading it allocates nothing. | Identity comparison across frames, plus a bench with an allocation counter. |
@@ -1026,7 +1026,7 @@ So the interval half of `browserFrames` is what keeps autosave alive in a hidden
 is precisely when tabs get closed. Delete it and the failure mode is not a stutter: the game
 stops saving at the exact moment saving matters most, silently, on the one code path nobody
 watches. This is why I-23 exists as a separate invariant rather than as a line in I-2:
-`real` must be interval-backed, never rAF-backed, and a one-line "optimisation" here has a
+`real` must be interval-backed, never rAF-backed, and a one-line "optimization" here has a
 total consequence. Two related facts for `persist`: a hidden tab's timer granularity is
 `idleMs` (~1 s, browser-clamped), so a sub-second debounce is meaningless in the background;
 and `loop.stop()` stops the pumps and therefore the timers, so a flush on `visibilitychange`
@@ -1082,7 +1082,7 @@ The rule the game must follow, and that this RFC must state because nothing can 
 ### 6.5 The spiral of death, and its disguise
 
 Without the clamp, a pump that takes longer than its steps produce more steps than the next
-pump can afford, and the loop accelerates into a locked tab. The clamp is not an optimisation;
+pump can afford, and the loop accelerates into a locked tab. The clamp is not an optimization;
 it is the termination condition. Its disguise: with the clamp in place the game *degrades*
 instead of hanging — sim time simply falls behind real time — so a game that is far too slow
 looks like a game running in slow motion. `stats.stepsLastPump` sustained above 1 and a

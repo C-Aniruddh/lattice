@@ -121,9 +121,9 @@ export function footprintBase(field: HeightField, f: Footprint): number {
 
 /**
  * The {@link Anchor} a footprint's label, ring, bubble or confirm control should hang from:
- * the **centre** of the footprint, raised by `heightPx`.
+ * the **center** of the footprint, raised by `heightPx`.
  *
- * The centre and not the origin corner — on a 3×3 those are most of a building apart, and
+ * The center and not the origin corner — on a 3×3 those are most of a building apart, and
  * anchoring UI to the corner is what makes a confirm button appear to belong to the building
  * next door.
  *

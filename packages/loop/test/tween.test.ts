@@ -65,7 +65,7 @@ describe('createTweens', () => {
     expect(seen).toEqual([20]);
   });
 
-  it('I-12: a cancelled tween never calls onDone', () => {
+  it('I-12: a canceled tween never calls onDone', () => {
     const tweens = createTweens();
     let done = 0;
     const id = tweens.start({
@@ -222,7 +222,7 @@ describe('slot', () => {
     expect(done).toBe(2);
   });
 
-  it('frees the slot when the tween is cancelled by id', () => {
+  it('frees the slot when the tween is canceled by id', () => {
     const tweens = createTweens();
     const id = tweens.start({ from: 0, to: 1, seconds: 1, slot: 'x', onUpdate: () => {} });
     tweens.cancel(id);
@@ -281,7 +281,7 @@ describe('mutation during a step', () => {
     expect(seen).toEqual(['done', 'chained']);
   });
 
-  it('I-11: a tween cancelled inside another tween’s onUpdate never runs again', () => {
+  it('I-11: a tween canceled inside another tween’s onUpdate never runs again', () => {
     const tweens = createTweens();
     const seen: string[] = [];
     let victim = 0;

@@ -25,7 +25,7 @@ function basisLengths(xy: readonly number[]): { along: number; down: number } {
 }
 
 describe('wallText', () => {
-  it('records the string, the transform and the resolved colour', () => {
+  it('records the string, the transform and the resolved color', () => {
     const { surface, pen, palette } = scene({ zoom: 2 });
     wallText(pen, 0, 0, 3, 0, 3, 1.5, 'ACME', 'ink');
     const op = firstOp(surface, 'text');
@@ -34,7 +34,7 @@ describe('wallText', () => {
     expect(op.xy).toHaveLength(12);
   });
 
-  it('normalises both basis columns, so a glyph is sheared and never stretched', () => {
+  it('normalizes both basis columns, so a glyph is sheared and never stretched', () => {
     // The whole of corrections one and two, applied at once. A raw parameter-space basis would
     // scale x by the segment's screen length and y by the band's, and no two of those agree.
     for (const [wallW, height] of [
@@ -88,7 +88,7 @@ describe('wallText', () => {
   });
 
   it('draws nothing at all when the band is illegible', () => {
-    // A zoomed-out campus growing a rash of grey smears reads as a rendering artefact, not as
+    // A zoomed-out campus growing a rash of gray smears reads as a rendering artifact, not as
     // text that is too small.
     const { surface, pen } = scene({ zoom: 0.1 });
     wallText(pen, 0, 0, 4, 0, 3, 0.4, 'ACME', 'ink');
@@ -109,7 +109,7 @@ describe('wallText', () => {
     expect(surface.ops).toHaveLength(1);
   });
 
-  it('centres regardless of the style handed in, and keeps the caller’s weight and family', () => {
+  it('centers regardless of the style handed in, and keeps the caller’s weight and family', () => {
     const { surface, pen } = scene({ zoom: 3 });
     wallText(pen, 0, 0, 4, 0, 3, 1.5, 'ACME', 'ink', {
       size: 99,
@@ -137,7 +137,7 @@ describe('screenText', () => {
     expect(op.text).toBe('+12');
   });
 
-  it('takes a style and a packed colour', () => {
+  it('takes a style and a packed color', () => {
     const { surface, pen } = scene();
     screenText(pen, 0, 0, 'x', rgba(1, 2, 3), {
       size: 20,

@@ -43,7 +43,7 @@ describe('createPalette', () => {
     expect(() => p.ink('nope')).toThrow(/nope/);
   });
 
-  it('normalises a signed number to unsigned, so two spellings of red are one cache key', () => {
+  it('normalizes a signed number to unsigned, so two spellings of red are one cache key', () => {
     const p = createPalette(BASE_SLOTS);
     expect(p.ink(-255)).toBe(0xffffff01);
     p.set('x', -1);
@@ -132,7 +132,7 @@ describe('Palette.lerp', () => {
 });
 
 describe('the world and the HUD agree', () => {
-  it('Palette.lerp and lerpPalette produce the same colour for every slot at twenty values', () => {
+  it('Palette.lerp and lerpPalette produce the same color for every slot at twenty values', () => {
     // Invariant 17. Two "obviously linear" blends drift because one of them quantised, and at
     // nightfall the mismatch is unmissable and unnameable.
     const p = createPalette(BASE_SLOTS);

@@ -257,7 +257,7 @@ describe('ChunkGrid', () => {
   it('serves a repeated read of the same chunk from its one-slot cache', () => {
     const g = new ChunkGrid({ chunk: 4 });
     g.set(1, 1, 7);
-    // The cache is an optimisation, so what is asserted is that it cannot change an answer:
+    // The cache is an optimization, so what is asserted is that it cannot change an answer:
     // interleaved reads of two chunks agree with reads of each alone.
     expect(g.get(1, 1)).toBe(7);
     expect(g.get(100, 100)).toBe(0);

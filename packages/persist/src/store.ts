@@ -23,7 +23,7 @@ import type { MigrationChain } from './migrate.js';
 /**
  * Four seconds between coalesced writes — the number the source game shipped.
  *
- * Below about one second you are paying a synchronous serialise plus a storage write on a
+ * Below about one second you are paying a synchronous serialize plus a storage write on a
  * phone, once a second, forever; above about ten a crash costs a visible amount of progress.
  */
 const DEFAULT_MIN_WRITE_INTERVAL_MS = 4000;
@@ -43,9 +43,9 @@ const REJECTED_SUFFIX = ':rejected';
  *
  * `d` is the payload as a **JSON string**, not a nested object, for two reasons that are
  * worth the double encoding:
- *   1. the checksum then covers the exact bytes read, not a re-serialisation of a parse. A
+ *   1. the checksum then covers the exact bytes read, not a re-serialization of a parse. A
  *      checksum computed over `JSON.stringify(JSON.parse(text))` is a checksum of your
- *      serialiser's key ordering, and it will pass over damage and fail over nothing;
+ *      serializer's key ordering, and it will pass over damage and fail over nothing;
  *   2. `v` stays readable when `d` is garbage. Detecting a save from the *future* must not
  *      require parsing a payload written by a build that no longer exists.
  *
@@ -87,12 +87,12 @@ export type FailureReason =
   /** `v` is below the chain floor: a save from before the versions this build still carries. */
   | 'orphaned'
   /**
-   * A migration threw, or a step's recogniser rejected its own output. `atVersion` names the
-   * rung and `message` carries what the recogniser said was wrong.
+   * A migration threw, or a step's recognizer rejected its own output. `atVersion` names the
+   * rung and `message` carries what the recognizer said was wrong.
    */
   | 'migration-failed'
   /**
-   * Migrated to the head and the head recogniser still threw. The chain has a bug, or
+   * Migrated to the head and the head recognizer still threw. The chain has a bug, or
    * something else has been writing this key.
    */
   | 'invalid';
@@ -188,7 +188,7 @@ export interface WriteResult {
   readonly written: boolean;
   /**
    * The envelope's length in UTF-16 code units — what a browser storage quota actually
-   * counts, and what `maxBytes` is compared against. `0` when nothing was serialised.
+   * counts, and what `maxBytes` is compared against. `0` when nothing was serialized.
    */
   readonly bytes: number;
   readonly skipped: WriteSkip | null;
@@ -354,7 +354,7 @@ export interface StoreOptions<Head extends number, T> {
    *
    * If any part of the key is derived from something a player typed, hash it through
    * `hashString(name.normalize('NFC'))` — see `defaultChecksum`'s note. Without the
-   * normalisation the same name typed on macOS and on Windows produces two different keys and
+   * normalization the same name typed on macOS and on Windows produces two different keys and
    * two different worlds.
    */
   readonly key: string;
@@ -503,7 +503,7 @@ export interface Store<T> {
    * The ordering is the whole point. `localStorage.clear()` followed by a reload does *not*
    * reset a game — the live autosave flushes on `pagehide` and writes the state back over the
    * clear. The game this kit came from lost real time to exactly that, and its fix was a
-   * hand-rolled `window.foom.reset()`. Here it is the API: after `reset()` returns, no code
+   * hand-rolled `window.game.reset()`. Here it is the API: after `reset()` returns, no code
    * path in this package writes to the adapter until `open()` is called again.
    *
    * Scoped to **one store**. A game's START OVER calls it on the save store only; resetting
@@ -617,7 +617,7 @@ export function elapsedSince(opened: OpenResult<unknown>, now: EpochMillis): num
  * Browsers disagree on how they say it — a `DOMException` named `QuotaExceededError`, Firefox's
  * `NS_ERROR_DOM_QUOTA_REACHED`, and legacy codes 22 and 1014 — so this asks three questions
  * and treats anything else as `'unavailable'`. Guessing wrong costs a label on a report, not
- * behaviour: both reasons set `status: 'write-failing'`.
+ * behavior: both reasons set `status: 'write-failing'`.
  */
 function isQuotaError(cause: unknown): boolean {
   const record = asRecord(cause);
@@ -693,7 +693,7 @@ export function createStore<Head extends number, T>(options: StoreOptions<Head, 
     | { readonly ok: true; readonly state: T; readonly envelope: Envelope }
     | { readonly ok: false; readonly draft: FailureDraft; readonly envelope: Envelope | null };
 
-  function analyse(text: string): Analysis {
+  function analyze(text: string): Analysis {
     const envelope = inspect(text);
     if (envelope === null) {
       return {
@@ -788,7 +788,7 @@ export function createStore<Head extends number, T>(options: StoreOptions<Head, 
         draft: {
           reason: atHead ? 'invalid' : 'migration-failed',
           message: atHead
-            ? `persist: save "${key}" reached version ${String(head)} and the head recogniser rejected it: ${describe(cause)}. The chain has a bug, or something else has been writing this key.`
+            ? `persist: save "${key}" reached version ${String(head)} and the head recognizer rejected it: ${describe(cause)}. The chain has a bug, or something else has been writing this key.`
             : `persist: save "${key}" stopped migrating at version ${String(entered)} on the way from ${String(envelope.v)} to ${String(head)}: ${describe(cause)}`,
           savedVersion: envelope.v,
           atVersion: atHead ? null : entered,
@@ -903,7 +903,7 @@ export function createStore<Head extends number, T>(options: StoreOptions<Head, 
     } catch (cause) {
       const failure: WriteFailure = {
         reason: 'unavailable',
-        message: `persist: save "${key}" could not be serialised: ${describe(cause)}`,
+        message: `persist: save "${key}" could not be serialized: ${describe(cause)}`,
         cause,
       };
       writeFailing = true;
@@ -1066,7 +1066,7 @@ export function createStore<Head extends number, T>(options: StoreOptions<Head, 
         };
       }
 
-      const analysis = analyse(text);
+      const analysis = analyze(text);
       if (analysis.ok) {
         sequence = analysis.envelope.n;
         return loaded(analysis.state, analysis.envelope);
@@ -1083,7 +1083,7 @@ export function createStore<Head extends number, T>(options: StoreOptions<Head, 
     },
 
     decode(text: string): OpenResult<T> {
-      const analysis = analyse(text);
+      const analysis = analyze(text);
       if (analysis.ok) return loaded(analysis.state, analysis.envelope);
       return degrade(analysis.draft, false);
     },

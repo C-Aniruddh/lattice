@@ -312,7 +312,7 @@ describe('pathDirAt', () => {
 
   it('uses no trigonometry, which is why a facing may reach a save file', () => {
     // Comparing signs and magnitudes is exact arithmetic. `Math.atan2` is not required to be
-    // correctly rounded, so an angle in a save is an engine-specific artefact.
+    // correctly rounded, so an angle in a save is an engine-specific artifact.
     const src = readSource('path.ts');
     expect(src).not.toMatch(/Math\.(atan2|sin|cos|tan)\(/);
   });
@@ -941,7 +941,7 @@ describe('FlowField', () => {
 });
 
 /** Read a source file, for the one test that asserts about the code rather than its
- *  behaviour. Determinism claims about what a module does *not* call cannot be made any other
+ *  behavior. Determinism claims about what a module does *not* call cannot be made any other
  *  way: no input makes a `Math.atan2` visible in a return value. */
 function readSource(name: string): string {
   return readFileSync(fileURLToPath(new URL(`../src/${name}`, import.meta.url)), 'utf8');

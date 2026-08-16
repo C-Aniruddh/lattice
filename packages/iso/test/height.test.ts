@@ -1,9 +1,9 @@
 /**
- * `height` — vertices not centres, bilinear not nearest, and floor not truncate.
+ * `height` — vertices not centers, bilinear not nearest, and floor not truncate.
  *
  * Every assertion here is exact. Bilinear interpolation of exactly representable values with
  * `core.lerp` — which is written `(1 - t) * a + t * b` precisely so that it lands on its
- * endpoints — has no rounding to hide behind, and a tolerance would let a centre-sampled
+ * endpoints — has no rounding to hide behind, and a tolerance would let a center-sampled
  * implementation squeak through at the vertices.
  */
 
@@ -31,7 +31,7 @@ describe('heightAt', () => {
   });
 
   it('I22: is continuous across a tile boundary — the seam test', () => {
-    // T18: heights live on grid *vertices*. A centre-sampled field makes two adjacent tiles
+    // T18: heights live on grid *vertices*. A center-sampled field makes two adjacent tiles
     // disagree about the height of the edge they share, and the seam is invisible until the
     // terrain is drawn, at which point it is a rewrite of everything that reads a height.
     const grid = new TileGrid(4, 4);
@@ -60,7 +60,7 @@ describe('heightAt', () => {
     expect(heightAt(field, 0, 0.5)).toBe(4);
     expect(heightAt(field, 0.5, 0.5)).toBe(6);
     expect(heightAt(field, 0.25, 0.75)).toBe(7);
-    // A nearest-neighbour height makes a pilgrim climb a hill in visible steps; these values
+    // A nearest-neighbor height makes a pilgrim climb a hill in visible steps; these values
     // would all be 0, 0, 12 and 8.
   });
 

@@ -97,7 +97,7 @@ import type { Ledger } from '@lattice/sim';
 import {
   browserStorage, createStore, defaultChecksum, installFlushTriggers, migrations,
 } from '@lattice/persist';
-import type { Recognise, Schedule } from '@lattice/persist';
+import type { Recognize, Schedule } from '@lattice/persist';
 ```
 
 Note the `@lattice/` scope on every one. **Inside a package** the rule is the opposite — import
@@ -154,7 +154,7 @@ and runs them in a fixed order that you cannot change:
 
 | # | pass | you get | for |
 |---|---|---|---|
-| 0 | `backdrop` | `visible: Rect` (world) | a vertical ramp. Never a flat colour — flat backgrounds make an island look like a sticker |
+| 0 | `backdrop` | `visible: Rect` (world) | a vertical ramp. Never a flat color — flat backgrounds make an island look like a sticker |
 | 1 | `terrain` | `visible: TileRange` (already culled and margined) | tile diamonds |
 | 2 | `solids` | `order: DepthSorter`, **already sorted and culled** | buildings *and* scenery, one list |
 | 3 | `placement` | — | the ghost under the player's finger, the selection rim |
@@ -202,7 +202,7 @@ function paintTerrain(pen: Pen, visible: Readonly<TileRange>): void {
   for (let gy = visible.gy0; gy <= visible.gy1; gy++) {
     for (let gx = visible.gx0; gx <= visible.gx1; gx++) {
       if (!ground.has(gx, gy)) continue;
-      // A palette *slot name*, never a colour literal — a slot name is what lets the whole
+      // A palette *slot name*, never a color literal — a slot name is what lets the whole
       // island recolour at dusk from one `palette.lerp`.
       isoTile(pen, gx, gy, ground.get(gx, gy) === 0 ? 'sky' : 'ground');
     }
@@ -303,7 +303,7 @@ const input = createInput({
 });
 ```
 
-`stepMs` is not decoration. The recogniser counts *ticks* and multiplies by this to get
+`stepMs` is not decoration. The recognizer counts *ticks* and multiplies by this to get
 durations; it never reads a clock. Pass a literal that disagrees with the loop and every threshold
 in the gesture profile — tap timeout, long-press duration, fling window — is wrong by the same
 ratio, and the symptom is "long press feels wrong on some machines".
@@ -478,10 +478,10 @@ interface SaveV1 {
 }
 ```
 
-A recogniser is **not** a type predicate. It returns the value typed, or throws:
+A recognizer is **not** a type predicate. It returns the value typed, or throws:
 
 ```ts
-const isV1: Recognise<SaveV1> = (value) => {
+const isV1: Recognize<SaveV1> = (value) => {
   const o = expectObject(value, 'save.v1');
   const raw = o['lamps'];
   if (!Array.isArray(raw) || raw.length % 2 !== 0) {
@@ -499,14 +499,14 @@ const isV1: Recognise<SaveV1> = (value) => {
 Three things fall out of that shape, and they are the reason it is not a boolean. A predicate has
 already discarded the thing that was wrong by the time it returns, so it can only ever say "no";
 this one names the field. The thrown message travels into `ReadFailure.message`, which is the
-difference between a fixable bug report and a shrug. And a recogniser may **normalise as it
+difference between a fixable bug report and a shrug. And a recognizer may **normalize as it
 validates**, returning a repaired value — the cheapest possible migration for a field that only
 ever needed a default.
 
 `expectSerializable` is doing specific work there. `Infinity` is a perfectly legitimate Tier A
 result and is exactly the value that does not survive being written down: `JSON.stringify` writes
 `null` for it and for `NaN`, the checksum over that is perfectly valid, and nothing downstream can
-detect it. Catching it at the recogniser is catching it at the last boundary where it can still be
+detect it. Catching it at the recognizer is catching it at the last boundary where it can still be
 blamed on the save rather than on the arithmetic.
 
 A store is a key, a chain and an adapter. **There is no `version` option, because the chain *is*
@@ -539,7 +539,7 @@ it in.
 ### Now change the schema
 
 A month later, one coin counter becomes a wallet of currencies. Add a rung; do not touch the old
-recogniser.
+recognizer.
 
 ```ts
 interface SaveV2 {
@@ -549,7 +549,7 @@ interface SaveV2 {
   readonly hue: number;
 }
 
-const isV2: Recognise<SaveV2> = (value) => {
+const isV2: Recognize<SaveV2> = (value) => {
   const o = expectObject(value, 'save.v2');
   const raw = o['lamps'];
   if (!Array.isArray(raw) || raw.length % 2 !== 0) {
@@ -559,7 +559,7 @@ const isV2: Recognise<SaveV2> = (value) => {
   return {
     version: 2,
     lamps: raw.map((n, i) => expectSerializable(Number(n), `save.v2.lamps[${i}]`)),
-    // Normalise as you validate: a currency added in a patch defaults here rather than needing
+    // Normalize as you validate: a currency added in a patch defaults here rather than needing
     // a rung of its own.
     wallet: { coin: wallet['coin'] ?? 0, oil: wallet['oil'] ?? 0 },
     hue: expectSerializable(Number(o['hue']), 'save.v2.hue'),
@@ -594,7 +594,7 @@ Four things the machinery enforces, each of which is a save a player would other
 
 - **Every rung steps exactly one version.** `.step(3, …)` from a head of 1 is a compile error, not
   a runtime surprise: `Increment<Head>` is a type-level successor.
-- **Every version carries a recogniser, including the floor.** That is how `migrate` receives a
+- **Every version carries a recognizer, including the floor.** That is how `migrate` receives a
   typed argument instead of `unknown`. A chain of migrations that each begin with a cast is not a
   chain, it is a stack of hopes.
 - **The `why` string is required and cannot be blank.** A reviewer in two years has that sentence
@@ -736,7 +736,7 @@ function paintFrame(nowMs: number, now: EpochMillis): void {
   });
 
   const dark = darknessAt(now);
-  palette.lerp(DAY, NIGHT, dark);            // the colour half
+  palette.lerp(DAY, NIGHT, dark);            // the color half
   light.begin(pen, dark, 'night');           // the mask half — the SAME number
 
   order.clear();
@@ -751,7 +751,7 @@ function paintFrame(nowMs: number, now: EpochMillis): void {
 }
 ```
 
-**One number, two consumers.** Two schedules — one for the colour, one for the mask — is a valley
+**One number, two consumers.** Two schedules — one for the color, one for the mask — is a valley
 whose darkness and whose blue disagree, and it always gets reported as a light bug.
 
 `light.begin` goes *before* the terrain pass, not in the light pass: pools accumulate as sprites
@@ -898,7 +898,7 @@ cannot see.
 correctly rounded, so anything derived from them must never be hashed, persisted or replayed. Mark
 a site `@tier-b` and the linter is satisfied — and it stays greppable, which is the point.
 
-**6. `Infinity` is a perfectly Tier A result and does not survive JSON.** It serialises to `null`,
+**6. `Infinity` is a perfectly Tier A result and does not survive JSON.** It serializes to `null`,
 with a valid checksum, so no layer downstream can detect it. `expectSerializable` and
 `isSerializable` in `core` exist for exactly this, and `sim` throws a *named* error rather than
 letting a `NaN` reach a save.

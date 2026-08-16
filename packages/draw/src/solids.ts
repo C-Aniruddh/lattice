@@ -1,5 +1,5 @@
 /**
- * The isometric solid kit: eight primitives, one colour each, three faces derived.
+ * The isometric solid kit: eight primitives, one color each, three faces derived.
  *
  * **No DOM, no canvas — this module runs unchanged in Node.** Everything here computes screen
  * coordinates into `pen.xy` and hands them to a `Surface`.
@@ -9,7 +9,7 @@
  * 1. **One stroke around the silhouette, never one per face.** Per-face strokes cross-hatch the
  *    interior and destroy the chunky read that makes this style work at thumbnail size. It is
  *    the difference between "reads at 40 px" and "reads as a wireframe".
- * 2. **Faces are derived from one colour.** There is no `leftColor`. Offering one is offering
+ * 2. **Faces are derived from one color.** There is no `leftColor`. Offering one is offering
  *    the caller a way to break the look, and a kit whose look can be broken by a single call is
  *    a kit whose look will be broken.
  *
@@ -101,7 +101,7 @@ function buildArc(): Float64Array {
  * frame — is one small short-lived object rather than a retained one.
  */
 export interface BoxOpts {
-  /** Base colour. The three faces are derived from it; there is no per-face override. */
+  /** Base color. The three faces are derived from it; there is no per-face override. */
   readonly color: Ink;
   /** Height in **storeys**. */
   readonly h: number;
@@ -247,7 +247,7 @@ export function isoPatch(
  * west-top — the order `iso.boxSilhouette` returns, and this is load-bearing.** It is the one
  * genuine coupling between the two packages, and the failure mode is the worst kind: `iso`
  * hit-tests one polygon, `draw` paints another, both are internally consistent, every test in
- * both packages passes, and a player taps a building and opens its neighbour.
+ * both packages passes, and a player taps a building and opens its neighbor.
  *
  * @throws RangeError if `w`, `d`, `opts.h` or `opts.z` is not finite. A `NaN` here paints
  *   nothing and reports nothing, and the building is simply missing.

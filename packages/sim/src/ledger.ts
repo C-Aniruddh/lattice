@@ -171,7 +171,7 @@ export function project<N extends string, G extends string>(
  *
  * @throws RangeError if the resulting vector is not finite, naming the node. One pass over the
  *   nodes at a boundary call is free, and the alternative is writing an `Infinity` that
- *   serialises to `null` with a perfectly valid checksum.
+ *   serializes to `null` with a perfectly valid checksum.
  */
 export function advance<N extends string, G extends string>(
   eco: Economy<N, G>,

@@ -19,7 +19,7 @@ import type { Pen } from './surface.js';
  *  shadow reads as contact rather than as a mat the building was placed on. */
 const SHADOW_SPREAD = 1.05;
 
-/** Peak opacity at the centre of a contact shadow at full strength. Above about 0.45 the
+/** Peak opacity at the center of a contact shadow at full strength. Above about 0.45 the
  *  ground stops reading as ground; below about 0.2 the building floats again. */
 const SHADOW_ALPHA = 0.34;
 

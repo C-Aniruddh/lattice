@@ -23,7 +23,7 @@
 import { clamp01, smoothstep } from './math.js';
 
 /**
- * A curve from normalised time to normalised progress.
+ * A curve from normalized time to normalized progress.
  *
  * The contract a consumer may rely on: `e(0) === 0` and `e(1) === 1` exactly, and `e` is
  * finite across [0, 1]. Inputs outside [0, 1] are the caller's problem — most curves here
@@ -109,7 +109,7 @@ export const quartOut: Easing = (t) => {
 /**
  * Pulls back below 0 before moving. Anticipation without a spring simulation.
  *
- * Because it leaves [0, 1], never drive an index, an array position, a colour channel or
+ * Because it leaves [0, 1], never drive an index, an array position, a color channel or
  * anything clamped with it — the excursion is the effect, and clamping it away leaves a curve
  * that visibly stalls at its start.
  *

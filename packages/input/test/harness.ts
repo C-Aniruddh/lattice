@@ -10,14 +10,14 @@ import { createCamera } from '@lattice/iso';
 import type { Camera } from '@lattice/iso';
 import { createHeadlessInput } from '../src/system.js';
 import type { HeadlessInputOptions, InputSystem } from '../src/system.js';
-import type { GestureName } from '../src/recognise.js';
+import type { GestureName } from '../src/recognize.js';
 import type { PointerKind } from '../src/profile.js';
 import type { RawSample } from '../src/sample.js';
 
 /** 60 Hz, to two more decimal places than anyone needs. */
 export const STEP_60 = 1000 / 60;
 
-/** An 800×600 viewport centred on the world origin, so screen (400, 300) is world (0, 0). */
+/** An 800×600 viewport centered on the world origin, so screen (400, 300) is world (0, 0). */
 export function camera(): Camera {
   return createCamera(800, 600);
 }

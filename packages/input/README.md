@@ -45,14 +45,14 @@ Everything below runs in Node with no DOM and no shim, and is executed by
 import { createCamera } from '@lattice/iso';
 import { createHeadlessInput, createLog, record, replay } from '@lattice/input';
 
-const camera = createCamera(800, 600); //          CSS pixels, centred on (0, 0)
+const camera = createCamera(800, 600); //          CSS pixels, centered on (0, 0)
 const input = createHeadlessInput({
   camera,
   stepMs: 1000 / 60, //                            the same step the loop runs
   actions: { collect: ['tap', 'key:Space'] }, //   two sources, one handler
   focus: (at) => {
     at.x = 400; //                                 where the keyboard aims: the game's
-    at.y = 300; //                                 selection, or the viewport centre
+    at.y = 300; //                                 selection, or the viewport center
     return true;
   },
 });
@@ -203,7 +203,7 @@ input.camera.enabled = false; //                   for a fixed-camera game
 
 There is deliberately no `setZoom`. Origin-anchored zoom — the thing you are looking at sliding
 out from under you as you zoom towards it — is the single most common reason a tile-game camera
-feels broken, and the only way to reach it here is to deliberately type the viewport centre as
+feels broken, and the only way to reach it here is to deliberately type the viewport center as
 the anchor.
 
 ---
@@ -281,7 +281,7 @@ handler is the same object every time. Copy what you keep.
 
 `createInput` is the only part of this package that knows a browser exists; `src/dom.ts` is the
 only module that names a DOM type, and it declares itself `@browser-only`. Everything else —
-the recogniser, the action map, the buffer, the log, the camera controller — runs unchanged in
+the recognizer, the action map, the buffer, the log, the camera controller — runs unchanged in
 Node, which is how every invariant in the RFC is tested with no shim and how a replay runs
 headless.
 

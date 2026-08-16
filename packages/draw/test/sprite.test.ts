@@ -252,11 +252,11 @@ describe('drawGhost', () => {
     drawGhost(pen, TOWER, 0, 0, VARIANT_ZERO, true);
     const ok = palette.get('ok');
     for (const op of opsOf(surface, 'poly')) {
-      // Every fill derives from the legality slot rather than from the sprite's own colours.
+      // Every fill derives from the legality slot rather than from the sprite's own colors.
       expect(op.colors[0]).not.toBe(palette.get('brand'));
     }
     // The top face is the legality slot undiluted; the sides are derived from it, as they are
-    // derived from a real colour, so the ghost still reads as a solid rather than as a decal.
+    // derived from a real color, so the ghost still reads as a solid rather than as a decal.
     expect(opsOf(surface, 'poly').map((op) => op.colors[0])).toContain(ok);
     const alphas = opsOf(surface, 'alpha');
     expect(alphas[0]?.value).toBeLessThan(1);

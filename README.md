@@ -8,7 +8,7 @@ not own, synthesised sound, saves that survive a version bump, and an idle econo
 closed form rather than ticked.
 
 There are no images, no audio files and no fonts anywhere in it, because there is nothing to
-load: every building is drawn from one colour, every sound is built from oscillators, and the
+load: every building is drawn from one color, every sound is built from oscillators, and the
 whole kit weighs less than a photograph with **no dependency outside itself**.
 
 | | |
@@ -180,7 +180,7 @@ file.
 It changes real decisions. `iso`'s A\* heuristic is the integer octile metric `14·min(dx,dy) +
 10·|dx−dy|` rather than a Euclidean one, because a path reaches a save file. `sim`'s cost curve is
 exponentiation by squaring rather than `Math.pow`, because a player is charged that number. There
-are deliberately no sine or expo easings in the kit. And a colour is stored as the player's *hue*,
+are deliberately no sine or expo easings in the kit. And a color is stored as the player's *hue*,
 never as the `#rrggbb` it derives to, because the derivation needs `cbrt`.
 
 ---
@@ -250,7 +250,7 @@ core ─┬─▶ iso ──┬─▶ draw ─┬─▶ ui
 |---|---|---|
 | [`core`](packages/core) | seeded rng, stateless hashing, noise, maths, easing, typed events, pools, formatting | isomorphic |
 | [`iso`](packages/iso) | the three coordinate spaces, camera, depth sort, tile maps, footprints, hit-testing, paths | isomorphic |
-| [`draw`](packages/draw) | a `Surface` with a Canvas2D backend, colour derivation, and the isometric solid kit | browser + headless |
+| [`draw`](packages/draw) | a `Surface` with a Canvas2D backend, color derivation, and the isometric solid kit | browser + headless |
 | [`loop`](packages/loop) | wall-clock loop, fixed-step simulation, schedulers on two timelines, tweens, replay | isomorphic |
 | [`input`](packages/input) | pointer/touch/keyboard into one replayable stream of intents, in tile coordinates | browser |
 | [`audio`](packages/audio) | WebAudio synthesis from declarative recipes, voice limiting, buses, a music deck | browser |
@@ -306,6 +306,6 @@ npm i @lattice/iso     # brings @lattice/core, and nothing else
 
 ---
 
-## Licence
+## License
 
 MIT.

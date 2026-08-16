@@ -167,7 +167,7 @@ describe('expectSerializable', () => {
     );
   });
 
-  it('normalises -0 to 0, because JSON.stringify does and an integrity check would not', () => {
+  it('normalizes -0 to 0, because JSON.stringify does and an integrity check would not', () => {
     expect(Object.is(expectSerializable(-0, 'save.stock'), 0)).toBe(true);
     expect(Object.is(expectSerializable(0, 'save.stock'), 0)).toBe(true);
     expect(Object.is(JSON.parse(JSON.stringify(-0)) as number, 0)).toBe(true);
@@ -287,7 +287,7 @@ describe('the shape of the module', () => {
 /**
  * The two non-numeric guards.
  *
- * `persist` found these missing: every save recogniser in the kit was hand-rolling the same
+ * `persist` found these missing: every save recognizer in the kit was hand-rolling the same
  * object narrowing, and the two clauses people forget — `typeof null === 'object'` and an
  * array being an object — are exactly the ones a corrupt save exercises.
  */
@@ -305,7 +305,7 @@ describe('expectObject', () => {
     expect(() => expectObject(null, 'save')).toThrow(/save: expected a plain object, got null/);
   });
 
-  // An array is an object. A payload serialised as [...] where the schema wanted {...} reads
+  // An array is an object. A payload serialized as [...] where the schema wanted {...} reads
   // as valid until a field comes back undefined, which a permissive migration carries forward.
   it('rejects an array, and names it as an array', () => {
     expect(() => expectObject([], 'save')).toThrow(/got an array/);
@@ -363,9 +363,9 @@ describe('expectRecordOfFinite', () => {
  * The widening that made the numeric guards usable on the save path.
  *
  * `expectFinite` and `expectSerializable` were typed `(value: number)` while runtime-checking
- * for a number anyway — so a recogniser holding an `unknown` out of `JSON.parse` could not
+ * for a number anyway — so a recognizer holding an `unknown` out of `JSON.parse` could not
  * apply them without a cast, and casting defeats the check it was reaching for. `persist`
- * reported that every one of its recognisers was hand-rolling a `typeof` as a result.
+ * reported that every one of its recognizers was hand-rolling a `typeof` as a result.
  */
 describe('the numeric guards accept unknown', () => {
   it('narrows a value that arrived as unknown', () => {
@@ -382,9 +382,9 @@ describe('the numeric guards accept unknown', () => {
     expect(() => expectSerializable(Infinity as unknown, 'save.coins')).toThrow(RangeError);
   });
 
-  // The -0 normalisation has to survive the widening: JSON.stringify(-0) is "0", so a value
+  // The -0 normalization has to survive the widening: JSON.stringify(-0) is "0", so a value
   // that changes across a round trip fails an integrity check for a reason nobody can find.
-  it('still normalises -0 through the unknown path', () => {
+  it('still normalizes -0 through the unknown path', () => {
     expect(Object.is(expectSerializable(-0 as unknown, 'save.zero'), 0)).toBe(true);
   });
 });

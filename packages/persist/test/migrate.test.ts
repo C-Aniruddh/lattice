@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { expectObject, expectRecordOfFinite } from '@lattice/core';
-import { migrations, type ChainBuilder, type Increment, type Recognise } from '../src/migrate.js';
+import { migrations, type ChainBuilder, type Increment, type Recognize } from '../src/migrate.js';
 
 interface V1 {
   readonly version: 1;
@@ -16,8 +16,8 @@ interface V3 {
   readonly name: string;
 }
 
-/** Recognisers return the value typed, or throw naming the field. Never a boolean. */
-const isV1: Recognise<V1> = (value) => {
+/** Recognizers return the value typed, or throw naming the field. Never a boolean. */
+const isV1: Recognize<V1> = (value) => {
   const coins = (value as { coins?: unknown }).coins;
   if (typeof coins !== 'number' || !Number.isFinite(coins)) {
     throw new RangeError(`save.v1.coins: expected a finite number, got ${String(coins)}`);
@@ -25,7 +25,7 @@ const isV1: Recognise<V1> = (value) => {
   return { version: 1, coins };
 };
 
-const isV2: Recognise<V2> = (value) => {
+const isV2: Recognize<V2> = (value) => {
   const wallet = (value as { wallet?: unknown }).wallet;
   const coin = (wallet as { coin?: unknown } | undefined)?.coin;
   if (typeof coin !== 'number' || !Number.isFinite(coin)) {
@@ -34,7 +34,7 @@ const isV2: Recognise<V2> = (value) => {
   return { version: 2, wallet: { coin } };
 };
 
-const isV3: Recognise<V3> = (value) => {
+const isV3: Recognize<V3> = (value) => {
   const v2 = isV2(value);
   const name = (value as { name?: unknown }).name;
   if (typeof name !== 'string') {
@@ -103,7 +103,7 @@ describe('run', () => {
     expect(fromHead).toEqual([3]);
   });
 
-  it('stops at the version whose recogniser refused, and says which field', () => {
+  it('stops at the version whose recognizer refused, and says which field', () => {
     const entered: number[] = [];
     expect(() => chain.run({ coins: 'many' }, 1, (v) => entered.push(v))).toThrow(/save\.v1\.coins/);
     expect(entered).toEqual([1]);
@@ -136,8 +136,8 @@ describe('run', () => {
     expect(() => chain.run({}, 1.5)).toThrow(RangeError);
   });
 
-  it('recognises with the head recogniser last, so a chain bug is caught at the head', () => {
-    // The rung produces something its own recogniser accepts and the head's does not.
+  it('recognizes with the head recognizer last, so a chain bug is caught at the head', () => {
+    // The rung produces something its own recognizer accepts and the head's does not.
     expect(() => chain.run({ wallet: { coin: Number.NaN } }, 2)).toThrow(/save\.v2\.wallet\.coin/);
   });
 });
@@ -151,7 +151,7 @@ describe('a chain with no rungs — the replay policy, expressed in the save mac
     expect(evidence.steps).toEqual([]);
   });
 
-  it('recognises at its one version and refuses to be run from any other', () => {
+  it('recognizes at its one version and refuses to be run from any other', () => {
     expect(evidence.run({ wallet: { coin: 1 }, name: 'n' }, 4)).toEqual({
       version: 3,
       wallet: { coin: 1 },
@@ -164,10 +164,10 @@ describe('a chain with no rungs — the replay policy, expressed in the save mac
 describe('seal', () => {
   /** The escape hatch a JavaScript caller has, and the reason `seal` re-checks at runtime. */
   function untyped(builder: ChainBuilder<1, V1>): {
-    step: (to: number, why: string, migrate: (prior: V1) => V1, recognise: Recognise<V1>) => unknown;
+    step: (to: number, why: string, migrate: (prior: V1) => V1, recognize: Recognize<V1>) => unknown;
   } {
     return builder as unknown as {
-      step: (to: number, why: string, migrate: (prior: V1) => V1, recognise: Recognise<V1>) => unknown;
+      step: (to: number, why: string, migrate: (prior: V1) => V1, recognize: Recognize<V1>) => unknown;
     };
   }
 
@@ -197,8 +197,8 @@ describe('seal', () => {
   });
 });
 
-describe('the Recognise example from the doc comment, verbatim', () => {
-  // If this stops compiling, the doc comment on `Recognise` is wrong and a reader who copies
+describe('the Recognize example from the doc comment, verbatim', () => {
+  // If this stops compiling, the doc comment on `Recognize` is wrong and a reader who copies
   // it gets a type error they did not write. That is the entire point of it living here: an
   // example nobody compiles is a claim nobody checks.
   interface Wallet {
@@ -206,12 +206,12 @@ describe('the Recognise example from the doc comment, verbatim', () => {
     readonly wallet: Record<string, number>;
   }
 
-  const isWallet: Recognise<Wallet> = (value) => {
+  const isWallet: Recognize<Wallet> = (value) => {
     const o = expectObject(value, 'save.v2');
     return { version: 2, wallet: expectRecordOfFinite(o['wallet'], 'save.v2.wallet') };
   };
 
-  it('recognises a good payload and returns it typed', () => {
+  it('recognizes a good payload and returns it typed', () => {
     expect(isWallet({ wallet: { coin: 12, ore: 3 } })).toEqual({ version: 2, wallet: { coin: 12, ore: 3 } });
   });
 
@@ -231,10 +231,10 @@ describe('construction refuses nonsense loudly, at a moment that is not a player
     expect(() => migrations(1.5, isV1)).toThrow(RangeError);
   });
 
-  it('rejects a missing recogniser, including at the floor', () => {
-    expect(() => migrations(1, undefined as unknown as Recognise<V1>)).toThrow(TypeError);
+  it('rejects a missing recognizer, including at the floor', () => {
+    expect(() => migrations(1, undefined as unknown as Recognize<V1>)).toThrow(TypeError);
     expect(() =>
-      migrations(1, isV1).step(2, 'why', (v1) => v1, undefined as unknown as Recognise<V1>),
+      migrations(1, isV1).step(2, 'why', (v1) => v1, undefined as unknown as Recognize<V1>),
     ).toThrow(TypeError);
     expect(() =>
       migrations(1, isV1).step(2, 'why', undefined as unknown as (prior: V1) => V1, isV1),

@@ -124,7 +124,7 @@ export function fillRequest(
  *
  * They are three because they fail differently. The **throttle** handles the repeat of one
  * sound — twenty `collect` calls in the same millisecond. The **ceiling** handles twenty
- * *different* sounds, which no per-sound gap can see. The **ladder** is not a defence at all;
+ * *different* sounds, which no per-sound gap can see. The **ladder** is not a defense at all;
  * it lives here because it is the same state, keyed the same way, and updated on exactly the
  * plays the throttle admits.
  *

@@ -25,7 +25,7 @@
  * |---|---|---|
  * | old format | migrated, rung by rung | **refused** — `orphaned` |
  * | mechanism | a chain with rungs from floor to head | a chain with **no rungs**: `migrations(N, isLog).seal()`, floor === head |
- * | near-miss | tolerated; a recogniser may normalise as it validates | **refused**, exactly: `version`, `stepMs` and `profile` are compared for equality and the differing field is named |
+ * | near-miss | tolerated; a recognizer may normalize as it validates | **refused**, exactly: `version`, `stepMs` and `profile` are compared for equality and the differing field is named |
  * | failure costs | a player's campus | a test result nobody should have trusted |
  *
  * The mechanism is worth noticing: **"never migrate" is expressible in the machinery already
@@ -123,7 +123,7 @@ export interface ReplayLog<L extends ReplayCompat> {
   readonly startTick: number;
   readonly endTick: number;
   /**
-   * The input log, **verbatim**. Never rewritten, never normalised, never migrated.
+   * The input log, **verbatim**. Never rewritten, never normalized, never migrated.
    *
    * `stepMs` and `profile` live in here rather than being copied up to this level,
    * deliberately: a duplicated field is a field that can disagree with itself, and the copy

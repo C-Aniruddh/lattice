@@ -164,7 +164,7 @@ describe('Emitter.once', () => {
     expect(runs).toBe(1);
   });
 
-  it('can be cancelled before it ever fires', () => {
+  it('can be canceled before it ever fires', () => {
     const events = new Emitter<GameEvents>();
     let ran = 0;
     const off = events.once('tick', () => {

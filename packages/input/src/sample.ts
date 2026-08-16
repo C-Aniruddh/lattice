@@ -26,7 +26,7 @@
  * that goes in a log and through JSON unchanged. {@link SampleSlot} is the internal one: a
  * flat, fully-populated record that the buffer owns for ever and overwrites in place. A
  * fixed-shape slot is what makes a thousand `pointermove`s through one tick allocate nothing,
- * and keeping it internal is what stops that optimisation leaking into the recorded format,
+ * and keeping it internal is what stops that optimization leaking into the recorded format,
  * where a field-per-kind union is far easier to read a year later.
  *
  * Pure: no clock, no DOM.
@@ -38,14 +38,14 @@ import type { PointerKind } from './profile.js';
  * The format version of {@link InputLog}.
  *
  * Bumped whenever the meaning of a sample stream changes — a new sample kind, a changed field,
- * or a change in how the recogniser reads one. `@lattice/persist` compares it for equality and
+ * or a change in how the recognizer reads one. `@lattice/persist` compares it for equality and
  * **refuses** a replay that differs, because a migrated input log is a log that no longer
  * replays and a divergence report from one is worse than no report at all.
  */
 export const LOG_VERSION = 1;
 
 /**
- * The entire input to the recogniser. Plain data, serialisable, no clock, no DOM.
+ * The entire input to the recognizer. Plain data, serialisable, no clock, no DOM.
  *
  * `tick` is how time enters — {@link InputSystem.tick} appends one — which means a log is a
  * complete description of a session's input *including its timing*, expressed on the only axis
@@ -66,7 +66,7 @@ export type RawSample =
   | { readonly kind: 'up'; readonly id: number; readonly sx: number; readonly sy: number }
   /** The pointer was taken away: `pointercancel`, `lostpointercapture`, blur, or dispose. */
   | { readonly kind: 'cancel'; readonly id: number }
-  /** `dz` is already normalised to CSS pixels; `pinch` marks a trackpad pinch arriving as a wheel. */
+  /** `dz` is already normalized to CSS pixels; `pinch` marks a trackpad pinch arriving as a wheel. */
   | {
       readonly kind: 'wheel';
       readonly sx: number;
@@ -157,7 +157,7 @@ export interface SampleSlot {
  * A slot in its zero state.
  *
  * Called once per slot, for ever. Exported because the recorder needs a scratch one to
- * normalise a caller's sample through — {@link writeSlot} then {@link toRawSample} is one
+ * normalize a caller's sample through — {@link writeSlot} then {@link toRawSample} is one
  * definition of what each kind carries, and a second copy of that switch is a second place for
  * a field to go missing.
  */

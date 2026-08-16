@@ -244,7 +244,7 @@ export function v2Normalize(out: Vec2, a: ReadonlyVec2): Vec2 {
   const lenSq = ax * ax + ay * ay;
   if (lenSq > 0 && lenSq < Infinity) {
     // Two divisions rather than one reciprocal and two multiplies. The reciprocal is the
-    // classic optimisation and it is wrong here: `3 * (1 / 5)` is 0.6000000000000001 where
+    // classic optimization and it is wrong here: `3 * (1 / 5)` is 0.6000000000000001 where
     // `3 / 5` is 0.6, and a normal that is not exactly axis-aligned puts a wall one ulp off
     // its own tile edge. Division is correctly rounded by specification, so this stays Tier A.
     const len = Math.sqrt(lenSq);
@@ -279,7 +279,7 @@ export function v2Perp(out: Vec2, a: ReadonlyVec2): Vec2 {
 
 /** Component-wise comparison within `epsilon` (default `EPSILON`), inclusive. Named `approx`
  *  and not `equals` so that no call site reads as exact — two positions that pass this may
- *  still hash and serialise differently. */
+ *  still hash and serialize differently. */
 export function v2Approx(a: ReadonlyVec2, b: ReadonlyVec2, epsilon: number = EPSILON): boolean {
   const dx = a.x - b.x;
   const dy = a.y - b.y;

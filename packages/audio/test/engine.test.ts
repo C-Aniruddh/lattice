@@ -416,7 +416,7 @@ describe('panning', () => {
     expect(plans[0]?.pan).toBe(-0.6);
   });
 
-  it('leaves interface sounds centred, because the interface does not follow the camera', () => {
+  it('leaves interface sounds centered, because the interface does not follow the camera', () => {
     const { audio, plans } = harness();
     audio.play('tap', { pan: 1 });
     expect(plans[0]?.pan).toBe(0);

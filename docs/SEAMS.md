@@ -15,7 +15,7 @@ place where two packages will otherwise both be individually correct and jointly
 | the seam | owner | why, and who disputed it |
 |---|---|---|
 | tap → grid cell | **`iso`** does the maths, **`input`** owns the gesture and calls it | Both claimed it, both were told to stop hedging, and both landed on the same split independently. Game code never converts coordinates. |
-| the sorted draw list | **`iso`** sorts, **`draw`** decides which pass walks it | `iso` dropped its own `Scene` on the reasoning that *the moment it held ids it was modelling the caller's entities*. `draw` deleted its `DrawList` on the reasoning that exactly one pass in seven sorts. Both deletions; one list survives. |
+| the sorted draw list | **`iso`** sorts, **`draw`** decides which pass walks it | `iso` dropped its own `Scene` on the reasoning that *the moment it held ids it was modeling the caller's entities*. `draw` deleted its `DrawList` on the reasoning that exactly one pass in seven sorts. Both deletions; one list survives. |
 | `LEVEL_H` (world pixels per storey) | **`draw`** | Ruled into `iso`, disputed by `draw`, and the dispute won: `iso`'s whole height vocabulary is pixels, so there is no signature a storey could enter through, and `iso` would export a number it never reads. It is an art proportion tuned beside `FACE_LEFT`, not a projection fact like `TILE_W`. |
 | `Rect` / `Bounds` | **`iso`** | `core` refused: `draw`, `input` and `ui` all reach `iso` through the existing DAG, so layer 0 would be charging everyone for the spatial half of the kit. |
 | entity ids | **`sim`** | `core` refused — an id generator is stateful and layer 0 has no module-level mutable state. `sim` made it a saved counter, never reused. |
@@ -49,11 +49,11 @@ packages, and they are the reason that directory exists.
   common, so a heap without it turns A\*'s replay guarantee into a coin flip.
 - **Tier A promises bit-identical arithmetic and promises nothing about a round trip through
   JSON.** `Infinity` is a perfectly Tier A result and is precisely the value that does not
-  survive being written down — it serialises to `null`, with a valid checksum, so no layer
+  survive being written down — it serializes to `null`, with a valid checksum, so no layer
   downstream can detect it.
 - **Persist the input, never the derived value.** Store the player's brand hue, not the
   `#rrggbb` it derives to. Derivation needs `cbrt` and `pow`, which are Tier B, so a stored
-  token is an engine-specific artefact in a file that will travel to another engine.
+  token is an engine-specific artifact in a file that will travel to another engine.
 - **A Lattice game contains exactly one thing that decides when work happens.** Packages
   expose a tick-shaped method; they never go and find a clock. Two clocks in one game is the
   bug that overwrote a player's typed company name in the game this kit came from.

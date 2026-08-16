@@ -28,14 +28,14 @@ import {
   elapsedSince,
   memoryStorage,
   migrations,
-  type Recognise,
+  type Recognize,
 } from '@lattice/persist';
 
 interface V1 { readonly version: 1; readonly coins: number }
 interface V2 { readonly version: 2; readonly wallet: { readonly coin: number } }
 
-// A recogniser returns the value typed, or throws naming the field. Never a boolean.
-const isV1: Recognise<V1> = (value) => {
+// A recognizer returns the value typed, or throws naming the field. Never a boolean.
+const isV1: Recognize<V1> = (value) => {
   const coins = (value as { coins?: unknown }).coins;
   if (typeof coins !== 'number' || !Number.isFinite(coins)) {
     throw new RangeError(`save.v1.coins: expected a finite number, got ${String(coins)}`);
@@ -43,7 +43,7 @@ const isV1: Recognise<V1> = (value) => {
   return { version: 1, coins };
 };
 
-const isV2: Recognise<V2> = (value) => {
+const isV2: Recognize<V2> = (value) => {
   const coin = (value as { wallet?: { coin?: unknown } }).wallet?.coin;
   if (typeof coin !== 'number' || !Number.isFinite(coin)) {
     throw new RangeError(`save.v2.wallet.coin: expected a finite number, got ${String(coin)}`);
@@ -170,8 +170,8 @@ a state, and every one of them degrades to `fresh()` with a report:
 | `corrupt` | checksum mismatch, or a payload that did not parse | yes |
 | `future` | the save is newer than this build | **no** |
 | `orphaned` | the save is older than the chain floor | yes |
-| `migration-failed` | a rung threw, or a step's recogniser rejected its own output | yes |
-| `invalid` | reached the head and the head recogniser still refused | yes |
+| `migration-failed` | a rung threw, or a step's recognizer rejected its own output | yes |
+| `invalid` | reached the head and the head recognizer still refused | yes |
 
 `firstRun` is a separate field from `source` for one reason: `source: 'fresh'` with
 `firstRun: false` is **a save that was lost**, and a game that cannot tell the two apart will
@@ -252,7 +252,7 @@ is 0 Hz when the tab is backgrounded, which is precisely the moment before a tab
 |---|---|---|
 | old format | migrated, rung by rung | **refused** — `orphaned` |
 | mechanism | a chain with rungs from floor to head | a chain with **no rungs**: `migrations(N, isLog).seal()` |
-| near-miss | tolerated; a recogniser may normalise as it validates | **refused**, by name |
+| near-miss | tolerated; a recognizer may normalize as it validates | **refused**, by name |
 | failure costs | a player's campus | a test result nobody should have trusted |
 
 A save is progress; a replay is evidence, and evidence that has been migrated is no longer
@@ -285,13 +285,13 @@ which one applies depends on whether you are hashing *text a human means* or *by
 wrote*:
 
 ```ts
-// A key derived from something a player typed. Normalise first, ALWAYS.
+// A key derived from something a player typed. Normalize first, ALWAYS.
 // macOS hands you NFD; Windows and most browsers hand you NFC. Without this, the same
 // visible name typed on two machines produces two save keys and two different worlds —
 // and the bug reproduces on nobody's machine.
 const key = `campus:save:${hashString(playerName.normalize('NFC')).toString(16)}`;
 
-// A checksum over a payload. NEVER normalise — the bytes are the subject, and a save
+// A checksum over a payload. NEVER normalize — the bytes are the subject, and a save
 // truncated mid-combining-sequence must fail.
 const c = defaultChecksum(payloadText);
 ```
@@ -305,13 +305,13 @@ A few more, mined from the game this kit was extracted from:
 - **Private-mode Safari throws on the property access, not just on the write.**
   `browserStorage()` wraps the read of `globalThis.localStorage` itself, then probes with a real
   write, then degrades to memory.
-- **JSON quietly destroys `NaN` and `Infinity`** — both serialise to `null`, with a valid
+- **JSON quietly destroys `NaN` and `Infinity`** — both serialize to `null`, with a valid
   checksum, and come back as `NaN` on the next tick. Put `expectSerializable` from `core`'s
-  `guard` on your currencies inside the head recogniser. It is worth more than a recogniser
+  `guard` on your currencies inside the head recognizer. It is worth more than a recognizer
   that checks thirty field names and no ranges.
 - **A save stores causes, not consequences.** Persist the player's brand hue, never the
-  `#rrggbb` it derives to: colour derivation is Tier B, so a stored token is an engine-specific
-  artefact in a file that will travel to another engine — and a retuned palette would never
+  `#rrggbb` it derives to: color derivation is Tier B, so a stored token is an engine-specific
+  artifact in a file that will travel to another engine — and a retuned palette would never
   reach anyone who already played.
 - **Two live tabs share one key** and the loser's flush wins. The default is last-write-wins;
   `conflict: 'refuse'` costs one extra read per write and reports `WriteSkip: 'conflict'`. It is
@@ -334,7 +334,7 @@ copies the snippet that happens to be under test, they copy the one nearest the 
 looking at. So an example here either compiles and runs somewhere, or it is marked as a sketch.
 The cheapest way to keep that honest is to paste the doc's example into a test file verbatim
 and let `tsc` and `vitest` own it from then on, which is what
-`test/migrate.test.ts > the Recognise example from the doc comment, verbatim` and
+`test/migrate.test.ts > the Recognize example from the doc comment, verbatim` and
 `test/store.test.ts > scheduleFrom` now do.
 
 ---
@@ -359,7 +359,7 @@ back.
 |---|---|
 | **integrity** | `Checksum`, `defaultChecksum` |
 | **adapters** | `StorageLike`, `StorageAdapter`, `webStorage`, `memoryStorage` |
-| **chain** | `Increment`, `Recognise`, `MigrationStep`, `MigrationChain`, `ChainBuilder`, `migrations` |
+| **chain** | `Increment`, `Recognize`, `MigrationStep`, `MigrationChain`, `ChainBuilder`, `migrations` |
 | **envelope** | `Envelope`, `FailureReason`, `ReadFailure`, `OpenResult`, `inspect`, `elapsedSince` |
 | **store** | `StoreOptions`, `Store`, `createStore`, `StoreStatus`, `WriteSkip`, `WriteFailure`, `WriteResult`, `Rejected`, `Schedule`, `Cancel`, `SecondsTimeline`, `scheduleFrom`, `AutosaveOptions`, `Autosave` |
 | **replay** | `ReplayCompat`, `Digest`, `Checkpoint`, `ReplayLog`, `RecorderOptions`, `Recorder`, `createRecorder`, `Refusal`, `Divergence`, `ReplayVerdict`, `ReplayVerifier`, `createVerifier` |

@@ -140,7 +140,7 @@ describe('isoBox', () => {
     expect(opsOf(surface, 'poly')).toHaveLength(3);
   });
 
-  it('derives left, right and top from one colour, lit front-left', () => {
+  it('derives left, right and top from one color, lit front-left', () => {
     const { surface, pen, palette } = scene();
     isoBox(pen, 0, 0, 1, 1, { color: 'brand', h: 1 });
     const polys = opsOf(surface, 'poly');
@@ -157,7 +157,7 @@ describe('isoBox', () => {
     expect(opsOf(surface, 'poly')[2]?.colors[0]).toBe(palette.get('glass'));
   });
 
-  it('takes a packed colour as readily as a slot', () => {
+  it('takes a packed color as readily as a slot', () => {
     const { surface, pen } = scene();
     isoBox(pen, 0, 0, 1, 1, { color: rgba(10, 20, 30), h: 1 });
     expect(opsOf(surface, 'poly')[2]?.colors[0]).toBe(rgba(10, 20, 30));

@@ -87,7 +87,7 @@ describe('the README example', () => {
 
     const order = new DepthSorter(64); //          allocated once, reused for ever
     const pen = beginFrame({ surface, camera, palette, t: 2.5, clear: 'sky', light });
-    light.begin(pen, 0.7, 'night'); //             darkness 0–1, and the colour it goes
+    light.begin(pen, 0.7, 'night'); //             darkness 0–1, and the color it goes
 
     order.clear();
     for (const b of buildings) {

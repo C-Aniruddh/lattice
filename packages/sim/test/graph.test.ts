@@ -435,7 +435,7 @@ describe('zeroStocks', () => {
     expect(b.bloom).toBe(0);
   });
 
-  it('serialises with the declared field order', () => {
+  it('serializes with the declared field order', () => {
     const eco = defineEconomy(DIAMOND);
     expect(JSON.stringify(zeroStocks(eco))).toBe('{"bloom":0,"sprout":0,"root":0,"seed":0}');
   });

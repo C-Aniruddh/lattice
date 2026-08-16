@@ -92,7 +92,7 @@ import { easeOutCubic } from '@lattice/core';    // the roll's curve
 // @lattice/draw
 import type { Surface } from '@lattice/draw';
 import { createCanvasSurface } from '@lattice/draw'; // an offscreen Surface over a <canvas>
-import { hueToHex } from '@lattice/draw';           // one hue -> one CSS colour
+import { hueToHex } from '@lattice/draw';           // one hue -> one CSS color
 ```
 
 `@lattice/core`'s `fmt` / `fmtRate` / `fmtDuration` are **not** imported. Formatting is the
@@ -568,7 +568,7 @@ export interface FloatHost {
  * Floating "+120" feedback, in the overlay's bottom layer.
  *
  * It is DOM rather than canvas because it is screen-space type: it wants the game's font,
- * its text shadow and its colour tokens, and painting it through `@lattice/draw`'s text kit
+ * its text shadow and its color tokens, and painting it through `@lattice/draw`'s text kit
  * would mean a second typographic system that drifts from the first. It is in the *bottom*
  * layer because feedback must never intercept the next tap, and the layer is
  * `pointer-events: none` with no way to turn that on.
@@ -589,7 +589,7 @@ export interface ThumbSpec {
   readonly height: number;
   /** Device pixel ratio, clamped to [1, 2]. Default: the window's, clamped. A 3x phone otherwise pays 9x the fill for a shop card. */
   readonly dpr?: number;
-  /** Painted before `paint` runs. Any CSS colour. Default: transparent. */
+  /** Painted before `paint` runs. Any CSS color. Default: transparent. */
   readonly background?: string;
   /**
    * Draw the thumbnail. Same `Surface` the world is drawn with, already scaled for `dpr`, so
@@ -622,7 +622,7 @@ export interface ThumbCache {
  *
  * Bounded because a `data:` URL for a 240x140 card is tens of kilobytes of string, and the
  * source game's cache was an unbounded `Map` keyed by (building, brand, size) that a player
- * who liked changing their colour could grow without limit. Least-recently-used eviction at
+ * who liked changing their color could grow without limit. Least-recently-used eviction at
  * `capacity`, default 64.
  */
 export function thumbnails(ui: Overlay, capacity?: number): ThumbCache;
@@ -632,9 +632,9 @@ export function thumbnails(ui: Overlay, capacity?: number): ThumbCache;
 
 ```ts
 export interface BrandOptions {
-  /** HSL saturation for the derived colour, 0..1. Default 0.72. */
+  /** HSL saturation for the derived color, 0..1. Default 0.72. */
   readonly saturation?: number;
-  /** HSL lightness for the derived colour, 0..1. Default 0.62. */
+  /** HSL lightness for the derived color, 0..1. Default 0.62. */
   readonly lightness?: number;
 }
 
@@ -642,7 +642,7 @@ export interface BrandOptions {
  * Recolour the overlay from a single hue in degrees.
  *
  * Writes exactly three custom properties on the overlay root — `--lattice-brand`,
- * `--lattice-brand-hi`, `--lattice-brand-lo` — derived through `@lattice/draw`'s colour model,
+ * `--lattice-brand-hi`, `--lattice-brand-lo` — derived through `@lattice/draw`'s color model,
  * so the HUD accent and the buildings in the world are the same hue *by construction* rather
  * than by two people picking hex codes. Your stylesheet consumes them; this package never
  * reads them back.
@@ -668,8 +668,8 @@ export function setBrand(ui: Overlay, hue: number, opts?: BrandOptions): void;
 export function setTokens(ui: Overlay, tokens: Readonly<Record<string, string>>): void;
 
 /**
- * A set of named colours. Whatever `@lattice/draw` produces from interpolating two palettes
- * by a 0..1 parameter is one of these: names to CSS colour strings, and nothing else.
+ * A set of named colors. Whatever `@lattice/draw` produces from interpolating two palettes
+ * by a 0..1 parameter is one of these: names to CSS color strings, and nothing else.
  * `@lattice/ui` neither defines the names nor knows what they mean.
  */
 export type Palette = Readonly<Record<string, string>>;
@@ -684,7 +684,7 @@ export interface PaletteOptions {
  *
  * This is `setBrand`'s mechanism driven by a different input. The brand hue is chosen once at
  * incorporation; a day/night palette is a fresh set of strings as dusk falls, and the overlay
- * has to darken with the world — a HUD glowing in its daytime colours over a night scene is
+ * has to darken with the world — a HUD glowing in its daytime colors over a night scene is
  * the most obvious way an overlay reveals itself as a separate layer bolted on top.
  *
  * **Write it from `update`, never from `render`.** The whole palette is one object of
@@ -710,7 +710,7 @@ export interface PaletteOptions {
  *    steps; `transition: background-color 1.2s linear` in *your* stylesheet turns them into a
  *    continuous fade that runs on the compositor, costs no main-thread work, needs no frame
  *    callback, and degrades to an instant jump in a hidden tab — which is the correct
- *    behaviour, because nobody is looking.
+ *    behavior, because nobody is looking.
  * 3. **It does not invalidate thumbnails**, unlike `setBrand`. A shop card is a portrait of
  *    the building, not a photograph of it at this hour, and a cache rebuilt once a second is a
  *    memory leak with a pleasant API.
@@ -744,7 +744,7 @@ them; nothing in this package ever reads them back.
 
 And the complete list of CSS properties this package ever writes to an element's inline style:
 `position`, `inset`, `left`, `top`, `z-index`, `pointer-events`, `display`. Nothing decorative
-— no colour, no font, no radius, no shadow. That list is testable (§5, invariant 11) and it is
+— no color, no font, no radius, no shadow. That list is testable (§5, invariant 11) and it is
 the boundary between "primitives" and "a look you have to fight".
 
 ---
@@ -759,11 +759,11 @@ that is fifteen lines and a mature version that is a framework.
 |---|---|
 | **A virtual DOM, reactivity, signals, or templates** | The whole overlay is a few dozen nodes changing a few times a second. Diffing is pure overhead against `setText`, which is already the change guard. The source game's HUD updates cost nothing measurable; the diffing to avoid them would. |
 | **State binding** — `bind(state, node, selector)` | The moment this package can read your state it needs a shape for your state, and the shape wins. You call `set()` and `setText()` inside `ui.every()`. That is three characters more than a binding and it never surprises you about *when*. |
-| **A component library** — buttons, tabs, sliders, dropdowns, progress bars, accordions | A button is `el('button', { class: 'btn', onclick })` plus your stylesheet, and every game wants a different one. Shipping a styled button means shipping a look, and a look is the one thing a zero-asset kit must let the game own. The three widgets that *are* here (panel, toast, float) earn it by owning **behaviour** — a focus trap, a hold-on-hover expiry, a recycling pool — not appearance. |
+| **A component library** — buttons, tabs, sliders, dropdowns, progress bars, accordions | A button is `el('button', { class: 'btn', onclick })` plus your stylesheet, and every game wants a different one. Shipping a styled button means shipping a look, and a look is the one thing a zero-asset kit must let the game own. The three widgets that *are* here (panel, toast, float) earn it by owning **behavior** — a focus trap, a hold-on-hover expiry, a recycling pool — not appearance. |
 | **A layout engine** — grids, stacks, anchoring, breakpoints, safe-area insets | CSS is the layout engine and it is already in the browser. This package guarantees exactly one thing about geometry: the root fills the viewport and the four layers stack in a fixed order. Where your dock sits, and whether it clears the iPhone home indicator, is `env(safe-area-inset-bottom)` in your sheet. |
-| **A stylesheet, a theme preset, or a dark mode** | Non-negotiable 8 is zero assets, and a CSS file is an asset. `setBrand` is a bridge from `@lattice/draw`'s colour model into three custom properties; that is the entire opinion this package holds about how anything looks. |
-| **Input handling** — gestures, pointer normalisation, drag, long-press, keyboard maps | `@lattice/input` (layer 2). This package sets `pointer-events` and attaches `click`; if you find yourself computing a drag threshold in here, you are writing the wrong package. |
-| **Colour interpolation, palette blending, contrast checking** | `@lattice/draw` owns the colour model, including interpolating two palettes by a `t` for day and night. `applyPalette` takes the *result* — a bag of name-to-CSS-string — so the overlay darkens with the world without this package learning what "dusk" is, or holding a second opinion about how a colour is derived. |
+| **A stylesheet, a theme preset, or a dark mode** | Non-negotiable 8 is zero assets, and a CSS file is an asset. `setBrand` is a bridge from `@lattice/draw`'s color model into three custom properties; that is the entire opinion this package holds about how anything looks. |
+| **Input handling** — gestures, pointer normalization, drag, long-press, keyboard maps | `@lattice/input` (layer 2). This package sets `pointer-events` and attaches `click`; if you find yourself computing a drag threshold in here, you are writing the wrong package. |
+| **Color interpolation, palette blending, contrast checking** | `@lattice/draw` owns the color model, including interpolating two palettes by a `t` for day and night. `applyPalette` takes the *result* — a bag of name-to-CSS-string — so the overlay darkens with the world without this package learning what "dusk" is, or holding a second opinion about how a color is derived. |
 | **A dialog system** — `confirm` / `prompt` / `alert` families, severity levels, icon sets, a notification queue with a priority policy, "don't show me this again" checkboxes | `acknowledge` is one function with one button and one guarantee (it cannot be dismissed), and that is where the line is drawn. The moment a second button appears it is a *choice*, and a choice needs a return type, then a default, then a destructive-action convention, then an icon to mark which kind it is — and now the package has a severity taxonomy and an opinion about what red means. Two actions is `panel`, which exists, and which the game styles. |
 | **Persistence of any kind** — a `once` that survives a reload, a "seen" set, a dismissal log | `once(key, …)` latches for **this session**, in memory, and that is the whole scope. "Tell the player once ever" is a boolean in the game's saved state, and `@lattice/persist` owns saved state; a UI package that writes `localStorage` behind the save layer's back is a second owner of the same truth, which is the storage-shaped version of the two-clocks bug this RFC has already fixed once. `if (!save.warnedAboutStorage) { save.warnedAboutStorage = toasts.once(…) }` is the composition, and it is one line. |
 | **A clock, a scheduler, a `setInterval`, a `requestAnimationFrame` loop** | `@lattice/loop` owns time, and a HUD that brings its own clock is a HUD that polls while the simulation settles. The overlay is *driven*: `tick` from `update`, `repaint` from `render`. `driver: 'standalone'` exists only for a page with no game behind it, and it refuses to coexist with a host that also calls `tick()`. |
@@ -783,7 +783,7 @@ implementation.
 
 1. **A tap that is not on a node you named reaches the world.** Mount a full-screen spacer
    without `interactive`, put a `click` listener on an element behind the overlay, dispatch a
-   click at the centre of the viewport: the listener fires. Add a game stylesheet containing
+   click at the center of the viewport: the listener fires. Add a game stylesheet containing
    `.lattice-layer > * { pointer-events: auto }` and the test must *still* pass, because the
    package's own `none` is inline and inline wins.
 2. **The HUD is correct with the paint cadence never running.** Call `tick()` only, never
@@ -820,7 +820,7 @@ implementation.
    the layer's child count never exceeds `capacity`, and no new element is created. Measurable
    with a `MutationObserver` counting `addedNodes`.
 10. **Everything is disposable.** After `ui.destroy()`, `document.body` contains no node this
-   package created, any standalone-driver handles are cancelled, the loop subscriptions taken by
+   package created, any standalone-driver handles are canceled, the loop subscriptions taken by
    `drive` are released, and no listener remains on `window` or `document`. A game that hot-reloads twice must not accumulate two overlays —
    the source game had two live instances driving one canvas and could not tell.
 11. **The package writes only structural CSS.** Grep the built output for `.style.` assignments
@@ -936,7 +936,7 @@ What a naive implementation gets wrong. Numbers in brackets are traps from
    and takes the *next* one down with it.
 
 7. **A thumbnail cache key that omits the brand serves stale art after a recolour**, and one
-   that includes it grows without bound as the player plays with the colour picker. Both halves
+   that includes it grows without bound as the player plays with the color picker. Both halves
    are real: the source game keyed on `${id}|${brand}|${w}x${h}` into an unbounded `Map` of
    `data:` URLs. The design here inverts it — the key does *not* name the brand, `setBrand`
    invalidates, and the cache is LRU-bounded — so neither mistake is available to a caller.
@@ -973,7 +973,7 @@ What a naive implementation gets wrong. Numbers in brackets are traps from
     place to put it — the palette comes from the same `t` that tints the world, and the world is
     drawn there — and it is wrong twice over. It stops in a backgrounded tab, so the player
     returns to a night scene under a noon HUD until the next update; and while it is running it
-    invalidates the whole overlay's style sixty times a second to move a colour a player
+    invalidates the whole overlay's style sixty times a second to move a color a player
     perceives over minutes. `update` is the right callback, and the correct way to make
     one-second steps look continuous is a `transition` in the game's stylesheet, which the
     compositor runs and a hidden tab simply skips.
@@ -981,7 +981,7 @@ What a naive implementation gets wrong. Numbers in brackets are traps from
 14. **Floats that outlive their animation.** Web Animations do not run in a hidden tab, so
     `onfinish` never fires and the recycler never gets the node back. Expiry must be driven from
     `update` — compare `now` against the spawn time — with the animation callback as an
-    optimisation, never as the mechanism. The same applies to toasts.
+    optimization, never as the mechanism. The same applies to toasts.
 
 ---
 
@@ -992,10 +992,10 @@ orchestrator, not a change I can make from here.
 
 - **`@lattice/draw`** must export an offscreen `Surface` factory over a `<canvas>` and a way
   to get a `data:` URL out of it, plus `hueToHex(hue, sat?, light?)`. Without the first,
-  `thumb` cannot exist; without the second, `theme` duplicates a colour model that already
-  lives in `draw` — and two colour models is how a HUD accent stops matching the buildings.
+  `thumb` cannot exist; without the second, `theme` duplicates a color model that already
+  lives in `draw` — and two color models is how a HUD accent stops matching the buildings.
 - **`@lattice/draw` owns palette interpolation** and must export it as a function of two
-  palettes and a `t` in 0..1 returning a plain name-to-CSS-colour bag (`lerpPalette(a, b, t)`
+  palettes and a `t` in 0..1 returning a plain name-to-CSS-color bag (`lerpPalette(a, b, t)`
   in the demo RFC's spelling). `applyPalette` accepts exactly that shape and nothing narrower,
   so the seam is one structural type and neither side imports the other's opinions. The demo
   should quantise `t` — 1/64 steps over a dusk is beyond what anyone can see — so that the

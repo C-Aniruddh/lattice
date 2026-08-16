@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { asEpochMillis, createRng, type EpochMillis } from '@lattice/core';
 import { memoryStorage, type StorageAdapter } from '../src/adapters.js';
 import { defaultChecksum } from '../src/integrity.js';
-import { migrations, type Recognise } from '../src/migrate.js';
+import { migrations, type Recognize } from '../src/migrate.js';
 import {
   createStore,
   elapsedSince,
@@ -37,7 +37,7 @@ interface V3 {
   readonly name: string;
 }
 
-const isV1: Recognise<V1> = (value) => {
+const isV1: Recognize<V1> = (value) => {
   const coins = (value as { coins?: unknown }).coins;
   if (typeof coins !== 'number' || !Number.isFinite(coins)) {
     throw new RangeError(`save.v1.coins: expected a finite number, got ${String(coins)}`);
@@ -45,7 +45,7 @@ const isV1: Recognise<V1> = (value) => {
   return { version: 1, coins };
 };
 
-const isV2: Recognise<V2> = (value) => {
+const isV2: Recognize<V2> = (value) => {
   const coin = (value as { wallet?: { coin?: unknown } }).wallet?.coin;
   if (typeof coin !== 'number' || !Number.isFinite(coin)) {
     throw new RangeError(`save.v2.wallet.coin: expected a finite number, got ${String(coin)}`);
@@ -53,7 +53,7 @@ const isV2: Recognise<V2> = (value) => {
   return { version: 2, wallet: { coin } };
 };
 
-const isV3: Recognise<V3> = (value) => {
+const isV3: Recognize<V3> = (value) => {
   const { wallet } = isV2(value);
   const name = (value as { name?: unknown }).name;
   if (typeof name !== 'string') {
@@ -649,11 +649,11 @@ describe('autosave', () => {
 
   it('does not write until the injected schedule chooses to run — proving there is no real timer', () => {
     const pending: Array<{ readonly afterMs: number; readonly fn: () => void }> = [];
-    let cancelled = 0;
+    let canceled = 0;
     const schedule = (afterMs: number, fn: () => void): Cancel => {
       pending.push({ afterMs, fn });
       return () => {
-        cancelled += 1;
+        canceled += 1;
       };
     };
 
@@ -675,9 +675,9 @@ describe('autosave', () => {
     expect(spy.writes).toBe(2);
 
     auto.stop();
-    expect(cancelled).toBe(1);
+    expect(canceled).toBe(1);
     auto.stop();
-    expect(cancelled).toBe(1);
+    expect(canceled).toBe(1);
   });
 
   it('makes tick a no-op when a schedule was supplied, so wiring both is not a double write', () => {
@@ -702,7 +702,7 @@ describe('autosave', () => {
     const auto = store.autosave(() => FRESH, {
       schedule: (_afterMs, fn) => {
         fire = fn;
-        return () => undefined; // a scheduler that lies about cancelling
+        return () => undefined; // a scheduler that lies about canceling
       },
     });
 
@@ -989,7 +989,7 @@ describe('write outcomes', () => {
     const result = store.save(cyclic as unknown as V3);
     expect(result.written).toBe(false);
     expect(result.error?.reason).toBe('unavailable');
-    expect(result.error?.message).toContain('could not be serialised');
+    expect(result.error?.message).toContain('could not be serialized');
     expect(store.status).toBe('write-failing');
 
     // `encode` is the developer-facing half and is allowed to throw.
@@ -1185,7 +1185,7 @@ describe('stores on one adapter are isolated', () => {
     readonly version: 1;
     readonly volume: number;
   }
-  const isSettings: Recognise<Settings> = (value) => {
+  const isSettings: Recognize<Settings> = (value) => {
     const volume = (value as { volume?: unknown }).volume;
     if (typeof volume !== 'number') throw new TypeError('settings.volume: expected a number');
     return { version: 1, volume };
@@ -1391,7 +1391,7 @@ describe('the README example, verbatim', () => {
   // The example on the front page of this package, copied line for line, with every
   // `console.log` turned into the assertion it was implicitly making. It lives here because
   // an example that is only checked when its author remembers to check it is the same kind of
-  // artefact as the two seams that rotted: a claim nothing compiles and nothing runs.
+  // artifact as the two seams that rotted: a claim nothing compiles and nothing runs.
   it('prints exactly what the README says it prints', () => {
     interface V1 {
       readonly version: 1;
@@ -1402,7 +1402,7 @@ describe('the README example, verbatim', () => {
       readonly wallet: { readonly coin: number };
     }
 
-    const isReadmeV1: Recognise<V1> = (value) => {
+    const isReadmeV1: Recognize<V1> = (value) => {
       const coins = (value as { coins?: unknown }).coins;
       if (typeof coins !== 'number' || !Number.isFinite(coins)) {
         throw new RangeError(`save.v1.coins: expected a finite number, got ${String(coins)}`);
@@ -1410,7 +1410,7 @@ describe('the README example, verbatim', () => {
       return { version: 1, coins };
     };
 
-    const isReadmeV2: Recognise<V2> = (value) => {
+    const isReadmeV2: Recognize<V2> = (value) => {
       const coin = (value as { wallet?: { coin?: unknown } }).wallet?.coin;
       if (typeof coin !== 'number' || !Number.isFinite(coin)) {
         throw new RangeError(`save.v2.wallet.coin: expected a finite number, got ${String(coin)}`);

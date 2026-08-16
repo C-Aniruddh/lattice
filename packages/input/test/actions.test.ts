@@ -49,7 +49,7 @@ describe('compileActions', () => {
     expect(() => compileActions({ five: ['key:5'] }, 'x', silent)).toThrow(/'key:Digit5'/);
   });
 
-  it('diagnoses a code it does not recognise rather than refusing it', () => {
+  it('diagnoses a code it does not recognize rather than refusing it', () => {
     const seen: Diagnostic[] = [];
     const compiled = compileActions({ yen: ['key:IntlYen'] }, 'x', (d): void => {
       seen.push(d);
@@ -130,7 +130,7 @@ describe('one handler, two bindings', () => {
     expect(seen[1]?.gx).toBeTypeOf('number');
   });
 
-  it('points a keyboard action at the viewport centre when the game has no selection', () => {
+  it('points a keyboard action at the viewport center when the game has no selection', () => {
     const h = harness({
       stepMs: 100,
       actions: { collect: ['key:Space'] },

@@ -2,7 +2,7 @@
  * The action map: two sources under one name, declared as data.
  *
  * A game writes `onAction('collect', …)` **once**. A tap reaches it through the gesture
- * recogniser carrying the finger's tile; `key:Space` reaches it through the keyboard carrying
+ * recognizer carrying the finger's tile; `key:Space` reaches it through the keyboard carrying
  * the focus point's tile; both arrive as the same event, in the same tick. The only things a
  * handler can tell them apart by are `source` and `binding`, and it is free to ignore both —
  * which is the test of whether the abstraction is real rather than decorative.
@@ -75,7 +75,7 @@ export interface CompiledActions<A extends string> {
 const NO_ENTRIES: readonly ActionEntry<never>[] = [];
 
 /**
- * Every `KeyboardEvent.code` this build recognises.
+ * Every `KeyboardEvent.code` this build recognizes.
  *
  * Built rather than typed out, because a hand-written list of 26 letters is a list with a typo
  * in it. The table exists to catch `'key:space'` — a `key` value where a `code` was wanted,
@@ -195,7 +195,7 @@ export function compileActions<A extends string>(
           }
           const diagnostic: Diagnostic = {
             code: 'unknown-key-code',
-            message: `${label}.${key}: '${binding}' is not a KeyboardEvent.code this build recognises. It is still bound, because this table is not exhaustive — but check it against the codes your keyboard actually reports before shipping the shortcut sheet.`,
+            message: `${label}.${key}: '${binding}' is not a KeyboardEvent.code this build recognizes. It is still bound, because this table is not exhaustive — but check it against the codes your keyboard actually reports before shipping the shortcut sheet.`,
           };
           diagnose(diagnostic);
         }

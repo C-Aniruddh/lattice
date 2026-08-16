@@ -75,7 +75,7 @@ up the road in the demo's ending, and the `reach` number the entire economy is b
 
 > **Routed from `@lattice/draw` (A3), as a blocking requirement: no function in this package
 > returns a point.** Confirmed — it never did, and this block exists so that no builder has to
-> read three sections to be sure. `draw` has packed colours into `uint32` and put polygon
+> read three sections to be sure. `draw` has packed colors into `uint32` and put polygon
 > corners into a scratch `Float64Array`; a projection returning `{ x, y }` would put the source
 > game's largest per-frame allocation straight back, and `draw` could not satisfy constitution
 > rule 7 at all.
@@ -369,9 +369,9 @@ export declare function footprintBase(field: HeightField, f: Footprint): number;
 
 /**
  * The {@link Anchor} a footprint's label, ring, bubble or confirm control should hang from:
- * the centre of the footprint, raised by `heightPx`.
+ * the center of the footprint, raised by `heightPx`.
  *
- * The **centre**, not the origin corner — on a 3×3 those are most of a building apart, and
+ * The **center**, not the origin corner — on a 3×3 those are most of a building apart, and
  * anchoring UI to the corner is what makes a confirm button appear to belong to the building
  * next door.
  *
@@ -412,7 +412,7 @@ export interface CameraOptions {
  */
 export interface Camera {
   /**
-   * World-space point at the centre of the viewport, and the scale. **Read-only, and not
+   * World-space point at the center of the viewport, and the scale. **Read-only, and not
    * merely by convention.**
    *
    * *(Routed from `@lattice/input`, and they are right.)* Every one of these is a getter over
@@ -454,7 +454,7 @@ export interface Camera {
   toScreen(wx: number, wy: number, out: Vec2): Vec2;
 
   /**
-   * Where a world x sits **across** the viewport: `-1` at the left edge, `0` at the centre,
+   * Where a world x sits **across** the viewport: `-1` at the left edge, `0` at the center,
    * `+1` at the right, and it keeps going beyond them rather than clamping.
    *
    * The third member of the projection family, and it exists because `@lattice/audio` needs
@@ -492,10 +492,10 @@ export interface Camera {
    */
   zoomAt(factor: number, sx: number, sy: number): void;
 
-  /** Put a world point at the centre of the viewport immediately, then clamp. */
+  /** Put a world point at the center of the viewport immediately, then clamp. */
   centerOn(wx: number, wy: number): void;
 
-  /** Put a tile at the centre. The form callers actually want after loading a save. */
+  /** Put a tile at the center. The form callers actually want after loading a save. */
   centerOnTile(gx: number, gy: number): void;
 
   /**
@@ -575,7 +575,7 @@ export declare function gridToScreen(
 > a rewrite later, so one of us drops it, and it is me — for a reason better than deference:
 >
 > **A draw list is a list of things to draw, and `iso` must not know what a drawable is.** The
-> moment `Scene` holds ids, it is modelling the caller's entities; the moment it has passes,
+> moment `Scene` holds ids, it is modeling the caller's entities; the moment it has passes,
 > it is a renderer. What is genuinely mine is narrower and sharper — *given a set of ground
 > footprints, what order do they occlude in* — and that is a permutation of integers, with no
 > notion of an item at all.
@@ -739,7 +739,7 @@ export interface TileGridOptions {
  *
  * One array per *layer*, not one struct per tile: a game needing terrain, buildings and
  * movement cost makes three `TileGrid`s. Structure-of-arrays is why a pathfinder can scan a
- * cost layer without dragging terrain colours through the cache, and why `@lattice/persist`
+ * cost layer without dragging terrain colors through the cache, and why `@lattice/persist`
  * can save the whole map as one buffer.
  */
 export declare class TileGrid implements MutableTileSource {
@@ -840,15 +840,15 @@ export interface HeightField {
  * Height in world pixels at a **fractional** grid position, bilinear between the four corners
  * the position lies within.
  *
- * **Heights live on grid vertices, not tile centres.** `heights.get(gx, gy)` is the elevation
+ * **Heights live on grid vertices, not tile centers.** `heights.get(gx, gy)` is the elevation
  * of the *north corner* of tile `(gx, gy)`, so adjacent tiles share their corner values
- * exactly and their drawn quads cannot leave a seam. Centre-sampled heightfields need an
- * averaging pass to close those seams, and every game that starts centre-sampled rewrites
+ * exactly and their drawn quads cannot leave a seam. Center-sampled heightfields need an
+ * averaging pass to close those seams, and every game that starts center-sampled rewrites
  * this later. Getting the convention wrong costs a day and is invisible until the terrain is
  * drawn.
  *
  * Bilinear rather than nearest because walkers are sampled at fractional positions: a
- * nearest-neighbour height makes a pilgrim climb a hill in visible steps.
+ * nearest-neighbor height makes a pilgrim climb a hill in visible steps.
  */
 export declare function heightAt(field: HeightField, gx: number, gy: number): number;
 
@@ -1030,7 +1030,7 @@ export interface PathOptions {
   /** Allow 8-way movement. Default `true`. */
   readonly diagonals?: boolean;
   /**
-   * Allow a diagonal step when one of the two shared orthogonal neighbours is blocked.
+   * Allow a diagonal step when one of the two shared orthogonal neighbors is blocked.
    * Default `false`, and leave it false: `true` walks agents through the corner where two
    * walls meet, which looks like clipping through the building (trap T12).
    */
@@ -1277,7 +1277,7 @@ export declare function anchorToScreen(camera: Camera, a: Readonly<Anchor>, out:
 export declare function anchorVisible(camera: Camera, a: Readonly<Anchor>, marginPx?: number): boolean;
 
 /**
- * Stereo pan for a sound made at this anchor: `-1` hard left, `0` centre, `+1` hard right,
+ * Stereo pan for a sound made at this anchor: `-1` hard left, `0` center, `+1` hard right,
  * unclamped beyond the viewport edges.
  *
  * Sugar over {@link Camera.normalizedX}, and the third of the three things a world position
@@ -1362,7 +1362,7 @@ and which this API already supports at no extra cost.
 
 ### 4.3 Anything that draws
 
-No canvas, no colour, no sprite, no `CanvasRenderingContext2D`, no `devicePixelRatio`.
+No canvas, no color, no sprite, no `CanvasRenderingContext2D`, no `devicePixelRatio`.
 `tileDiamond` and `boxSilhouette` return **geometry**. The package must run unchanged in Node,
 because the depth sort and the pathfinder are the two things most worth testing and neither
 should need a DOM to test.
@@ -1417,16 +1417,16 @@ maintaining a retained graph and removes the entire class of "the renderer and t
 disagree" bug. Nothing in this package can name an entity, which is what makes the boundary
 with `draw` (§4.10) enforceable rather than merely agreed.
 
-### 4.7 Serialisation
+### 4.7 Serialization
 
 No `toJSON`, no save format, no versioning. `TileGrid.data` is public so `@lattice/persist` can
-take the buffer whole; owning the format is persist's job, and a map that serialises itself will
+take the buffer whole; owning the format is persist's job, and a map that serializes itself will
 grow a second, incompatible migration chain.
 
 ### 4.8 Fog of war, line of sight, and grid ray-marching
 
 Not in v1. Each is a genuine feature with genuine design questions (does a wall block sight from
-its centre or its edge?), and none has a caller yet. Listed here so that adding one is a decision
+its center or its edge?), and none has a caller yet. Listed here so that adding one is a decision
 rather than a drift.
 
 ### 4.9 Incremental replanning (D* Lite, LPA*)
@@ -1502,15 +1502,15 @@ contract above is already fixed, so what moves is code and not a decision.
 | I1 | `worldToGrid(gridToWorld(g))` returns `g` exactly for integer grid points, and within `1e-9` for fractional ones. | Round-trip a fractional point and get a drift of `0.5` — someone used `round` in the inverse. |
 | I2 | For every tile and every one of the 8 sample points at fractions `0.25`/`0.5`/`0.75` inside its diamond, `worldToTile` returns that tile. | Sample the north quarter of `(3,3)` and get `(2,3)` — the floor became a round (trap T1). |
 | I3 | `toWorld(toScreen(w))` round-trips within `1e-9` at any pan and any zoom in `[minZoom, maxZoom]`. | Fails only at non-unit zoom — the viewport half-offset was applied before the scale in one direction and after it in the other. |
-| I4 | With `bounds` far larger than the viewport, after `zoomAt(f, sx, sy)` the world point that was under `(sx, sy)` is still under it, within `1e-9`, for `f` in `{0.5, 1.1, 2}`. | The point drifts towards the screen centre: origin-anchored zoom (trap T6). |
-| I5 | With `bounds` **smaller** than the viewport in either axis, the camera centre equals the bounds centre in that axis, and `clamp(); clamp()` changes nothing. | The centre oscillates between two values across repeated pans, because `min > max` was fed to a clamp (trap T7). |
+| I4 | With `bounds` far larger than the viewport, after `zoomAt(f, sx, sy)` the world point that was under `(sx, sy)` is still under it, within `1e-9`, for `f` in `{0.5, 1.1, 2}`. | The point drifts towards the screen center: origin-anchored zoom (trap T6). |
+| I5 | With `bounds` **smaller** than the viewport in either axis, the camera center equals the bounds center in that axis, and `clamp(); clamp()` changes nothing. | The center oscillates between two values across repeated pans, because `min > max` was fed to a clamp (trap T7). |
 | I6 | `sorter.sort()` output is a permutation of the surviving inputs: every insertion index in `0..count` appears exactly once, and `count` equals the number of items whose bounds passed `isVisible`. | An item vanishes, or is painted twice — the topological pass emitted from a stale ready set. |
 | I7 | If footprint `a` ends before `b` begins on either axis, then `a` precedes `b` in the sorted output — for every pair in the sorter, checked exhaustively on a random-but-seeded layout. | A tree is painted after the wall it stands behind. |
 | I8 | `sort()` is deterministic and terminating: the same adds in the same order give the same output, on any engine, and a deliberately constructed cyclic layout terminates in bounded time rather than hanging. | The suite passes on Node and fails on Safari: a non-transitive comparator was handed to `Array.sort`. |
 | I9 | For two items at equal depth whose silhouettes overlap, `pickSorted` returns the one that `indexAt(count-1 … 0)` reaches first — i.e. the one painted last. **Stated as a cross-package contract with `draw`:** the sorter passed to `pickSorted` is the one that produced the paint order, and `draw` does not reorder after `sort()`. | The tap opens the building behind (trap T3), or `draw` reshuffles a pass and picking silently drifts out of step. |
 | I10 | `TileGrid.get` outside the grid returns `outOfBounds` and never throws; `TileGrid.set` outside the grid throws a `RangeError` naming the coordinate and the bounds. | A pathfinder scanning a border tile throws mid-frame. |
 | I11 | `PathFinder.find` on a uniform-cost open grid returns a path whose summed cost equals the octile distance `STEP_DIAG·min(dx,dy) + STEP_ORTHO·abs(dx−dy)`. | The path is optimal-looking but longer: the heuristic overestimates, or diagonals cost 10. |
-| I12 | Every consecutive pair in a returned `Path` differs by at most 1 on each axis, and with `cutCorners: false` no diagonal step has both shared orthogonal neighbours impassable. | An agent walks through the corner where two walls meet. |
+| I12 | Every consecutive pair in a returned `Path` differs by at most 1 on each axis, and with `cutCorners: false` no diagonal step has both shared orthogonal neighbors impassable. | An agent walks through the corner where two walls meet. |
 | I13 | The same `find` call with the same cost function returns a byte-identical `Path` across runs and engines. | Two replays of one seed diverge after the first junction — float costs, or a heap with an unspecified tie-break. |
 | I14 | Following `FlowField.step` from any tile with `costAt ≥ 0` reaches a goal in at most `costAt / STEP_ORTHO` steps and never revisits a tile. | Two adjacent tiles point at each other and an agent vibrates in place for ever. |
 | I15 | A warm frame — `clear`, 400 `add`s, `sort`, 400 `indexAt`s, 3,200 `toScreenX`/`Y` calls, 50 `pathSample`s, one `pickSorted`, one `find` — allocates zero bytes, asserted in `*.bench.ts` against a heap-delta measurement. | The number climbs the day someone returns `{x, y}` from a conversion, which is the failure `@lattice/draw` cannot survive. |
@@ -1522,7 +1522,7 @@ contract above is already fixed, so what moves is code and not a decision.
 | I19 | For a path built by `push`, `pathProject(p, p.gxAt(i), p.gyAt(i))` equals `p.sAt(i)` within `1e-6`, and `pathSample(p, pathProject(p, g))` returns `g` for any `g` on the path. | `reach` jumps when a lamp sits exactly on a node. |
 | I20 | Sampling a path at 1,000 evenly spaced arc lengths gives 999 consecutive world-space gaps that are equal within `1e-9`. | The walkers hitch on the diagonals: the parameterisation is in grid units, not world pixels (a 58% speed difference — see `Path.arcLength`). |
 | I21 | `pathSimplify` never increases `arcLength`, never changes the first or last node, and with a `cost` never produces a segment crossing an impassable tile. | The string-pull cut the corner of a building and the crowd walks through a wall. |
-| I22 | `heightAt` at integer grid coordinates equals `heights.get(gx, gy) × stepPx` exactly, and is continuous across tile boundaries. | Terrain seams: heights were sampled at tile centres rather than at vertices. |
+| I22 | `heightAt` at integer grid coordinates equals `heights.get(gx, gy) × stepPx` exactly, and is continuous across tile boundaries. | Terrain seams: heights were sampled at tile centers rather than at vertices. |
 | I23 | `footprintFlatness` is `0` for every footprint on level ground and is invariant under adding a constant to the whole heightfield. | A press can be placed on a cliff, or cannot be placed anywhere above sea level. |
 | I24 | One `set` on a `TileGrid` increments `version` by at least one; a `set` writing the value already there does not have to, but must never decrement. | A cached flow field is never rebuilt after the rockfall, and the crowd walks the old road for ever. |
 | I25 | `screenToTileOnHeights` on a ridge returns the tile whose *surface* the cursor is over, not the flat-ground tile behind it, for every pixel of a rendered slope. | Tapping a lamp on the ridge selects the ground two tiles beyond it (trap T11). |
@@ -1573,11 +1573,11 @@ looking at*. The correct implementation is three lines — world point before, a
 point after, add the difference — and its absence is the single most common reason a tile-game
 camera feels broken.
 
-**T7 — The clamp inverts on maps smaller than the viewport.** The camera centre is confined to
+**T7 — The clamp inverts on maps smaller than the viewport.** The camera center is confined to
 the bounds grown by whatever half-viewport remains after `keepVisible`. When the map is smaller
 than the viewport in an axis that range inverts, `min > max`, and a naive `clamp(v, min, max)`
 returns whichever endpoint it tests last — so the camera jitters between two positions on every
-pan. Detect the inversion and pin to the bounds centre instead.
+pan. Detect the inversion and pin to the bounds center instead.
 
 **T8 — Cull with the height included.** A tall building whose *base* is below the viewport still
 shows its roof. `footprintBounds` extends `minY` upward by the height for exactly this reason,
@@ -1606,7 +1606,7 @@ primitive used for a window paint a horizontal sliver hovering in mid-air. *(PLA
 the drawing half of this; the geometry half lives here.)*
 
 **T12 — Diagonal corner cutting, and float path costs.** A diagonal step between two blocked
-orthogonal neighbours walks the agent through the join of two walls. And `Math.SQRT2` summation
+orthogonal neighbors walks the agent through the join of two walls. And `Math.SQRT2` summation
 is associative only by luck: two engines can pop equal-`f` nodes in different orders and return
 different-but-equally-optimal paths, which is a replay divergence. Integer 10/14 costs, and a
 binary heap whose tie-break is the insertion counter, not "whatever the heap does".
@@ -1633,7 +1633,7 @@ viewer. `DepthSorter.add` takes `heightPx` for culling only, and the sort never 
 **T16 — A raw A* path is a staircase, and a sampled staircase wobbles.** Octile A* returns unit
 steps, so a road across open ground comes back as alternating east and south-east moves. Walk a
 sprite along it and it weaves from side to side like someone finding their keys in the dark —
-the artefact reads as "the pathfinder is broken" when the path is in fact optimal. `pathSimplify`
+the artifact reads as "the pathfinder is broken" when the path is in fact optimal. `pathSimplify`
 before sampling, always; it is one call and it is the difference between a crowd and a bug
 report. The same staircase also makes `arcLength` about 8% longer than the road looks, which
 quietly overpays a `reach`-based economy.
@@ -1644,7 +1644,7 @@ conformal: one grid unit along `+gx` is 35.8 world pixels and one along the `(1,
 turns, which looks exactly like a frame-rate problem and is not one. Measure and sample in world
 pixels; `Path` does, and this is the only reason it keeps a second array.
 
-**T18 — Heights belong on grid vertices, not tile centres.** Centre-sampled terrain leaves a
+**T18 — Heights belong on grid vertices, not tile centers.** Center-sampled terrain leaves a
 seam at every tile boundary, because two adjacent tiles disagree about the height of the edge
 they share. It is invisible until the terrain is drawn, at which point it is a rewrite of every
 function that reads a height. `heights.get(gx, gy)` is the north **corner** of tile `(gx, gy)`.
@@ -1734,7 +1734,7 @@ must stroke a box in that same order, or hit-testing and pixels diverge with no 
 package noticing. This needs to be one shared assertion, and it is the only genuine coupling
 between the two packages. `draw` also owns the storey height (`LEVEL_H ≈ 26`, deliberately not
 32 — a one-tile-tall storey reads as a cube and cubes read as programmer art; settled in its
-favour at §4.3) and the whole-device-pixel rounding of the camera translate (T13).
+favor at §4.3) and the whole-device-pixel rounding of the camera translate (T13).
 
 **`@lattice/input` (A5) — the camera controller.** Drag, inertia, pinch, edge-scroll and keyboard
 pan belong there and must drive this camera only through `panByScreen`, `zoomAt` and
@@ -1760,6 +1760,6 @@ sweep and should not run inside the frame that placed the wall. `@lattice/loop`'
 should own "do this expensive thing on the next idle tick, coalescing duplicates", and if it
 does, the whole rockfall beat is the three lines at the end of §3.8.
 
-**`@lattice/persist` (A7) — map serialisation.** `TileGrid.data` and `ChunkGrid.forEachChunk`
+**`@lattice/persist` (A7) — map serialization.** `TileGrid.data` and `ChunkGrid.forEachChunk`
 exist so persist can take the buffers whole. Persist should own the version and the migration;
 a base-64 or delta encoding of a chunk grid is worth having as a first-class adapter.

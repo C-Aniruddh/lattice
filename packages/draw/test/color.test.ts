@@ -1,9 +1,9 @@
 /**
- * Colour — the packing, and the derivation the whole look rests on.
+ * Color — the packing, and the derivation the whole look rests on.
  *
  * The two assertions that matter most are the neutral case (`shade(c, 1) === c`, exactly, or
  * every top face in the kit is subtly wrong and every golden needs re-blessing) and the tint
- * pull (without it the derivation is a grey multiply, every screenshot still renders, and every
+ * pull (without it the derivation is a gray multiply, every screenshot still renders, and every
  * screenshot looks like a placeholder).
  */
 
@@ -41,9 +41,9 @@ function distance(a: Rgba, b: Rgba): number {
   return Math.sqrt(dr * dr + dg * dg + db * db);
 }
 
-/** 256 colours from a fixed seed, so a failure is reproducible rather than "sometimes". */
+/** 256 colors from a fixed seed, so a failure is reproducible rather than "sometimes". */
 function sample(): Rgba[] {
-  const rng = createRng('colour-sample');
+  const rng = createRng('color-sample');
   const out: Rgba[] = [];
   for (let i = 0; i < 256; i++) {
     out.push(rgba(rng.int(0, 256), rng.int(0, 256), rng.int(0, 256), rng.int(0, 256)));
@@ -62,7 +62,7 @@ describe('rgba', () => {
     expect(rgba(-10, 300, 12.6, 400)).toBe(rgba(0, 255, 13, 255));
   });
 
-  it('turns a non-finite channel into 0 rather than into a NaN colour', () => {
+  it('turns a non-finite channel into 0 rather than into a NaN color', () => {
     // A NaN anywhere in the packing makes the whole integer NaN, which paints nothing and
     // reports nothing — the failure mode this clamp exists to remove.
     expect(rgba(Number.NaN, 10, 10)).toBe(rgba(0, 10, 10));
@@ -75,7 +75,7 @@ describe('rgba', () => {
 });
 
 describe('shade', () => {
-  it('is exactly the identity at factor 1, for 256 colours', () => {
+  it('is exactly the identity at factor 1, for 256 colors', () => {
     for (const c of sample()) expect(shade(c, 1)).toBe(c);
   });
 
@@ -86,7 +86,7 @@ describe('shade', () => {
 
   it('pulls a darkened face toward SHADE_TINT, not merely toward black', () => {
     // The assertion that fails if someone replaces the derivation with a plain multiply. The
-    // comparison is against the multiply, so it cannot pass by accident on a dark colour.
+    // comparison is against the multiply, so it cannot pass by accident on a dark color.
     for (const c of sample()) {
       const plain = rgba(R(c) * FACE_RIGHT, G(c) * FACE_RIGHT, B(c) * FACE_RIGHT, A(c));
       const shaded = shade(c, FACE_RIGHT);
@@ -104,10 +104,10 @@ describe('shade', () => {
     }
   });
 
-  it('shifts a mid grey cool in shadow and warm in light', () => {
-    const grey = rgba(128, 128, 128);
-    const dark = shade(grey, FACE_RIGHT);
-    const light = shade(grey, 1.3);
+  it('shifts a mid gray cool in shadow and warm in light', () => {
+    const gray = rgba(128, 128, 128);
+    const dark = shade(gray, FACE_RIGHT);
+    const light = shade(gray, 1.3);
     expect(B(dark)).toBeGreaterThan(R(dark));
     expect(R(light)).toBeGreaterThan(B(light));
   });
@@ -147,7 +147,7 @@ describe('outlineOf', () => {
     }
   });
 
-  it('keeps the base colour hue ordering, so a recolour moves the outlines with it', () => {
+  it('keeps the base color hue ordering, so a recolour moves the outlines with it', () => {
     const warm = outlineOf(rgba(220, 90, 40));
     expect(R(warm)).toBeGreaterThan(B(warm));
     const cool = outlineOf(rgba(40, 90, 220));
@@ -189,7 +189,7 @@ describe('withAlpha and mix', () => {
 });
 
 describe('cssOf and hexOf', () => {
-  it('drops the alpha channel from the string when the colour is opaque', () => {
+  it('drops the alpha channel from the string when the color is opaque', () => {
     expect(cssOf(rgba(1, 2, 3))).toBe('rgb(1,2,3)');
     expect(hexOf(rgba(1, 2, 3))).toBe('#010203');
   });
@@ -205,8 +205,8 @@ describe('cssOf and hexOf', () => {
   });
 
   it('drops the memo rather than growing without bound', () => {
-    // The branch that stops a caller generating colours per frame from turning a cache into a
-    // leak. Five thousand distinct colours is past the limit twice over.
+    // The branch that stops a caller generating colors per frame from turning a cache into a
+    // leak. Five thousand distinct colors is past the limit twice over.
     for (let i = 0; i < 5000; i++) cssOf(rgba(i & 255, (i >> 8) & 255, 7, 200 + (i & 7)));
     expect(cssOf(rgba(1, 2, 3))).toBe('rgb(1,2,3)');
   });
@@ -254,7 +254,7 @@ describe('hsl', () => {
     expect(hsl(Number.NaN, 1, 0.5)).toBe(hsl(0, 1, 0.5));
   });
 
-  it('is grey at zero saturation and clamps saturation and lightness both ways', () => {
+  it('is gray at zero saturation and clamps saturation and lightness both ways', () => {
     expect(hsl(200, 0, 0.5)).toBe(rgba(128, 128, 128));
     expect(hsl(200, 1, 0)).toBe(rgba(0, 0, 0));
     expect(hsl(200, 1, 1)).toBe(rgba(255, 255, 255));

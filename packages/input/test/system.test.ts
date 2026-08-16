@@ -157,7 +157,7 @@ describe('the queries', () => {
     expect(h.input.pointerScreen(point)).toBe(true);
   });
 
-  it('clears the hover when a cancelled touch goes away', () => {
+  it('clears the hover when a canceled touch goes away', () => {
     const h = harness();
     const point: Vec2 = { x: 0, y: 0 };
     h.input.submit(down(1, 50, 60, 'touch'));

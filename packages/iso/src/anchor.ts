@@ -76,7 +76,7 @@ export function anchorVisible(camera: Camera, a: Readonly<Anchor>, marginPx = 0)
 }
 
 /**
- * Stereo pan for a sound made at this anchor: `-1` hard left, `0` centre, `+1` hard right,
+ * Stereo pan for a sound made at this anchor: `-1` hard left, `0` center, `+1` hard right,
  * **unclamped** beyond the viewport edges.
  *
  * The third of the three things a world position has to become. `@lattice/audio` cannot

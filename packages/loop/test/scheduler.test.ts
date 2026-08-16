@@ -3,7 +3,7 @@
  *
  * Coalescing (at most one call per advance, carrying `repeats`), ordering (due time then
  * registration, never ambiguous), and mutation safety (a timer registered inside a firing
- * callback does not run in that fire; one cancelled inside it never runs at all).
+ * callback does not run in that fire; one canceled inside it never runs at all).
  *
  * Everything is exact. Due times are integer microseconds, so `every(1/3)` lands on
  * 333,333 µs and stays there for a thousand periods — which is the whole reason the module is
@@ -211,7 +211,7 @@ describe('mutation during a fire', () => {
     expect(seen).toEqual(['outer', 'inner']);
   });
 
-  it('I-11: a timer cancelled inside a firing callback never runs at all', () => {
+  it('I-11: a timer canceled inside a firing callback never runs at all', () => {
     const timeline = createTimeline();
     const seen: string[] = [];
     let victim = 0;
@@ -261,9 +261,9 @@ describe('cancel', () => {
     expect(timeline.pending).toBe(0);
   });
 
-  it('reports false for an id from a different timeline, rather than cancelling a stranger', () => {
+  it('reports false for an id from a different timeline, rather than canceling a stranger', () => {
     // Ids come from one process-wide allocator precisely so this returns false instead of
-    // silently cancelling whichever timer happened to get the same small integer.
+    // silently canceling whichever timer happened to get the same small integer.
     const a = createTimeline();
     const b = createTimeline();
     const id = a.after(1, () => {});

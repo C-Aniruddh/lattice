@@ -54,7 +54,7 @@ export interface LightFieldOpts {
    */
   readonly scale?: number;
   /**
-   * Falloff exponent from centre to rim. Default 2. Higher is a harder-edged pool: the value
+   * Falloff exponent from center to rim. Default 2. Higher is a harder-edged pool: the value
    * sets how much of the radius stays at full intensity before the ramp begins, so 1 is a pure
    * linear ramp and 4 is a disc with a soft rim.
    */
@@ -83,10 +83,10 @@ export interface LightField {
    * pools accumulate as sprites draw, and only the *composite* happens in the Light pass.
    *
    * `darkness` is 0–1 and is the game's own day/night value, the same number it passes to
-   * `Palette.lerp`. Two schedules — one for colour, one for the mask — is a valley whose
+   * `Palette.lerp`. Two schedules — one for color, one for the mask — is a valley whose
    * darkness and whose blue disagree, and it gets reported as a light bug.
    *
-   * `tint` is the colour the dark goes: an {@link Ink}, so a slot name lets the dark itself
+   * `tint` is the color the dark goes: an {@link Ink}, so a slot name lets the dark itself
    * recolour with the palette.
    */
   begin(pen: Pen, darkness: number, tint: Ink): void;
@@ -104,7 +104,7 @@ export interface LightField {
    * lamp head, so a lamp on a hillside lights its own terrace rather than the valley floor. The
    * glow on the fixture itself is a `glowDot` in the Solids pass; this is the light it throws.
    *
-   * The mask knows a position, a radius, an intensity and a colour, and deliberately nothing
+   * The mask knows a position, a radius, an intensity and a color, and deliberately nothing
    * else. It does not know what a lamp is and it holds no list of emitters.
    */
   add(
@@ -248,7 +248,7 @@ export function createLightField(surface: Surface, opts?: LightFieldOpts): Light
     if (!(intensity > 0) || !(rx > 0) || !(ry > 0)) return;
     const resolved = pen.palette.ink(color);
     const inner = withAlpha(resolved, unit(intensity));
-    // The exponent, expressed as a plateau: `falloff` 1 is a pure linear ramp from the centre,
+    // The exponent, expressed as a plateau: `falloff` 1 is a pure linear ramp from the center,
     // 2 holds full intensity to half the radius, 4 to three quarters. A real power curve would
     // need a `pow` per pixel that no `softEllipse` primitive can honour on either backend.
     const plateau = falloff <= 1 ? 0 : 1 - 1 / falloff;

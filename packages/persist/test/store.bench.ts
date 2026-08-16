@@ -1,7 +1,7 @@
 import { bench, describe } from 'vitest';
 import { asEpochMillis } from '@lattice/core';
 import { memoryStorage } from '../src/adapters.js';
-import { migrations, type Recognise } from '../src/migrate.js';
+import { migrations, type Recognize } from '../src/migrate.js';
 import { createStore, inspect } from '../src/store.js';
 
 /**
@@ -9,7 +9,7 @@ import { createStore, inspect } from '../src/store.js';
  *
  * `autosave.tick()` runs sixty times a second for the life of a session and must cost a clock
  * read and a subtraction on the 239 frames out of 240 that do not write. The write itself is a
- * synchronous serialise plus a hash plus a storage call, which is why it is coalesced to once
+ * synchronous serialize plus a hash plus a storage call, which is why it is coalesced to once
  * every four seconds and why `minWriteIntervalMs` has a floor worth arguing about.
  */
 
@@ -19,14 +19,14 @@ interface Save {
   readonly buildings: readonly { readonly id: number; readonly kind: string; readonly level: number }[];
 }
 
-const isSave: Recognise<Save> = (value) => value as Save;
+const isSave: Recognize<Save> = (value) => value as Save;
 
 const chain = migrations(1, isSave).seal();
 
 function makeSave(buildings: number): Save {
   return {
     version: 1,
-    wallet: { coin: 123456.789, ore: 42, favour: 7 },
+    wallet: { coin: 123456.789, ore: 42, favor: 7 },
     buildings: Array.from({ length: buildings }, (_unused, i) => ({
       id: i,
       kind: i % 3 === 0 ? 'lab' : 'dorm',
@@ -69,7 +69,7 @@ describe('the write path', () => {
     store.encode(large);
   });
 
-  bench('save — 20 buildings, serialise + checksum + adapter', () => {
+  bench('save — 20 buildings, serialize + checksum + adapter', () => {
     store.save(small);
   });
 });

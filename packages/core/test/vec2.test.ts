@@ -4,7 +4,7 @@
  *
  * Three kinds of test live here and they fail in three different ways:
  *
- * - **Behaviour.** Exact `toBe` assertions; this module is Tier A apart from the three
+ * - **Behavior.** Exact `toBe` assertions; this module is Tier A apart from the three
  *   functions that say otherwise.
  * - **Aliasing.** Every producer called with `out` aliasing an input, compared against the
  *   non-aliased result. This is the test that catches a body writing `out.x` before reading
@@ -200,7 +200,7 @@ describe('v2Normalize', () => {
     expect(v2Normalize(out, v2(1e200, 1e200))).toEqual({ x: 0, y: 0 });
   });
 
-  it('normalises a very small vector, down to the squared-length floor', () => {
+  it('normalizes a very small vector, down to the squared-length floor', () => {
     const out = v2();
     v2Normalize(out, v2(1e-100, 0));
     expect(out).toEqual({ x: 1, y: 0 });

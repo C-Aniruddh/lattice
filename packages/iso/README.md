@@ -262,7 +262,7 @@ deterministically in a replay.
 **Steering and anything that owns a walker.** `pathSample` will tell you where arc length `s`
 is. It will not choose `s`, accelerate, or stop fifty walkers piling into one doorway.
 
-**Entities, components, a scene graph, serialisation, fog of war, line of sight, an incremental
+**Entities, components, a scene graph, serialization, fog of war, line of sight, an incremental
 replanner, and a priority queue as an export.** `iso` builds a heap for A\* and Dijkstra and
 does not publish it: `core` refused to own one on the grounds that there was exactly one
 confirmed consumer, and one consumer owns its own container.
@@ -284,6 +284,6 @@ side is individually correct and jointly broken:
 
 ---
 
-## Licence
+## License
 
 MIT.

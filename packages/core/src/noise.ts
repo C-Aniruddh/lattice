@@ -39,7 +39,7 @@ const DIAGONAL = 0.7071067811865476;
  */
 const SCALE_2D = 1.4142135623730951;
 
-/** `2 / sqrt(3)` — the same normalisation for three dimensions. */
+/** `2 / sqrt(3)` — the same normalization for three dimensions. */
 const SCALE_3D = 1.1547005383792515;
 
 /** The most octaves `fbm2`/`fbm3` will run. Past this the frequency ladder has doubled
@@ -226,7 +226,7 @@ export function noise3(seed: number, x: number, y: number, z: number): number {
  *
  * `octaves` and `gain` are the two arguments a call site gets wrong, and both fail silently
  * if unchecked: a fractional octave count truncates to a different field than the author
- * asked for, and a gain above 1 makes the sum diverge so the normalisation stops meaning
+ * asked for, and a gain above 1 makes the sum diverge so the normalization stops meaning
  * anything.
  */
 function checkFbm(octaves: number, gain: number, caller: string): void {
@@ -242,9 +242,9 @@ function checkFbm(octaves: number, gain: number, caller: string): void {
 
 /**
  * Fractal Brownian motion: `octaves` layers of {@link noise2}, each at twice the frequency
- * and `gain` times the amplitude, normalised back into [-1, 1].
+ * and `gain` times the amplitude, normalized back into [-1, 1].
  *
- * The normalisation is the point. Un-normalised fBm has a range that depends on the octave
+ * The normalization is the point. Un-normalized fBm has a range that depends on the octave
  * count, so raising the detail of a terrain silently changes its sea level — the coastline
  * moves and nobody connects it to the slider they nudged.
  *
@@ -257,7 +257,7 @@ function checkFbm(octaves: number, gain: number, caller: string): void {
  * would be write-only code at every call site.
  *
  * @param octaves - default 4. Above ~8 the extra layers are below one screen pixel.
- * @param gain - default 0.5. Above 1 the sum diverges and the normalisation is meaningless.
+ * @param gain - default 0.5. Above 1 the sum diverges and the normalization is meaningless.
  * @throws RangeError if `octaves` is not an integer in [1, 16] or `gain` is not in (0, 1].
  */
 export function fbm2(seed: number, x: number, y: number, octaves = 4, gain = 0.5): number {
@@ -276,7 +276,7 @@ export function fbm2(seed: number, x: number, y: number, octaves = 4, gain = 0.5
 }
 
 /**
- * fBm over {@link noise3}. Same contract, same normalisation, same octave separation.
+ * fBm over {@link noise3}. Same contract, same normalization, same octave separation.
  *
  * @param octaves - default 4.
  * @param gain - default 0.5.

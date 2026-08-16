@@ -69,7 +69,7 @@
 /** The kit version this package was built as part of. */
 export const VERSION = '0.1.0';
 
-// ── the surface, and the recogniser behind it ───────────────────────────────────────────────
+// ── the surface, and the recognizer behind it ───────────────────────────────────────────────
 //
 // `createHeadlessInput` is not a testing shim: it is the same object, minus a producer of
 // samples. Everything a game can assert about gestures is assertable in Node because of it.
@@ -104,7 +104,7 @@ export type {
   TapGesture,
   ZoomGesture,
 } from './events.js';
-export type { GestureName, ZoomSource } from './recognise.js';
+export type { GestureName, ZoomSource } from './recognize.js';
 export type { ActionBinding, ActionMap } from './actions.js';
 
 // ── the thresholds ──────────────────────────────────────────────────────────────────────────

@@ -49,7 +49,7 @@ let i = 0;
 /** Advance the cursor and hand back one of the table's vectors. */
 const next = (): Vec2 => table[(i = (i + 1) & (N - 1))] as Vec2;
 
-/** Somewhere for escaping results to go, so the optimiser cannot delete them. */
+/** Somewhere for escaping results to go, so the optimizer cannot delete them. */
 let sink: unknown = null;
 
 describe('vec2 — out-parameter forms', () => {

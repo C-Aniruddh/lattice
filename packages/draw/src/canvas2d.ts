@@ -15,7 +15,7 @@
  *    edit from a half-scale campus.
  * 2. **It caches the radial ramp.** `softEllipse` is the contact shadow under every building, so
  *    a `createRadialGradient` per call is an allocation per building per frame. Instead one
- *    small offscreen ramp is rendered per colour pair and blitted, which is also exactly what a
+ *    small offscreen ramp is rendered per color pair and blitted, which is also exactly what a
  *    GPU backend would do with a ramp texture.
  * 3. **It resets its own state on `begin`.** `setLineDash`, `globalAlpha`, `font`,
  *    `globalCompositeOperation` and `lineJoin` left set are the classic Canvas2D leaks: the next
@@ -83,16 +83,16 @@ export interface OffscreenSurface extends Surface {
 }
 
 /** Width and height of a cached radial ramp, in device pixels. 64 is enough that a contact
- *  shadow scaled to two hundred pixels shows no banding, and small enough that a hundred colour
+ *  shadow scaled to two hundred pixels shows no banding, and small enough that a hundred color
  *  pairs cost under two megabytes. */
 const RAMP_SIZE = 64;
 
 /** How many radial ramps are cached before the map is dropped wholesale. A palette's worth of
- *  shadow and glow colours is a few dozen; past this, something is generating colours per frame
+ *  shadow and glow colors is a few dozen; past this, something is generating colors per frame
  *  and an unbounded cache would be a leak wearing a cache's name. */
 const RAMP_LIMIT = 96;
 
-/** Cached radial ramps, keyed on the inner and outer colour. See {@link RAMP_SIZE}. */
+/** Cached radial ramps, keyed on the inner and outer color. See {@link RAMP_SIZE}. */
 const ramps = new Map<string, HTMLCanvasElement>();
 
 /** Which element backs a bitmap, so `blit` can find the image behind the opaque handle without
@@ -119,7 +119,7 @@ function contextOf(element: HTMLCanvasElement, alpha: boolean): CanvasRenderingC
   return ctx;
 }
 
-/** The cached ramp for one colour pair, rendered once. */
+/** The cached ramp for one color pair, rendered once. */
 function rampFor(inner: Rgba, outer: Rgba): HTMLCanvasElement {
   const key = `${String(inner >>> 0)}|${String(outer >>> 0)}`;
   const hit = ramps.get(key);
@@ -281,7 +281,7 @@ function makeCanvasSurface(
       ctx.closePath();
       if (from === to) {
         // The one case that needs no gradient object at all, and the common one: a ramp between
-        // two equal colours is a fill, and a game's backdrop often is.
+        // two equal colors is a fill, and a game's backdrop often is.
         ctx.fillStyle = cssOf(from);
       } else {
         const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
@@ -333,7 +333,7 @@ function makeCanvasSurface(
       inner: Rgba,
       outer: Rgba,
     ): void {
-      // One cached ramp per colour pair, stretched to the ellipse's box. A fresh
+      // One cached ramp per color pair, stretched to the ellipse's box. A fresh
       // `createRadialGradient` here would be an allocation under every building, every frame.
       ctx.drawImage(rampFor(inner, outer), cx - rx, cy - ry, rx * 2, ry * 2);
     },

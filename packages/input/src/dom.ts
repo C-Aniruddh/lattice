@@ -24,7 +24,7 @@
  * 3. **Not capturing the pointer.** A drag that leaves the element, or passes *under* a `ui`
  *    panel, stops receiving moves and the camera halts with the finger still down. To a player
  *    that is the game freezing. Capture on `pointerdown`; every way of losing the pointer maps
- *    onto a `cancel`; the recogniser is never left latched.
+ *    onto a `cancel`; the recognizer is never left latched.
  * 4. **Trusting `WheelEvent.deltaY`.** Three delta modes, and Firefox reports *lines* where
  *    Chrome reports pixels — the same flick zooms 30× less without the conversion. A trackpad
  *    pinch is a `wheel` with `ctrlKey` set. And the listener must be `{ passive: false }`, or
@@ -125,7 +125,7 @@ export function createInput<A extends string = never>(
 
   const system = createSystem<A>(options, 'createInput');
   // The system's own sink, so every diagnostic in the package obeys the same once-per-code rule
-  // whether it came from here or from the recogniser.
+  // whether it came from here or from the recognizer.
   const { diagnose } = internalsOf(system);
   BOUND.add(element);
 
@@ -156,7 +156,7 @@ export function createInput<A extends string = never>(
       diagnose({
         code: 'pointer-events-none',
         message:
-          'createInput: pointer-events on this element computes to none, so it will never receive a pointerdown and no gesture will ever be recognised.',
+          'createInput: pointer-events on this element computes to none, so it will never receive a pointerdown and no gesture will ever be recognized.',
         element,
       });
     }
@@ -211,14 +211,14 @@ export function createInput<A extends string = never>(
     // Capture immediately, so every subsequent event for this pointer retargets here whatever
     // it passes over. A drag under a `ui` panel keeps its moves; a gesture that starts on the
     // world ends on the world; and a drag that ends over a button does not press it, which is
-    // the behaviour you want because the gesture belonged to the world from the moment it
+    // the behavior you want because the gesture belonged to the world from the moment it
     // started. A press that starts *on* the overlay never reaches this listener at all.
     try {
       element.setPointerCapture(event.pointerId);
       captured.add(event.pointerId);
     } catch {
       // A pointer that has already gone away throws here. It is not an error: the terminal
-      // sample for it is on its way, and the recogniser's exit does not depend on capture.
+      // sample for it is on its way, and the recognizer's exit does not depend on capture.
     }
     ensureRect();
     downSample.id = event.pointerId;
@@ -277,7 +277,7 @@ export function createInput<A extends string = never>(
 
   function onLostCapture(event: PointerEvent): void {
     // The capture went somewhere else — an alert, a native scroll, another element claiming it.
-    // Without this the recogniser would sit in a dragging state for ever, and the first symptom
+    // Without this the recognizer would sit in a dragging state for ever, and the first symptom
     // is a camera the player cannot stop.
     if (!captured.delete(event.pointerId)) return;
     cancelSample.id = event.pointerId;

@@ -76,7 +76,7 @@ export const DEFAULT_HZ = 60;
  * How much real time one pump may spend catching up, in ms. Default 250 — about fifteen steps
  * at 60 Hz.
  *
- * This is not an optimisation; it is the **termination condition**. Without it a pump that
+ * This is not an optimization; it is the **termination condition**. Without it a pump that
  * takes longer than the steps it produces makes more steps than the next pump can afford, and
  * the loop accelerates into a locked tab. Its disguise: with the clamp in place a game that is
  * far too slow *degrades* — sim time simply falls behind real time — so it looks like a game
@@ -460,7 +460,7 @@ export function createLoop(options: LoopOptions): Loop {
   expectFinite(maxCatchUpMs, 'createLoop.maxCatchUpMs');
   if (maxCatchUpMs <= 0) {
     throw new RangeError(
-      `createLoop.maxCatchUpMs: expected a finite number of milliseconds > 0, got ${String(maxCatchUpMs)} — the clamp is the loop's termination condition, not an optimisation`,
+      `createLoop.maxCatchUpMs: expected a finite number of milliseconds > 0, got ${String(maxCatchUpMs)} — the clamp is the loop's termination condition, not an optimization`,
     );
   }
 

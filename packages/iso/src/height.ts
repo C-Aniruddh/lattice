@@ -47,14 +47,14 @@ export interface HeightField {
  * Height in world pixels at a **fractional** grid position, bilinear between the four vertex
  * values the position lies between.
  *
- * **Heights live on grid vertices, not tile centres.** `heights.get(gx, gy)` is the elevation
+ * **Heights live on grid vertices, not tile centers.** `heights.get(gx, gy)` is the elevation
  * of the *north corner* of tile `(gx, gy)`, so adjacent tiles share their corner values
- * exactly and their drawn quads cannot leave a seam. A centre-sampled heightfield needs an
+ * exactly and their drawn quads cannot leave a seam. A center-sampled heightfield needs an
  * averaging pass to close those seams, it is invisible until the terrain is actually drawn,
- * and every game that starts centre-sampled rewrites this later.
+ * and every game that starts center-sampled rewrites this later.
  *
  * Bilinear rather than nearest because walkers are sampled at fractional positions: a
- * nearest-neighbour height makes a pilgrim climb a hill in visible steps.
+ * nearest-neighbor height makes a pilgrim climb a hill in visible steps.
  *
  * **Floors before sampling, and that matters most at the origin.** `Math.floor(-0.5)` is
  * `-1`; a truncating `| 0` — and `core.hash2`, which truncates by design — would put `-0.5`

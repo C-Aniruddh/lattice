@@ -470,7 +470,7 @@ describe('hashBytes', () => {
   it('is the documented trap over a Float32Array, and the documented fix works', () => {
     const a = new Float32Array([0.1, 0.2, 0.3]);
     const b = new Float32Array([0.9, -0.4, 0.5]);
-    // Every value truncates to zero, so the digest of a normalised buffer is a digest of
+    // Every value truncates to zero, so the digest of a normalized buffer is a digest of
     // its length — two completely different frames compare equal.
     expect(hashBytes(0, a)).toBe(hashBytes(0, b));
     const viewOf = (f: Float32Array): Uint8Array =>

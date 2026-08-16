@@ -1,7 +1,7 @@
 # RFC — `@lattice/input`
 
 Status: **proposed**. Owner: lattice-architect (task A5). Depends on `@lattice/core`, `@lattice/iso`.
-Environment: **browser** (`window`, `document`, `Element.setPointerCapture`). The recogniser inside it is not.
+Environment: **browser** (`window`, `document`, `Element.setPointerCapture`). The recognizer inside it is not.
 
 Routings folded in during design, each answered explicitly rather than hedged:
 the tap → grid seam (§3.7), the per-tick sample buffer (§3.8), pointer capture (§3.9),
@@ -57,7 +57,7 @@ Read it as a list of promises the API has to keep:
 | the line | what it forces on the design |
 |---|---|
 | `element` + `camera` and nothing else | The package needs the surface and the transform. It never sees game state, so it can never hold a stale idea of what is in the world. |
-| `stepMs` | The recogniser measures durations in ticks, not in clock reads. A long press is five ticks, and five ticks is the same length on every machine. |
+| `stepMs` | The recognizer measures durations in ticks, not in clock reads. A long press is five ticks, and five ticks is the same length on every machine. |
 | `actions: { collect: [...] }` | Two sources — one that has a position, one that does not — under one name, declared as data. `'colect'` in the handler is a **compile error**: the names are inferred from this object literal. A third source is one more string in the array, and still no second handler. |
 | `a.gx, a.gy` | The handler is handed tiles, not pixels. That seam is closed here so no game ever writes the conversion (§3.7). |
 | `input.tick(index)` | Everything game-visible is delivered here, in the loop's fixed step, before the game's own update. Input therefore cannot be a side effect of rendering; it happens in the half of the frame that rendering is not in. |
@@ -107,7 +107,7 @@ export interface InputScope<A extends string = never> {
   scope(): InputScope<A>;
 
   /**
-   * Subscribe to a recognised gesture.
+   * Subscribe to a recognized gesture.
    *
    * Handlers run in registration order, scopes in creation order, and the camera controller
    * runs after all of them — so a handler can `claim()` a drag and steer a placement ghost
@@ -190,7 +190,7 @@ export interface TapGesture extends GestureBase {
 }
 
 /**
- * A press that travelled. One `dragstart`, zero or more `drag`, and **exactly one
+ * A press that traveled. One `dragstart`, zero or more `drag`, and **exactly one
  * `dragend`** — including when the system takes the gesture away, because a drag with no end
  * is a camera that pans for ever (§3.9).
  */
@@ -203,7 +203,7 @@ export interface DragGesture extends GestureBase {
    * Screen-space velocity in CSS px/s, averaged over the last `flingSampleMs`.
    * Averaged, not differenced: a finger that pauses before lifting has a last-two-points
    * velocity of nearly zero or of nearly anything, and both make flicks feel random.
-   * Always zero on a cancelled `dragend` — an interrupted gesture must not fling.
+   * Always zero on a canceled `dragend` — an interrupted gesture must not fling.
    */
   readonly vx: number;
   readonly vy: number;
@@ -214,7 +214,7 @@ export interface DragGesture extends GestureBase {
  *
  * One gesture for wheel, trackpad pinch, two-finger pinch and `+`/`-`, because the camera
  * does not care which it was and neither does a game. `sx, sy` is the anchor: the pointer,
- * the midpoint between two fingers, or the viewport centre for a source with no position.
+ * the midpoint between two fingers, or the viewport center for a source with no position.
  * `dx, dy` carries the midpoint's own travel, so a two-finger gesture pans and zooms at once
  * the way a map does.
  */
@@ -260,7 +260,7 @@ export type ActionBinding = 'tap' | 'longpress' | `key:${string}`;
  *
  * The coordinates are always populated, which is the point. A pointer-sourced action carries
  * where the finger was; a key-sourced one carries {@link InputOptions.focus} — the game's
- * current selection — falling back to the viewport centre. Without that rule the keyboard
+ * current selection — falling back to the viewport center. Without that rule the keyboard
  * path either does nothing or does something different from the touch path, and the keyboard
  * path is the one nobody tests. It is also the seam a gamepad needs (§4.2): a positionless
  * source is already a solved case here.
@@ -288,7 +288,7 @@ repeats is an action whose count is not reproducible, and non-negotiable 1 says 
 replay. A held action is a query (`held`), not a stream.
 
 **This is the answer to "one handler, three bindings".** The game writes
-`onAction('collect', …)` once. `tap` reaches it through the gesture recogniser carrying the
+`onAction('collect', …)` once. `tap` reaches it through the gesture recognizer carrying the
 finger's tile; `key:Space` reaches it through the keyboard carrying the focus point's tile;
 both arrive as the same `ActionEvent`, in the same tick, in binding-declaration order. The
 only things a handler can tell them apart by are `source` and `binding`, and it is free to
@@ -312,7 +312,7 @@ export interface InputOptions<A extends string> {
   /**
    * The loop's fixed step, in milliseconds. Must be the same number the loop uses.
    *
-   * The recogniser counts ticks and multiplies by this; it never reads a clock. Get it wrong
+   * The recognizer counts ticks and multiplies by this; it never reads a clock. Get it wrong
    * and every duration in §3.5 is wrong by the same ratio — so pass `loop.stepMs` rather
    * than a literal.
    */
@@ -337,7 +337,7 @@ export interface InputOptions<A extends string> {
    * Where a keyboard action points.
    *
    * Write the screen point of the current selection into `out` and return `true`; return
-   * `false` and the viewport centre is used. This is the seam between "the player pressed
+   * `false` and the viewport center is used. This is the seam between "the player pressed
    * Space" and "at what", and a game that leaves it unimplemented is still playable — it just
    * collects from the middle.
    */
@@ -386,7 +386,7 @@ export interface InputSystem<A extends string = never> extends InputScope<A> {
    */
   frame(nowMs: number): void;
 
-  /** Feed the recogniser directly. The DOM binding is a producer of these and nothing more. */
+  /** Feed the recognizer directly. The DOM binding is a producer of these and nothing more. */
   submit(sample: RawSample): void;
 
   /** Is any binding of this action currently held? Continuous input is a query, not a stream. */
@@ -424,7 +424,7 @@ export interface InputSystem<A extends string = never> extends InputScope<A> {
 export declare function createInput<A extends string = never>(options: InputOptions<A>): InputSystem<A>;
 
 /**
- * The same recogniser with no DOM at all, fed only by {@link InputSystem.submit}.
+ * The same recognizer with no DOM at all, fed only by {@link InputSystem.submit}.
  *
  * This is how the package is tested and how a replay runs in Node. It exists because the pure
  * half of this package genuinely is pure (non-negotiable 4), and hiding that behind a DOM
@@ -507,7 +507,7 @@ export declare const DEFAULT_PROFILE: Readonly<GestureProfile>;
  *
  * There is deliberately no `setZoom`. The only way to change scale is {@link zoomBy}, whose
  * anchor is a required parameter — so origin-anchored zoom is not somewhere you can arrive by
- * accident, only by deliberately typing the viewport centre. Origin-anchored zoom is the
+ * accident, only by deliberately typing the viewport center. Origin-anchored zoom is the
  * single most common reason tile-game cameras feel broken: the thing you are looking at
  * slides out from under you as you zoom towards it.
  */
@@ -600,7 +600,7 @@ why it cannot live here.
 
 ```ts
 /**
- * The entire input to the recogniser. Plain data, serialisable, no clock, no DOM.
+ * The entire input to the recognizer. Plain data, serialisable, no clock, no DOM.
  *
  * `tick` is how time enters — {@link InputSystem.tick} submits one — which means a log is a
  * complete description of a session's input *including its timing*, expressed on the only
@@ -613,7 +613,7 @@ export type RawSample =
   | { readonly kind: 'up'; readonly id: number; readonly sx: number; readonly sy: number }
   /** The pointer was taken away: `pointercancel`, `lostpointercapture`, blur, or dispose. */
   | { readonly kind: 'cancel'; readonly id: number }
-  /** `dz` is normalised to CSS pixels; `pinch` marks a trackpad pinch arriving as a wheel. */
+  /** `dz` is normalized to CSS pixels; `pinch` marks a trackpad pinch arriving as a wheel. */
   | { readonly kind: 'wheel'; readonly sx: number; readonly sy: number; readonly dz: number; readonly pinch: boolean }
   | { readonly kind: 'key'; readonly code: string; readonly down: boolean }
   /** The window lost focus. Everything held is released — see §6, trap 10. */
@@ -686,15 +686,15 @@ The fix is this package's, because the overlay has no way to know a drag is in p
   is already gone. `dispose()` releases every held capture.
 - **Every way of losing a pointer produces a terminal sample.** `pointerup` → `up`;
   `pointercancel`, `lostpointercapture`, window `blur`, `visibilitychange` to hidden, and
-  `dispose()` → `cancel` for each active id. This is the important half: *the recogniser's
+  `dispose()` → `cancel` for each active id. This is the important half: *the recognizer's
   only exit from a drag is a terminal sample, and every browser path that can end a gesture
-  is mapped onto one.* A recogniser that can be left latched in a dragging state is worse
+  is mapped onto one.* A recognizer that can be left latched in a dragging state is worse
   than one that occasionally drops a drag, because the first symptom is a camera that pans
   for ever and the second is a gesture you repeat.
-- **A cancelled drag ends, but does not fling.** `dragend` is always emitted; on a cancel its
+- **A canceled drag ends, but does not fling.** `dragend` is always emitted; on a cancel its
   velocity is zero. A gesture interrupted by an incoming call must not leave the camera flying.
 - **A drag that ends over a button does not press it.** That is a consequence of capture, and
-  it is the behaviour you want: the gesture belonged to the world from the moment it started.
+  it is the behavior you want: the gesture belonged to the world from the moment it started.
 
 Invariants 8 and 13 in §5 are the tests for all of this.
 
@@ -736,7 +736,7 @@ and the cached boxes were minutes old.)
 list in `kit.json` names `gamepad`, and the demo game in `docs/rfc/demo.md` — the only real
 test the kit has of anything — never touches it. Three reasons, in increasing order of weight.
 
-*It cannot be exercised.* There is no headless gamepad. Tests could feed my own normaliser its
+*It cannot be exercised.* There is no headless gamepad. Tests could feed my own normalizer its
 own samples and prove nothing about `navigator.getGamepads()`, and non-negotiable 10 says green
 is not evidence. Shipping it means shipping the one module nobody has ever watched work.
 
@@ -876,7 +876,7 @@ in Node, with no DOM and no timers.
 12. **A key aimed at a field never becomes an action**, and neither does one carrying a
     meta/ctrl/alt modifier that no binding asked for.
 
-13. **The recogniser cannot be latched.** For every `down` there is exactly one terminal event.
+13. **The recognizer cannot be latched.** For every `down` there is exactly one terminal event.
     Feed `down; move(+40,0)` and then, separately, each of `up`, `cancel`, `blur`, `dispose()`:
     each produces exactly one `dragend`, and the three that are not `up` produce it with zero
     velocity.
@@ -913,17 +913,17 @@ its playbook.
 
 3. **Not capturing the pointer** (§3.9). A drag that leaves the element, or passes under a `ui`
    panel, stops receiving moves and the camera halts with the finger still down. Capture on
-   down; map every way of losing the pointer onto a `cancel`; never leave the recogniser
+   down; map every way of losing the pointer onto a `cancel`; never leave the recognizer
    latched.
 
-4. **Letting the release after a long press count as a tap.** See invariant 1. The recogniser
+4. **Letting the release after a long press count as a tap.** See invariant 1. The recognizer
    latches the press as consumed, so a game never has to.
 
-5. **Not cancelling the long press when the finger starts travelling.** A slightly shaky drag
+5. **Not canceling the long press when the finger starts travelling.** A slightly shaky drag
    lifts a building mid-pan. One number governs it: crossing `tapSlopPx` ends the press, starts
    the drag and disarms the hold, in that order.
 
-6. **Trusting `WheelEvent.deltaY`.** Three delta modes, and Firefox reports lines. Normalise
+6. **Trusting `WheelEvent.deltaY`.** Three delta modes, and Firefox reports lines. Normalize
    with `wheelLinePx`/`wheelPagePx` before anything else touches the number. Separately, a
    trackpad pinch is a `wheel` with `ctrlKey` set — miss it and pinch-to-zoom on a laptop
    scrolls instead of zooming. And the listener must be `{ passive: false }`, or the
@@ -965,7 +965,7 @@ its playbook.
 14. **Ignoring `getCoalescedEvents()`.** A 120 Hz pointer delivers several positions per frame.
     For panning the newest is enough and cheaper; for anything drawing a stroke the coalesced
     list is the difference between a smooth line and a polygon. The buffer keeps every coalesced
-    move (subject to the collapse rule in §3.8) and the recogniser uses the last for position
+    move (subject to the collapse rule in §3.8) and the recognizer uses the last for position
     and the set for velocity.
 
 ---
@@ -1016,9 +1016,9 @@ Written out because these are other agents' files, not mine.
 
 10. Drop `gamepad` from this package's modules and from the `purpose` string; §4.2 is the
     argument.
-11. The remaining module list mixes the pure recogniser with the DOM binding inside `pointer`,
+11. The remaining module list mixes the pure recognizer with the DOM binding inside `pointer`,
     which non-negotiable 4 forbids in one file. Proposed instead: `sample` (the `RawSample`
-    union, the buffer and the log format — pure), `recognise` (the gesture state machine —
+    union, the buffer and the log format — pure), `recognize` (the gesture state machine —
     pure), `actions` (pure), `cameracontrol` (pure, given a camera), `dom` (the only impure
     module: pointer, keyboard, wheel, capture), and `scope` (deleted if `core` takes item 9).
 12. Add to this package's `invariants`: *"Gestures are delivered on simulation ticks, never on

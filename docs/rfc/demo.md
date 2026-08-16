@@ -397,11 +397,11 @@ This is the real deliverable. **Claim** is what `.lattice/kit.json` currently pr
 |---|---|---|---|
 | Surface + Canvas2D backend | `surface`/`canvas2d` | ✓ | — |
 | iso box, post, cylinder, roof for lamp/gate/press/shrine | `solids` | ✓ | — |
-| face colours derived from one colour | `color` | ✓ | — |
+| face colors derived from one color | `color` | ✓ | — |
 | **interpolate two named palettes by `t`** (dawn → day → dusk → night) | `palette` | ✗ | the day/night cycle is the spine of the game. Recolouring the whole world should be one call and one number, which is the strongest argument the zero-asset rule has |
 | **an emissive light: additive radial glow with a falloff** | — | ✗ | a lamp that does not glow is a stick |
 | **a night mask: a darkness layer that lamp lights punch through** | `layers` | ✗ | **the premise.** The player must be able to see, at a glance, where the light stops. Without this there is no game, only a recolour |
-| **a built-but-unlit lamp that reads as *different from* an unbuilt site** | `solids`/`color` | ~ | **`D2`.** Lamps now stay out after guttering, so "dark post you own" and "dark post you could buy" are two states on the same silhouette and the player must tell them apart at a glance to know what to tap. One derived colour and no glow, but the design did not have this state before this revision |
+| **a built-but-unlit lamp that reads as *different from* an unbuilt site** | `solids`/`color` | ~ | **`D2`.** Lamps now stay out after guttering, so "dark post you own" and "dark post you could buy" are two states on the same silhouette and the player must tell them apart at a glance to know what to tap. One derived color and no glow, but the design did not have this state before this revision |
 | contact shadows under posts and pilgrims | `shadow` | ✓ | everything floats |
 | static geometry cached (trees, ground chunks) | `cache` | ✓ | frame budget |
 | world-space text for the shrine name | `text` | ✓ | minor |

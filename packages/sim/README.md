@@ -286,7 +286,7 @@ a matrix exponential. Two design moves take almost all of this package back to T
 - **Never hash or equality-compare a stock vector.** Compare with a relative tolerance of 1e-9. A
   save's checksum must cover the *bytes* read, never a recomputed state.
 - **`Infinity` is a perfectly Tier A result and is precisely the value that does not survive being
-  written down** — it serialises to `null` with a valid checksum. `advance` and `advanceOver` throw a
+  written down** — it serializes to `null` with a valid checksum. `advance` and `advanceOver` throw a
   `RangeError` naming the node rather than letting one reach a save, and `expectFiniteStocks` is the
   load-side check. `capacityLoad` is the one derived read here that may be infinite, and it must
   never be stored.
@@ -340,7 +340,7 @@ exponential decay — a *linear* drain is fully supported and is a forward edge 
 event with a time the player can be told about. **Big-number arithmetic** — a game whose numbers
 approach 9e15 has a prestige problem, not an arithmetic problem. **Randomness** — the economy is a
 differential equation; there is nothing to seed. **A schedule generator** — `sim` consumes `Phase[]`
-and does not know what a day is. **Formatting**, which is `core`'s. **Serialisation**, which is
+and does not know what a day is. **Formatting**, which is `core`'s. **Serialization**, which is
 `persist`'s: `Ledger` and `IdSource` are JSON-shaped by construction and that is the whole
 contribution.
 

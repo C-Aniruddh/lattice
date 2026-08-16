@@ -116,7 +116,7 @@ describe('Rng.nextUint32 and next', () => {
     expect(offender).toBe(-1);
   });
 
-  it('normalises by exactly 2^32, so next() is a dyadic rational in [0, 1)', () => {
+  it('normalizes by exactly 2^32, so next() is a dyadic rational in [0, 1)', () => {
     const a = createRng('unit');
     const b = createRng('unit');
     for (let i = 0; i < 1000; i += 1) {

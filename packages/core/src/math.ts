@@ -43,7 +43,7 @@ export const EPSILON = 1e-9;
  * Constrain `value` to `[min, max]`.
  *
  * `NaN` propagates rather than snapping to a bound: both comparisons are false, so a `NaN`
- * comes back out. That is the wanted behaviour — a clamp that silently turned `NaN` into
+ * comes back out. That is the wanted behavior — a clamp that silently turned `NaN` into
  * `min` would hide the division by zero that produced it until it reached the screen.
  */
 export function clamp(value: number, min: number, max: number): number {
@@ -52,7 +52,7 @@ export function clamp(value: number, min: number, max: number): number {
   return value;
 }
 
-/** `clamp(value, 0, 1)`. The normalised-time and normalised-progress case, which is most of
+/** `clamp(value, 0, 1)`. The normalized-time and normalized-progress case, which is most of
  *  them; spelled out so call sites do not carry two magic numbers. */
 export function clamp01(value: number): number {
   if (value < 0) return 0;
@@ -112,7 +112,7 @@ export function remap(
 /**
  * Hermite smoothstep, clamped to [0, 1].
  *
- * The zero derivative at both endpoints is the entire point: a linear fade meets flat colour
+ * The zero derivative at both endpoints is the entire point: a linear fade meets flat color
  * at an angle, and the eye reads that discontinuity in the *slope* as a visible band even
  * though the value itself is continuous. Fog, vignettes, distance culling and audio
  * crossfades all want this rather than `clamp01`.

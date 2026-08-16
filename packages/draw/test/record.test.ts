@@ -120,7 +120,7 @@ describe('what each call records', () => {
 });
 
 describe('rounding', () => {
-  it('keeps three decimals and normalises negative zero', () => {
+  it('keeps three decimals and normalizes negative zero', () => {
     const s = createRecordingSurface(10, 10);
     s.poly(XY([1.00049, -0.0001, 2.9995, 0]), 2, 0);
     expect(s.ops[0]?.xy).toEqual([1, 0, 3, 0]);

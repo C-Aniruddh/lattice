@@ -27,7 +27,7 @@
  * It advances `sim` once per *fixed step*, so a sim timer coalesces per step instead. That is
  * the stricter and more useful guarantee: coalescing sim timers per pump would make a spawn
  * wave fire in a pattern that depended on how many catch-up steps the frame happened to
- * contain, which is frame-rate-dependent behaviour in the one timeline that has to replay
+ * contain, which is frame-rate-dependent behavior in the one timeline that has to replay
  * identically (invariant I-10 asks for exactly this — the same call sequence under two
  * different pump patterns). The bound sim timers get instead comes from the catch-up clamp:
  * a pump can never advance more than `maxCatchUpMs` of sim time, so a sim burst is bounded at
@@ -52,7 +52,7 @@ import type { Seconds } from './clock.js';
  * Opaque, never reused within a session, and cheap: a number, not an object.
  *
  * The counter is shared by every timeline in the process, so an id from `loop.sim` handed to
- * `loop.real.cancel` returns `false` instead of silently cancelling a completely unrelated
+ * `loop.real.cancel` returns `false` instead of silently canceling a completely unrelated
  * timer that happened to be allocated the same small integer. Per-timeline counters were the
  * obvious design and would have made that collision certain.
  */
@@ -162,8 +162,8 @@ export interface Scheduler {
   /**
    * Remove a timer. `true` if a live one was removed.
    *
-   * Cancelling twice is not an error, and cancelling from inside a firing callback works: a
-   * timer cancelled during an advance never runs in that advance, even if it was already
+   * Canceling twice is not an error, and canceling from inside a firing callback works: a
+   * timer canceled during an advance never runs in that advance, even if it was already
    * collected as due.
    */
   cancel(id: TimerId): boolean;
@@ -206,7 +206,7 @@ export function createTimeline(): Timeline {
     return id;
   };
 
-  /** Fire one collected timer, unless it was cancelled between collection and here. */
+  /** Fire one collected timer, unless it was canceled between collection and here. */
   const fire = (timer: Timer): void => {
     if (!timer.live) return;
     if (timer.periodUs === 0) {
@@ -280,7 +280,7 @@ export function createTimeline(): Timeline {
 
       // Collect first, fire second. That single ordering is what gives invariant I-11: a timer
       // registered inside a firing callback is not in the collected list and cannot run in the
-      // same advance, and one cancelled inside it is skipped by `fire`'s liveness check.
+      // same advance, and one canceled inside it is skipped by `fire`'s liveness check.
       //
       // The common case — nothing due, or exactly one thing due — allocates nothing at all.
       let only: Timer | undefined;

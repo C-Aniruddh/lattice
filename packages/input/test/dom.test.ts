@@ -118,7 +118,7 @@ describe('binding', () => {
       camera: createCamera(800, 600),
       stepMs: STEP_60,
     });
-    // No computed style to check, no window to listen to, and still a working recogniser.
+    // No computed style to check, no window to listen to, and still a working recognizer.
     w.fire('pointerdown', pointer(500, 350));
     expect(input.buffered).toBe(1);
     input.dispose();
@@ -193,7 +193,7 @@ describe('pointer capture', () => {
     const { w, input } = bind();
     w.element.refuseCapture = true;
     w.fire('pointerdown', pointer(150, 80));
-    // A pointer already gone throws here, and the recogniser's exit does not depend on capture.
+    // A pointer already gone throws here, and the recognizer's exit does not depend on capture.
     expect(input.buffered).toBe(1);
     expect(() => {
       w.fire('pointerup', pointer(150, 80));
@@ -209,7 +209,7 @@ describe('pointer capture', () => {
     w.fire('lostpointercapture', pointer(250, 80));
     w.fire('lostpointercapture', pointer(250, 80));
     input.tick(2);
-    // Without this the recogniser sits in a dragging state for ever, and the first symptom is a
+    // Without this the recognizer sits in a dragging state for ever, and the first symptom is a
     // camera the player cannot stop.
     expect(types(seen)).toEqual(['dragstart', 'dragend']);
   });
@@ -267,7 +267,7 @@ describe('coalesced moves', () => {
 });
 
 describe('the wheel', () => {
-  it('normalises all three delta modes and consumes the event', () => {
+  it('normalizes all three delta modes and consumes the event', () => {
     const { w, input, seen } = bind();
     for (const [deltaMode, deltaY] of [
       [0, -100],
@@ -422,7 +422,7 @@ describe('I14 — the overlay diagnostic', () => {
 });
 
 describe('the small print', () => {
-  it('reads pointerType for a pen and for anything it does not recognise', () => {
+  it('reads pointerType for a pen and for anything it does not recognize', () => {
     const { w, input, seen } = bind();
     // 6 px of travel: past the pen's slop of 6 and under the touch slop of 9.
     w.fire('pointerdown', { ...pointer(200, 200), pointerType: 'pen' });

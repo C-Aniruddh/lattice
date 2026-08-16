@@ -4,7 +4,7 @@
  * **This package owns the comparator, the order, and the backwards walk that makes picking
  * correct. `@lattice/draw` owns the items, the passes and the bucket.** A draw list is a list
  * of things to draw and `iso` must not know what a drawable is: the moment a sorter holds ids
- * it is modelling the caller's entities, and the moment it has passes it is a renderer. What
+ * it is modeling the caller's entities, and the moment it has passes it is a renderer. What
  * is genuinely ours is narrower and sharper — *given a set of ground footprints, what order do
  * they occlude in* — and that is a permutation of integers with no notion of an item at all.
  *

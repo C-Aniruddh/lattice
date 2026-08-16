@@ -21,7 +21,7 @@
  *
  * And one thing Tier A does *not* promise: a round trip through JSON. `Infinity` is a
  * perfectly Tier A result and is precisely the value that does not survive being written
- * down — it serialises to `null`, with a valid checksum, so nothing downstream can detect
+ * down — it serializes to `null`, with a valid checksum, so nothing downstream can detect
  * it. That is what {@link expectSerializable} and {@link isSerializable} are for.
  */
 

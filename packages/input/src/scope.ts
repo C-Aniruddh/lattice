@@ -166,7 +166,7 @@ export interface InputScope<A extends string = never> {
   scope(): InputScope<A>;
 
   /**
-   * Subscribe to a recognised gesture.
+   * Subscribe to a recognized gesture.
    *
    * Handlers run in registration order, scopes in creation order, and the camera controller
    * runs after all of them — so a handler can `claim()` a drag and steer a placement ghost with

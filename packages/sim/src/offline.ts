@@ -30,10 +30,10 @@
  *          = U · (T/U)^e
  * ```
  *
- * **The `U^(1−e)` normalisation is the whole trick**, and there are two near-misses that pass a
+ * **The `U^(1−e)` normalization is the whole trick**, and there are two near-misses that pass a
  * casual test:
  *
- * - `W(T) = U + T^e` drops the normalisation and **jumps** by `U^e` at the knot — about 259
+ * - `W(T) = U + T^e` drops the normalization and **jumps** by `U^e` at the knot — about 259
  *   credited seconds at 3 h / 0.6 — so returning at 3h00m01s pays more than at 2h59m59s. A
  *   visible, farmable step.
  * - `W(T) = U + (T − U)^e` is continuous and wrong more subtly: its slope at `U⁺` is *infinite*

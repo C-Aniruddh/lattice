@@ -132,7 +132,7 @@ export interface BrowserFramesOptions {
  * exactly the arrangement that keeps `update`, the schedulers and therefore autosave alive.
  *
  * The rAF chain re-arms **before** the pump runs, so a game that stops itself from inside a
- * callback has its pending handle cancelled by the `stop()` it just called, rather than
+ * callback has its pending handle canceled by the `stop()` it just called, rather than
  * arming a fresh frame on the way out of a fatal error.
  *
  * @throws RangeError if `idleMs` is not a finite number greater than zero.
@@ -182,7 +182,7 @@ export function browserFrames(options: BrowserFramesOptions = {}): FrameSource {
       const frame = (): void => {
         if (binding.stopped) return;
         // Re-arm first. A game that stops itself from inside a callback then has this handle
-        // cancelled by the `stop()` it just called; re-arming afterwards would instead start a
+        // canceled by the `stop()` it just called; re-arming afterwards would instead start a
         // fresh chain on the way out of a fatal error, and the loop would keep pumping a game
         // that had already decided to die.
         binding.rafHandle = ready.requestAnimationFrame(frame);

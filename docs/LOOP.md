@@ -22,7 +22,7 @@ Run one cycle with **`/lattice-cycle`**. Run them until the queue is empty with
 | **designer** | builds the demo game and reports where the kit fought back | the only honest test of a kit is a game built from it |
 | **scribe** | arrives cold and records where navigation failed | "agent-first" is a claim, and claims get tested |
 
-The visionary roles — architect and designer — are the ones with licence to argue with the
+The visionary roles — architect and designer — are the ones with license to argue with the
 brief. A design task that only ratifies its inputs was a wasted cycle.
 
 ## The rules that keep parallelism safe

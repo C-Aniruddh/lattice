@@ -9,7 +9,7 @@
  *
  * **One array per *layer*, not one struct per tile.** A game needing terrain, buildings and
  * movement cost makes three grids. Structure-of-arrays is why a pathfinder can scan a cost
- * layer without dragging terrain colours through the cache, and why `@lattice/persist` can
+ * layer without dragging terrain colors through the cache, and why `@lattice/persist` can
  * take a whole map as one buffer.
  *
  * **Reads are forgiving, writes are not.** `get` outside the map returns the map's
@@ -275,7 +275,7 @@ export class ChunkGrid implements MutableTileSource {
   readonly #chunks = new Map<number, Uint8Array | Uint16Array | Uint32Array>();
   #version = 0;
   /** The last chunk looked up, and its key. Tile access is overwhelmingly sequential — a draw
-   *  loop or a pathfinder expansion walks neighbours — so one slot of memory removes most of
+   *  loop or a pathfinder expansion walks neighbors — so one slot of memory removes most of
    *  the `Map` lookups without a cache to invalidate. */
   #lastKey = Number.NaN;
   #lastChunk: Uint8Array | Uint16Array | Uint32Array | undefined = undefined;

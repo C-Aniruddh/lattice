@@ -17,7 +17,7 @@ import { createRng, hash2, v2, v2AddScaled } from '@lattice/core';
 const rng = createRng('valley-3');
 const trees = rng.derive('scenery'); // a sub-stream — see below, this is the important bit
 
-const shade = hash2(1, 12, 7); // the same tile always gets the same colour
+const shade = hash2(1, 12, 7); // the same tile always gets the same color
 const pos = v2(0, 0);
 v2AddScaled(pos, pos, v2(1, 0), 3); // writes into `pos`; allocates nothing
 ```
@@ -48,7 +48,7 @@ kit. Noise gradients come from a fixed direction table rather than the usual
 
 And one thing Tier A does *not* promise: **a round trip through JSON.** `Infinity` is a
 perfectly Tier A arithmetic result and is exactly the value that does not survive being written
-down — it serialises to `null`, under a valid checksum, so nothing downstream can detect it.
+down — it serializes to `null`, under a valid checksum, so nothing downstream can detect it.
 That is what `expectSerializable` and `isSerializable` are for.
 
 ### 2. Sub-streams fork from identity, not from position

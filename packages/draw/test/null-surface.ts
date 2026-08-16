@@ -3,7 +3,7 @@
  *
  * **What it measures, and what it deliberately does not.** Everything this package does per
  * frame is *geometry and command submission*: project corners into `pen.xy`, derive three face
- * colours from one, and hand `(buffer, count, colour)` to a backend. That work is the same on
+ * colors from one, and hand `(buffer, count, color)` to a backend. That work is the same on
  * every backend and it is what a sprite cache would replace with a single blit, so it is exactly
  * the number the cache question turns on. Rasterisation — filling those polygons — happens
  * inside the browser's compositor, is not reachable from Node, and is *not* what a cache saves:
@@ -28,7 +28,7 @@ import type { Rgba } from '../src/color.js';
 
 /** The counting backend. */
 export interface NullSurface extends Surface {
-  /** Fold of every coordinate and colour submitted. Read it, or the frame is optimised away. */
+  /** Fold of every coordinate and color submitted. Read it, or the frame is optimized away. */
   readonly checksum: number;
   /** Draw calls since the last {@link NullSurface.reset}. The op count a frame really costs. */
   readonly count: number;

@@ -162,7 +162,7 @@ describe('the fixed chain', () => {
     expect(highpass?.outputs.has(lowpass as never)).toBe(true);
   });
 
-  it('builds a panner only for a voice that is actually off-centre', () => {
+  it('builds a panner only for a voice that is actually off-center', () => {
     const { fake, renderer } = setup();
     renderer.play(voice());
     expect(fake.countOf('panner')).toBe(0);

@@ -6,7 +6,7 @@
  * return **exactly** zero, `fbm2` at one octave **is** `noise2` on a derived seed, and the
  * recorded values are compared bit for bit — and statistical only where the claim is
  * genuinely statistical (range, symmetry, decorrelation). The range tests are the ones that
- * would catch the normalisation being dropped, which is the change that silently moves a
+ * would catch the normalization being dropped, which is the change that silently moves a
  * terrain's sea level when someone raises its detail.
  */
 
@@ -66,7 +66,7 @@ describe('noise2', () => {
     expect(min).toBeLessThan(-0.9);
   });
 
-  it('is continuous: neighbouring samples move by a bounded amount', () => {
+  it('is continuous: neighboring samples move by a bounded amount', () => {
     // A gradient table indexed with the wrong bits still produces a plausible histogram and
     // a discontinuous field, which reads as tearing along the lattice lines.
     let worst = 0;
@@ -118,7 +118,7 @@ describe('noise2', () => {
   });
 
   it('reaches every gradient direction, so no branch of the table is dead', () => {
-    // Sampled at cell centres, where the value is a fixed combination of the four corner
+    // Sampled at cell centers, where the value is a fixed combination of the four corner
     // gradients: a selector stuck on a subset of the eight directions collapses this count,
     // and the field repeats visibly along one axis.
     const values = new Set<number>();
@@ -189,13 +189,13 @@ describe('noise3', () => {
   });
 
   it('reaches every gradient direction', () => {
-    const centres = new Set<number>();
+    const centers = new Set<number>();
     for (let x = 0; x < 16; x += 1) {
       for (let y = 0; y < 16; y += 1) {
-        for (let z = 0; z < 16; z += 1) centres.add(noise3(13, x + 0.5, y + 0.5, z + 0.5));
+        for (let z = 0; z < 16; z += 1) centers.add(noise3(13, x + 0.5, y + 0.5, z + 0.5));
       }
     }
-    expect(centres.size).toBeGreaterThan(10);
+    expect(centers.size).toBeGreaterThan(10);
     const offset = new Set<number>();
     for (let x = 0; x < 16; x += 1) {
       for (let y = 0; y < 16; y += 1) {
@@ -218,7 +218,7 @@ describe('fbm2', () => {
   });
 
   it('is exactly noise2 on a derived seed at one octave', () => {
-    // The normalisation divides by the amplitude sum, which is exactly 1 here — so this is
+    // The normalization divides by the amplitude sum, which is exactly 1 here — so this is
     // an exact identity, not an approximation, and it pins the per-octave seed derivation.
     for (let i = 0; i < 100; i += 1) {
       const x = i * 0.037;
@@ -240,9 +240,9 @@ describe('fbm2', () => {
         }
         expect(min).toBeGreaterThanOrEqual(-1);
         expect(max).toBeLessThanOrEqual(1);
-        // Un-normalised fBm at 4 octaves and gain 0.5 reaches ~1.9, so the upper bound above
-        // is the assertion that the normalisation exists. This one asserts it is a
-        // normalisation and not a crush: the field still uses most of its range, and the two
+        // Un-normalized fBm at 4 octaves and gain 0.5 reaches ~1.9, so the upper bound above
+        // is the assertion that the normalization exists. This one asserts it is a
+        // normalization and not a crush: the field still uses most of its range, and the two
         // signs stay balanced.
         expect(max).toBeGreaterThan(0.4);
         expect(min).toBeLessThan(-0.4);
@@ -306,7 +306,7 @@ describe('fbm2', () => {
     expect(fbm2(1, 0.31, 0.77, 5, 0.6)).toBe(first);
   });
 
-  it('rejects an octave count or gain that would make the normalisation meaningless', () => {
+  it('rejects an octave count or gain that would make the normalization meaningless', () => {
     expect(() => fbm2(1, 0, 0, 0)).toThrow(/fbm2.octaves: expected a finite number in \[1, 16\], got 0/);
     expect(() => fbm2(1, 0, 0, 1.5)).toThrow(/fbm2.octaves: expected an integer, got 1.5/);
     expect(() => fbm2(1, 0, 0, 17)).toThrow(RangeError);

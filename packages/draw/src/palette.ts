@@ -1,5 +1,5 @@
 /**
- * Named colour, the revision that keeps a cache honest, and the day/night spine.
+ * Named color, the revision that keeps a cache honest, and the day/night spine.
  *
  * **No DOM, no canvas — this module runs unchanged in Node.**
  *
@@ -13,7 +13,7 @@
  * 1. **`t` is quantised before it is applied, and `rev` bumps only when the quantised step
  *    changes.** A continuous lerp that bumped `rev` every frame would invalidate every cached
  *    sprite every frame, which turns the prettiest moment in the game into its slowest.
- *    {@link PALETTE_STEPS} levels across a six-second dusk is a colour delta of under two
+ *    {@link PALETTE_STEPS} levels across a six-second dusk is a color delta of under two
  *    levels per step — invisible — and at most that many cache generations.
  * 2. **Both stop sets must define exactly the same slots.** A half-defined night palette is
  *    precisely how one thing stays gold at midnight, and the failure is silent everywhere else.
@@ -31,7 +31,7 @@ import type { Ink, Rgba } from './color.js';
 import { hex, hexOf, mix } from './color.js';
 
 /**
- * A named, immutable set of slot colours: `DAY`, `DUSK`, `NIGHT`.
+ * A named, immutable set of slot colors: `DAY`, `DUSK`, `NIGHT`.
  *
  * Plain data, so a game authors them in one object literal, diffs them in review, and hands two
  * of them to {@link Palette.lerp}. Not a `Palette` — a `Palette` is live state with a revision,
@@ -49,7 +49,7 @@ export type Stops = Readonly<Record<string, Rgba>>;
 export const PALETTE_STEPS = 32;
 
 /** Snap a transition parameter to one of {@link PALETTE_STEPS} levels. Shared, so the canvas
- *  and the DOM cannot land on different colours for the same `t`. */
+ *  and the DOM cannot land on different colors for the same `t`. */
 function quantise(t: number): number {
   const k = t < 0 ? 0 : t > 1 ? 1 : t;
   const divisor = PALETTE_STEPS - 1;
@@ -79,7 +79,7 @@ export interface Palette {
    *
    * Part of every sprite cache key, and the single reason a recoloured campus cannot render
    * stale. A cache keyed on `(sprite, level, zoom)` alone will happily blit yesterday's brand
-   * colour for ever, and the player files it as "the rebrand did not apply".
+   * color for ever, and the player files it as "the rebrand did not apply".
    */
   readonly rev: number;
   /** @throws RangeError naming the slot and listing the known ones. A typo that rendered black
@@ -170,7 +170,7 @@ export function createPalette(slots: Stops): Palette {
 }
 
 /**
- * A flat slot → CSS colour bag. The only shape colour crosses into the DOM in.
+ * A flat slot → CSS color bag. The only shape color crosses into the DOM in.
  *
  * `draw` emits bare slot names; **`ui` owns the prefix**, because a package that does not touch
  * the DOM has no business naming a custom property.
@@ -182,7 +182,7 @@ export type Vars = Readonly<Record<string, string>>;
  *
  * Pure: it touches no `Palette` and no DOM. `ui` writes the entries onto custom properties under
  * its own prefix, guarded per key, on its own slow cadence, and lets a CSS transition do the
- * smoothing. Optimised for clarity, not for the frame: at one call a second the allocation of a
+ * smoothing. Optimized for clarity, not for the frame: at one call a second the allocation of a
  * fresh object is not worth a line of thought.
  *
  * **It shares its quantisation and its interpolation with {@link Palette.lerp}.** See the module
@@ -230,7 +230,7 @@ const SLOT_NAMES = [
 /**
  * One reference stop set, written as a row of hex.
  *
- * A row rather than ten labelled lines, and the reason is the one the `Stops` doc gives: these
+ * A row rather than ten labeled lines, and the reason is the one the `Stops` doc gives: these
  * are meant to be *diffed in review*. Three aligned rows put the same slot in the same column in
  * all three, so "the ground got greener at dusk" is a column you can read down. Ten scattered
  * `ground:` lines across three objects are not.

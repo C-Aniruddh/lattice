@@ -3,11 +3,11 @@
  *
  * The kit ships with zero dependencies and the tooling holds itself to the same standard, so
  * there is no jsdom here. What the adapter actually needs is narrow — `addEventListener`, a
- * rect, a style map, pointer capture and a computed style — and modelling exactly that has a
+ * rect, a style map, pointer capture and a computed style — and modeling exactly that has a
  * second benefit: everything this fake does **not** do is a thing the adapter is not allowed to
  * rely on.
  *
- * The one piece of real DOM semantics worth modelling is capture-phase propagation, because the
+ * The one piece of real DOM semantics worth modeling is capture-phase propagation, because the
  * `covered-by-overlay` diagnostic is built on it: a `pointerdown` delivered to something on top
  * of the world still runs the document's capture listener first, with `target` set to whatever
  * was actually hit.

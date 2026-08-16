@@ -59,9 +59,9 @@ import type { Pen } from './surface.js';
  * the next one, if there is one, gets found the same way.
  */
 export const Layer = {
-  /** A vertical ramp. Never a flat colour: flat backgrounds make an island look like a sticker. */
+  /** A vertical ramp. Never a flat color: flat backgrounds make an island look like a sticker. */
   Backdrop: 0,
-  /** Culled tile diamonds, colour varied per tile from a stateless hash. */
+  /** Culled tile diamonds, color varied per tile from a stateless hash. */
   Terrain: 1,
   /** Buildings *and* scenery, one list, one sort. Two sorted lists is what makes trees pop
    *  through walls. */

@@ -292,7 +292,7 @@ describe('culling', () => {
     const cam = createCamera(400, 300, { bounds: rectSet(rect(), -1e6, -1e6, 1e6, 1e6) });
     cam.centerOnTile(0, 0);
     const s = new DepthSorter(8);
-    // Six tiles down the screen is 96 world pixels below the centre, well past the 150-pixel
+    // Six tiles down the screen is 96 world pixels below the center, well past the 150-pixel
     // half-viewport once the tile margin is counted — but a 400-pixel tower reaches back up.
     const short = s.add(14, 14, 1, 1, 0);
     s.sort(cam);

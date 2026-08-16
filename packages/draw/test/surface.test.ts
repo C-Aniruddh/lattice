@@ -43,13 +43,13 @@ describe('beginFrame', () => {
     expect(pen.light).toBeUndefined();
   });
 
-  it('clears transparent when no colour is named — the render-target case', () => {
+  it('clears transparent when no color is named — the render-target case', () => {
     const surface = createRecordingSurface(40, 30);
     beginFrame({ surface, camera: freeCamera(), palette: createPalette(BASE_SLOTS), t: 0 });
     expect(surface.ops[0]?.colors).toEqual([0]);
   });
 
-  it('takes a packed colour as readily as a slot name', () => {
+  it('takes a packed color as readily as a slot name', () => {
     const surface = createRecordingSurface(40, 30);
     beginFrame({
       surface,

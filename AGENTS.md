@@ -96,9 +96,9 @@ These are not preferences. A change that breaks one of these is reverted, not de
 packages/
   core/      seeded rng, noise, math, easing, typed events, pools, formatting.  no deps, no DOM
   iso/       projection, camera, depth sort, tile maps, footprints, hit-test, pathfinding
-  draw/      Canvas2D surface, colour derivation, the isometric solid kit, sprite caching
+  draw/      Canvas2D surface, color derivation, the isometric solid kit, sprite caching
   loop/      wall-clock loop, fixed-step integration, scheduler, tweens, frame stats
-  input/     pointer/keyboard/gamepad normalisation, gestures, camera controller, actions
+  input/     pointer/keyboard/gamepad normalization, gestures, camera controller, actions
   audio/     zero-asset WebAudio synthesis, voice limiting, buses, music
   persist/   versioned saves, migration chains, storage adapters, integrity
   sim/       idle-economy maths: cost curves, closed-form flow, offline accrual, capacity
@@ -139,12 +139,12 @@ to a clean typecheck first, then believe the type tests.
 
 ## House style
 
-The bar is `foom-simple-ui`, the game this kit was extracted from: prose comments that
-explain the trap, tables where a table is clearer than a paragraph, and names that a reader
-guesses correctly before reading the body.
+Prose comments that explain the trap, tables where a table is clearer than a paragraph, and
+names a reader guesses correctly before reading the body.
 
-- **British spelling in prose, American in identifiers.** `colour` in a comment, `color` in
-  a signature — the web platform spells it `color` and matching it is not negotiable.
+- **American spelling throughout**, prose and identifiers alike. The web platform spells it
+  `color`, and a codebase whose comments and signatures disagree about a word is one a reader
+  has to translate as they go.
 - **`readonly` on every interface field that is not deliberately mutated.** `Readonly<T>` on
   every array that crosses a package boundary.
 

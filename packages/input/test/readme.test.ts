@@ -17,14 +17,14 @@ describe('the README example', () => {
     const out: string[] = [];
 
     // ── a camera, and the input system over it ────────────────────────────────
-    const camera = createCamera(800, 600); //         CSS pixels, centred on (0,0)
+    const camera = createCamera(800, 600); //         CSS pixels, centered on (0,0)
     const input = createHeadlessInput({
       camera,
       stepMs: 1000 / 60, //                            the same step the loop runs
       actions: { collect: ['tap', 'key:Space'] }, //   two sources, one handler
       focus: (at) => {
         at.x = 400; //                     where the keyboard aims: the selection,
-        at.y = 300; //                         or the viewport centre if there is none
+        at.y = 300; //                         or the viewport center if there is none
         return true;
       },
     });

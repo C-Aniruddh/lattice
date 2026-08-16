@@ -68,7 +68,7 @@ describe('I2 — travel beyond the slop for the device is never a tap', () => {
 describe('I3 — zoom is anchored to the point it was asked to anchor at', () => {
   it('keeps the world point under the anchor pinned', () => {
     const h = harness();
-    // Every combination that matters: in and out, on and off the viewport centre.
+    // Every combination that matters: in and out, on and off the viewport center.
     for (const [factor, sx, sy] of [
       [2, 100, 100],
       [0.5, 700, 500],
@@ -260,7 +260,7 @@ describe('I10 — the gesture object identity is the same across deliveries', ()
   });
 });
 
-describe('I13 — the recogniser cannot be latched', () => {
+describe('I13 — the recognizer cannot be latched', () => {
   const endings = [
     { name: 'up', flings: true },
     { name: 'cancel', flings: false },

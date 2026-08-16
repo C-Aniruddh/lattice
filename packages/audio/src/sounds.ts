@@ -146,7 +146,7 @@ export interface Layer {
    *
    * Almost always the wrong place for it: pan belongs to the *event* — where the thing was on
    * screen — not to the recipe. Set {@link PlayOptions.pan} instead. This exists for the
-   * genuinely fixed case, a layer that is meant to sit off-centre in every play.
+   * genuinely fixed case, a layer that is meant to sit off-center in every play.
    */
   readonly pan?: number;
 }

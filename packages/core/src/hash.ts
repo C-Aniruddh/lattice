@@ -80,7 +80,7 @@ export function mix32(value: number): number {
  * Deterministic 32-bit hash of a string (xmur3-style mixing, fmix32 finalise).
  *
  * Hashes by **UTF-16 code unit**, so `'é'` as U+00E9 and as U+0065 U+0301 hash differently,
- * and an astral-plane character is hashed as its two surrogates. Normalise
+ * and an astral-plane character is hashed as its two surrogates. Normalize
  * (`value.normalize('NFC')`) before hashing anything that crosses a platform boundary or a
  * save file: a player name typed on macOS and on Windows otherwise seeds two different
  * worlds, and the bug reproduces on nobody's machine. This is the one portability seam in
@@ -217,17 +217,17 @@ export function hash3(seed: number, x: number, y: number, z: number): number {
 }
 
 /**
- * Digest an integer array — a frame buffer, a serialised save, any byte sequence.
+ * Digest an integer array — a frame buffer, a serialized save, any byte sequence.
  *
  * `draw`'s headless renderer digests a rendered frame to compare against a golden;
- * `persist` digests a serialised save to detect corruption. Neither can reach
+ * `persist` digests a serialized save to detect corruption. Neither can reach
  * {@link hashString} without first turning a megabyte of bytes into a string, which
  * allocates the megabyte again to hash it once.
  *
  * **Values are truncated to int32**, like every other input in this module. That is correct
  * for `Uint8Array`, `Uint8ClampedArray` and integer arrays generally, and silently wrong
  * for a `Float32Array` — every value between -1 and 1 truncates to zero, so the digest of a
- * normalised buffer becomes a digest of its length and two completely different frames
+ * normalized buffer becomes a digest of its length and two completely different frames
  * compare equal. View the bytes instead:
  * `new Uint8Array(floats.buffer, floats.byteOffset, floats.byteLength)`.
  *
@@ -244,7 +244,7 @@ export function hashBytes(seed: number, bytes: ArrayLike<number>): number {
 }
 
 /**
- * A uint32 as a float in [0, 1) — exactly `hashed / 2**32`, the same normalisation
+ * A uint32 as a float in [0, 1) — exactly `hashed / 2**32`, the same normalization
  * `Rng.next` uses, so a hashed value and a drawn value are interchangeable in any threshold
  * test.
  *

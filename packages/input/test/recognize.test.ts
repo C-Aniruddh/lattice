@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createRecogniser } from '../src/recognise.js';
+import { createRecogniser } from '../src/recognize.js';
 import { DEFAULT_PROFILE } from '../src/profile.js';
 import { down, harness, move, types, up, watch } from './harness.js';
 
@@ -190,7 +190,7 @@ describe('the wheel', () => {
 });
 
 describe('the keyboard', () => {
-  it('zooms about the viewport centre, in both directions and on both keys', () => {
+  it('zooms about the viewport center, in both directions and on both keys', () => {
     const h = harness();
     const seen = watch(h.input);
     for (const code of ['Equal', 'NumpadAdd', 'Minus', 'NumpadSubtract']) {
@@ -228,7 +228,7 @@ describe('the keyboard', () => {
 });
 
 describe('the machine on its own', () => {
-  /** A recogniser with no system around it, for the states a sample stream cannot reach. */
+  /** A recognizer with no system around it, for the states a sample stream cannot reach. */
   function bare(maxPointers = 2) {
     const emitted: string[] = [];
     const machine = createRecogniser({

@@ -1,7 +1,7 @@
 /**
  * Numbers a player can read at a glance, with no `Intl`.
  *
- * Ported and sharpened from `foom-simple-ui/src/ui/dom.ts`. Three properties are load-bearing
+ * Taken from a shipped game and sharpened. Three properties are load-bearing
  * and each one is a bug that shipped before it was a rule:
  *
  * - **Bounded width.** `fmtCompact` is never wider than six characters, ever, for any finite
@@ -38,7 +38,7 @@ const MAX_DECIMALS = 6;
  * The magnitude ladder: `['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc']`.
  *
  * Exported so a game can render its own ladder in the same tiers, and so a test can assert the
- * boundary behaviour at every tier without duplicating the table. Frozen, because a consumer
+ * boundary behavior at every tier without duplicating the table. Frozen, because a consumer
  * that mutated it would change every number in the game from one line in one file.
  *
  * The ladder tops out at `Oc` = 10^27. Past that `fmtCompact` switches to exponential form

@@ -17,7 +17,7 @@
  * - **One `Rng` per subsystem, obtained by {@link Rng.derive}, never shared.** Two
  *   subsystems on one stream is the bug; a stream per subsystem is free.
  *
- * Ported from `foom-simple-ui/src/core/rng.ts`, which shipped, with `weighted`,
+ * Taken from a shipped game's RNG, with `weighted`,
  * `shuffleInPlace` and the {@link hashStep} fold added.
  */
 
@@ -36,7 +36,7 @@ function isUint32(value: number): boolean {
 }
 
 /**
- * Normalise anything usable as a seed or a fork label into a uint32.
+ * Normalize anything usable as a seed or a fork label into a uint32.
  *
  * The finite check lives here rather than in `hashNumber` so the message can name the
  * method the caller actually called, per non-negotiable #9. The tell for the mistake this
@@ -99,8 +99,8 @@ export class Rng {
    * which pass an already-avalanched value.
    */
   static fromUint32Seed(seed: number): Rng {
-    const normalised = seed >>> 0;
-    return new Rng(normalised, normalised);
+    const normalized = seed >>> 0;
+    return new Rng(normalized, normalized);
   }
 
   /**
@@ -141,7 +141,7 @@ export class Rng {
    * A float in [0, 1). Exactly `nextUint32() / 2**32`.
    *
    * An integer below 2^32 over a power of two is exactly representable as a double, so this
-   * is bit-identical everywhere. Any other normalisation — `/ (2**32 - 1)`, or the rounded
+   * is bit-identical everywhere. Any other normalization — `/ (2**32 - 1)`, or the rounded
    * literal `* 2.3283064365386963e-10` — reintroduces rounding and quietly breaks replay on
    * one engine out of three.
    */
@@ -389,7 +389,7 @@ export class Rng {
  * The seed is hashed first, so `1`, `2`, `3` — or `'level-1'`, `'level-2'` — are
  * well-separated streams and not correlated ones. Pass the key itself, not a pre-hash of
  * it: `createRng(hashString(key))` hashes twice, which is harmless but reads as though the
- * first hash were load-bearing, and someone will later optimise away the wrong one.
+ * first hash were load-bearing, and someone will later optimize away the wrong one.
  *
  * This is also the answer to "materialise a stream from a key that already identifies the
  * thing": per-instance sprite variation from `createRng(spriteKey)` is identical whether the

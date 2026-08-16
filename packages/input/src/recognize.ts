@@ -26,7 +26,7 @@
  *
  * **Latched.** For every `down` there is exactly one terminal event, and every way a host can
  * take a pointer away — `pointerup`, `pointercancel`, `lostpointercapture`, blur,
- * `visibilitychange`, dispose — arrives here as an `up` or a `cancel`. A recogniser that can be
+ * `visibilitychange`, dispose — arrives here as an `up` or a `cancel`. A recognizer that can be
  * left in a dragging state is worse than one that occasionally drops a drag, because the first
  * symptom is a camera that pans for ever and the second is a gesture you repeat.
  */
@@ -42,7 +42,7 @@ export type GestureName = 'tap' | 'longpress' | 'dragstart' | 'drag' | 'dragend'
 export type ZoomSource = 'wheel' | 'pinch' | 'key';
 
 /**
- * The recogniser's one output record, reused for every gesture it ever emits.
+ * The recognizer's one output record, reused for every gesture it ever emits.
  *
  * Deliberately flat and un-narrowed: it is an internal hand-off to the system, which copies
  * the fields that belong to the gesture's kind into the public event object and leaves the
@@ -58,7 +58,7 @@ export interface GestureOut {
   /** Movement since the previous event of this gesture, or a pinch midpoint's own travel. */
   dx: number;
   dy: number;
-  /** CSS px/s, averaged over `flingSampleMs`. Zero on a cancelled `dragend`. */
+  /** CSS px/s, averaged over `flingSampleMs`. Zero on a canceled `dragend`. */
   vx: number;
   vy: number;
   /** Multiplicative; `> 1` zooms in. Only meaningful for `zoom`. */
@@ -68,7 +68,7 @@ export interface GestureOut {
   heldMs: number;
 }
 
-/** What the recogniser needs from around it. Two callbacks and two numbers; no objects it owns. */
+/** What the recognizer needs from around it. Two callbacks and two numbers; no objects it owns. */
 export interface RecogniserOptions {
   readonly profile: Readonly<GestureProfile>;
   /**
@@ -111,9 +111,9 @@ interface PointerState {
  * The state machine, fed one sample at a time.
  *
  * Every method takes the tick it is being run for, because that is the only clock in the
- * package: the recogniser never asks what time it is and could not find out if it wanted to.
+ * package: the recognizer never asks what time it is and could not find out if it wanted to.
  */
-export interface Recogniser {
+export interface Recognizer {
   /** The viewport, for gestures with no position of their own — the keyboard's zoom. */
   setView(viewW: number, viewH: number): void;
   /** Consume one sample as part of tick `tick`. May emit any number of gestures, synchronously. */
@@ -123,7 +123,7 @@ export interface Recogniser {
   /**
    * End everything as if the host had taken it away: a `dragend` with zero velocity for any
    * live drag, a release for every held key. Blur, `visibilitychange` and `dispose` all land
-   * here, which is what makes "the recogniser cannot be latched" a property rather than a hope.
+   * here, which is what makes "the recognizer cannot be latched" a property rather than a hope.
    */
   releaseAll(): void;
   isKeyHeld(code: string): boolean;
@@ -134,12 +134,12 @@ export interface Recogniser {
 }
 
 /**
- * Build a recogniser.
+ * Build a recognizer.
  *
  * @throws RangeError if `stepMs` is not a finite number greater than zero — every duration in
  *   the profile is measured in ticks of it, so a zero step makes a long press instantaneous.
  */
-export function createRecogniser(options: RecogniserOptions): Recogniser {
+export function createRecogniser(options: RecogniserOptions): Recognizer {
   const { profile, stepMs, emit, onKey } = options;
   if (!(Number.isFinite(stepMs) && stepMs > 0)) {
     throw new RangeError(
@@ -472,7 +472,7 @@ export function createRecogniser(options: RecogniserOptions): Recogniser {
   function cancel(id: number, tick: number): void {
     const p = find(id);
     if (p === undefined) return;
-    // A cancelled drag ends, but does not fling. A gesture interrupted by an incoming call must
+    // A canceled drag ends, but does not fling. A gesture interrupted by an incoming call must
     // not leave the camera flying.
     endDrag(p, false);
     p.active = false;
@@ -484,7 +484,7 @@ export function createRecogniser(options: RecogniserOptions): Recogniser {
    * now**.
    *
    * Without the re-seed the surviving finger's press origin is where it landed *before* the
-   * pinch, so the first move after the lift reports the whole distance travelled during the
+   * pinch, so the first move after the lift reports the whole distance traveled during the
    * pinch as one delta and the map jumps by it. Its velocity history is dropped for the same
    * reason: a fling must not inherit the speed of a gesture that has already ended.
    */
@@ -531,7 +531,7 @@ export function createRecogniser(options: RecogniserOptions): Recogniser {
       const direction = zoomKeyDirection(slot.code);
       if (direction !== 0) {
         const factor = direction > 0 ? profile.keyZoomStep : 1 / profile.keyZoomStep;
-        // No position of its own, so it anchors at the viewport centre — the one anchor a
+        // No position of its own, so it anchors at the viewport center — the one anchor a
         // positionless source can honestly claim.
         emitZoom('key', 'mouse', factor, viewW / 2, viewH / 2, 0, 0);
       }
@@ -542,7 +542,7 @@ export function createRecogniser(options: RecogniserOptions): Recogniser {
     onKey(slot.code, false);
   }
 
-  const recogniser: Recogniser = {
+  const recognizer: Recognizer = {
     setView(w: number, h: number): void {
       viewW = w;
       viewH = h;
@@ -571,7 +571,7 @@ export function createRecogniser(options: RecogniserOptions): Recogniser {
         case 'blur':
           // Everything held is released, and no `up` was needed. `keydown` without its `keyup`
           // happens on every alt-tab, and on macOS whenever a command chord is held.
-          recogniser.releaseAll();
+          recognizer.releaseAll();
           return;
         default:
           // A `tick` sample is a marker in the log, never an arrival: `InputSystem.tick`
@@ -624,7 +624,7 @@ export function createRecogniser(options: RecogniserOptions): Recogniser {
     },
   };
 
-  return recogniser;
+  return recognizer;
 }
 
 /** One pointer's state, with its velocity ring sized once and never resized. */

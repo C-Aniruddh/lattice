@@ -1,6 +1,6 @@
 # @lattice/draw
 
-> One colour and one grid footprint into a stylised isometric solid, on a surface it does not own.
+> One color and one grid footprint into a stylised isometric solid, on a surface it does not own.
 
 Part of **[Lattice](https://github.com/C-Aniruddh/lattice)** — the grid underneath.
 
@@ -10,7 +10,7 @@ npm i @lattice/draw
 
 The two halves of that sentence are the two things this package is for.
 
-**One colour** is the art direction: three-tone faces derived from a single hex, cool shadows,
+**One color** is the art direction: three-tone faces derived from a single hex, cool shadows,
 warm highlights, a silhouette stroke on everything. There is no `leftColor`; offering one is
 offering the caller a way to break the look.
 
@@ -91,7 +91,7 @@ const buildings = [
 
 const order = new DepthSorter(64); //          allocated once, reused for ever
 const pen = beginFrame({ surface, camera, palette, t: 2.5, clear: 'sky', light });
-light.begin(pen, 0.7, 'night'); //             darkness 0–1, and the colour the dark goes
+light.begin(pen, 0.7, 'night'); //             darkness 0–1, and the color the dark goes
 
 order.clear();
 for (const b of buildings) order.add(b.gx, b.gy, 2, 2, spriteHeightPx(WATER_TOWER, b.v));
@@ -183,7 +183,7 @@ are the same permutation or the game is lying about what the player tapped. Afte
 in which you hold a sorted order and are tempted to improve it. Break the rule and both packages
 stay green while a player taps a rack and opens the headquarters behind it.
 
-### 3. Colour is one packed integer, and you persist the *input* to it
+### 3. Color is one packed integer, and you persist the *input* to it
 
 `Rgba` is `0xRRGGBBAA` in a uint32 — not a CSS string. `shade()` returning `rgb(12,34,56)` in the
 game this kit came from meant three fresh strings per box per frame, which was the largest single
@@ -198,7 +198,7 @@ their phone from what it is on their laptop with nothing anywhere to explain it.
 
 `shade(c, f)` below 1 darkens *and* pulls toward a cool tint; above 1 brightens and pulls toward a
 warm one, with the pull scaled by distance from neutral so `shade(c, 1) === c` exactly. Shading
-toward blue in shadow and amber in light is what separates a stylised render from a flat grey
+toward blue in shadow and amber in light is what separates a stylised render from a flat gray
 lerp. Replace it with a plain multiply and the kit's art dies quietly: every screenshot still
 renders, and every screenshot looks like a placeholder.
 
@@ -248,7 +248,7 @@ If a game ever draws a thousand buildings of this complexity the question reopen
 
 ### 8. Nothing on the frame path allocates
 
-A box computes its corners into `pen.xy` and hands `(buffer, count, colour)` to the surface.
+A box computes its corners into `pen.xy` and hands `(buffer, count, color)` to the surface.
 Nothing here returns a point. One `Pen` per frame is this package's entire per-frame allocation —
 including the seeded `Rng` every sprite hook receives, which is rewound in place rather than
 rebuilt. `test/invariants.test.ts` checks that by reading the source, because a heap delta cannot
@@ -281,9 +281,9 @@ agreed and one edit from a half-scale campus.
 | **Images the kit did not render** | Rule 8, zero assets, enforced by the type system: `Bitmap` has no constructor from a URL. |
 | **Lights that cast shadows or are occluded** | A lamp behind a hill still spills over it. Real occlusion needs a shadow map per light and a depth buffer this renderer does not have, and it would cost more than everything else here put together. **This is the largest honest limitation in the package**, and it belongs in this README rather than in a bug tracker: the sprite author compensates by not putting a lamp behind a hill. |
 | **HDR light accumulation** | The light buffer is 8-bit and clamps. Twenty lamps in one place blow out to white. Correct is a float target and a curve; adequate is capping `intensity`. |
-| **Perceptual colour interpolation** | OKLab is more correct and is not this look. The byte-space lerp toward two fixed tints is *why* the faces read as painted rather than as computed. |
+| **Perceptual color interpolation** | OKLab is more correct and is not this look. The byte-space lerp toward two fixed tints is *why* the faces read as painted rather than as computed. |
 | **Hit-testing** | `iso` owns picking. This package contributes `spriteBounds` and `spriteVolume` — the geometry a pick test needs — and stops. In particular it never records what it drew for picking to read back, because a frame the renderer skipped would leave the controls somewhere the building is not. |
-| **A serialisation format for colour** | The moment this package can write a colour to a save, someone writes a presentation-tier value into a document that travels between engines. Store the hue. |
+| **A serialization format for color** | The moment this package can write a color to a save, someone writes a presentation-tier value into a document that travels between engines. Store the hue. |
 | **Tweening, easing, particles** | `loop` owns time. This package takes `t` and reads no clock. |
 | **The WebGL backend itself** | Not in 0.1. The point of the seam is that it can land later without touching a line of sprite code, and the point of the thirteen-method list is that when it does, it will not have to lie. |
 
@@ -295,8 +295,8 @@ The order is the product, and it is **closed at seven**.
 
 | # | pass | |
 |---|---|---|
-| 0 | Backdrop | a vertical ramp. Never a flat colour: flat backgrounds make an island look like a sticker |
-| 1 | Terrain | culled tile diamonds, colour varied per tile from a stateless hash |
+| 0 | Backdrop | a vertical ramp. Never a flat color: flat backgrounds make an island look like a sticker |
+| 1 | Terrain | culled tile diamonds, color varied per tile from a stateless hash |
 | 2 | Solids | buildings *and* scenery, one list, one sort. Two sorted lists is what makes trees pop through walls |
 | 3 | Placement | ghost and selection: above the world, below the UI |
 | 4 | Light | the night mask goes down and the bloom goes up, in one composite — **and this is not a callback** |

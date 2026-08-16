@@ -103,7 +103,7 @@ export function capacityShare(supply: number, demand: number): number {
  * `0` when demand is zero, `Infinity` when supply is zero and demand is not; never `NaN`, because
  * a `NaN` reaches the player as an empty progress bar rather than as an error anyone can act on.
  *
- * **This is a derived read and it must never be stored.** `Infinity` serialises to `null` with a
+ * **This is a derived read and it must never be stored.** `Infinity` serializes to `null` with a
  * perfectly valid checksum, and a game that writes this number into its save has put a hole in it
  * that no layer downstream can detect. It is the one value in this package's surface that is
  * deliberately allowed to be infinite.

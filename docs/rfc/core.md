@@ -151,7 +151,7 @@ export declare function mix32(value: number): number;
  * Deterministic 32-bit hash of a string (xmur3-style, fmix32 finalise).
  *
  * Hashes by UTF-16 code unit, so "é" as U+00E9 and as U+0065 U+0301 hash differently.
- * Normalise (`.normalize('NFC')`) before hashing anything that crosses a platform
+ * Normalize (`.normalize('NFC')`) before hashing anything that crosses a platform
  * boundary or a save file. This is the one portability seam in the package.
  */
 export declare function hashString(value: string): number;
@@ -232,10 +232,10 @@ export declare function hash3(
 ): number;
 
 /**
- * Digest an integer array — a frame buffer, a serialised save, any byte sequence.
+ * Digest an integer array — a frame buffer, a serialized save, any byte sequence.
  *
  * `draw`'s headless renderer digests a rendered frame to compare against a golden;
- * `persist` digests a serialised save to detect corruption. Neither can reach `hashString`
+ * `persist` digests a serialized save to detect corruption. Neither can reach `hashString`
  * without first turning a megabyte of bytes into a string, which allocates the megabyte
  * again to hash it once.
  *
@@ -251,7 +251,7 @@ export declare function hash3(
 export declare function hashBytes(seed: number, bytes: ArrayLike<number>): number;
 
 /**
- * A uint32 as a float in [0, 1) — exactly `hashed / 2**32`, the same normalisation
+ * A uint32 as a float in [0, 1) — exactly `hashed / 2**32`, the same normalization
  * `Rng.next` uses, so a hashed value and a drawn value are interchangeable in any
  * threshold test.
  *
@@ -300,7 +300,7 @@ Two notes for that call site, since the cache key already exists by the time thi
 
 - **Pass the key itself**, `createRng(key)`, not `createRng(hashString(key))`. `createRng`
   hashes internally, so the second form hashes twice — harmless, but it reads as though the
-  first hash were load-bearing, and someone will later "optimise" the wrong one away.
+  first hash were load-bearing, and someone will later "optimize" the wrong one away.
 - **Allocation is fine here and only here.** An `Rng` is a two-field object; one per cache
   *miss* is nothing. One per sprite per *frame* would violate non-negotiable #7 — if that is
   where this ends up, the answer is `hash2`/`hash3` with `toUnit`, which allocates nothing
@@ -350,7 +350,7 @@ export declare class Rng {
   /**
    * A float in [0, 1). Exactly `nextUint32() / 2**32` — an integer below 2^32 over a
    * power of two is exactly representable as a double, so this is bit-identical
-   * everywhere. Any other normalisation reintroduces rounding.
+   * everywhere. Any other normalization reintroduces rounding.
    */
   next(): number;
 
@@ -453,9 +453,9 @@ export declare function noise3(seed: number, x: number, y: number, z: number): n
 
 /**
  * Fractal Brownian motion: `octaves` layers of `noise2`, each at twice the frequency and
- * `gain` times the amplitude, normalised back into [-1, 1].
+ * `gain` times the amplitude, normalized back into [-1, 1].
  *
- * The normalisation is the point. Un-normalised fBm has a range that depends on the
+ * The normalization is the point. Un-normalized fBm has a range that depends on the
  * octave count, so raising the detail of a terrain silently changes its sea level.
  *
  * Lacunarity is fixed at 2 rather than exposed: it is the only value anyone uses, it is a
@@ -463,7 +463,7 @@ export declare function noise3(seed: number, x: number, y: number, z: number): n
  * would be write-only code at every call site.
  *
  * @param octaves - default 4. Above ~8 the extra layers are below one screen pixel.
- * @param gain - default 0.5. Above 1 the sum diverges and the normalisation is meaningless.
+ * @param gain - default 0.5. Above 1 the sum diverges and the normalization is meaningless.
  */
 export declare function fbm2(
   seed: number, x: number, y: number, octaves?: number, gain?: number,
@@ -509,7 +509,7 @@ export declare function remap(
 ): number;
 
 /** Hermite smoothstep, clamped to [0, 1]. The zero-derivative endpoints are what stop a
- *  fade or a fog band showing a visible seam where it meets flat colour. */
+ *  fade or a fog band showing a visible seam where it meets flat color. */
 export declare function smoothstep(edge0: number, edge1: number, value: number): number;
 
 /**
@@ -554,7 +554,7 @@ export declare function approx(a: number, b: number, epsilon?: number): boolean;
 ### 3.6 `easing`
 
 ```ts
-/** A curve from normalised time to normalised progress. `e(0) === 0` and `e(1) === 1` for
+/** A curve from normalized time to normalized progress. `e(0) === 0` and `e(1) === 1` for
  *  every curve here; values in between may leave [0, 1] (that is what `back` is for). */
 export type Easing = (t: number) => number;
 
@@ -958,7 +958,7 @@ export declare function fmtDuration(seconds: number, style?: DurationStyle): str
 
 /** The magnitude ladder: `['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc']`.
  *  Exported so a game can show its own ladder, and so a test can assert the boundary
- *  behaviour at every tier without duplicating the table. */
+ *  behavior at every tier without duplicating the table. */
 export declare const COMPACT_SUFFIXES: readonly string[];
 ```
 
@@ -1003,7 +1003,7 @@ export declare function expectNonEmpty<T>(
  * it, which is why the check belongs at the moment of writing rather than the moment of
  * reading. See §4.8.
  *
- * Normalises `-0` to `0`, because `JSON.stringify(-0)` is `"0"` and a value that changes
+ * Normalizes `-0` to `0`, because `JSON.stringify(-0)` is `"0"` and a value that changes
  * across a round trip fails an integrity comparison for a reason nobody will find.
  *
  * @throws RangeError naming the caller and the value, per non-negotiable #9.
@@ -1065,7 +1065,7 @@ consumers have a common ancestor below core?"** Work the three cases:
 | `EpochMillis` | `persist`, `sim`, `loop` (by exclusion), and the game | **none** — all three are layer-1 siblings | **core owns it** |
 
 Siblings have no shared home but core. That is the whole rule, and it is why this one type
-travels upward while the other two travelled down.
+travels upward while the other two traveled down.
 
 Two facts make it cheap. A type is **erased**: it adds zero bytes to the bundle, so the
 "everyone pays" objection that blocks most core additions does not apply — core may own a
@@ -1308,7 +1308,7 @@ Crossing either is an RFC amendment with a name on it, not a commit.
 
 The requests below will be made. Here is the answer in advance.
 
-### 4.1 Colour maths — belongs in `draw`, and here is the argument
+### 4.1 Color maths — belongs in `draw`, and here is the argument
 
 `foom-simple-ui/src/game/color.ts` is 733 lines of OKLab/OKLCH conversion, gamut mapping by
 chroma reduction, and a WCAG contrast audit. It is pure, dependency-free and isomorphic —
@@ -1323,21 +1323,21 @@ Three reasons, in order of weight:
    Core's one promise is bit-identical output. A module that ships with a portability
    caveat in its header cannot live behind that promise without weakening it for
    everything else in the package.
-2. **Colour is an output encoding, not a primitive.** `#rrggbb` exists because CSS and
+2. **Color is an output encoding, not a primitive.** `#rrggbb` exists because CSS and
    Canvas2D want it; linear-light triples exist because renderers want them. Both are
-   facts about a rendering target. `sim` and `persist` have no opinion about colour and
+   facts about a rendering target. `sim` and `persist` have no opinion about color and
    should not pay for one — and under the charter's question 1, the only two consumers are
    `draw` and `ui`, which are adjacent layers.
-3. **Colour derivation is a design system, not arithmetic.** The valuable part of that file
+3. **Color derivation is a design system, not arithmetic.** The valuable part of that file
    is the *policy* — fixed lightness, capped chroma, contrast-safe by construction, faces
-   derived from one solid colour with shadows cool and highlights warm. That policy is
+   derived from one solid color with shadows cool and highlights warm. That policy is
    `draw`'s invariant, stated in `kit.json` in its own words. Splitting the arithmetic into
    core and the policy into draw would put the two halves of one argument in two packages.
 
 **What core does owe `draw`:** `mod` (hue wrapping below zero), `clamp01`, `lerp`,
 `smoothstep`, `mix32`/`hashParts` (sprite cache keys), and `Rng` (procedural variation).
 All present. The `hueToHex` one-liner at the bottom of `foom-simple-ui/src/ui/dom.ts` is
-the shortcut that colour.ts replaced; it should not be ported anywhere.
+the shortcut that color.ts replaced; it should not be ported anywhere.
 
 ### 4.2 Time, in every form
 
@@ -1402,7 +1402,7 @@ the same shape and two of them are siblings.
 | absent | why, and where it goes instead |
 |---|---|
 | ECS, entity store, component registry | there is exactly one reasonable ECS per game and it is never this one. The demo game owns its entities. |
-| structural clone, deep equal, immutability helpers | `persist` owns serialisation and is the only package that needs to walk a graph. Deep equality in a hot path is a bug regardless of where it lives. |
+| structural clone, deep equal, immutability helpers | `persist` owns serialization and is the only package that needs to walk a graph. Deep equality in a hot path is a bug regardless of where it lives. |
 | schema validation / parsing | `persist` owns save shape and migrations; validating at the storage boundary is the whole point of a migration chain. |
 | logging, debug channels | a logger in layer 0 is a global mutable sink, and non-negotiable #4 keeps I/O in packages that name it. |
 | a `Result`/`Either` type | non-negotiable #9 says throw, with a message that names the mistake. Two error conventions is worse than either one. |
@@ -1422,9 +1422,9 @@ is the option that ships the bug.
 |---|---|---|
 | `Infinity` / `NaN` in a save | `JSON.stringify` writes `null`. Bytes intact, checksum valid, schema correct, value gone. **Silent, and undetectable downstream.** | core names the rule, `persist` enforces it at the boundary |
 | a value above 2^53 | round-trips through JSON **exactly** — `JSON.stringify` emits enough digits to recover any finite double. What breaks is *arithmetic*: `n + 1 === n`, and two different logical values compare equal | `sim`, at the point it counts rather than measures |
-| `-0` | serialises as `"0"`, so a round trip changes the value and an integrity comparison fails for a reason nobody finds | core normalises it in `expectSerializable` |
+| `-0` | serializes as `"0"`, so a round trip changes the value and an integrity comparison fails for a reason nobody finds | core normalizes it in `expectSerializable` |
 
-The second row is the one most often stated wrongly. **2^53 is not a serialisation limit.**
+The second row is the one most often stated wrongly. **2^53 is not a serialization limit.**
 An idle economy's stocks are *measured* quantities produced by a closed-form exponential, and
 `1e40` is a perfectly good double that saves and loads exactly; it simply cannot be counted
 in ones. So core does not cap magnitude. It caps it only where a value is a *count* —
@@ -1553,7 +1553,7 @@ coverage floor is 100%.
     buckets — a weak coordinate hash shows as diagonal banding long before it shows here.
 16. **`fbm2` stays in range.** Over a million samples at 1, 4 and 8 octaves and gains from
     0.1 to 0.9, every output is within [-1, 1] and the min/max at each octave count are
-    within 5% of each other. Un-normalised fBm fails the second half.
+    within 5% of each other. Un-normalized fBm fails the second half.
 
 17. **`hashStep` folds to the unrolled forms.** `hash2(s, x, y)` equals
     `hashStep(hashStep(s, x), y)` and `hash3(s, x, y, z)` equals that plus one more step,
@@ -1624,13 +1624,13 @@ coverage floor is 100%.
 38. **`expectSerializable` rejects exactly what JSON destroys.** `Infinity`, `-Infinity` and
     `NaN` throw; `-0` returns `0`; every finite double, including `1e308` and `2 ** 60`,
     passes and satisfies `JSON.parse(JSON.stringify(v)) === v`. The last clause is the one
-    that proves 2^53 is not a serialisation limit — see §4.8.
+    that proves 2^53 is not a serialization limit — see §4.8.
 39. **`isSerializable` agrees with `expectSerializable` on every input**, throwing where the
     other throws and only there. Two spellings of one rule that disagree is worse than
     either alone.
 40. **A branded type cannot be assigned from a bare `number`.** A `.ts` fixture compiled with
     `expect-error` assertions: `const t: EpochMillis = 5` fails, `asEpochMillis(5)` succeeds,
-    and `asMonotonicMillis(5)` is not assignable to `EpochMillis`. Type-level behaviour needs
+    and `asMonotonicMillis(5)` is not assignable to `EpochMillis`. Type-level behavior needs
     a type-level test; a runtime suite cannot see any of this.
 41. **`Vec2` is assignable to `ReadonlyVec2` and not the reverse** — and the fixture proves
     the *mechanism*, not just the outcome, because the outcome was asserted for a week while
@@ -1688,10 +1688,10 @@ shape invites.
    so it is non-deterministic *across platforms* on top of being biased. Fisher-Yates,
    drawing `int(0, i + 1)`.
 
-8. **String seeds and Unicode normalisation.** `hashString` walks UTF-16 code units, so
+8. **String seeds and Unicode normalization.** `hashString` walks UTF-16 code units, so
    `'café'` composed (U+00E9) and decomposed (U+0065 U+0301) are different streams. A
    player name typed on macOS and on Windows can seed two different worlds. Documented on
-   `hashString`; normalise before hashing anything that crosses a boundary.
+   `hashString`; normalize before hashing anything that crosses a boundary.
 
 9. **`Math.random()` or `Date.now()` sneaking in as a "temporary" default.** Banned by
    non-negotiable #1 and by lint. The tell is a parameter named `seed = Date.now()`.
@@ -1821,7 +1821,7 @@ shape invites.
     package hands back anything other than a `Disposer`, it has reintroduced the problem.
 
 36. **`hashBytes` over a `Float32Array`.** Every value between -1 and 1 truncates to zero, so
-    the digest of a normalised buffer is effectively a digest of its length — two completely
+    the digest of a normalized buffer is effectively a digest of its length — two completely
     different frames compare equal. View the bytes:
     `new Uint8Array(f.buffer, f.byteOffset, f.byteLength)`.
 
@@ -1840,7 +1840,7 @@ shape invites.
 
 39. **Asserting a type-level guarantee in a runtime suite.** A `vitest` case cannot observe
     assignability; it passes whether or not the types mean anything, which is how the false
-    claim in §3.7 survived a green build and a review. Type-level behaviour needs
+    claim in §3.7 survived a green build and a review. Type-level behavior needs
     `@ts-expect-error` fixtures compiled as part of `verify`, and it needs a control case
     that fails when the mechanism is removed.
 
@@ -1871,7 +1871,7 @@ Recorded here because the architect brief asks for them; they are **not** core's
 - **`loop`'s tween API should take `Easing | EasingName`** and resolve names through core's
   `EASINGS`, rather than defining its own curve set. If it defines its own, the kit has two
   easing vocabularies and save files reference the wrong one.
-- **`draw` inherits the colour argument in §4.1**, including the rule that survived
+- **`draw` inherits the color argument in §4.1**, including the rule that survived
   `foom-simple-ui`: *persist the hue, never the derived tokens* — which makes it a joint
   `draw`/`persist` constraint that neither RFC currently states.
 - **`iso` should own `Rect`/`Bounds`** (§4.6) and the binary heap for A*, and must state the

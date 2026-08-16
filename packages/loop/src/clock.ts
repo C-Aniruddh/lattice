@@ -26,7 +26,7 @@ import { expectFinite } from '@lattice/core';
  * seam where a calendar reading could be mistaken for a stopwatch reading, and this type
  * guards nothing — it is documentation attached to a parameter. Mixing it with
  * {@link Seconds} by a factor of a thousand is the mistake it exists to make visible, and
- * the only defence against that is the naming convention above.
+ * the only defense against that is the naming convention above.
  */
 export type Millis = number;
 

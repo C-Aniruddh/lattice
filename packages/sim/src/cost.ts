@@ -9,7 +9,7 @@
  *
  * `b` = base, `r` = growth, `k` = owned, `n` = how many, `c` = the budget.
  *
- * **Closed form on day one, not as an optimisation.** "Buy max" at 4,000 owned is 4,000 iterations
+ * **Closed form on day one, not as an optimization.** "Buy max" at 4,000 owned is 4,000 iterations
  * on a hot path, run once per frame to render a button's *label*. The naive loop is a legitimate
  * oracle in a test — and this package's tests use one — and a performance bug in a build.
  *
@@ -28,7 +28,7 @@
  * equality. And affordability is compared **exactly** — `bulkCost <= budget`, never with an
  * epsilon — because an epsilon there lets a player buy something they cannot afford.
  *
- * ## What floating point does to this, stated as a boundary rather than a defence
+ * ## What floating point does to this, stated as a boundary rather than a defense
  *
  * A double holds every integer exactly up to 2⁵³. Past that the spacing is 2, then 4, then 128 by
  * 2⁶⁰. Relative precision never degrades, so a cost of 1e300 is still good to fifteen significant
@@ -150,7 +150,7 @@ export function bulkCost(curve: CostCurve, owned: number, count: number): number
   if (count <= 0) return 0;
   const first = curve.base * ipow(curve.growth, owned);
   // A zero first price makes the whole batch free, and short-circuiting here is not an
-  // optimisation: `0 * Infinity` is `NaN`, and a `NaN` price compares false against every budget,
+  // optimization: `0 * Infinity` is `NaN`, and a `NaN` price compares false against every budget,
   // so the purchase would be silently refused instead of being free.
   if (first === 0) return 0;
   // `r = 1` is not a shipping balance, but the geometric sum has a removable singularity there and

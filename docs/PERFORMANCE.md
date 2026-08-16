@@ -203,7 +203,7 @@ Every row here is on a per-frame path. Nothing else in the package runs more tha
 
 The fifth row is the one to read: **a realistic input frame is 0.009% of the 8 ms budget.** A
 120 Hz pointer mid-drag delivers two to eight coalesced positions per displayed frame, each of
-which is submitted, buffered, recognised, resolved to a tile through the frozen camera, and
+which is submitted, buffered, recognized, resolved to a tile through the frozen camera, and
 dispatched to a handler — all of it for about seven hundred nanoseconds.
 
 The last row is deliberately pathological: a tick that arrives after the browser has queued a
@@ -245,7 +245,7 @@ explicitly; this section is the other side of that sentence.
 ### What is being measured, and what is not
 
 Everything this package does per frame is **geometry and command submission**: project corners
-into `pen.xy`, derive three face colours from one, and hand `(buffer, count, colour)` to a
+into `pen.xy`, derive three face colors from one, and hand `(buffer, count, color)` to a
 backend. The benchmark backend (`test/null-surface.ts`) consumes those calls and folds every
 coordinate into a checksum — so V8 cannot delete the frame — and rasterises nothing.
 

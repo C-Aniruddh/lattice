@@ -58,13 +58,13 @@ export type OpName =
  *
  * | op | `xy` | `colors` | `value` | `text` |
  * |---|---|---|---|---|
- * | `clear` | — | the clear colour | 0 | — |
+ * | `clear` | — | the clear color | 0 | — |
  * | `poly` | the points | fill | point count | — |
  * | `polyRamp` | the points, then `x0,y0,x1,y1` | from, to | point count | — |
- * | `stroke` | the points | colour | line width | `open`/`closed`, and the dash |
+ * | `stroke` | the points | color | line width | `open`/`closed`, and the dash |
  * | `ellipse` | `cx,cy,rx,ry` | fill | `rx` | — |
  * | `softEllipse` | `cx,cy,rx,ry` | inner, outer | `rx` | — |
- * | `text` | `x,y,size,weight,align,baseline`, then the 6 transform values | colour | em size | the string |
+ * | `text` | `x,y,size,weight,align,baseline`, then the 6 transform values | color | em size | the string |
  * | `blit` | `dx,dy,dw,dh` | — | `dw` | the mode and the source's digest |
  * | `alpha` | — | — | the new multiplier | — |
  */
@@ -73,7 +73,7 @@ export interface Op {
   readonly op: OpName;
   /** The numbers, laid out per the table on {@link Op}. */
   readonly xy: readonly number[];
-  /** The colours, in argument order. */
+  /** The colors, in argument order. */
   readonly colors: readonly Rgba[];
   /** The scalar the op carries: stroke width, alpha multiplier, blit width. */
   readonly value: number;
@@ -95,7 +95,7 @@ const OP_SCALE = 1000;
  */
 export const ESTIMATED_ADVANCE_RATIO = 0.55;
 
-/** Round one recorded number, and normalise `-0` to `0` so two runs that differ only in the
+/** Round one recorded number, and normalize `-0` to `0` so two runs that differ only in the
  *  sign of a zero produce the same digest. */
 function round(value: number): number {
   if (!Number.isFinite(value)) return value;

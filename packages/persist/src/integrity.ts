@@ -4,7 +4,7 @@
  * This module is four lines of code and a page of prose, and the ratio is correct. The code
  * is `core`'s `hashString` rendered as hex; the prose is the two things a reader has to know
  * before they touch it — what the digest is for (damage, not adversaries) and why it must
- * never normalise its input (because the bytes are the subject, not the text).
+ * never normalize its input (because the bytes are the subject, not the text).
  */
 
 import { hashString } from '@lattice/core';
@@ -60,12 +60,12 @@ export type Checksum = (text: string) => string;
  * The rule, and it belongs at every such call site rather than in here:
  *
  * ```ts
- * // A key derived from something a player typed. Normalise first, always.
+ * // A key derived from something a player typed. Normalize first, always.
  * const key = `campus:save:${hashString(playerName.normalize('NFC')).toString(16)}`;
  * ```
  *
  * ```ts
- * // A checksum over a payload. Never normalise — the bytes are the subject.
+ * // A checksum over a payload. Never normalize — the bytes are the subject.
  * const c = defaultChecksum(payloadText);
  * ```
  *

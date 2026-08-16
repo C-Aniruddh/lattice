@@ -28,7 +28,7 @@ export type Increment<N extends number, Counter extends readonly unknown[] = []>
   : Increment<N, [...Counter, unknown]>;
 
 /**
- * How a version recognises itself: **returns the value typed, or throws.**
+ * How a version recognizes itself: **returns the value typed, or throws.**
  *
  * Not `(value: unknown) => value is T`. A boolean predicate has already discarded the thing
  * that was wrong by the time it returns, so it cannot produce the message house rule 9
@@ -38,7 +38,7 @@ export type Increment<N extends number, Counter extends readonly unknown[] = []>
  * ```ts
  * import { expectObject, expectRecordOfFinite } from '@lattice/core';
  *
- * const isV2: Recognise<V2> = value => {
+ * const isV2: Recognize<V2> = value => {
  *   const o = expectObject(value, 'save.v2');
  *   return { version: 2, wallet: expectRecordOfFinite(o['wallet'], 'save.v2.wallet') };
  * };
@@ -56,8 +56,8 @@ export type Increment<N extends number, Counter extends readonly unknown[] = []>
  *
  * Two things fall out of returning rather than asserting. The thrown message travels into
  * `ReadFailure.message`, so a rejected save says *which field* was wrong instead of "the
- * guard said no" — the difference between a fixable bug report and a shrug. And a recogniser
- * may **normalise as it validates**, returning a repaired value, which is the cheapest
+ * guard said no" — the difference between a fixable bug report and a shrug. And a recognizer
+ * may **normalize as it validates**, returning a repaired value, which is the cheapest
  * possible migration for a field that only ever needed a default.
  *
  * There is no optional variant, no default `v => v as T`, and no "skip validation in
@@ -66,10 +66,10 @@ export type Increment<N extends number, Counter extends readonly unknown[] = []>
  *
  * Make it as loose as you can defend. Checking the two or three fields your migration
  * actually reads beats a field-by-field validator nobody maintains — but do check that your
- * currencies are finite (`expectSerializable`), because `Infinity` serialises to `null` and
+ * currencies are finite (`expectSerializable`), because `Infinity` serializes to `null` and
  * comes back as `NaN` with a perfectly valid checksum.
  */
-export type Recognise<T> = (value: unknown) => T;
+export type Recognize<T> = (value: unknown) => T;
 
 /** One rung, for reporting and for tests. `why` is prose a reviewer reads, not a label. */
 export interface MigrationStep {
@@ -94,10 +94,10 @@ export interface MigrationChain<Head extends number, T> {
   readonly head: Head;
   readonly steps: readonly MigrationStep[];
   /**
-   * The head recogniser. `store.decode` runs it last; a throw becomes `invalid`, carrying the
+   * The head recognizer. `store.decode` runs it last; a throw becomes `invalid`, carrying the
    * thrown message.
    */
-  recognise(value: unknown): T;
+  recognize(value: unknown): T;
   /**
    * Run `value` from version `from` up to `head`, one rung at a time, recognising at every
    * version on the way.
@@ -112,7 +112,7 @@ export interface MigrationChain<Head extends number, T> {
    *   store has already turned an out-of-range version on disk into `orphaned` or `future`
    *   before it gets here.
    * @param onEnter called with each version as the chain arrives at it — `from` first, then
-   *   every version up to and including `head` — *before* that version's recogniser runs.
+   *   every version up to and including `head` — *before* that version's recognizer runs.
    *   It exists for exactly one caller: `store.decode` catches the throw and needs to name
    *   the rung, and the alternative was for `run` to wrap game code's exception in one of its
    *   own, which would put a wrapper where `ReadFailure.cause` promises the original. A test
@@ -129,8 +129,8 @@ export interface ChainBuilder<Head extends number, Current> {
    * `Argument of type '3' is not assignable to parameter of type '2'`.
    *
    * `migrate` receives the previous version *typed*, because the previous version was
-   * recognised by its own recogniser before it was handed over. That is the whole reason a
-   * recogniser is mandatory rather than optional: without it a migration reads `unknown` and
+   * recognized by its own recognizer before it was handed over. That is the whole reason a
+   * recognizer is mandatory rather than optional: without it a migration reads `unknown` and
    * every line in it is a cast.
    *
    * There is no 3 → 7 shortcut and there will not be one. A shortcut means two paths from 3
@@ -140,7 +140,7 @@ export interface ChainBuilder<Head extends number, Current> {
    * @param why prose a reviewer reads — *"one coin counter became a wallet of currencies"*,
    *   not `"v2"`. It is carried on `steps` and is what a future agent has instead of the
    *   commit that added it.
-   * @throws TypeError if `migrate` or `recognise` is not a function, or `why` is empty. A
+   * @throws TypeError if `migrate` or `recognize` is not a function, or `why` is empty. A
    *   developer error at construction, which is a different moment from a player's save at
    *   boot and is allowed to be loud.
    */
@@ -148,7 +148,7 @@ export interface ChainBuilder<Head extends number, Current> {
     to: Next,
     why: string,
     migrate: (prior: Current) => Migrated,
-    recognise: Recognise<Migrated>,
+    recognize: Recognize<Migrated>,
   ): ChainBuilder<Next, Migrated>;
   /**
    * Freeze. Re-checks the chain at runtime for callers who arrived from JavaScript or through
@@ -168,45 +168,45 @@ interface Rung {
   readonly to: number;
   readonly why: string;
   readonly migrate: (prior: unknown) => unknown;
-  /** The recogniser for `to` — this rung's *output*, and the next rung's input. */
-  readonly recogniseOutput: Recognise<unknown>;
+  /** The recognizer for `to` — this rung's *output*, and the next rung's input. */
+  readonly recognizeOutput: Recognize<unknown>;
 }
 
-/** One version on the path: how to recognise it, and how to leave it. */
+/** One version on the path: how to recognize it, and how to leave it. */
 interface Stage {
   readonly version: number;
-  readonly recognise: Recognise<unknown>;
+  readonly recognize: Recognize<unknown>;
   readonly migrate: (prior: unknown) => unknown;
 }
 
 /**
- * Start a chain at the oldest version you still support, with the recogniser for that version.
+ * Start a chain at the oldest version you still support, with the recognizer for that version.
  *
- * Every version has a recogniser, mandatory, including the floor. That is how `migrate`
+ * Every version has a recognizer, mandatory, including the floor. That is how `migrate`
  * receives a typed argument instead of `unknown`: a chain of migrations that each begin with
  * a cast is not a chain, it is a stack of hopes.
  *
  * @param floor the oldest readable version. Raising it is a decision to abandon every save
  *   below it; make it in a commit of its own with the number in the message.
- * @throws RangeError if `floor` is not an integer, TypeError if `recognise` is not a
+ * @throws RangeError if `floor` is not an integer, TypeError if `recognize` is not a
  *   function.
  */
-export function migrations<Floor extends number, T>(floor: Floor, recognise: Recognise<T>): ChainBuilder<Floor, T> {
+export function migrations<Floor extends number, T>(floor: Floor, recognize: Recognize<T>): ChainBuilder<Floor, T> {
   if (!Number.isInteger(floor)) {
     throw new RangeError(`migrations: expected an integer floor version, got ${String(floor)}`);
   }
-  if (typeof recognise !== 'function') {
+  if (typeof recognize !== 'function') {
     throw new TypeError(
-      `migrations: expected a recogniser function for version ${String(floor)}, got ${String(recognise)} — every version has one, including the floor, or a migration reads \`unknown\``,
+      `migrations: expected a recognizer function for version ${String(floor)}, got ${String(recognize)} — every version has one, including the floor, or a migration reads \`unknown\``,
     );
   }
-  return builder<Floor, T>(floor, recognise, [], floor);
+  return builder<Floor, T>(floor, recognize, [], floor);
 }
 
 /** The builder is immutable: `step` returns a new one, so a chain may be branched in a test. */
 function builder<Head extends number, Current>(
   floor: number,
-  floorRecognise: Recognise<unknown>,
+  floorRecognise: Recognize<unknown>,
   rungs: readonly Rung[],
   headVersion: number,
 ): ChainBuilder<Head, Current> {
@@ -215,11 +215,11 @@ function builder<Head extends number, Current>(
       to: Next,
       why: string,
       migrate: (prior: Current) => Migrated,
-      recognise: Recognise<Migrated>,
+      recognize: Recognize<Migrated>,
     ): ChainBuilder<Next, Migrated> {
-      if (typeof migrate !== 'function' || typeof recognise !== 'function') {
+      if (typeof migrate !== 'function' || typeof recognize !== 'function') {
         throw new TypeError(
-          `migrations.step(${String(to)}): expected a migrate function and a recogniser, got ${String(migrate)} and ${String(recognise)}`,
+          `migrations.step(${String(to)}): expected a migrate function and a recognizer, got ${String(migrate)} and ${String(recognize)}`,
         );
       }
       if (typeof why !== 'string' || why.trim() === '') {
@@ -228,13 +228,13 @@ function builder<Head extends number, Current>(
         );
       }
       // The cast erases `Current`, which the runtime never needed: the value reaching
-      // `migrate` was produced by the previous stage's recogniser, so it is a `Current` by
+      // `migrate` was produced by the previous stage's recognizer, so it is a `Current` by
       // construction. Parameter contravariance is the only reason a cast is written here.
       const erased = migrate as (prior: unknown) => unknown;
       return builder<Next, Migrated>(
         floor,
         floorRecognise,
-        [...rungs, { from: headVersion, to, why, migrate: erased, recogniseOutput: recognise }],
+        [...rungs, { from: headVersion, to, why, migrate: erased, recognizeOutput: recognize }],
         to,
       );
     },
@@ -268,23 +268,23 @@ function builder<Head extends number, Current>(
 
       // Walk once, at seal, so `run` is a loop over a flat array rather than an index
       // arithmetic problem. `stages` holds one entry per *rung* — the head has no rung, and
-      // its recogniser is held separately because it is the only one whose type survives.
+      // its recognizer is held separately because it is the only one whose type survives.
       const stages: Stage[] = [];
-      let recogniseHere: Recognise<unknown> = floorRecognise;
+      let recogniseHere: Recognize<unknown> = floorRecognise;
       for (const rung of rungs) {
-        stages.push({ version: rung.from, recognise: recogniseHere, migrate: rung.migrate });
-        recogniseHere = rung.recogniseOutput;
+        stages.push({ version: rung.from, recognize: recogniseHere, migrate: rung.migrate });
+        recogniseHere = rung.recognizeOutput;
       }
-      // The last recogniser added is the head's, and it is a `Recognise<Current>` by
+      // The last recognizer added is the head's, and it is a `Recognize<Current>` by
       // construction: `step` fixed `Current` to its own `Migrated` on the way past. The array
       // above erased that, and this is the one place it is claimed back.
-      const recogniseHead = recogniseHere as Recognise<Current>;
+      const recogniseHead = recogniseHere as Recognize<Current>;
 
       return {
         floor,
         head,
         steps,
-        recognise: recogniseHead,
+        recognize: recogniseHead,
         run(value: unknown, from: number, onEnter?: (version: number) => void): Current {
           if (!Number.isInteger(from) || from < floor || from > head) {
             throw new RangeError(
@@ -295,7 +295,7 @@ function builder<Head extends number, Current>(
           for (const stage of stages) {
             if (stage.version < from) continue;
             onEnter?.(stage.version);
-            current = stage.migrate(stage.recognise(current));
+            current = stage.migrate(stage.recognize(current));
           }
           onEnter?.(head);
           return recogniseHead(current);

@@ -36,7 +36,7 @@
  *
  * A **tangential touch** — a repeated root, a stock that grazes `level` and turns back — is found
  * only when the evaluation happens to land exactly on zero. Bisection is a sign-change method and
- * a graze has no sign change. That is the right behaviour for a game as well as the honest one: a
+ * a graze has no sign change. That is the right behavior for a game as well as the honest one: a
  * lamp that reaches exactly zero oil for one instant and is refilled did not go out.
  *
  * Do not "improve" the bisection with a Newton step. Newton from an arbitrary start is what turns

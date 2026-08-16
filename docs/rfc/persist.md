@@ -179,7 +179,7 @@ export type Increment<N extends number, Counter extends readonly unknown[] = []>
   Counter['length'] extends N ? ([...Counter, unknown]['length'] & number) : Increment<N, [...Counter, unknown]>;
 
 /**
- * How a version recognises itself: **returns the value typed, or throws.**
+ * How a version recognizes itself: **returns the value typed, or throws.**
  *
  * Not `(value: unknown) => value is T`. A boolean predicate has already discarded the thing
  * that was wrong by the time it returns, so it cannot produce the message non-negotiable #9
@@ -187,7 +187,7 @@ export type Increment<N extends number, Counter extends readonly unknown[] = []>
  * module took for the same reason, and it composes directly with it:
  *
  * ```ts
- * const isV2: Recognise<V2> = v => {
+ * const isV2: Recognize<V2> = v => {
  *   const o = expectObject(v, 'save.v2');
  *   return { version: 2, wallet: expectRecordOfFinite(o['wallet'], 'save.v2.wallet') };
  * };
@@ -195,15 +195,15 @@ export type Increment<N extends number, Counter extends readonly unknown[] = []>
  *
  * Two things fall out of returning rather than asserting. The thrown message travels into
  * `ReadFailure.message`, so a rejected save says *which field* was wrong instead of "the
- * guard said no" — the difference between a fixable bug report and a shrug. And a recogniser
- * may **normalise as it validates**, returning a repaired value, which is the cheapest
+ * guard said no" — the difference between a fixable bug report and a shrug. And a recognizer
+ * may **normalize as it validates**, returning a repaired value, which is the cheapest
  * possible migration for a field that only ever needed a default.
  *
  * No schema language, because a schema language is a dependency and this kit has none. Make
  * it as loose as you can defend: checking the two or three fields your migration actually
  * reads beats a field-by-field validator nobody maintains.
  */
-export type Recognise<T> = (value: unknown) => T;
+export type Recognize<T> = (value: unknown) => T;
 
 /** One rung, for reporting and for tests. `why` is prose a reviewer reads, not a label. */
 export interface MigrationStep {
@@ -224,9 +224,9 @@ export interface MigrationChain<Head extends number, T> {
   readonly floor: number;
   readonly head: Head;
   readonly steps: readonly MigrationStep[];
-  /** The head recogniser. `store.decode` runs it last; a throw becomes `invalid`, carrying
+  /** The head recognizer. `store.decode` runs it last; a throw becomes `invalid`, carrying
    *  the thrown message. */
-  recognise(value: unknown): T;
+  recognize(value: unknown): T;
   /**
    * Run `value` from version `from` up to `head`, one rung at a time.
    *
@@ -245,15 +245,15 @@ export interface ChainBuilder<Head extends number, Current> {
    * `Argument of type '3' is not assignable to parameter of type '2'`.
    *
    * `migrate` receives the previous version *typed*, because the previous version was
-   * recognised by its own recogniser before it was handed over. That is the whole reason a
-   * recogniser is mandatory rather than optional: without it a migration reads `unknown` and
+   * recognized by its own recognizer before it was handed over. That is the whole reason a
+   * recognizer is mandatory rather than optional: without it a migration reads `unknown` and
    * every line in it is a cast.
    */
   step<Next extends Increment<Head>, Migrated>(
     to: Next,
     why: string,
     migrate: (prior: Current) => Migrated,
-    recognise: Recognise<Migrated>,
+    recognize: Recognize<Migrated>,
   ): ChainBuilder<Next, Migrated>;
   /** Freeze. Re-checks the chain at runtime for callers who arrived from JavaScript, and
    *  throws `RangeError` naming the missing version. Developer error, thrown loudly, at
@@ -262,14 +262,14 @@ export interface ChainBuilder<Head extends number, Current> {
 }
 
 /**
- * Start a chain at the oldest version you still support, with the recogniser for that version.
+ * Start a chain at the oldest version you still support, with the recognizer for that version.
  *
  * @param floor the oldest readable version. Raising it is a decision to abandon every save
  *              below it; make it in a commit of its own with the number in the message.
  */
 export declare function migrations<Floor extends number, T>(
   floor: Floor,
-  recognise: Recognise<T>,
+  recognize: Recognize<T>,
 ): ChainBuilder<Floor, T>;
 ```
 
@@ -282,9 +282,9 @@ export declare function migrations<Floor extends number, T>(
  *
  * `d` is the payload as a **JSON string**, not a nested object, for two reasons that are
  * worth the double encoding:
- *   1. the checksum then covers the exact bytes read, not a re-serialisation of a parse. A
+ *   1. the checksum then covers the exact bytes read, not a re-serialization of a parse. A
  *      checksum computed over `JSON.stringify(JSON.parse(text))` is a checksum of your
- *      serialiser's key ordering, and it will pass over damage and fail over nothing;
+ *      serializer's key ordering, and it will pass over damage and fail over nothing;
  *   2. `v` stays readable when `d` is garbage. Detecting a save from the *future* must not
  *      require parsing a payload written by a build that no longer exists.
  * Use `inspect()` rather than eyeballing it in devtools.
@@ -316,10 +316,10 @@ export type FailureReason =
   | 'future'
   /** `v` is below the chain floor: a save from before the versions this build still carries. */
   | 'orphaned'
-  /** A migration threw, or a step's recogniser rejected its own output. `atVersion` names the
-   *  rung and `message` carries what the recogniser said was wrong. */
+  /** A migration threw, or a step's recognizer rejected its own output. `atVersion` names the
+   *  rung and `message` carries what the recognizer said was wrong. */
   | 'migration-failed'
-  /** Migrated to the head and the head recogniser still threw. The chain has a bug, or
+  /** Migrated to the head and the head recognizer still threw. The chain has a bug, or
    *  something else has been writing this key. */
   | 'invalid';
 
@@ -494,7 +494,7 @@ export interface StoreOptions<Head extends number, T> {
    * Floor on the interval between coalesced writes. Default 4000.
    *
    * Four seconds is the number the source game shipped. Below about one second you are paying
-   * a synchronous serialise plus a storage write on a phone, per second, forever; above about
+   * a synchronous serialize plus a storage write on a phone, per second, forever; above about
    * ten a crash costs a visible amount of progress.
    */
   readonly minWriteIntervalMs?: number;
@@ -701,7 +701,7 @@ export interface ReplayLog<L extends ReplayCompat> {
   readonly startTick: number;
   readonly endTick: number;
   /**
-   * The input log, **verbatim**. Never rewritten, never normalised, never migrated.
+   * The input log, **verbatim**. Never rewritten, never normalized, never migrated.
    *
    * `stepMs` and `profile` live in here rather than being copied up to this level, deliberately:
    * a duplicated field is a field that can disagree with itself, and the copy that disagrees is
@@ -883,7 +883,7 @@ here because nothing is being destroyed.
 |---|---|---|
 | compile | `step`'s `to` is typed `Increment<Head>`, and `createStore` takes the version off the chain head | `Argument of type '3' is not assignable to parameter of type '2'` |
 | construction | `seal()` re-walks the rungs for callers arriving from JavaScript or through an `any` | `RangeError: persist: migration chain jumps 4 → 6; version 5 has no migration` |
-| test | a fixture per historical version through `store.decode`, asserting `outcome`, `migratedFrom`, and the head recogniser | `decode(fixtures['v3'])` returns `failure.reason: 'migration-failed'` at a named rung |
+| test | a fixture per historical version through `store.decode`, asserting `outcome`, `migratedFrom`, and the head recognizer | `decode(fixtures['v3'])` returns `failure.reason: 'migration-failed'` at a named rung |
 
 The first two make a hole unwritable. Only the third catches a rung that exists and is *wrong*,
 which is the failure that actually ships, so it is not optional: **the kit's own demo game keeps
@@ -895,9 +895,9 @@ Design notes on the chain itself:
 - **`to === from + 1`, always. No 3→7 shortcut.** A shortcut means two paths from 3 to 7 and
   only one of them is ever exercised; the untested one is the path a player's four-year-old
   save takes.
-- **Every version has a recogniser, mandatory, including the floor.** This is how `migrate`
+- **Every version has a recognizer, mandatory, including the floor.** This is how `migrate`
   receives a typed argument instead of `unknown`. A chain of migrations that each begin with a
-  cast is not a chain, it is a stack of hopes. And because a recogniser *returns* the value
+  cast is not a chain, it is a stack of hopes. And because a recognizer *returns* the value
   rather than answering yes/no, a rejection arrives with the field name in it.
 - **The floor is an argument, never inferred.** Raising it deletes saves below it. That should
   take a commit whose message says so.
@@ -975,12 +975,12 @@ kit forbids dependencies, so there is no schema library here, and a schema DSL w
 would be a bigger package than this one.
 
 What it refuses to do is let the obligation go unnamed. **You cannot register a version without
-supplying the predicate that recognises it.** The schema lives in the game; its *validation* is
+supplying the predicate that recognizes it.** The schema lives in the game; its *validation* is
 a required argument at the boundary. That gives every guarantee that matters at the seam —
 `decode` never hands the game a state the game itself did not vouch for — with none of the
 weight of owning a type system.
 
-The consequence a builder must not soften: `Recognise<T>` has no optional variant, no default
+The consequence a builder must not soften: `Recognize<T>` has no optional variant, no default
 `v => v as T`, and no "skip validation in production" flag. It is also not an assertion
 function — build tools strip those, which would leave the check running only where it is least
 needed.
@@ -1079,7 +1079,7 @@ So the policy inverts on all three axes:
 |---|---|---|
 | old format | migrated, rung by rung | **refused** — `orphaned` |
 | mechanism | a chain with rungs from floor to head | a chain with **no rungs**: `migrations(N, isLog).seal()`, floor === head |
-| near-miss | tolerated; a recogniser may normalise as it validates | **refused**, exactly: `version`, `stepMs` and `profile` are compared for equality and the differing field is named |
+| near-miss | tolerated; a recognizer may normalize as it validates | **refused**, exactly: `version`, `stepMs` and `profile` are compared for equality and the differing field is named |
 | failure costs | a player's campus | a test result nobody should have trusted |
 
 The mechanism is worth noticing: **"never migrate" is expressible in the machinery already
@@ -1118,7 +1118,7 @@ What was genuinely missing is the doctrine, so here it is, stated hard enough to
 | | **save** | **settings** | **replay** |
 |---|---|---|---|
 | key | `game:save` | `game:settings` | `game:replay:<id>` |
-| payload | the run | device preferences: volume, mute, reduced motion, colour-blind palette | a `ReplayLog` |
+| payload | the run | device preferences: volume, mute, reduced motion, color-blind palette | a `ReplayLog` |
 | written | coalesced, every 4 s, by an `Autosave` | immediately on change, via `save(state)` | once, at `stop()` |
 | version policy | migrated, rung by rung | migrated, rung by rung | **never migrated** — a chain with no rungs, so an old one is `orphaned`. §4.9 |
 | survives **START OVER** | no — that is what START OVER means | **yes** | yes |
@@ -1131,7 +1131,7 @@ Three consequences a builder must not blur:
    Resetting the settings store means "back to factory volume", which is a different button that
    most games do not have. `reset()` removes `key` and `${key}:rejected` and touches nothing
    else; there is no `resetEverything`, and the absence is deliberate (§5.13).
-2. **An export contains exactly one store's payload.** `store.encode(state)` serialises the
+2. **An export contains exactly one store's payload.** `store.encode(state)` serializes the
    state you pass through that store's chain and checksum. It has no access to another key, so a
    save shared between two players cannot carry one of them's mute flag into the other's
    speakers. This is a structural guarantee, not a discipline, and invariant §6.11 tests it.
@@ -1201,7 +1201,7 @@ This section is the one that stops the next agent adding it back.
 4. **Cloud sync, accounts, and conflict resolution across devices.** Same reason. The source
    game's non-negotiable was that the median visitor costs $0; a sync layer is the first thing
    that breaks that, and it is a product, not a module.
-5. **A schema language or validator.** §4.7. Recognisers are functions, and `core`'s `guard`
+5. **A schema language or validator.** §4.7. Recognizers are functions, and `core`'s `guard`
    module already supplies the leaf validators. Zod is a dependency, and the second
    non-negotiable says there are none.
 6. **A pluggable payload codec.** The envelope is always JSON. If the payload encoding were
@@ -1222,7 +1222,7 @@ This section is the one that stops the next agent adding it back.
 10. **A migration chain for replays, and any coercion of a near-miss.** §4.9. A replay store's
     chain has no rungs by rule, and `version`/`stepMs`/`profile` are compared for exact equality.
     This is the one place in the package where refusing to read something is the *correct*
-    behaviour, and a future agent tempted to "just migrate the old replays" should read the
+    behavior, and a future agent tempted to "just migrate the old replays" should read the
     contrast table before touching it.
 11. **The replay cursor, and the driver.** Also §4.9. `input` owns the log's shape so it owns
     iterating it; `loop` owns the crank. This package stores the log verbatim and can therefore
@@ -1259,7 +1259,7 @@ Each is phrased so the failing case is obvious. All run in Node against `memoryS
    `source: 'save'`, `migratedFrom: null`, `savedAt: t`, and a state deep-equal to `s`.
 4. **The floor still reaches the head.** For every fixture from `chain.floor` to `head - 1`,
    `decode` returns `source: 'save'`, `migratedFrom` equal to the fixture's version, and a state
-   the head recogniser accepts. *Fails when:* a rung was added or edited without its fixture.
+   the head recognizer accepts. *Fails when:* a rung was added or edited without its fixture.
 5. **A hole is unconstructable.** `seal()` throws `RangeError` if and only if the rungs do not
    form `floor → head` in steps of one — and never at decode time, where a hole would present as
    a player losing a save.
@@ -1335,7 +1335,7 @@ Mined from `../foom-simple-ui`, which shipped this problem once already. `src/ga
    different hat, which is why `installFlushTriggers`' disposer does not write.
 3. **Two live tabs share storage and the loser's flush wins.** PLAYBOOK trap 10 hit this while
    debugging something else entirely: a stray `localhost` tab silently undid a reset. Default
-   behaviour is last-write-wins and is documented as such; `conflict: 'refuse'` exists for games
+   behavior is last-write-wins and is documented as such; `conflict: 'refuse'` exists for games
    where it matters. Do not silently "fix" it with a lock (§4.4).
 4. **Private-mode Safari throws on the property access, not just on the write.** The guard must
    wrap the read of `globalThis.localStorage`. A try/catch around `setItem` alone still takes
@@ -1346,7 +1346,7 @@ Mined from `../foom-simple-ui`, which shipped this problem once already. `src/ga
    deletion of every player's campus."* That comment is the reason this package exists, and a
    builder who reimplements equality-and-fallback has rebuilt the thing being replaced.
 6. **The optional-field escape hatch is a trap with a long fuse.** Because a bump meant deletion,
-   foom stopped bumping: `aquifer`, `biome`, `favour`, `researchers`, `run`, `raids`, `diverted`,
+   foom stopped bumping: `aquifer`, `biome`, `favor`, `researchers`, `run`, `raids`, `diverted`,
    `raidLog`, `runReport`, `backlash` were all added as optional fields, each with a comment
    explaining that absent reads as some default. It works, and the bill arrives later: every one
    of those fields is `T | undefined` forever, every read site carries a `??`, and the
@@ -1360,13 +1360,13 @@ Mined from `../foom-simple-ui`, which shipped this problem once already. `src/ga
    in the future. This package reports `savedAt` faithfully and does not clamp it; whoever
    computes offline accrual must, and that is a `sim` obligation routed in §8.
 8. **JSON quietly destroys three things an idle game contains.** `undefined` fields vanish (fine),
-   but `NaN` and `Infinity` serialise as `null`, and `BigInt` throws. An idle economy that lets a
+   but `NaN` and `Infinity` serialize as `null`, and `BigInt` throws. An idle economy that lets a
    currency reach `Infinity` writes `null`, reads `null`, and becomes `NaN` on the next tick —
-   with a valid checksum, because the bytes were never damaged. The head recogniser is the place
+   with a valid checksum, because the bytes were never damaged. The head recognizer is the place
    to catch it: `expectFinite` from `core`'s `guard` on the currencies is worth more than a
-   recogniser that checks thirty field names and no ranges.
-9. **A checksum over a re-serialisation is not a checksum.** `JSON.stringify(JSON.parse(text))`
-   reorders numeric-looking keys and normalises number formatting, so it fails on saves that are
+   recognizer that checks thirty field names and no ranges.
+9. **A checksum over a re-serialization is not a checksum.** `JSON.stringify(JSON.parse(text))`
+   reorders numeric-looking keys and normalizes number formatting, so it fails on saves that are
    fine and passes on saves that are not. Checksum the bytes as read. This is why `d` is a
    string.
 10. **Quota is discovered by throwing, inside the handler where nothing can be done.** Catch it,
@@ -1380,7 +1380,7 @@ Mined from `../foom-simple-ui`, which shipped this problem once already. `src/ga
     tidier hat, and it is the reason there is no `resetEverything()`.
 13. **Persist the hue, never the derived tokens.** Inherited from the source game and raised by
     the `core` architect as a joint `draw`/`persist` constraint neither RFC stated: a save that
-    stores computed colours pins a player to the palette of the build that wrote it, so a
+    stores computed colors pins a player to the palette of the build that wrote it, so a
     retuned shadow or a fixed contrast bug never reaches anyone who already played. Store the
     input to the derivation — one hue — and derive on load, every time. It is also forty bytes
     instead of four hundred. The same rule generalises: **a save stores causes, not consequences**,
@@ -1426,7 +1426,7 @@ settings lifetime (§4.10), and the injected scheduler (§4.6). What follows is 
   against those names; if `core` brands `EpochMillis` rather than aliasing `number`, better
   still, because `elapsedSince(opened, tickCount)` would then stop compiling.
 - **`draw` — persist the hue, never the derived tokens** (trap §7.13). A joint constraint that
-  neither RFC stated; it belongs in `draw`'s colour section as well as here, because the package
+  neither RFC stated; it belongs in `draw`'s color section as well as here, because the package
   that derives the tokens is the one best placed to say they are not save data.
 
 **Resolved by other RFCs since this was drafted, noted so nobody re-routes them**
@@ -1436,7 +1436,7 @@ settings lifetime (§4.10), and the injected scheduler (§4.6). What follows is 
 - `core` split `hash` into its own module, so §3.1 uses `hashString` instead of growing a
   private FNV. One hash in the kit, not three.
 - `core` renamed `assert` → `guard` with validators that return their argument; §3.3 adopts that
-  shape for `Recognise<T>`, which is why a rejected save can name the field that was wrong.
+  shape for `Recognize<T>`, which is why a rejected save can name the field that was wrong.
 
 **Still unowned**
 

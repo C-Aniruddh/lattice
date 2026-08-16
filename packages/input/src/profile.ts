@@ -22,17 +22,17 @@ import { expectFinite, expectInt } from '@lattice/core';
  * What the player is touching the game with.
  *
  * Not decoration: {@link GestureProfile.tapSlopPx} differs per kind by more than a factor of
- * two, and a recogniser that uses one threshold for all three either eats every short mouse
+ * two, and a recognizer that uses one threshold for all three either eats every short mouse
  * drag or turns half of a phone's taps into one-pixel drags.
  */
 export type PointerKind = 'mouse' | 'touch' | 'pen';
 
 /**
- * Every threshold the recogniser and the camera controller consult.
+ * Every threshold the recognizer and the camera controller consult.
  *
  * Named in one interface so that a game that needs a different feel changes data rather than
  * forking a state machine, and so that a recorded session can carry the exact rules it was
- * recognised under. See the table in this module's source for the derivation of each default.
+ * recognized under. See the table in this module's source for the derivation of each default.
  */
 export interface GestureProfile {
   /**
@@ -90,7 +90,7 @@ export interface GestureProfile {
   readonly wheelPagePx: number;
 
   /**
-   * Zoom per normalised wheel pixel: `scale = exp(-dz * rate)`.
+   * Zoom per normalized wheel pixel: `scale = exp(-dz * rate)`.
    *
    * 0.0016. Exponential rather than additive, so a notch feels the same at 0.6× and at 4× and
    * wheeling up then down returns exactly where you started; additive zoom is unusable above
@@ -150,7 +150,7 @@ export interface GestureProfile {
   readonly flingSampleMs: number;
 
   /**
-   * How many simultaneous pointers the recogniser tracks.
+   * How many simultaneous pointers the recognizer tracks.
    *
    * 2: a third finger on a two-finger gesture is a palm, and ignoring it beats letting it move
    * the midpoint.
