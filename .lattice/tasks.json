@@ -5,6 +5,7 @@
     "build",
     "audit",
     "gallery",
+    "skills",
     "ship"
   ],
   "tasks": [
@@ -1250,6 +1251,309 @@
       "status": "todo",
       "owner": null,
       "notes": "Exists because Instrument shows the synthesis but does not prove anyone would use it. You cannot fake this one."
+    },
+    {
+      "id": "S0",
+      "phase": "skills",
+      "role": "lattice-architect",
+      "title": "Design the skills package: triggers, split, and distribution",
+      "package": "skills",
+      "paths": [
+        "docs/SKILLS.md",
+        "skills/README.md"
+      ],
+      "dependsOn": [
+        "G1",
+        "G2",
+        "G3"
+      ],
+      "acceptance": [
+        "organized by what a person is TRYING TO DO, never by package boundary — nobody sits down to use @lattice/iso",
+        "trigger phrasing is the deliverable: a skill nobody's task matches is a skill that never fires",
+        "each skill is self-contained — the user has node_modules, not this repo, so no reference to AGENTS.md or docs/ may survive",
+        "decide the distribution shape: plugin manifest, marketplace entry, or a droppable directory — and that it is NOT a dependency of any @lattice/* package"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "The constraint that shapes everything: the user installed from npm and never cloned. Package READMEs DO ship (files includes README.md), so node_modules/@lattice/iso/README.md is a real path a skill may point at."
+    },
+    {
+      "id": "S1",
+      "phase": "skills",
+      "role": "lattice-scribe",
+      "title": "Skill: lattice-starting",
+      "package": "skills",
+      "paths": [
+        "skills/lattice-starting/**"
+      ],
+      "dependsOn": [
+        "S0"
+      ],
+      "acceptance": [
+        "carries: the bootstrap and the one wiring order that works",
+        "carries the TRAP, not the signature — an agent can read a .d.ts and cannot read what is surprising",
+        "shows the wrong version beside the right one: every trap here was found as working-looking code",
+        "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
+        "says what it does not cover and names the skill that does"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "S2",
+      "phase": "skills",
+      "role": "lattice-scribe",
+      "title": "Skill: lattice-art",
+      "package": "skills",
+      "paths": [
+        "skills/lattice-art/**"
+      ],
+      "dependsOn": [
+        "S0"
+      ],
+      "acceptance": [
+        "carries: silhouette, three scales, massing, the rules that make procedural art read as designed",
+        "carries the TRAP, not the signature — an agent can read a .d.ts and cannot read what is surprising",
+        "shows the wrong version beside the right one: every trap here was found as working-looking code",
+        "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
+        "says what it does not cover and names the skill that does"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "S3",
+      "phase": "skills",
+      "role": "lattice-scribe",
+      "title": "Skill: lattice-world",
+      "package": "skills",
+      "paths": [
+        "skills/lattice-world/**"
+      ],
+      "dependsOn": [
+        "S0"
+      ],
+      "acceptance": [
+        "carries: tilemaps, elevation, paths as sampled curves, flow fields",
+        "carries the TRAP, not the signature — an agent can read a .d.ts and cannot read what is surprising",
+        "shows the wrong version beside the right one: every trap here was found as working-looking code",
+        "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
+        "says what it does not cover and names the skill that does"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "S4",
+      "phase": "skills",
+      "role": "lattice-scribe",
+      "title": "Skill: lattice-economy",
+      "package": "skills",
+      "paths": [
+        "skills/lattice-economy/**"
+      ],
+      "dependsOn": [
+        "S0"
+      ],
+      "acceptance": [
+        "carries: production graphs, closed-form cost, capacity gating, the offline warp",
+        "carries the TRAP, not the signature — an agent can read a .d.ts and cannot read what is surprising",
+        "shows the wrong version beside the right one: every trap here was found as working-looking code",
+        "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
+        "says what it does not cover and names the skill that does"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "S5",
+      "phase": "skills",
+      "role": "lattice-scribe",
+      "title": "Skill: lattice-input",
+      "package": "skills",
+      "paths": [
+        "skills/lattice-input/**"
+      ],
+      "dependsOn": [
+        "S0"
+      ],
+      "acceptance": [
+        "carries: the per-tick bucket, gesture thresholds, pointer capture, and the refusal to see the world",
+        "carries the TRAP, not the signature — an agent can read a .d.ts and cannot read what is surprising",
+        "shows the wrong version beside the right one: every trap here was found as working-looking code",
+        "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
+        "says what it does not cover and names the skill that does"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "S6",
+      "phase": "skills",
+      "role": "lattice-scribe",
+      "title": "Skill: lattice-sound",
+      "package": "skills",
+      "paths": [
+        "skills/lattice-sound/**"
+      ],
+      "dependsOn": [
+        "S0"
+      ],
+      "acceptance": [
+        "carries: declarative sounds, buses, the bed, the voice ceiling, the gesture unlock",
+        "carries the TRAP, not the signature — an agent can read a .d.ts and cannot read what is surprising",
+        "shows the wrong version beside the right one: every trap here was found as working-looking code",
+        "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
+        "says what it does not cover and names the skill that does"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "S7",
+      "phase": "skills",
+      "role": "lattice-scribe",
+      "title": "Skill: lattice-saving",
+      "package": "skills",
+      "paths": [
+        "skills/lattice-saving/**"
+      ],
+      "dependsOn": [
+        "S0"
+      ],
+      "acceptance": [
+        "carries: the chain IS the version, migrations, degrade-with-a-reason, reset ordering",
+        "carries the TRAP, not the signature — an agent can read a .d.ts and cannot read what is surprising",
+        "shows the wrong version beside the right one: every trap here was found as working-looking code",
+        "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
+        "says what it does not cover and names the skill that does"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "S8",
+      "phase": "skills",
+      "role": "lattice-scribe",
+      "title": "Skill: lattice-hud",
+      "package": "skills",
+      "paths": [
+        "skills/lattice-hud/**"
+      ],
+      "dependsOn": [
+        "S0"
+      ],
+      "acceptance": [
+        "carries: the pointer contract, state on update never render, latches keyed on conditions",
+        "carries the TRAP, not the signature — an agent can read a .d.ts and cannot read what is surprising",
+        "shows the wrong version beside the right one: every trap here was found as working-looking code",
+        "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
+        "says what it does not cover and names the skill that does"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "S9",
+      "phase": "skills",
+      "role": "lattice-scribe",
+      "title": "Skill: lattice-determinism",
+      "package": "skills",
+      "paths": [
+        "skills/lattice-determinism/**"
+      ],
+      "dependsOn": [
+        "S0"
+      ],
+      "acceptance": [
+        "carries: the two tiers, what may reach a save file, and how to find a divergence fast",
+        "carries the TRAP, not the signature — an agent can read a .d.ts and cannot read what is surprising",
+        "shows the wrong version beside the right one: every trap here was found as working-looking code",
+        "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
+        "says what it does not cover and names the skill that does"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "S10",
+      "phase": "skills",
+      "role": "lattice-scribe",
+      "title": "Skill: lattice-performance",
+      "package": "skills",
+      "paths": [
+        "skills/lattice-performance/**"
+      ],
+      "dependsOn": [
+        "S0"
+      ],
+      "acceptance": [
+        "carries: the tail argument, out-parameters, and what NOT to optimize",
+        "carries the TRAP, not the signature — an agent can read a .d.ts and cannot read what is surprising",
+        "shows the wrong version beside the right one: every trap here was found as working-looking code",
+        "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
+        "says what it does not cover and names the skill that does"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "S11",
+      "phase": "skills",
+      "role": "lattice-scribe",
+      "title": "Skill: lattice-traps",
+      "package": "skills",
+      "paths": [
+        "skills/lattice-traps/**"
+      ],
+      "dependsOn": [
+        "S0"
+      ],
+      "acceptance": [
+        "carries: the failures that are individually surprising and jointly fatal",
+        "carries the TRAP, not the signature — an agent can read a .d.ts and cannot read what is surprising",
+        "shows the wrong version beside the right one: every trap here was found as working-looking code",
+        "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
+        "says what it does not cover and names the skill that does"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "V1",
+      "phase": "ship",
+      "role": "lattice-auditor",
+      "title": "The fresh-directory validation",
+      "package": "*",
+      "paths": [
+        "/tmp/lattice-validation/**"
+      ],
+      "dependsOn": [
+        "S1",
+        "S11",
+        "G99"
+      ],
+      "acceptance": [
+        "a NEW EMPTY DIRECTORY outside this repo — the repo is the thing being questioned",
+        "install from npm pack tarballs, not the workspace: that exercises the files list, the exports map, the built dist and the shipped README, and catches the classic works-in-monorepo failure no test inside the monorepo can see",
+        "the session gets NO access to this repository; if it needs something only found here, that is the finding",
+        "judge it on the game, not the transcript — run it, look at it, screenshot it. Plausible code and a black screen is a failure, and this project has already made that exact mistake once",
+        "report in order: do the packages work outside the workspace, do the skills fire unasked, does an agent that never saw the RFCs avoid the traps anyway, and is the thing it built any good"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "This is the last task. Anything it cannot do is the real backlog; everything before it is preparation."
     }
   ]
 }
