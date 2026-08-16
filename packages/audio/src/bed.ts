@@ -115,7 +115,16 @@ export interface BedOptions {
   readonly glideSec?: number;
 }
 
-/** A running bed. Build it with {@link createBed}; drive it every frame; stop it once. */
+/**
+ * A running bed. Build it with {@link createBed}; drive it every frame; stop it once.
+ *
+ * Every field of {@link BedOptions} reads back off this object — `bus`, `sagTo`, `glideSec` —
+ * so a panel driving a bed never keeps a second copy of a number it already handed over. None
+ * of the three has a setter today: `bus` cannot have one, because every layer's node is
+ * already connected to that bus and moving it is a teardown wearing a setter's signature; the
+ * other two are policy and could, which is `docs/rfc/live-options.md` §10's business rather
+ * than this interface's.
+ */
 export interface Bed {
   /**
    * Drive the bed. **Safe to call every frame** — it ramps toward the figures rather than
@@ -136,6 +145,21 @@ export interface Bed {
   readonly level: number;
   /** The last tone given, clamped. */
   readonly tone: number;
+  /**
+   * The bus every layer is mixed on — {@link BedOptions.bus}, or `'sfx'`.
+   *
+   * Read it to answer the question a muted world always raises: whether this bed rides on the
+   * switch the player just moved. It is fixed for the bed's life, because the layers' nodes are
+   * connected to that bus the moment they stand up.
+   */
+  readonly bus: BusId;
+  /** The pitch multiplier at `tone = 0` in force — {@link BedOptions.sagTo}, clamped as it was
+   *  at construction. Read it to label a "power sag" control with the depth it actually has. */
+  readonly sagTo: number;
+  /** Seconds a change takes to arrive — {@link BedOptions.glideSec}, clamped as it was at
+   *  construction. It is also the `end - start` of every plan this bed emits, which is why a
+   *  test asserting the crossfade needs to read it rather than assume the default. */
+  readonly glideSec: number;
   /**
    * Fade out and tear the layers down. A stopped bed cannot restart — build another. Safe to
    * call twice, and safe to call with no device.
@@ -280,6 +304,18 @@ export function createBed<Ids extends string>(
 
     get tone(): number {
       return tone;
+    },
+
+    get bus(): BusId {
+      return bus;
+    },
+
+    get sagTo(): number {
+      return sagTo;
+    },
+
+    get glideSec(): number {
+      return glideSec;
     },
 
     stop(fadeSec?: number): void {

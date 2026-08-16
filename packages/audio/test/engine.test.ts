@@ -531,6 +531,267 @@ describe('dispose is final and quiet', () => {
   });
 });
 
+describe('every option reads back off the engine', () => {
+  it('reports the table it was built from, frozen', () => {
+    const { audio } = harness();
+    expect(Object.keys(audio.sounds).sort()).toEqual(['alarm', 'chord', 'collect', 'tap']);
+    expect(audio.sounds.collect).toBe(TABLE.collect);
+    // Frozen so nothing can make the readback disagree with what `play` will accept.
+    expect(Object.isFrozen(audio.sounds)).toBe(true);
+  });
+
+  it('does not follow the caller’s table after construction, in either direction', () => {
+    const table: Record<string, SoundDef> = { tap: TABLE.tap };
+    const audio = createAudio({ sounds: table, context: () => null, now: () => 0 });
+    table['late'] = TABLE.collect;
+    // The engine took a snapshot, so the reader reports the snapshot. A getter over the
+    // caller's own object would announce an id that `play` refuses.
+    expect(Object.keys(audio.sounds)).toEqual(['tap']);
+    expect(audio.play('late')).toBe(false);
+    audio.dispose();
+  });
+
+  it('reports the device the factory produced, and nothing before it or after dispose', () => {
+    const fake = new FakeContext();
+    const context = vi.fn(() => asContext(fake));
+    const audio = createAudio({ sounds: TABLE, context, now: () => 0 });
+    expect(audio.context).toBeNull();
+    audio.unlock();
+    expect(audio.context).toBe(asContext(fake));
+    // Reading it does not acquire a second one — that is how a page burns its six.
+    expect(context).toHaveBeenCalledTimes(1);
+    audio.dispose();
+    expect(audio.context).toBeNull();
+  });
+
+  it('reports no device when the factory returns none', () => {
+    const { audio } = harness();
+    audio.unlock();
+    expect(audio.context).toBeNull();
+  });
+
+  it('hands back the clock, which is the only honest source for PlayOptions.at', () => {
+    const { audio, at } = harness();
+    expect(audio.now()).toBe(0);
+    at(4.5);
+    expect(audio.now()).toBe(4.5);
+    // The number a caller would schedule against is the number the plan lands on.
+    audio.play('tap', { at: audio.now() + 0.25 });
+    expect(audio.now()).toBe(4.5);
+  });
+
+  it('reads the device clock when none was injected, and coerces a broken one to zero', () => {
+    const fake = new FakeContext();
+    const audio = createAudio({ sounds: TABLE, context: () => asContext(fake) });
+    expect(audio.now()).toBe(0);
+    audio.unlock();
+    fake.currentTime = 12.5;
+    expect(audio.now()).toBe(12.5);
+    audio.dispose();
+
+    const broken = createAudio({ sounds: TABLE, context: () => null, now: () => Number.NaN });
+    expect(broken.now()).toBe(0);
+    broken.dispose();
+  });
+
+  it('reports the ceiling and the pan limit, defaulted and overridden', () => {
+    const { audio } = harness();
+    expect(audio.maxVoices).toBe(MAX_VOICES);
+    expect(audio.maxPan).toBe(0.6);
+
+    const { audio: tuned } = harness({ maxVoices: 6, maxPan: 0.25 });
+    expect(tuned.maxVoices).toBe(6);
+    expect(tuned.maxPan).toBe(0.25);
+
+    // The clamp is visible in the readback rather than only in the plans.
+    expect(harness({ maxPan: 4 }).audio.maxPan).toBe(1);
+    expect(harness({ maxPan: -4 }).audio.maxPan).toBe(0);
+    expect(harness({ maxPan: Number.NaN }).audio.maxPan).toBe(0.6);
+  });
+});
+
+describe('the voice ceiling is live', () => {
+  it('refuses at the new ceiling on the very next play', () => {
+    const { audio, plans } = burstHarness(24);
+    audio.setMaxVoices(6);
+    expect(audio.maxVoices).toBe(6);
+    for (let i = 0; i < 100; i += 1) audio.play(`s${String(i)}`);
+    // Two three-layer sounds fit under six; the third would make nine.
+    expect(plans).toHaveLength(6);
+  });
+
+  it('admits again the moment it goes back up, with nothing rebuilt', () => {
+    const { audio, plans, at } = burstHarness(3);
+    expect(audio.play('s0')).toBe(true);
+    expect(audio.play('s1')).toBe(false);
+    audio.setMaxVoices(24);
+    expect(audio.play('s1')).toBe(true);
+    expect(plans).toHaveLength(6);
+    at(1);
+    expect(audio.voices).toBe(0);
+  });
+
+  it('does not cut live voices short when the ceiling drops below them', () => {
+    const { audio, plans, at } = burstHarness(24);
+    for (let i = 0; i < 100; i += 1) audio.play(`s${String(i)}`);
+    expect(audio.voices).toBe(24);
+
+    audio.setMaxVoices(2);
+    // What is sounding is not what is allowed: the eight admitted plays are already scheduled
+    // on the device, and chopping them would be an audible cut for nothing.
+    expect(audio.voices).toBe(24);
+    expect(audio.play('s99')).toBe(false);
+    expect(plans).toHaveLength(24);
+
+    // Once their release tails pass, the new ceiling is what applies.
+    at(1);
+    expect(audio.voices).toBe(0);
+    expect(audio.play('s99')).toBe(false); // three layers, ceiling of two
+    audio.setMaxVoices(3);
+    expect(audio.play('s99')).toBe(true);
+  });
+
+  it('refuses a nonsense ceiling in the same words as the constructor', () => {
+    const { audio } = harness();
+    expect(() => audio.setMaxVoices(0)).toThrow(RangeError);
+    expect(() => audio.setMaxVoices(2.5)).toThrow(
+      /audio\.setMaxVoices: expected maxVoices to be an integer >= 1, got 2\.5/,
+    );
+    // Invariant 2 of the live-options RFC, asserted rather than assumed: one validator, two
+    // entrances, and only the entrance's name differs.
+    const words = (run: () => void): string => {
+      try {
+        run();
+      } catch (error) {
+        return error instanceof Error ? error.message.split(': ').slice(1).join(': ') : 'not an Error';
+      }
+      return 'no throw';
+    };
+    for (const bad of [0, -1, 2.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(words(() => audio.setMaxVoices(bad))).toBe(
+        words(() => createAudio({ sounds: TABLE, maxVoices: bad })),
+      );
+    }
+  });
+
+  it('refuses a missing argument from a caller with no types', () => {
+    const { audio } = harness();
+    const untyped = audio.setMaxVoices as (value?: number) => void;
+    expect(() => {
+      untyped();
+    }).toThrow(/got undefined/);
+  });
+
+  it('leaves the ceiling exactly where it was when it refuses', () => {
+    const { audio, plans } = burstHarness(6);
+    expect(() => audio.setMaxVoices(0)).toThrow(RangeError);
+    expect(audio.maxVoices).toBe(6);
+    for (let i = 0; i < 100; i += 1) audio.play(`s${String(i)}`);
+    // A half-applied rejection would have silenced this outright.
+    expect(plans).toHaveLength(6);
+  });
+
+  it('takes a ceiling of one and a ceiling far above any table', () => {
+    const { audio, plans } = burstHarness(24);
+    audio.setMaxVoices(1);
+    // Every sound here has three layers, so a ceiling of one can never admit any of them.
+    for (let i = 0; i < 100; i += 1) expect(audio.play(`s${String(i)}`)).toBe(false);
+    audio.setMaxVoices(1_000_000);
+    for (let i = 0; i < 100; i += 1) audio.play(`s${String(i)}`);
+    expect(plans).toHaveLength(300);
+  });
+
+  it('is still refused after dispose, because a bad ceiling is a bug wherever it arrives', () => {
+    const { audio } = harness();
+    audio.dispose();
+    expect(() => audio.setMaxVoices(-1)).toThrow(RangeError);
+    audio.setMaxVoices(4);
+    expect(audio.maxVoices).toBe(4);
+  });
+});
+
+describe('the pan limit is live', () => {
+  it('widens and narrows the field on the next play', () => {
+    const { audio, plans, at } = harness();
+    audio.play('collect', { pan: 1 });
+    audio.setMaxPan(1);
+    at(1);
+    audio.play('collect', { pan: 1 });
+    audio.setMaxPan(0);
+    at(2);
+    audio.play('collect', { pan: 1 });
+    expect(plans.map((plan) => plan.pan)).toEqual([0.6, 1, 0]);
+    expect(audio.maxPan).toBe(0);
+  });
+
+  it('clamps rather than throws, because this one can reach a slider', () => {
+    const { audio } = harness();
+    audio.setMaxPan(9);
+    expect(audio.maxPan).toBe(1);
+    audio.setMaxPan(-9);
+    expect(audio.maxPan).toBe(0);
+  });
+
+  it('ignores a non-finite value and leaves the limit as it was', () => {
+    const { audio, plans } = harness();
+    audio.setMaxPan(0.25);
+    audio.setMaxPan(Number.NaN);
+    // Not 0.6: at the setter, "as it was" is the limit in force, not the package default.
+    expect(audio.maxPan).toBe(0.25);
+    audio.play('collect', { pan: -1 });
+    expect(plans[0]?.pan).toBe(-0.25);
+  });
+});
+
+describe('dragging the ceiling — the reason this option is live', () => {
+  it('never closes the context and never leaks a voice, 8 → 2 → 8, ten times over', () => {
+    // The failure this test exists to prevent: `dispose()` closes the `AudioContext`, a
+    // document gets about six of them, and a ceiling that could only move by rebuilding turns
+    // GALLERY.md's required voice slider into a control that permanently silences the page.
+    const sounds: Record<string, SoundDef> = {};
+    for (let i = 0; i < 16; i += 1) {
+      sounds[`s${String(i)}`] = { minGapMs: 5, layers: [{ wave: 'sine', hz: 220, gain: 0.05, hold: 0.05 }] };
+    }
+    const fake = new FakeContext();
+    const context = vi.fn(() => asContext(fake));
+    const audio = createAudio<string>({ sounds, context });
+    expect(audio.unlock()).toBe(true);
+    // The bus graph: master into the destination and three buses into master. Every voice
+    // built after this has to come back to it.
+    const busGraph = fake.live;
+
+    const accepted: number[] = [];
+    let seconds = 0;
+    for (let drag = 0; drag < 10; drag += 1) {
+      for (const ceiling of [8, 2, 8]) {
+        audio.setMaxVoices(ceiling);
+        seconds += 1;
+        fake.advance(seconds); // past every tail, so each round starts from an empty ceiling
+        let admitted = 0;
+        for (let i = 0; i < 16; i += 1) if (audio.play(`s${String(i)}`)) admitted += 1;
+        accepted.push(admitted);
+      }
+    }
+
+    // The slider moved thirty times and the ceiling did exactly what it was told, every time.
+    expect(accepted).toEqual(Array.from({ length: 10 }, () => [8, 2, 8]).flat());
+    // The whole point: one context, still open, still usable.
+    expect(context).toHaveBeenCalledTimes(1);
+    expect(fake.closes).toBe(0);
+    expect(audio.available).toBe(true);
+    expect(audio.maxVoices).toBe(8);
+
+    // And no voice leaked: every node built for those 180 plays disconnected on its own tail.
+    fake.advance(seconds + 1);
+    expect(audio.voices).toBe(0);
+    expect(fake.live).toBe(busGraph);
+    expect(fake.countOf('oscillator')).toBe(180);
+
+    audio.dispose();
+    expect(fake.closes).toBe(1);
+  });
+});
+
 describe('the id union', () => {
   it('is inferred from the table, so a typo is a compile error', () => {
     const { audio } = harness();

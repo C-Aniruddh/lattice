@@ -63,4 +63,30 @@ describe('the README example', () => {
       '  bed on sfx at 0.00 Hz, gain 0.050',
     ]);
   });
+
+  it('prints what the live-options section says it prints', () => {
+    const lines: string[] = [];
+    const log = (line: string): void => {
+      lines.push(line);
+    };
+
+    const t = 0;
+    const audio = createAudio({ sounds: SOUNDS, maxVoices: 1, now: () => t });
+
+    audio.play('collect');
+    log(`ceiling ${String(audio.maxVoices)}, tap: ${String(audio.play('tap'))}`);
+
+    audio.setMaxVoices(4);
+    log(`ceiling ${String(audio.maxVoices)}, tap: ${String(audio.play('tap'))}`);
+
+    audio.setMaxPan(0);
+    log(`maxPan ${String(audio.maxPan)}, context ${String(audio.context)}`);
+
+    expect(lines).toEqual([
+      'ceiling 1, tap: false',
+      'ceiling 4, tap: true',
+      'maxPan 0, context null',
+    ]);
+    audio.dispose();
+  });
 });

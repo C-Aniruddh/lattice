@@ -253,6 +253,59 @@ describe('the voice ceiling', () => {
     expect(policy.admit('s0', sound(), 3, 0)).toBe(0);
   });
 
+  it('reads back the ceiling it was built with', () => {
+    expect(createPlayPolicy(24).maxVoices).toBe(24);
+    expect(createPlayPolicy(1).maxVoices).toBe(1);
+  });
+
+  it('moves, and the next admit is the one that sees it', () => {
+    // The whole live-ceiling case, with no AudioContext within a mile of it: the policy layer
+    // is pure and clock-injected, so a slider's behaviour is assertable in Node.
+    const policy = createPlayPolicy(24);
+    expect(burst(policy, 3, 100, 0)).toBe(8);
+    policy.clear();
+
+    policy.maxVoices = 6;
+    expect(policy.maxVoices).toBe(6);
+    expect(burst(policy, 3, 100, 0)).toBe(2);
+    policy.clear();
+
+    policy.maxVoices = 24;
+    expect(burst(policy, 3, 100, 0)).toBe(8);
+  });
+
+  it('does not release or cut the voices already held when it drops below them', () => {
+    const policy = createPlayPolicy(24);
+    burst(policy, 3, 100, 0);
+    expect(policy.voices(0)).toBe(24);
+
+    policy.maxVoices = 2;
+    // Nothing is sized from the ceiling, so lowering it frees nothing and breaks nothing —
+    // it only refuses the next play. The count is still what is sounding.
+    expect(policy.voices(0)).toBe(24);
+    expect(policy.admit('late', sound(), 1, 0)).toBe(-1);
+
+    // And the ends still rule it: past them the new ceiling is what applies.
+    expect(policy.voices(0.5)).toBe(0);
+    expect(policy.admit('late', sound(), 2, 0.5)).toBe(0);
+    policy.hold(1);
+    policy.hold(1);
+    expect(policy.admit('later', sound(), 1, 0.5)).toBe(-1);
+  });
+
+  it('survives a ceiling dragged to its ends and back a hundred times', () => {
+    const policy = createPlayPolicy(8);
+    for (let i = 0; i < 100; i += 1) {
+      policy.maxVoices = 2;
+      expect(burst(policy, 1, 4, i)).toBe(2);
+      policy.maxVoices = 8;
+      expect(burst(policy, 1, 12, i + 0.5)).toBe(8);
+      policy.clear();
+    }
+    expect(policy.maxVoices).toBe(8);
+    expect(policy.voices(1e6)).toBe(0);
+  });
+
   it('holds the count steady under ten thousand plays and releases them all', () => {
     const policy = createPlayPolicy(24);
     for (let i = 0; i < 10000; i += 1) {

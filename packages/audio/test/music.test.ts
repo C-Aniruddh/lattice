@@ -445,6 +445,53 @@ describe('intensity gates tracks and nothing else', () => {
   });
 });
 
+describe('everything the deck was told reads back off it', () => {
+  it('reports its pump option, defaulted and overridden', () => {
+    expect(harness(false).deck.autoPump).toBe(false);
+    expect(harness(true).deck.autoPump).toBe(true);
+    const { audio } = harness();
+    expect(createDeck(audio, {}).autoPump).toBe(true);
+    expect(createDeck(audio).autoPump).toBe(true);
+  });
+
+  it('reports the song it is playing, and holds it through the fade-out', () => {
+    const { deck, at } = harness();
+    expect(deck.song).toBeNull();
+    deck.play(THEME, { fadeSec: 0 });
+    expect(deck.song).toBe(THEME);
+
+    deck.stop({ fadeSec: 1 });
+    // `playing` is already false and the music is still audible. A title that blanked here
+    // would blank while the song was still sounding.
+    expect(deck.playing).toBe(false);
+    expect(deck.song).toBe(THEME);
+
+    at(2);
+    deck.pump();
+    expect(deck.song).toBeNull();
+  });
+
+  it('drops the song at once on a stop with no fade', () => {
+    const { deck } = harness();
+    deck.play(THEME, { fadeSec: 0 });
+    deck.stop({ fadeSec: 0 });
+    expect(deck.song).toBeNull();
+  });
+
+  it('reports which tracks are muted, so a checkbox needs no second copy', () => {
+    const { deck } = harness();
+    expect(deck.trackMuted('kick')).toBe(false);
+    deck.setTrackMuted('kick', true);
+    expect(deck.trackMuted('kick')).toBe(true);
+    expect(deck.trackMuted('bass')).toBe(false);
+    // An id the song does not have is not muted, which is the same answer as any other
+    // unmuted track: mute is a set of ids, not a claim about the song.
+    expect(deck.trackMuted('nothing-by-that-name')).toBe(false);
+    deck.setTrackMuted('kick', false);
+    expect(deck.trackMuted('kick')).toBe(false);
+  });
+});
+
 describe('muting a track', () => {
   it('takes it out and puts it back', () => {
     const { deck, plans, at } = harness();
@@ -626,6 +673,13 @@ describe('a deck on something that is not one of our engines', () => {
       mixer: {} as Audio<string>['mixer'],
       available: false,
       voices: 0,
+      sounds: {},
+      context: null,
+      now: () => 0,
+      maxVoices: 24,
+      setMaxVoices: () => undefined,
+      maxPan: 0.6,
+      setMaxPan: () => undefined,
       unlock: () => false,
       play: () => false,
       onScheduled: () => () => undefined,

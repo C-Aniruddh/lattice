@@ -143,6 +143,62 @@ Voices are counted by **scheduled end time**, never by an `onended` callback. A 
 by `onended` leaks — the bed's oscillators never end, so their callback never fires, and a game
 that runs for an hour ends up permanently at the ceiling and goes silent.
 
+### The ceiling moves, and so does the pan limit
+
+```ts
+let t = 0;
+const audio = createAudio({ sounds: SOUNDS, maxVoices: 1, now: () => t });
+
+audio.play('collect');                                  // accepted — and that is the ceiling full
+console.log(`ceiling ${audio.maxVoices}, tap: ${audio.play('tap')}`);
+
+audio.setMaxVoices(4);                                  // a setter, not a rebuild
+console.log(`ceiling ${audio.maxVoices}, tap: ${audio.play('tap')}`);
+
+audio.setMaxPan(0);                                     // a mono switch, for a settings screen
+console.log(`maxPan ${audio.maxPan}, context ${audio.context}`);
+```
+
+```
+ceiling 1, tap: false
+ceiling 4, tap: true
+maxPan 0, context null
+```
+
+**Why these are setters and not a rebuild.** `dispose()` closes the `AudioContext` and a
+document gets about six of them, ever. A voice-ceiling slider that rebuilt the engine on every
+drag — which is the only thing a construction-time ceiling allows — permanently silences the
+page in about a second. The ceiling is one integer in one comparison: nothing is allocated from
+it, no handle is derived from it, and no save or log records it, so there is nothing downstream
+with a correctness claim that it did not change. That is the test in `docs/rfc/live-options.md`,
+and it is the only admissible reason to refuse a setter.
+
+Two consequences worth knowing before you drag one:
+
+- **Lowering the ceiling refuses new plays; it does not cut live voices short.** `audio.voices`
+  may read above `audio.maxVoices` until the release tails pass. What is sounding is not what is
+  allowed.
+- **`setMaxVoices` throws on a non-integer or anything below 1, in the same words `createAudio`
+  uses.** It is author-facing at both entrances. `setMaxPan` clamps instead, because that one
+  can reach a player's slider and a slider must not be able to throw.
+
+### Everything you configured reads back
+
+No field of an options bag in this package is write-only, so nothing that drives the engine has
+to keep a second copy of a number it already handed over — two copies drift, with no error the
+day they do.
+
+| you passed | read it back | move it |
+|---|---|---|
+| `AudioOptions.sounds` | `audio.sounds` (frozen) | the table's keys *are* the id union |
+| `AudioOptions.context` | `audio.context` — the device it produced, or `null` | `unlock()` builds it once |
+| `AudioOptions.now` | `audio.now()` — audio-clock seconds, the base `PlayOptions.at` is in | — |
+| `AudioOptions.maxVoices` | `audio.maxVoices` | `audio.setMaxVoices(n)` |
+| `AudioOptions.maxPan` | `audio.maxPan` | `audio.setMaxPan(n)` |
+| `BedOptions.bus` / `sagTo` / `glideSec` | `bed.bus`, `bed.sagTo`, `bed.glideSec` | — |
+| `createDeck`'s `autoPump` | `deck.autoPump` | — |
+| `deck.play(song)`, `setTrackMuted` | `deck.song`, `deck.trackMuted(id)` | `play`, `setTrackMuted` |
+
 ---
 
 ## Buses, and what you persist

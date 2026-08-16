@@ -159,12 +159,37 @@ export interface SongProblem {
   readonly message: string;
 }
 
-/** A running deck. One song at a time; build it with {@link createDeck}. */
+/**
+ * A running deck. One song at a time; build it with {@link createDeck}.
+ *
+ * Everything the deck was told reads back off it: `autoPump` from the options bag, the `song`
+ * it was handed, the `intensity` it was set to, and whether a given track is muted. A settings
+ * panel or a "now playing" readout that cannot ask keeps its own copy of each, and the copies
+ * agree until the first call that moves one.
+ */
 export interface MusicDeck {
   /** Whether a song is scheduling. False during a fade-out, which is still audible. */
   readonly playing: boolean;
   /** 0–1. Gates tracks by {@link Track.minIntensity}. */
   readonly intensity: number;
+  /**
+   * Whether the deck runs its own {@link PUMP_INTERVAL_MS} timer — `createDeck`'s `autoPump`,
+   * default `true`.
+   *
+   * Read it before writing a `pump()` of your own: two pumps are harmless, and *no* pump is a
+   * deck that schedules exactly one horizon of music and then stops, which sounds like the
+   * song ended rather than like a missing call.
+   */
+  readonly autoPump: boolean;
+  /**
+   * The song {@link MusicDeck.play} was last handed, or `null` before the first one and once a
+   * stop has fully faded. **Non-null through a fade-out, when `playing` is already false** —
+   * that gap is the fade, and a readout that showed nothing there would blank the title while
+   * the music was still audible.
+   *
+   * The caller's own object, not a copy: it is domain data on loan, exactly as it was passed.
+   */
+  readonly song: Song | null;
   /**
    * Fade in over `fadeSec` (default 0.6) and replace whatever was playing.
    *
@@ -180,6 +205,15 @@ export interface MusicDeck {
   setIntensity(intensity: number): void;
   /** For a settings panel that offers "no drums", and for a test that wants one track's plans. */
   setTrackMuted(trackId: string, muted: boolean): void;
+  /**
+   * Whether a track is muted. The reader half of {@link MusicDeck.setTrackMuted}, so the "no
+   * drums" checkbox can render its own state instead of keeping a second set that drifts the
+   * first time anything else mutes a track.
+   *
+   * A track id the song does not have reads `false` — the same answer as an unmuted one,
+   * because mute is a set of ids and not a claim about the song.
+   */
+  trackMuted(trackId: string): boolean;
   /**
    * Schedule everything due inside {@link LOOKAHEAD_SEC}. Idempotent, safe to over-call, and
    * safe to call at an irregular rate — notes are pinned to the audio clock, not to whoever
@@ -292,6 +326,7 @@ export function createDeck<Ids extends string>(
   const engine = internalsOf(audio);
   const request = createVoiceRequest();
   const mutedTracks = new Set<string>();
+  const autoPump = options?.autoPump ?? true;
 
   let song: Song | null = null;
   let stepSec = 0;
@@ -365,6 +400,14 @@ export function createDeck<Ids extends string>(
       return intensity;
     },
 
+    get autoPump(): boolean {
+      return autoPump;
+    },
+
+    get song(): Song | null {
+      return song;
+    },
+
     play(next: Song, playOptions?: { readonly fadeSec?: number }): void {
       // Programmer errors, named at the line that made them. A song that cannot produce step
       // times would otherwise become a NaN frequency, which WebAudio accepts and renders as
@@ -405,6 +448,10 @@ export function createDeck<Ids extends string>(
       else mutedTracks.delete(trackId);
     },
 
+    trackMuted(trackId: string): boolean {
+      return mutedTracks.has(trackId);
+    },
+
     pump(): void {
       const current = song;
       if (current === null || engine === undefined || engine.isDisposed()) return;
@@ -430,7 +477,7 @@ export function createDeck<Ids extends string>(
     },
   };
 
-  if (engine !== undefined && (options?.autoPump ?? true)) {
+  if (engine !== undefined && autoPump) {
     engine.scope.add(everyInterval(() => {
       deck.pump();
     }, PUMP_INTERVAL_MS));

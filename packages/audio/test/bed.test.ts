@@ -47,6 +47,40 @@ function bedOn(layers: readonly BedLayer[], options?: BedOptions): { harness: Ha
   return { harness: h, bed: createBed(h.audio, layers, options) };
 }
 
+describe('every option reads back off the bed', () => {
+  it('reports the defaults when it was given none', () => {
+    const { bed } = bedOn(VALLEY);
+    expect(bed.bus).toBe('sfx');
+    expect(bed.sagTo).toBe(0.55);
+    expect(bed.glideSec).toBe(1);
+  });
+
+  it('reports what it was given, clamped exactly as the bed uses it', () => {
+    const { bed } = bedOn(VALLEY, { bus: 'music', sagTo: 0.9, glideSec: 2.5 });
+    expect(bed.bus).toBe('music');
+    expect(bed.sagTo).toBe(0.9);
+    expect(bed.glideSec).toBe(2.5);
+
+    // The readback is the value in force, not the value handed in: a caller reading these to
+    // label a control must see the number the bed actually runs on.
+    const { bed: clamped } = bedOn(VALLEY, { sagTo: 0, glideSec: 0 });
+    expect(clamped.sagTo).toBe(0.01);
+    expect(clamped.glideSec).toBe(0.001);
+    const { bed: broken } = bedOn(VALLEY, { sagTo: Number.NaN, glideSec: Number.NaN });
+    expect(broken.sagTo).toBe(0.55);
+    expect(broken.glideSec).toBe(1);
+  });
+
+  it('agrees with the plans it emits', () => {
+    const { harness: h, bed } = bedOn(VALLEY, { bus: 'music', glideSec: 0.4 });
+    bed.set(1, 1);
+    const plan = h.plans[0];
+    expect(plan?.bus).toBe(bed.bus);
+    // The glide is the target's whole life, which is what a crossfade assertion needs.
+    expect((plan?.end ?? 0) - (plan?.start ?? 0)).toBe(bed.glideSec);
+  });
+});
+
 describe('driving the bed', () => {
   it('reports the clamped values it was given', () => {
     const { bed } = bedOn(VALLEY);
@@ -344,6 +378,13 @@ describe('a bed on something that is not one of our engines', () => {
       mixer: {} as Audio<string>['mixer'],
       available: false,
       voices: 0,
+      sounds: {},
+      context: null,
+      now: () => 0,
+      maxVoices: 24,
+      setMaxVoices: () => undefined,
+      maxPan: 0.6,
+      setMaxPan: () => undefined,
       unlock: () => false,
       play: () => false,
       onScheduled: () => () => undefined,

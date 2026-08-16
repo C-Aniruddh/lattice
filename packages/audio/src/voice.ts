@@ -135,6 +135,26 @@ export function fillRequest(
  */
 export interface PlayPolicy {
   /**
+   * The hard ceiling on one-shot voices in flight — **a field rather than a closure**, so it
+   * can move without rebuilding anything.
+   *
+   * Read by {@link PlayPolicy.admit} on every play and by nothing else: no array is sized from
+   * it (`ends` grows as voices are held and is compacted in place), no handle is derived from
+   * it, and nothing recorded carries it. That is the whole reason it is allowed to move at all
+   * — see `docs/rfc/live-options.md` §4.
+   *
+   * **Lowering it does not cut live voices short.** They are already scheduled on the device,
+   * and stopping one early is an audible cut for no gain, so {@link PlayPolicy.voices} may read
+   * above this number until their scheduled ends pass. Only the *next* `admit` sees the change.
+   *
+   * Unvalidated on purpose: this is package-internal, and the number arrives from
+   * `createAudio` or `Audio.setMaxVoices`, which reject a non-integer or a value below 1 in the
+   * same words. A ceiling of 0 here is silence with no error, which is exactly why the engine
+   * refuses one at both of its entrances rather than trusting this assignment.
+   */
+  maxVoices: number;
+
+  /**
    * One-shot voices whose scheduled end is still in the future.
    *
    * Counted by *scheduled end time*, never by an `onended` callback. A counter driven by
@@ -166,14 +186,17 @@ export interface PlayPolicy {
 /**
  * Build the policy for one engine.
  *
- * @param maxVoices hard ceiling on one-shot voices in flight. A sound with more layers than
- *   this can never play; that is a table to fix rather than a case to special-case, because
- *   the alternative is emitting more voices than the ceiling names.
+ * @param maxVoices the opening value of {@link PlayPolicy.maxVoices}, which may move afterwards.
+ *   A sound with more layers than the ceiling can never play; that is a table to fix rather
+ *   than a case to special-case, because the alternative is emitting more voices than the
+ *   ceiling names.
  */
 export function createPlayPolicy(maxVoices: number): PlayPolicy {
   /** Scheduled end times of live voices, in `[0, live)`. Compacted in place, never reallocated. */
   const ends: number[] = [];
   let live = 0;
+  /** The ceiling in force. Nothing is sized from it, which is why it is free to move. */
+  let ceiling = maxVoices;
   const lastPlayed = new Map<string, number>();
   const ladderStep = new Map<string, number>();
 
@@ -191,6 +214,14 @@ export function createPlayPolicy(maxVoices: number): PlayPolicy {
   };
 
   return {
+    get maxVoices(): number {
+      return ceiling;
+    },
+
+    set maxVoices(next: number) {
+      ceiling = next;
+    },
+
     voices(now: number): number {
       return prune(now);
     },
@@ -198,7 +229,7 @@ export function createPlayPolicy(maxVoices: number): PlayPolicy {
     admit(id: string, definition: SoundDef, layerCount: number, now: number): number {
       const last = lastPlayed.get(id);
       if (last !== undefined && now - last < definition.minGapMs / 1000) return -1;
-      if (prune(now) + layerCount > maxVoices) return -1;
+      if (prune(now) + layerCount > ceiling) return -1;
 
       let step = 0;
       const ladder = definition.ladder;
