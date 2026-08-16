@@ -125,13 +125,71 @@ const allowedDeps = new Map(
 // Per-file rules
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Symbols each package exports, collected while linting and written back to kit.json. */
+/** Symbols each package publishes, collected while linting and written back to kit.json. */
 const observedExports = new Map();
+
+/**
+ * The names a package actually publishes — read from `index.ts` alone.
+ *
+ * The first version of this swept every `export` under `src/`, which put a package's internals
+ * in the manifest beside its API: `@lattice/audio` listed `createVoiceRequest` and
+ * `fillRequest` next to `play`. That is worse than an incomplete manifest, because an agent
+ * navigating by `kit.json` cannot tell which of those it is allowed to call, and the ones it
+ * picks wrongly are exactly the ones that will be renamed without a major version.
+ *
+ * A module-level `export` is how one file in a package talks to another. `index.ts` is the
+ * door. Only the door goes in the manifest.
+ *
+ * Handles the three forms a barrel uses: re-export lists (`export { a, b } from './x.js'`,
+ * including `type` and `as`), declarations made directly in the barrel, and `export *`, which
+ * is expanded by reading the named module — otherwise a package that used it would silently
+ * publish nothing.
+ */
+function publishedNames(srcDir) {
+  const names = new Set();
+  const index = join(srcDir, 'index.ts');
+  let source;
+  try {
+    source = strip(readFileSync(index, 'utf8'));
+  } catch {
+    return names;
+  }
+
+  // `export * from './x.js'` — expand by scanning that module's own top-level declarations.
+  for (const match of source.matchAll(/export\s+\*\s+from\s+'(\.[^']*)'/g)) {
+    const target = join(srcDir, match[1].replace(/\.js$/, '.ts'));
+    try {
+      for (const decl of strip(readFileSync(target, 'utf8')).matchAll(
+        /^export\s+(?:declare\s+)?(?:abstract\s+)?(?:const|function|class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/gm,
+      )) {
+        names.add(decl[1]);
+      }
+    } catch {
+      /* a missing target is already a compile error; do not double-report it here */
+    }
+  }
+
+  // `export { a, b as c } from './x.js'` and `export type { … }`, possibly spanning lines.
+  for (const match of source.matchAll(/export\s+(?:type\s+)?\{([^}]*)\}/g)) {
+    for (const part of match[1].split(',')) {
+      const name = part.trim().split(/\s+as\s+/).pop()?.trim();
+      if (name && name !== 'type') names.add(name.replace(/^type\s+/, ''));
+    }
+  }
+
+  // Declarations made in the barrel itself.
+  for (const decl of source.matchAll(
+    /^export\s+(?:declare\s+)?(?:abstract\s+)?(?:const|function|class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/gm,
+  )) {
+    names.add(decl[1]);
+  }
+
+  return names;
+}
 
 for (const [id] of Object.entries(kit.packages)) {
   const srcDir = join(ROOT, 'packages', id, 'src');
   const files = walk(srcDir);
-  const exported = new Set();
 
   if (files.length === 0) continue;
   if (!files.some((f) => basename(f) === 'index.ts')) {
@@ -240,7 +298,6 @@ for (const [id] of Object.entries(kit.packages)) {
       // 7. Doc coverage on the public surface.
       const decl = line.match(/^export\s+(?:declare\s+)?(?:abstract\s+)?(?:const|function|class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/);
       if (decl) {
-        exported.add(decl[1]);
         // The line above must *close* a block comment. Checking `startsWith('*/')` was
         // wrong and cost two agents an afternoon: a doc comment whose last line reads
         // `… and that is why. */` closes perfectly well and failed the rule, so the fix
@@ -251,17 +308,10 @@ for (const [id] of Object.entries(kit.packages)) {
           fail(rel, at, 'docs', `\`${decl[1]}\` is public and undocumented — say what breaks if a caller gets it wrong`);
         }
       }
-      const reexport = line.match(/^export\s+(?:type\s+)?\{([^}]*)\}/);
-      if (reexport) {
-        for (const part of reexport[1].split(',')) {
-          const name = part.trim().split(/\s+as\s+/).pop()?.trim();
-          if (name) exported.add(name);
-        }
-      }
     });
   }
 
-  observedExports.set(id, [...exported].sort());
+  observedExports.set(id, [...publishedNames(srcDir)].sort());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
