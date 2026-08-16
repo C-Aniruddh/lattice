@@ -129,6 +129,170 @@ describe('defineEconomy — the order is computed, never declared', () => {
   });
 });
 
+describe('defineEconomy — a message must not send the reader to a plausible wrong place', () => {
+  /** The shape most config formats produce, and the one most likely to be passed by mistake. */
+  const NODE_OBJECTS = [{ id: 'lamp' }, { id: 'oil' }] as unknown as readonly 'lamp'[];
+
+  it('names the wrong *kind* of thing rather than inventing a duplicate (rule 9)', () => {
+    // The bug this pins: two distinct objects both stringify to `[object Object]` and collide in
+    // the id table, so the duplicate scan used to report
+    //   `duplicate node '[object Object]' at spec.nodes[1]`
+    // — a repeated id the caller does not have, in a spec that does not have one, while the real
+    // mistake went unmentioned. The kind check has to run *ahead* of the scan.
+    //
+    // Note the index: the audit reported `spec.nodes[1]`, because the old message could only
+    // surface at the *collision* — it needed a second object before it noticed anything. Checking
+    // the kind ahead of the scan names the **first** offender instead, which is the one the reader
+    // should look at.
+    const message = messageOf(() => defineEconomy({ nodes: NODE_OBJECTS, edges: [] }));
+    expect(message).toBe(
+      'sim.defineEconomy: expected spec.nodes[0] to be a node id string, got object',
+    );
+    expect(message).not.toContain('duplicate');
+    expect(message).not.toContain('[object Object]');
+  });
+
+  it('throws a TypeError for the wrong kind and a RangeError for the wrong value', () => {
+    // The kit's split, everywhere: wrong kind of thing is a TypeError, wrong value of the right
+    // kind is a RangeError. A caller catching one and not the other depends on it.
+    expect(() => defineEconomy({ nodes: NODE_OBJECTS, edges: [] })).toThrow(TypeError);
+    expect(() => defineEconomy({ nodes: ['oil', 'oil'], edges: [] })).toThrow(RangeError);
+  });
+
+  it('distinguishes null, an array and an object, because all three read as "object"', () => {
+    for (const [node, kind] of [
+      [null, 'null'],
+      [['oil'], 'array'],
+      [{ id: 'oil' }, 'object'],
+      [7, 'number'],
+      [undefined, 'undefined'],
+    ] as const) {
+      expect(
+        messageOf(() => defineEconomy({ nodes: [node] as unknown as readonly 'oil'[], edges: [] })),
+      ).toBe(`sim.defineEconomy: expected spec.nodes[0] to be a node id string, got ${kind}`);
+    }
+  });
+
+  it('names a gate id that is not a string', () => {
+    expect(
+      messageOf(() =>
+        defineEconomy({
+          nodes: ['a'],
+          gates: [{ id: 'grid' }] as unknown as readonly 'grid'[],
+          edges: [],
+        }),
+      ),
+    ).toBe('sim.defineEconomy: expected spec.gates[0] to be a gate id string, got object');
+  });
+
+  it('names an edge end that is not a string, before deciding it is undeclared', () => {
+    expect(
+      messageOf(() =>
+        defineEconomy({
+          nodes: ['a', 'b'],
+          edges: [{ from: { id: 'a' }, to: 'b', per: 1 } as unknown as EdgeSpec<'a' | 'b', never>],
+        }),
+      ),
+    ).toBe('sim.defineEconomy: expected spec.edges[0].from to be a node id string, got object');
+    expect(
+      messageOf(() =>
+        defineEconomy({
+          nodes: ['a', 'b'],
+          gates: ['grid'],
+          edges: [
+            { from: 'a', to: 'b', per: 1, gate: 3 } as unknown as EdgeSpec<'a' | 'b', 'grid'>,
+          ],
+        }),
+      ),
+    ).toBe('sim.defineEconomy: expected spec.edges[0].gate to be a gate id string, got number');
+  });
+
+  it('names a spec, an edge or a list that is not the shape it claims', () => {
+    expect(messageOf(() => defineEconomy(null as unknown as EconomySpec<'a', never>))).toContain(
+      'sim.defineEconomy: spec: expected a plain object',
+    );
+    expect(
+      messageOf(() =>
+        defineEconomy({ nodes: ['a'], edges: 'nope' as unknown as readonly EdgeSpec<'a', never>[] }),
+      ),
+    ).toBe('sim.defineEconomy: expected spec.edges to be an array, got string');
+    expect(
+      messageOf(() =>
+        defineEconomy({
+          nodes: ['a'],
+          gates: {} as unknown as readonly 'grid'[],
+          edges: [],
+        }),
+      ),
+    ).toBe('sim.defineEconomy: expected spec.gates to be an array, got object');
+    expect(
+      messageOf(() =>
+        defineEconomy({
+          nodes: ['a', 'b'],
+          edges: [null as unknown as EdgeSpec<'a' | 'b', never>],
+        }),
+      ),
+    ).toContain('sim.defineEconomy: spec.edges[0]: expected a plain object, got null');
+  });
+
+  it('names a scale that is not a function, rather than failing later inside buildFlow', () => {
+    const message = messageOf(() =>
+      defineEconomy({
+        nodes: ['a', 'b'],
+        edges: [{ from: 'a', to: 'b', per: 1, scale: 2 } as unknown as EdgeSpec<'a' | 'b', never>],
+      }),
+    );
+    expect(message).toContain('sim.defineEconomy: spec.edges[0].scale: expected a function');
+    expect(message).toContain('got number');
+    // And it names the fix, which is not "wrap it in an arrow" but "fold it into `per`".
+    expect(message).toContain('folded into `per`');
+  });
+
+  it('names both indices of a duplicate, so the reader can see which one to delete', () => {
+    const message = messageOf(() =>
+      defineEconomy({ nodes: ['oil', 'lamp', 'oil'], edges: [] }),
+    );
+    expect(message).toContain('spec.nodes[2]');
+    expect(message).toContain('already declared at spec.nodes[0]');
+  });
+
+  it('lists the declared ids so a near-miss is visible on sight', () => {
+    // The typo case. "Add it to spec.nodes" alone sends a reader to add a node when what they
+    // needed was to delete a letter.
+    const message = messageOf(() =>
+      defineEconomy({
+        nodes: ['lamp', 'oil'],
+        edges: [{ from: 'lamp', to: 'oill', per: -1 } as unknown as EdgeSpec<'lamp' | 'oil', never>],
+      }),
+    );
+    expect(message).toContain("names 'oill', which is not a declared node");
+    expect(message).toContain('declared nodes are lamp, oil');
+    expect(message).toContain('fix the spelling');
+  });
+
+  it('says "(none)" rather than an empty gap when no gate was declared at all', () => {
+    expect(
+      messageOf(() =>
+        defineEconomy({
+          nodes: ['a', 'b'],
+          edges: [{ from: 'a', to: 'b', per: 1, gate: 'grid' } as unknown as EdgeSpec<'a' | 'b', never>],
+        }),
+      ),
+    ).toContain('declared gates are (none)');
+  });
+
+  it('truncates a long id list rather than printing a wall', () => {
+    const many = Array.from({ length: 20 }, (_, i) => `n${String(i)}`) as readonly string[];
+    const message = messageOf(() =>
+      defineEconomy({
+        nodes: many as readonly 'n0'[],
+        edges: [{ from: 'n0', to: 'ghost', per: 1 } as unknown as EdgeSpec<'n0', never>],
+      }),
+    );
+    expect(message).toContain('… (20 in all)');
+  });
+});
+
 describe('defineEconomy — what it refuses, and what the message says', () => {
   it('refuses an empty node list', () => {
     expect(messageOf(() => defineEconomy({ nodes: [], edges: [] }))).toContain('non-empty array');
@@ -155,7 +319,10 @@ describe('defineEconomy — what it refuses, and what the message says', () => {
         edges: [{ from: 'ghost', to: 'a', per: 1 } as unknown as EdgeSpec<'a', never>],
       }),
     );
-    expect(fromSide).toContain("spec.edges[0].from names an undeclared node 'ghost'");
+    expect(fromSide).toContain("spec.edges[0].from names 'ghost', which is not a declared node");
+    // Both destinations named, and the declared ids listed so a typo is visible on sight.
+    expect(fromSide).toContain('declared nodes are a');
+    expect(fromSide).toContain('fix the spelling');
 
     const toSide = messageOf(() =>
       defineEconomy({
@@ -163,7 +330,7 @@ describe('defineEconomy — what it refuses, and what the message says', () => {
         edges: [{ from: 'a', to: 'ghost', per: 1 } as unknown as EdgeSpec<'a', never>],
       }),
     );
-    expect(toSide).toContain("spec.edges[0].to names an undeclared node 'ghost'");
+    expect(toSide).toContain("spec.edges[0].to names 'ghost', which is not a declared node");
   });
 
   it('names a self-loop as a self-loop, not as a cycle (I2)', () => {
@@ -191,7 +358,8 @@ describe('defineEconomy — what it refuses, and what the message says', () => {
         edges: [{ from: 'a', to: 'b', per: 1, gate: 'cooling' } as unknown as EdgeSpec<'a' | 'b', 'grid'>],
       }),
     );
-    expect(message).toContain("spec.edges[0].gate names an undeclared gate 'cooling'");
+    expect(message).toContain("spec.edges[0].gate names 'cooling', which is not a declared gate");
+    expect(message).toContain('declared gates are grid');
   });
 
   it('spells out a two-node cycle (I2)', () => {

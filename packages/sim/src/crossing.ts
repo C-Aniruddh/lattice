@@ -269,6 +269,8 @@ function coefficients<N extends string, G extends string>(
  *   question a game can act on anyway: pass the horizon you would actually do something about,
  *   such as the seconds until dawn.
  * @returns seconds from `stocks`, or `Infinity`. Never negative, never `NaN`.
+ * @throws TypeError if `node` is not a string — checked before the membership test, so a node
+ *   *object* is not reported as an undeclared node called `[object Object]`.
  * @throws RangeError if `node` is not a node of `eco`, or if `level` or `horizonSeconds` is not
  *   finite.
  */
@@ -280,6 +282,11 @@ export function solveCrossing<N extends string, G extends string>(
   level: number,
   horizonSeconds: number,
 ): number {
+  if (typeof node !== 'string') {
+    throw new TypeError(
+      `sim.solveCrossing: expected node to be a node id string, got ${node === null ? 'null' : typeof node}`,
+    );
+  }
   if (!owns.call(eco.index, node)) {
     throw new RangeError(
       `sim.solveCrossing: '${node}' is not a node of this economy — declared nodes are ${eco.nodes.join(', ')}`,

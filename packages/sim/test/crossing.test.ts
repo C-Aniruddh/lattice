@@ -252,6 +252,25 @@ describe('solveCrossing — what it refuses', () => {
     );
   });
 
+  it('names the wrong *kind* of node before deciding it is undeclared', () => {
+    // Same rule as `defineEconomy`: a node object must not be reported as an undeclared node
+    // called `[object Object]`, which sends the reader to edit a spec that is already correct.
+    const eco = lamps();
+    const flow = createFlow(eco);
+    for (const [node, kind] of [
+      [{ id: 'oil' }, 'object'],
+      [null, 'null'],
+      [3, 'number'],
+    ] as const) {
+      expect(
+        messageOf(() => solveCrossing(eco, { lamp: 1, oil: 1 }, flow, node as unknown as 'oil', 0, 1)),
+      ).toBe(`sim.solveCrossing: expected node to be a node id string, got ${kind}`);
+    }
+    expect(() => solveCrossing(eco, { lamp: 1, oil: 1 }, flow, 3 as unknown as 'oil', 0, 1)).toThrow(
+      TypeError,
+    );
+  });
+
   it('names a non-finite level or horizon', () => {
     const eco = lamps();
     const flow = createFlow(eco);

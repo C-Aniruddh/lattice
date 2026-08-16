@@ -23,7 +23,7 @@
  * arithmetic operation is comparison and integer addition.
  */
 
-import { expectFinite, expectNonEmpty } from '@lattice/core';
+import { expectFinite, expectNonEmpty, expectObject } from '@lattice/core';
 
 /** A stock vector, keyed by node id. Plain JSON: this is what `@lattice/persist` writes. */
 export type Stocks<N extends string> = Readonly<Record<N, number>>;
@@ -144,6 +144,67 @@ interface PreparedEdge<N extends string, G extends string> {
 const owns = Object.prototype.hasOwnProperty;
 
 /**
+ * Name the *kind* of a value for an error message.
+ *
+ * `typeof null` is `'object'` and `typeof []` is `'object'`, and both of those are things a caller
+ * plausibly passed by mistake — so reporting either as "object" sends the reader looking at the
+ * wrong half of their spec.
+ */
+function kindOf(value: unknown): string {
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  return typeof value;
+}
+
+/**
+ * Reject anything that is not an id string, **before** it can be mistaken for one.
+ *
+ * This check exists ahead of the duplicate scan for a specific reason, and it is the clearest
+ * example in this package of a diagnostic sending a reader to a plausible wrong place. A spec built
+ * from node *objects* rather than node *ids* — `nodes: [{ id: 'lamp' }, { id: 'oil' }]`, which is
+ * how most config formats look — used to report:
+ *
+ * ```
+ * sim.defineEconomy: duplicate node '[object Object]' at spec.nodes[1]
+ * ```
+ *
+ * Every word of that is a lie except the index. There is no duplicate: two *distinct* objects both
+ * stringify to `[object Object]` and collide in the id table, so the caller is sent hunting for a
+ * repeated id in a spec that has none, while the real mistake — the wrong kind of thing entirely —
+ * goes unmentioned. One `typeof` ahead of the scan is the whole fix.
+ *
+ * A `TypeError` rather than a `RangeError`, per the kit's rule: wrong kind of thing is a
+ * `TypeError`, wrong value of the right kind is a `RangeError`.
+ */
+function expectId(value: unknown, caller: string, where: string, what: string): string {
+  if (typeof value !== 'string') {
+    throw new TypeError(
+      `${caller}: expected ${where} to be a ${what} string, got ${kindOf(value)}`,
+    );
+  }
+  return value;
+}
+
+/** Reject a spec field that should be a list, before a `for…of` reports it as "not iterable". */
+function expectList(value: unknown, caller: string, where: string): void {
+  if (!Array.isArray(value)) {
+    throw new TypeError(`${caller}: expected ${where} to be an array, got ${kindOf(value)}`);
+  }
+}
+
+/**
+ * Render the declared ids for a "you named something that is not one of these" message.
+ *
+ * The near-miss is the point: `oill` against `lamp, oil` is a typo a reader spots instantly and
+ * would not spot from the offending id alone. Truncated, because a fourteen-resource economy in an
+ * error message is a wall rather than a hint.
+ */
+function listOf(ids: readonly string[]): string {
+  const shown = ids.slice(0, 12).join(', ');
+  return ids.length > 12 ? `${shown}, … (${String(ids.length)} in all)` : shown;
+}
+
+/**
  * Validate a spec and compute its evaluation order.
  *
  * The order is **derived by Kahn's algorithm and therefore proven**, not asserted against a
@@ -159,10 +220,19 @@ const owns = Object.prototype.hasOwnProperty;
  * boolean — so every message can name the offending node instead of reporting that something,
  * somewhere, was false.
  *
- * @throws RangeError — naming the caller's mistake, per house rule 9 — on: an empty node list;
- *   a duplicate node or gate; an edge naming an undeclared node or an undeclared gate; a
- *   non-finite `per`; a self-loop; or **any cycle**, with the cycle spelled out:
- *   `sim.defineEconomy: production graph has a cycle: oil → lamp → oil. ...`
+ * **This is the function every game calls first, and the one most likely to be called wrongly**, so
+ * its diagnostics carry more weight than the rest of the package's put together. Two rules are held
+ * to throughout: the kind of a value is checked *before* anything is inferred from it, and a
+ * message that could send the reader to either of two places names both.
+ *
+ * @throws TypeError — wrong kind of thing — when `spec` or an edge is not an object, `nodes`,
+ *   `gates` or `edges` is not an array, a node or gate id is not a string, or `scale` is not a
+ *   function. The id check runs ahead of the duplicate scan on purpose; see `expectId`.
+ * @throws RangeError — wrong value of the right kind, naming the caller's mistake per house rule 9
+ *   — on: an empty node list; a duplicate node or gate, with *both* indices; an edge naming an
+ *   undeclared node or gate, with the declared ids listed so a typo is visible; a non-finite `per`;
+ *   a self-loop; or **any cycle**, with the cycle spelled out:
+ *   `sim.defineEconomy: production graph has a cycle: lamp → oil → lamp. ...`
  *
  *   There is deliberately **no numerical fallback** for a cycle. A fallback would be a second
  *   implementation of the economy with different answers, and a game would cross the boundary
@@ -174,15 +244,20 @@ export function defineEconomy<N extends string, G extends string = never>(
   spec: EconomySpec<N, G>,
 ): Economy<N, G> {
   const label = 'sim.defineEconomy';
+  expectObject(spec, `${label}: spec`);
   expectNonEmpty(spec.nodes, `${label}: spec.nodes`);
 
   // ── nodes ───────────────────────────────────────────────────────────────────
+  //
+  // The kind check comes *first*, and see `expectId` for the bug it exists to prevent: without it
+  // a spec of node objects is reported as a duplicate id that does not exist.
   const declaredAt = {} as Record<N, number>;
   let position = 0;
   for (const node of spec.nodes) {
+    expectId(node, label, `spec.nodes[${String(position)}]`, 'node id');
     if (owns.call(declaredAt, node)) {
       throw new RangeError(
-        `${label}: duplicate node '${node}' at spec.nodes[${String(position)}] — a stock vector is keyed by node id, so two entries with one name are one node with two rates`,
+        `${label}: duplicate node '${node}' at spec.nodes[${String(position)}] (already declared at spec.nodes[${String(declaredAt[node])}]) — a stock vector is keyed by node id, so two entries with one name are one node with two rates`,
       );
     }
     declaredAt[node] = position;
@@ -192,30 +267,38 @@ export function defineEconomy<N extends string, G extends string = never>(
   // ── gates ───────────────────────────────────────────────────────────────────
   const gates: G[] = [];
   const gateDeclared = {} as Record<G, true>;
+  if (spec.gates !== undefined) expectList(spec.gates, label, 'spec.gates');
+  let gateAt = 0;
   for (const gate of spec.gates ?? []) {
+    expectId(gate, label, `spec.gates[${String(gateAt)}]`, 'gate id');
     if (owns.call(gateDeclared, gate)) {
       throw new RangeError(
-        `${label}: duplicate gate '${gate}' in spec.gates — a gate id is a named operating condition, and two of them with one name is one condition the game cannot address`,
+        `${label}: duplicate gate '${gate}' at spec.gates[${String(gateAt)}] — a gate id is a named operating condition, and two of them with one name is one condition the game cannot address`,
       );
     }
     gateDeclared[gate] = true;
     gates.push(gate);
+    gateAt += 1;
   }
 
   // ── edges ───────────────────────────────────────────────────────────────────
+  expectList(spec.edges, label, 'spec.edges');
   const prepared: PreparedEdge<N, G>[] = [];
   let at = 0;
   for (const edge of spec.edges) {
-    const where = `${label}: spec.edges[${String(at)}]`;
-    if (!owns.call(declaredAt, edge.from)) {
-      throw new RangeError(
-        `${where}.from names an undeclared node '${edge.from}' — add it to spec.nodes, at the end, so existing saves keep their field order`,
-      );
-    }
-    if (!owns.call(declaredAt, edge.to)) {
-      throw new RangeError(
-        `${where}.to names an undeclared node '${edge.to}' — add it to spec.nodes, at the end, so existing saves keep their field order`,
-      );
+    const slotName = `spec.edges[${String(at)}]`;
+    const where = `${label}: ${slotName}`;
+    expectObject(edge, where);
+    for (const end of ['from', 'to'] as const) {
+      expectId(edge[end], label, `${slotName}.${end}`, 'node id');
+      if (!owns.call(declaredAt, edge[end])) {
+        // Two destinations, both named, because the reader's next move depends on which mistake it
+        // was: a missing node is an edit to `spec.nodes`, and a typo is an edit right here. Listing
+        // the declared ids is what makes the difference visible — `oill` against `lamp, oil`.
+        throw new RangeError(
+          `${where}.${end} names '${edge[end]}', which is not a declared node — declared nodes are ${listOf(spec.nodes)}. Either add it to spec.nodes (at the end, so existing saves keep their field order) or fix the spelling here`,
+        );
+      }
     }
     if (edge.from === edge.to) {
       throw new RangeError(
@@ -223,9 +306,17 @@ export function defineEconomy<N extends string, G extends string = never>(
       );
     }
     expectFinite(edge.per, `${where}.per`);
-    if (edge.gate !== undefined && !owns.call(gateDeclared, edge.gate)) {
-      throw new RangeError(
-        `${where}.gate names an undeclared gate '${edge.gate}' — declare it in spec.gates, or drop the tag to leave the edge unthrottled`,
+    if (edge.gate !== undefined) {
+      expectId(edge.gate, label, `${slotName}.gate`, 'gate id');
+      if (!owns.call(gateDeclared, edge.gate)) {
+        throw new RangeError(
+          `${where}.gate names '${edge.gate}', which is not a declared gate — declared gates are ${gates.length === 0 ? '(none)' : listOf(gates)}. Either declare it in spec.gates or drop the tag to leave this edge unthrottled`,
+        );
+      }
+    }
+    if (edge.scale !== undefined && typeof edge.scale !== 'function') {
+      throw new TypeError(
+        `${where}.scale: expected a function (stocks) => number, got ${kindOf(edge.scale)} — a scale is evaluated once per buildFlow, so a plain number here should be folded into \`per\` instead`,
       );
     }
     prepared.push({
@@ -365,15 +456,18 @@ export function zeroStocks<N extends string, G extends string>(eco: Economy<N, G
  * report is available in closed form or found by bisection. A resource drained by a fixed set
  * of consumers is degree 1, which is most idle games' everything.
  *
- * @throws RangeError if `node` is not declared in `eco`.
+ * @throws TypeError if `node` is not a string — checked before the membership test, so passing a
+ *   node *object* is not reported as an undeclared node called `[object Object]`.
+ * @throws RangeError if `node` is not declared in `eco`, listing the ids that are.
  */
 export function degreeOf<N extends string, G extends string>(
   eco: Economy<N, G>,
   node: N,
 ): number {
+  expectId(node, 'sim.degreeOf', 'node', 'node id');
   if (!owns.call(eco.index, node)) {
     throw new RangeError(
-      `sim.degreeOf: '${node}' is not a node of this economy — declared nodes are ${eco.nodes.join(', ')}`,
+      `sim.degreeOf: '${node}' is not a node of this economy — declared nodes are ${listOf(eco.nodes)}`,
     );
   }
   const degree = {} as Record<N, number>;
