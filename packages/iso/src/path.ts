@@ -1,0 +1,1025 @@
+/**
+ * A path is **a curve to be sampled**, not a list of nodes to be stepped through.
+ *
+ * That one claim decides every signature in this file. A node-stepping API forces every
+ * consumer to carry a cursor, a remainder and a lerp — per walker, per frame — and the moment
+ * a walker has state it has to be saved, replayed, and reconciled when the route changes.
+ * Sampling by arc length has none of that:
+ *
+ * ```ts
+ * for (let i = 0; i < n; i++) {
+ *   pathSample(road, (t * speed + (i / n) * road.arcLength) % road.arcLength, here);
+ *   order.addPoint(here.gx, here.gy, heightAt(valley, here.gx, here.gy));
+ * }
+ * ```
+ *
+ * Fifty walkers, no per-walker state, nothing allocated, identical on every replay. The same
+ * expression drives a crowd, a staggered ignition wave along a road, and the `reach` number an
+ * idle economy is built on. It is also why re-routing is free: nobody holds a route, they hold
+ * an arc length along one, and the route is what changed.
+ *
+ * ## Everything here is integer arithmetic, and that is not a style choice
+ *
+ * A\* orders its frontier by summed cost. Float summation is associative only by luck, so two
+ * engines can pop equal-`f` nodes in a different order and produce different — both optimal,
+ * both different — paths, and a replay that diverges by one tile diverges by everything.
+ * Integer 10/14 costs make the order total and the path byte-identical everywhere. For the
+ * same reason the heuristic is the integer octile metric and there is no `sqrt` in it, and
+ * {@link pathDirAt} returns one of eight direction codes rather than an angle: `Math.atan2` is
+ * not required to be correctly rounded, so a facing that reached a save file would not survive
+ * the trip to another engine.
+ *
+ * The one `Math.sqrt` in this file is arc length, which ECMA-262 does specify exactly.
+ */
+
+import { expectIndex, hash2 } from '@lattice/core';
+import type { GridPoint, TileRange } from './projection.js';
+import { HALF_H, HALF_W } from './projection.js';
+import { MinHeap } from './heap.js';
+
+/**
+ * Movement cost of entering a tile: `0` (or less) for impassable, otherwise a **positive
+ * integer** weight where `1` is ordinary ground, `2` is twice as slow, and so on.
+ *
+ * **Weighted, not binary.** Binary walkability cannot say "shorter but rougher", and that
+ * sentence is a whole mid-game decision. The step cost is `weight × STEP_ORTHO` or
+ * `weight × STEP_DIAG`, so a scree tile at weight 3 is exactly three times the road beside
+ * it. Keep weights under about 100 so a route's total stays comfortably inside a 32-bit
+ * integer.
+ *
+ * A cost function is the right place to combine layers: terrain type from one `TileGrid`,
+ * slope from a `HeightField`, occupancy from another. It is called once per examined
+ * neighbour, so keep it arithmetic — no allocation, no `Math.pow`.
+ */
+export type TileCost = (gx: number, gy: number) => number;
+
+/** Cost of an orthogonal step, in the units {@link TileCost} multiplies. */
+export const STEP_ORTHO = 10;
+
+/** Cost of a diagonal step: 14 ≈ 10√2. The integer octile metric — close enough that a
+ *  diagonal route does not look preferred, exact enough that two engines agree. */
+export const STEP_DIAG = 14;
+
+/**
+ * Unit grid offsets for direction codes `1..8`; index `0` is `(0, 0)` and means "no route".
+ *
+ * | code | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+ * |---|---|---|---|---|---|---|---|---|
+ * | `dgx` | +1 | +1 | 0 | −1 | −1 | −1 | 0 | +1 |
+ * | `dgy` | 0 | +1 | +1 | +1 | 0 | −1 | −1 | −1 |
+ *
+ * Odd codes are orthogonal and even codes are diagonal, which is the whole of
+ * `code & 1 ? STEP_ORTHO : STEP_DIAG`. These are **grid** directions, not screen compass
+ * points: code 1 runs down-right on screen and code 2 runs straight down.
+ */
+export const DIR_DX: readonly number[] = [0, 1, 1, 0, -1, -1, -1, 0, 1];
+
+/** Grid `dgy` per direction code. See {@link DIR_DX} for the table and the parity rule. */
+export const DIR_DY: readonly number[] = [0, 0, 1, 1, 1, 0, -1, -1, -1];
+
+/** `tan(22.5°)`, the boundary between an orthogonal and a diagonal facing in grid space.
+ *  A decimal literal is an exact double and comparing against it is Tier A; it is the
+ *  *derivation* that used trigonometry, once, here, at authoring time. */
+const TAN_22_5 = 0.4142135623730951;
+
+/**
+ * How a search is allowed to move, shared by {@link PathFinder} and {@link FlowField}.
+ *
+ * All four fields are *determinism* controls as much as behaviour ones: change any of them
+ * and the same query returns a different — still optimal — route, so a recorded session
+ * replayed against different options diverges at the first junction. Pick them once, per
+ * game, and keep them with the save.
+ */
+export interface PathOptions {
+  /** Allow 8-way movement. Default `true`. */
+  readonly diagonals?: boolean;
+  /**
+   * Allow a diagonal step when a shared orthogonal neighbour is blocked. Default `false`, and
+   * leave it false: `true` walks agents through the corner where two walls meet, which looks
+   * exactly like clipping through the building.
+   */
+  readonly cutCorners?: boolean;
+  /**
+   * Hard ceiling on expanded nodes. Default `20000`.
+   *
+   * Not a performance knob — a **determinism and liveness** one. On an unbounded `ChunkGrid`
+   * an unreachable goal otherwise searches until the tab dies, and the ceiling has to be a
+   * node count rather than a time limit so that the same query gives the same answer on a
+   * slow phone as on a desktop.
+   */
+  readonly maxNodes?: number;
+  /** Confine the search to a tile rectangle, half-open. Cheaper than making the cost function
+   *  say so, and it is the difference between a failed search that stops and one that explores
+   *  the whole world first. */
+  readonly bounds?: Readonly<TileRange>;
+}
+
+/**
+ * A route: a polyline through grid space that also knows how long it is.
+ *
+ * Nodes are grid coordinates — whole numbers when they came from {@link PathFinder},
+ * fractional when the game authored them with {@link Path.push} — and alongside them the path
+ * keeps the cumulative **world-pixel** arc length to each node. That second array is what
+ * makes {@link pathSample} possible and is why this is a class rather than an array of tiles.
+ *
+ * **World pixels rather than tiles**, because the grid→world map is linear but not conformal:
+ * one grid unit along `+gx` is 35.8 world pixels and one along the `(1,1)` diagonal is 22.6. A
+ * walker advanced at a constant rate in *grid* units visibly speeds up by 58% every time the
+ * road turns, which looks exactly like a frame-rate problem and is not one.
+ *
+ * There is no `length`, deliberately: `nodeCount` and `arcLength` are different numbers in
+ * different units, and a game that computes `reach` from the node count instead of the arc
+ * length gets an economy that pays more for a zigzag than for a road.
+ */
+export class Path {
+  #gx: Float64Array;
+  #gy: Float64Array;
+  #s: Float64Array;
+  #count = 0;
+  #version = 0;
+
+  constructor(capacity = 64) {
+    const n = Math.max(1, capacity);
+    this.#gx = new Float64Array(n);
+    this.#gy = new Float64Array(n);
+    this.#s = new Float64Array(n);
+  }
+
+  /** Number of nodes, including both endpoints. `0` for an empty path. */
+  get nodeCount(): number {
+    return this.#count;
+  }
+
+  /** Total length in **world pixels**, and the domain of every `s` parameter in this module.
+   *  `0` for an empty or single-node path. */
+  get arcLength(): number {
+    return this.#count === 0 ? 0 : (this.#s[this.#count - 1] as number);
+  }
+
+  /** Bumped on every mutation. Cache anything derived from the path against it — a crowd's
+   *  spacing, a `reach`, a set of lamp offsets — and the recompute happens exactly once. */
+  get version(): number {
+    return this.#version;
+  }
+
+  /** Grid x of node `i`. @throws RangeError when `i` is out of range, rather than returning
+   *  `undefined` for a caller to trip over three systems away. */
+  gxAt(i: number): number {
+    return this.#gx[expectIndex(i, this.#count, 'Path.gxAt')] as number;
+  }
+
+  /** Grid y of node `i`. @throws RangeError when `i` is out of range. */
+  gyAt(i: number): number {
+    return this.#gy[expectIndex(i, this.#count, 'Path.gyAt')] as number;
+  }
+
+  /** Arc length in world pixels from the start to node `i`; `sAt(nodeCount - 1)` is
+   *  {@link Path.arcLength}. @throws RangeError when `i` is out of range. */
+  sAt(i: number): number {
+    return this.#s[expectIndex(i, this.#count, 'Path.sAt')] as number;
+  }
+
+  /**
+   * Append a node, extending {@link Path.arcLength} by the **world** distance from the
+   * previous one.
+   *
+   * Fractional coordinates are allowed and are how a game hands in an authored road spline: a
+   * valley road that is generated rather than searched still needs to be sampled, and it would
+   * be a strange API that could only sample the routes it found itself.
+   */
+  push(gx: number, gy: number): void {
+    if (this.#count === this.#gx.length) {
+      const next = this.#gx.length * 2;
+      const gxs = new Float64Array(next);
+      gxs.set(this.#gx);
+      this.#gx = gxs;
+      const gys = new Float64Array(next);
+      gys.set(this.#gy);
+      this.#gy = gys;
+      const ss = new Float64Array(next);
+      ss.set(this.#s);
+      this.#s = ss;
+    }
+    const i = this.#count;
+    if (i === 0) {
+      this.#s[0] = 0;
+    } else {
+      const dgx = gx - (this.#gx[i - 1] as number);
+      const dgy = gy - (this.#gy[i - 1] as number);
+      const dx = (dgx - dgy) * HALF_W;
+      const dy = (dgx + dgy) * HALF_H;
+      this.#s[i] = (this.#s[i - 1] as number) + Math.sqrt(dx * dx + dy * dy);
+    }
+    this.#gx[i] = gx;
+    this.#gy[i] = gy;
+    this.#count = i + 1;
+    this.#version += 1;
+  }
+
+  /** Drop every node, keeping the buffers, and bump {@link Path.version}. */
+  clear(): void {
+    this.#count = 0;
+    this.#version += 1;
+  }
+
+  /** Recompute the cumulative arc lengths in place after nodes have been removed. Internal to
+   *  the module — {@link pathSimplify} is the only thing that shortens a path — and package
+   *  private in spirit: it is a hash symbol away from being unreachable from outside. */
+  #reindex(count: number): void {
+    this.#count = count;
+    this.#s[0] = 0;
+    for (let i = 1; i < count; i++) {
+      const dgx = (this.#gx[i] as number) - (this.#gx[i - 1] as number);
+      const dgy = (this.#gy[i] as number) - (this.#gy[i - 1] as number);
+      const dx = (dgx - dgy) * HALF_W;
+      const dy = (dgx + dgy) * HALF_H;
+      this.#s[i] = (this.#s[i - 1] as number) + Math.sqrt(dx * dx + dy * dy);
+    }
+    this.#version += 1;
+  }
+
+  /** Keep the nodes whose index appears in `keep[0 .. kept)`, in order, then reindex. The one
+   *  mutation {@link pathSimplify} needs and the only reason this method exists. */
+  compactTo(keep: Int32Array, kept: number): void {
+    for (let i = 0; i < kept; i++) {
+      const from = keep[i] as number;
+      this.#gx[i] = this.#gx[from] as number;
+      this.#gy[i] = this.#gy[from] as number;
+    }
+    this.#reindex(kept);
+  }
+}
+
+/**
+ * The grid position at arc length `sPx` along the path, written into `out`.
+ *
+ * **The most important function in this package.** Fifty walkers are fifty calls, no
+ * per-walker state, nothing allocated, identical on every replay.
+ *
+ * It takes a **world-pixel** arc length and writes a **{@link GridPoint}**, which is not a
+ * mismatch but the point: parameterising by world length is what makes the motion look
+ * uniform, and producing a grid position is what lets the result go straight into
+ * `DepthSorter.addPoint`, `heightAt` and `gridToScreen` without a conversion — and, because
+ * `Anchor` *is* a `GridPoint`, straight into an anchor.
+ *
+ * Clamps `sPx` to `[0, arcLength]` rather than wrapping. A caller who wants a loop writes the
+ * modulo themselves and can therefore also write a ping-pong, a pause at the end, or a queue
+ * that bunches up at the gate — none of which a built-in wrap would allow.
+ *
+ * `O(log nodeCount)`: a binary search over the cumulative lengths, then one lerp.
+ *
+ * @throws RangeError on an empty path. A walker sampling a path that was cleared this frame
+ *   would otherwise sit silently at whatever `out` last held, which is a bug that looks like
+ *   a rendering problem for as long as it takes to find.
+ */
+export function pathSample(path: Path, sPx: number, out: GridPoint): GridPoint {
+  const n = path.nodeCount;
+  if (n === 0) {
+    throw new RangeError('pathSample: the path is empty — there is no position to sample');
+  }
+  if (n === 1 || !(sPx > 0)) {
+    out.gx = path.gxAt(0);
+    out.gy = path.gyAt(0);
+    return out;
+  }
+  const total = path.arcLength;
+  if (sPx >= total) {
+    out.gx = path.gxAt(n - 1);
+    out.gy = path.gyAt(n - 1);
+    return out;
+  }
+  // The last index whose arc length is <= s. Written as a "find first greater, step back"
+  // search so that an s landing exactly on a node resolves to the segment *starting* there;
+  // resolving it to the segment ending there would make a walker appear to stutter backwards
+  // at every node boundary.
+  let lo = 0;
+  let hi = n - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (path.sAt(mid) <= sPx) lo = mid;
+    else hi = mid - 1;
+  }
+  const s0 = path.sAt(lo);
+  const s1 = path.sAt(lo + 1);
+  // The span is strictly positive and the search is what makes it so: `lo` is the *greatest*
+  // index with `sAt(lo) <= sPx`, so `sAt(lo + 1) > sPx >= sAt(lo)`. A zero-length segment —
+  // two identical nodes, which an authored spline may well contain — can therefore never be
+  // the one selected, and there is no division by zero to guard against.
+  const t = (sPx - s0) / (s1 - s0);
+  const gx0 = path.gxAt(lo);
+  const gy0 = path.gyAt(lo);
+  out.gx = gx0 + (path.gxAt(lo + 1) - gx0) * t;
+  out.gy = gy0 + (path.gyAt(lo + 1) - gy0) * t;
+  return out;
+}
+
+/**
+ * Which of the eight compass directions the path is heading in at arc length `sPx`, as a
+ * direction code for {@link DIR_DX}/{@link DIR_DY}. `0` on an empty path, on a single-node
+ * path, and on a zero-length segment.
+ *
+ * A direction *code* rather than an angle, and that is a determinism decision as much as an
+ * ergonomic one: the obvious implementation is `Math.atan2`, which ECMA-262 does not require
+ * to be correctly rounded, so a facing that reaches a save file or a hash is not replayable
+ * across engines. Comparing the signs and magnitudes of `dgx` and `dgy` against an exact
+ * decimal constant is Tier A arithmetic — and is also exactly what a sprite with eight facings
+ * wants.
+ *
+ * The eight sectors are equal in **grid** space, because the eight codes are grid directions.
+ * They are emphatically not equal on screen: the projection squashes the vertical axis, so the
+ * screen angles of the eight are 0°, 26.6°, 90°, 153.4°, 180°, 206.6°, 270° and 333.4°.
+ */
+export function pathDirAt(path: Path, sPx: number): number {
+  const n = path.nodeCount;
+  if (n < 2) return 0;
+  const total = path.arcLength;
+  let lo = 0;
+  if (sPx >= total) {
+    lo = n - 2;
+  } else if (sPx > 0) {
+    let hi = n - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (path.sAt(mid) <= sPx) lo = mid;
+      else hi = mid - 1;
+    }
+    // `lo` cannot reach `n - 1` here: `sPx < arcLength = sAt(n - 1)`, so the greatest index
+    // whose arc length is at or below `sPx` is at most `n - 2` and `lo + 1` is always a node.
+  }
+  return dirCodeOf(path.gxAt(lo + 1) - path.gxAt(lo), path.gyAt(lo + 1) - path.gyAt(lo));
+}
+
+/** The direction code nearest to a grid-space delta, or `0` for no movement. Shared by
+ *  {@link pathDirAt} and nothing else yet; it is a function rather than four lines inline
+ *  because the eight-way classification is the kind of thing that gets written twice and
+ *  disagrees with itself the second time. */
+function dirCodeOf(dgx: number, dgy: number): number {
+  const ax = dgx < 0 ? -dgx : dgx;
+  const ay = dgy < 0 ? -dgy : dgy;
+  if (ax === 0 && ay === 0) return 0;
+  const orthoX = ay <= ax * TAN_22_5;
+  const orthoY = ax <= ay * TAN_22_5;
+  if (orthoX) return dgx > 0 ? 1 : 5;
+  if (orthoY) return dgy > 0 ? 3 : 7;
+  if (dgx > 0) return dgy > 0 ? 2 : 8;
+  return dgy > 0 ? 4 : 6;
+}
+
+/**
+ * The arc length of the point on the path nearest to grid position `(gx, gy)`.
+ *
+ * The inverse of {@link pathSample}, and the function that turns a *place* into a *number*:
+ * `reach` is `pathProject(road, furthestLitLamp.gx, furthestLitLamp.gy)`, and an ending that
+ * ignites each lamp staggered by its own projection is one line. Without it a game has to
+ * store an arc length beside every object on the road and keep the two in sync through every
+ * re-route.
+ *
+ * Nearest is measured in **world** space, like every other distance in this module, so a point
+ * beside a diagonal stretch of road projects where it looks like it should rather than where
+ * the grid metric would put it. Ties go to the smaller arc length, which keeps the answer
+ * stable when a road doubles back on itself.
+ *
+ * @throws RangeError on an empty path — there is no point to be nearest to.
+ */
+export function pathProject(path: Path, gx: number, gy: number): number {
+  const n = path.nodeCount;
+  if (n === 0) {
+    throw new RangeError('pathProject: the path is empty — there is no point to project onto');
+  }
+  const px = (gx - gy) * HALF_W;
+  const py = (gx + gy) * HALF_H;
+  let bestDist = Infinity;
+  let bestS = 0;
+  let ax = (path.gxAt(0) - path.gyAt(0)) * HALF_W;
+  let ay = (path.gxAt(0) + path.gyAt(0)) * HALF_H;
+  if (n === 1) return 0;
+  for (let i = 0; i < n - 1; i++) {
+    const bx = (path.gxAt(i + 1) - path.gyAt(i + 1)) * HALF_W;
+    const by = (path.gxAt(i + 1) + path.gyAt(i + 1)) * HALF_H;
+    const dx = bx - ax;
+    const dy = by - ay;
+    const lenSq = dx * dx + dy * dy;
+    let t = 0;
+    if (lenSq > 0) {
+      t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
+      if (t < 0) t = 0;
+      else if (t > 1) t = 1;
+    }
+    const cx = ax + dx * t - px;
+    const cy = ay + dy * t - py;
+    const dist = cx * cx + cy * cy;
+    // Strictly less, so the earliest segment wins a tie and the answer does not depend on
+    // which end of a doubled-back road the loop happened to reach first.
+    if (dist < bestDist) {
+      bestDist = dist;
+      const s0 = path.sAt(i);
+      bestS = s0 + (path.sAt(i + 1) - s0) * t;
+    }
+    ax = bx;
+    ay = by;
+  }
+  return bestS;
+}
+
+/**
+ * Collapse the staircase: remove collinear runs, then pull the path straight wherever the
+ * shortcut is passable. Mutates in place and shortens {@link Path.arcLength}.
+ *
+ * A raw 8-way A\* result is a stair of unit steps — a road across open ground comes back as
+ * alternating east and south-east moves — and a walker sampled along it weaves from side to
+ * side like someone finding their keys in the dark. The artefact reads as "the pathfinder is
+ * broken" when the path is in fact optimal. The same staircase also makes `arcLength` about 8%
+ * longer than the road looks, which quietly overpays a `reach`-based economy.
+ *
+ * This is the one function in the package that allocates on purpose: it needs a list of the
+ * nodes to keep, and the alternatives are a module-level scratch buffer — module-level mutable
+ * state, banned, and non-re-entrant besides — or a second parameter every caller would have to
+ * carry. It runs when a route changes, not per frame, so one array per re-route is the right
+ * side of that trade.
+ *
+ * @param cost Omit to remove only exactly-collinear nodes, which is free and always safe. Pass
+ *   one to also string-pull through open ground, which is what makes a route look like a road.
+ *   The pull only ever shortens the path, and the passability walk is a supercover — it visits
+ *   every tile the straight line touches, including the ones it only clips — so it can refuse
+ *   a legal shortcut but never accept an illegal one.
+ */
+export function pathSimplify(path: Path, cost?: TileCost): void {
+  const n = path.nodeCount;
+  if (n < 3) return;
+  const keep = new Int32Array(n);
+  let kept = 0;
+
+  if (cost === undefined) {
+    keep[kept++] = 0;
+    for (let i = 1; i < n - 1; i++) {
+      const px = path.gxAt(i) - path.gxAt(i - 1);
+      const py = path.gyAt(i) - path.gyAt(i - 1);
+      const qx = path.gxAt(i + 1) - path.gxAt(i);
+      const qy = path.gyAt(i + 1) - path.gyAt(i);
+      // Collinear *and* same-facing: a zero cross product also describes a path that doubles
+      // straight back on itself, and dropping the turn-around node there would cut a corner
+      // the route deliberately did not cut.
+      if (px * qy - py * qx !== 0 || px * qx + py * qy <= 0) keep[kept++] = i;
+    }
+    keep[kept++] = n - 1;
+    path.compactTo(keep, kept);
+    return;
+  }
+
+  // Greedy string pull: from the node we have committed to, reach as far ahead as the straight
+  // line stays passable. Greedy rather than a funnel because the funnel algorithm wants a
+  // corridor of portals, and what we have is a line of tiles.
+  keep[kept++] = 0;
+  let anchor = 0;
+  while (anchor < n - 1) {
+    let far = anchor + 1;
+    for (let j = n - 1; j > anchor + 1; j--) {
+      if (segmentPassable(cost, path.gxAt(anchor), path.gyAt(anchor), path.gxAt(j), path.gyAt(j))) {
+        far = j;
+        break;
+      }
+    }
+    keep[kept++] = far;
+    anchor = far;
+  }
+  path.compactTo(keep, kept);
+}
+
+/**
+ * Is every tile the straight line from `(x0, y0)` to `(x1, y1)` touches passable?
+ *
+ * **The line between the node coordinates, not between cell centres.** That distinction is the
+ * whole of this function's correctness and it cost a bug to find: a Bresenham walk between
+ * *tile indices* traces the line between the centres of those tiles, which is a different line
+ * from the one {@link pathSample} interpolates between the nodes themselves. Pulling a route
+ * from `(9, 10)` to `(14, 13)` passes through tile `(10, 11)` on the node line and misses it
+ * entirely on the centre line — so the check passed and the crowd walked through the wall.
+ *
+ * A grid-traversal DDA instead: step to whichever axis boundary the ray reaches first, and at
+ * an exact corner crossing — which is every crossing on a diagonal between whole nodes —
+ * require *both* adjoining tiles rather than slipping between them. That is the same rule the
+ * searcher applies with `cutCorners: false`, so a pull can never legalise a step the search
+ * itself refused.
+ *
+ * Conservative in one direction only: it can refuse a legal shortcut, which costs a slightly
+ * longer road, and it cannot accept an illegal one.
+ */
+function segmentPassable(
+  cost: TileCost,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+): boolean {
+  let ix = Math.floor(x0);
+  let iy = Math.floor(y0);
+  const ex = Math.floor(x1);
+  const ey = Math.floor(y1);
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const stepX = dx < 0 ? -1 : 1;
+  const stepY = dy < 0 ? -1 : 1;
+  const runX = dx < 0 ? -dx : dx;
+  const runY = dy < 0 ? -dy : dy;
+  // One crossing per tile boundary on each axis, plus the two tiles at the ends. Written out
+  // rather than trusted so a coordinate that arrives as a NaN cannot spin here for ever.
+  let guard = (ex > ix ? ex - ix : ix - ex) + (ey > iy ? ey - iy : iy - ey) + 2;
+  for (; guard >= 0; guard--) {
+    if (!(cost(ix, iy) > 0)) return false;
+    if (ix === ex && iy === ey) return true;
+    // **Recomputed from the current cell, never accumulated.** Adding a constant step to a
+    // running parameter drifts: nine additions of 1/9 are not 1, so the moment the ray passes
+    // exactly through a lattice corner is missed by an ulp and the walk takes one axis twice
+    // and overshoots the end. Recomputing is one division and it makes the tie exact, because
+    // division is correctly rounded and two spellings of the same rational round alike.
+    // `Infinity` for an axis the ray does not move along keeps it out of the comparison
+    // without a special case.
+    const tX = runX === 0 ? Infinity : (dx > 0 ? ix + 1 - x0 : x0 - ix) / runX;
+    const tY = runY === 0 ? Infinity : (dy > 0 ? iy + 1 - y0 : y0 - iy) / runY;
+    if (tX < tY) {
+      ix += stepX;
+    } else if (tY < tX) {
+      iy += stepY;
+    } else if (iy === ey) {
+      // A tie with only one axis left to cover: the segment ends on this lattice corner, and
+      // taking both axes would step past the destination and walk until the guard ran out.
+      ix += stepX;
+    } else if (ix === ex) {
+      iy += stepY;
+    } else {
+      // Exactly through a lattice corner with both axes still to cover. Both diagonal
+      // neighbours must be clear, or this is the join of two walls — the same rule the search
+      // applies with `cutCorners: false`, so a pull can never legalise a step it refused.
+      if (!(cost(ix + stepX, iy) > 0)) return false;
+      if (!(cost(ix, iy + stepY) > 0)) return false;
+      ix += stepX;
+      iy += stepY;
+    }
+  }
+  return false;
+}
+
+/**
+ * The integer octile heuristic — exact, admissible, and with no `sqrt` in it.
+ *
+ * `STEP_DIAG · min(|dx|, |dy|) + STEP_ORTHO · ||dx| − |dy||` is the true cost of crossing that
+ * offset over uniform ground, so it never overestimates as long as the smallest weight is 1,
+ * and being *exact* rather than merely admissible is what keeps the expanded set small. With
+ * diagonals off it degrades to Manhattan, which is the true cost there for the same reason.
+ */
+function octile(dx: number, dy: number, diagonals: boolean): number {
+  const ax = dx < 0 ? -dx : dx;
+  const ay = dy < 0 ? -dy : dy;
+  if (!diagonals) return STEP_ORTHO * (ax + ay);
+  const lo = ax < ay ? ax : ay;
+  const hi = ax < ay ? ay : ax;
+  return STEP_DIAG * lo + STEP_ORTHO * (hi - lo);
+}
+
+/** Node bookkeeping. `OPEN` is a distinct value from "never seen" so a node whose `g` improves
+ *  can be re-pushed without a decrease-key, and `CLOSED` is what makes the stale copy left on
+ *  the heap harmless when it surfaces. */
+const OPEN = 1;
+const CLOSED = 2;
+
+/**
+ * A\* over a tile source. Owns its node table and frontier, so a repeated query allocates
+ * nothing.
+ *
+ * One instance per *caller*, not one per agent and not a module singleton — module-level
+ * mutable state is banned by the constitution and would make two interleaved searches corrupt
+ * each other's frontier in a way that reproduces once an hour and never in a test.
+ *
+ * Nodes are appended to dense arrays and found through a separate open-addressed index on
+ * `core.hash2`, which is what lets both grow without invalidating the node indices the
+ * frontier is holding. An unbounded `ChunkGrid` therefore costs exactly what a bounded island
+ * does, and no allocation depends on how far from the origin the search happens to be.
+ */
+export class PathFinder {
+  #nodeGx: Int32Array;
+  #nodeGy: Int32Array;
+  #nodeG: Float64Array;
+  #nodeState: Uint8Array;
+  #nodeFrom: Int32Array;
+  #nodeCount = 0;
+  /** Slot `i` holds `node + 1`, so `0` means empty and no separate occupancy array is needed. */
+  #index: Int32Array;
+  #mask: number;
+  #open: MinHeap;
+  #unwind: Int32Array;
+  #seq = 0;
+
+  /** @param capacityTiles Expected distinct tiles per search. Everything grows by doubling, so
+   *   this is a hint rather than a limit; sized right the finder never allocates again. */
+  constructor(capacityTiles = 4096) {
+    const n = Math.max(16, capacityTiles);
+    this.#nodeGx = new Int32Array(n);
+    this.#nodeGy = new Int32Array(n);
+    this.#nodeG = new Float64Array(n);
+    this.#nodeState = new Uint8Array(n);
+    this.#nodeFrom = new Int32Array(n);
+    let size = 32;
+    while (size < n * 2) size *= 2;
+    this.#index = new Int32Array(size);
+    this.#mask = size - 1;
+    this.#open = new MinHeap(n);
+    this.#unwind = new Int32Array(64);
+  }
+
+  /**
+   * Search.
+   *
+   * @returns `true` if `out` now holds a route from start to goal. `false` means unreachable
+   *   **or** the node ceiling was hit — deliberately not distinguished, because a caller that
+   *   behaves differently in the two cases has written a bug that only appears on large maps.
+   *   `out` is cleared either way, so a failed search cannot leave the previous route behind to
+   *   be walked by mistake.
+   * @throws RangeError if the cost function returns a non-integer weight for a passable tile.
+   *   Float costs are the replay divergence this module's header is about, and one comparison
+   *   per examined neighbour is a cheap price for a bug whose only symptom is two players
+   *   seeing different roads.
+   */
+  find(
+    cost: TileCost,
+    fromGx: number,
+    fromGy: number,
+    toGx: number,
+    toGy: number,
+    out: Path,
+    options?: PathOptions,
+  ): boolean {
+    out.clear();
+    const diagonals = options?.diagonals ?? true;
+    const cutCorners = options?.cutCorners ?? false;
+    const maxNodes = options?.maxNodes ?? 20000;
+    const bounds = options?.bounds;
+
+    const startGx = Math.floor(fromGx);
+    const startGy = Math.floor(fromGy);
+    const goalGx = Math.floor(toGx);
+    const goalGy = Math.floor(toGy);
+
+    if (!inRange(bounds, startGx, startGy) || !inRange(bounds, goalGx, goalGy)) return false;
+    if (startGx === goalGx && startGy === goalGy) {
+      out.push(startGx, startGy);
+      return true;
+    }
+    // A goal standing on an impassable tile is unreachable by definition, and finding that out
+    // now saves searching the whole reachable region to discover it.
+    if (!(cost(goalGx, goalGy) > 0)) return false;
+
+    this.#reset();
+    const start = this.#node(startGx, startGy);
+    this.#nodeG[start] = 0;
+    this.#nodeState[start] = OPEN;
+    this.#nodeFrom[start] = -1;
+    this.#open.push(start, octile(startGx - goalGx, startGy - goalGy, diagonals), this.#seq++);
+
+    let expanded = 0;
+    const dirs = diagonals ? 8 : 7;
+    const step = diagonals ? 1 : 2;
+
+    while (this.#open.size > 0) {
+      const current = this.#open.pop();
+      // The stale copy of a node whose `g` improved after it was pushed. Discarding it here is
+      // what buys the absence of a decrease-key, and it is one comparison.
+      if (this.#nodeState[current] === CLOSED) continue;
+      this.#nodeState[current] = CLOSED;
+      const cgx = this.#nodeGx[current] as number;
+      const cgy = this.#nodeGy[current] as number;
+      if (cgx === goalGx && cgy === goalGy) {
+        this.#emit(current, out);
+        return true;
+      }
+      expanded += 1;
+      if (expanded >= maxNodes) return false;
+
+      const gCurrent = this.#nodeG[current] as number;
+      for (let code = 1; code <= dirs; code += step) {
+        const dx = DIR_DX[code] as number;
+        const dy = DIR_DY[code] as number;
+        const nx = cgx + dx;
+        const ny = cgy + dy;
+        if (!inRange(bounds, nx, ny)) continue;
+        const weight = cost(nx, ny);
+        if (!(weight > 0)) continue;
+        if (!Number.isInteger(weight)) {
+          throw new RangeError(
+            `PathFinder.find: expected an integer weight from the cost function at (${String(nx)}, ${String(ny)}), got ${String(weight)}`,
+          );
+        }
+        const diagonal = (code & 1) === 0;
+        if (diagonal && !cutCorners) {
+          // **Both** shared orthogonal neighbours must be passable. Checking only one lets an
+          // agent slip through the join of two walls from whichever side was not checked.
+          if (!(cost(cgx + dx, cgy) > 0) || !(cost(cgx, cgy + dy) > 0)) continue;
+        }
+        const tentative = gCurrent + weight * (diagonal ? STEP_DIAG : STEP_ORTHO);
+        const node = this.#node(nx, ny);
+        if (this.#nodeState[node] !== 0 && tentative >= (this.#nodeG[node] as number)) continue;
+        this.#nodeG[node] = tentative;
+        this.#nodeFrom[node] = current;
+        this.#nodeState[node] = OPEN;
+        this.#open.push(node, tentative + octile(nx - goalGx, ny - goalGy, diagonals), this.#seq++);
+      }
+    }
+    return false;
+  }
+
+  #reset(): void {
+    this.#nodeCount = 0;
+    this.#index.fill(0);
+    this.#open.clear();
+    this.#seq = 0;
+  }
+
+  /** The node for a tile, creating it on first sight. Linear probing: the coordinates are
+   *  compared on every probe, so a hash collision costs a step and never a wrong answer. */
+  #node(gx: number, gy: number): number {
+    let i = (hash2(HASH_SEED, gx, gy) >>> 0) & this.#mask;
+    for (;;) {
+      const entry = this.#index[i] as number;
+      if (entry === 0) {
+        if (this.#nodeCount === this.#nodeGx.length) this.#growNodes();
+        if ((this.#nodeCount + 1) * 2 > this.#index.length) {
+          this.#growIndex();
+          // The table moved, so this probe is stale; start again in the new one.
+          return this.#node(gx, gy);
+        }
+        const node = this.#nodeCount;
+        this.#nodeCount = node + 1;
+        this.#nodeGx[node] = gx;
+        this.#nodeGy[node] = gy;
+        this.#nodeG[node] = 0;
+        this.#nodeState[node] = 0;
+        this.#nodeFrom[node] = -1;
+        this.#index[i] = node + 1;
+        return node;
+      }
+      const node = entry - 1;
+      if (this.#nodeGx[node] === gx && this.#nodeGy[node] === gy) return node;
+      i = (i + 1) & this.#mask;
+    }
+  }
+
+  #growNodes(): void {
+    const next = this.#nodeGx.length * 2;
+    const gx = new Int32Array(next);
+    gx.set(this.#nodeGx);
+    this.#nodeGx = gx;
+    const gy = new Int32Array(next);
+    gy.set(this.#nodeGy);
+    this.#nodeGy = gy;
+    const g = new Float64Array(next);
+    g.set(this.#nodeG);
+    this.#nodeG = g;
+    const from = new Int32Array(next);
+    from.set(this.#nodeFrom);
+    this.#nodeFrom = from;
+    const state = new Uint8Array(next);
+    state.set(this.#nodeState);
+    this.#nodeState = state;
+  }
+
+  /** Rehash the index. The *node* indices are untouched, which is the whole point of keeping
+   *  the nodes dense and the table separate: the frontier is holding node indices and would be
+   *  silently wrong if growth moved them. */
+  #growIndex(): void {
+    const size = this.#index.length * 2;
+    this.#index = new Int32Array(size);
+    this.#mask = size - 1;
+    for (let node = 0; node < this.#nodeCount; node++) {
+      let i = (hash2(HASH_SEED, this.#nodeGx[node] as number, this.#nodeGy[node] as number) >>> 0) & this.#mask;
+      while ((this.#index[i] as number) !== 0) i = (i + 1) & this.#mask;
+      this.#index[i] = node + 1;
+    }
+  }
+
+  /** Walk `from` back to the start, then push forwards — a `Path` is built from its beginning,
+   *  and reversing an array afterwards would allocate one per tap. */
+  #emit(goal: number, out: Path): void {
+    let count = 0;
+    for (let at = goal; at >= 0; at = this.#nodeFrom[at] as number) count += 1;
+    if (this.#unwind.length < count) this.#unwind = new Int32Array(count);
+    let i = count - 1;
+    for (let at = goal; at >= 0; at = this.#nodeFrom[at] as number) {
+      this.#unwind[i] = at;
+      i -= 1;
+    }
+    for (let k = 0; k < count; k++) {
+      const node = this.#unwind[k] as number;
+      out.push(this.#nodeGx[node] as number, this.#nodeGy[node] as number);
+    }
+  }
+}
+
+/** The seed for the node table's hash. Fixed rather than caller-supplied because the table is
+ *  private: nothing outside this file can observe the probe order, so there is nothing to
+ *  decorrelate it from. */
+const HASH_SEED = 0x9e3779b9;
+
+/** Is a tile inside an optional half-open search rectangle? Shared by both searchers, because
+ *  two copies of a half-open bounds test is two chances to write one of them closed. */
+function inRange(bounds: Readonly<TileRange> | undefined, gx: number, gy: number): boolean {
+  if (bounds === undefined) return true;
+  return gx >= bounds.gx0 && gx < bounds.gx1 && gy >= bounds.gy0 && gy < bounds.gy1;
+}
+
+/**
+ * A direction per tile, pointing downhill towards the nearest goal. The answer to "fifty
+ * walkers, one depot".
+ *
+ * A\* is `O(agents × path)`; a flow field is one Dijkstra sweep over the region, shared by
+ * every agent and rebuilt only when the map changes. At fifty agents it is roughly fifty times
+ * cheaper, it handles *many* goals for free — a walker heads for the nearest of six warehouses
+ * at no extra cost, which A\* cannot do without six searches — and an agent that spawns
+ * mid-frame gets a route with no search at all.
+ *
+ * **Reachability comes free.** "Have I just walled my walkers in?" is `dirAt(x, y) === 0` after
+ * the wall is placed, or `costAt(x, y) < 0`. There is no flood-fill export and no
+ * connected-component API, because the flow field the game already keeps is the connectivity
+ * oracle.
+ *
+ * Bounded to a rectangle by construction: an infinite flow field is not a thing.
+ */
+export class FlowField {
+  #gx0: number;
+  #gy0: number;
+  #w: number;
+  #h: number;
+  #range: TileRange;
+  #cost: Float64Array;
+  #dir: Uint8Array;
+  #goals: Int32Array;
+  #goalCount = 0;
+  #queue: MinHeap;
+  #builtAtVersion = -1;
+
+  /** @throws RangeError if `w` or `h` is not an integer greater than zero. */
+  constructor(gx0: number, gy0: number, w: number, h: number) {
+    if (!Number.isInteger(w) || w <= 0 || !Number.isInteger(h) || h <= 0) {
+      throw new RangeError(
+        `FlowField: expected w and h to be integers > 0, got ${String(w)} and ${String(h)}`,
+      );
+    }
+    this.#gx0 = gx0;
+    this.#gy0 = gy0;
+    this.#w = w;
+    this.#h = h;
+    this.#range = { gx0, gy0, gx1: gx0 + w, gy1: gy0 + h };
+    this.#cost = new Float64Array(w * h);
+    this.#dir = new Uint8Array(w * h);
+    this.#goals = new Int32Array(16);
+    this.#queue = new MinHeap(w * h);
+    this.#cost.fill(-1);
+  }
+
+  /** The rectangle this field covers, half-open. The field's own object: read it, do not keep
+   *  it and mutate it. */
+  get range(): Readonly<TileRange> {
+    return this.#range;
+  }
+
+  /**
+   * The map version the last {@link FlowField.build} was told about; `-1` before the first
+   * build and after any build that was not told one.
+   *
+   * `-1` and not `0`, so that an untold field always compares unequal to a real map's version
+   * and therefore rebuilds. Failing towards a spare Dijkstra sweep is the right direction to
+   * fail: the other way round, the crowd walks the old road for ever.
+   */
+  get builtAtVersion(): number {
+    return this.#builtAtVersion;
+  }
+
+  /** Forget the previous goals. Cheap; the buffers stay. */
+  clearGoals(): void {
+    this.#goalCount = 0;
+  }
+
+  /** Add a destination. Tiles outside {@link FlowField.range} are ignored rather than an error
+   *  — a warehouse can legitimately sit off the edge of the field, and refusing to build
+   *  because of one would take the whole crowd down with it. */
+  addGoal(gx: number, gy: number): void {
+    const index = this.#indexOf(gx, gy);
+    if (index < 0) return;
+    if (this.#goalCount === this.#goals.length) {
+      const next = new Int32Array(this.#goals.length * 2);
+      next.set(this.#goals);
+      this.#goals = next;
+    }
+    this.#goals[this.#goalCount] = index;
+    this.#goalCount += 1;
+  }
+
+  /**
+   * Integrate: one Dijkstra sweep outward from every goal at once.
+   *
+   * Deterministic — the frontier is ordered by accumulated cost with ties broken by **tile
+   * index**, which is a total order over the field, so the same map and the same goals give the
+   * same field on every engine.
+   *
+   * *(The RFC sketched a bucket queue. A binary heap is used instead because the largest edge
+   * weight is whatever the caller's cost function returns, and a bucket queue sized for an
+   * unknown maximum is either wrong or unbounded. The ordering guarantee is identical, and it
+   * is the ordering that the determinism rests on.)*
+   *
+   * @param sourceVersion The `MutableTileSource.version` this build read, recorded in
+   *   {@link FlowField.builtAtVersion} so a caller can decide whether to rebuild. Omit it and
+   *   the field always reports itself stale.
+   * @throws RangeError if the cost function returns a non-integer weight, for the reason
+   *   {@link PathFinder.find} gives.
+   */
+  build(cost: TileCost, options?: PathOptions, sourceVersion = -1): void {
+    const diagonals = options?.diagonals ?? true;
+    const cutCorners = options?.cutCorners ?? false;
+    this.#cost.fill(-1);
+    this.#dir.fill(0);
+    this.#queue.clear();
+    this.#builtAtVersion = sourceVersion;
+
+    for (let i = 0; i < this.#goalCount; i++) {
+      const index = this.#goals[i] as number;
+      if (this.#cost[index] !== -1) continue;
+      this.#cost[index] = 0;
+      this.#queue.push(index, 0, index);
+    }
+
+    const w = this.#w;
+    const dirs = diagonals ? 8 : 7;
+    const step = diagonals ? 1 : 2;
+    while (this.#queue.size > 0) {
+      const index = this.#queue.pop();
+      const base = this.#cost[index] as number;
+      const gx = this.#gx0 + (index % w);
+      const gy = this.#gy0 + ((index / w) | 0);
+      // The sweep runs outward *from* the goals, so what a neighbour pays to reach this tile is
+      // the cost of entering *this* one. Reading the neighbour's weight instead is the classic
+      // off-by-one-tile in a reverse Dijkstra, and it makes a road that is cheap in one
+      // direction and expensive in the other.
+      const enter = cost(gx, gy);
+      if (!(enter > 0)) continue;
+      if (!Number.isInteger(enter)) {
+        throw new RangeError(
+          `FlowField.build: expected an integer weight from the cost function at (${String(gx)}, ${String(gy)}), got ${String(enter)}`,
+        );
+      }
+      for (let code = 1; code <= dirs; code += step) {
+        const dx = DIR_DX[code] as number;
+        const dy = DIR_DY[code] as number;
+        const nx = gx + dx;
+        const ny = gy + dy;
+        const nIndex = this.#indexOf(nx, ny);
+        if (nIndex < 0) continue;
+        // A walker cannot be standing on an impassable tile, so it gets no direction at all.
+        if (!(cost(nx, ny) > 0)) continue;
+        const diagonal = (code & 1) === 0;
+        if (diagonal && !cutCorners) {
+          if (!(cost(nx, gy) > 0) || !(cost(gx, ny) > 0)) continue;
+        }
+        const next = base + enter * (diagonal ? STEP_DIAG : STEP_ORTHO);
+        const known = this.#cost[nIndex] as number;
+        if (known !== -1 && known <= next) continue;
+        this.#cost[nIndex] = next;
+        // The neighbour steps back towards this tile, which is the reverse of the direction the
+        // sweep travelled: the codes run round a circle, so the reverse of `c` is `c + 4`
+        // wrapped into 1..8.
+        this.#dir[nIndex] = ((code + 3) % 8) + 1;
+        this.#queue.push(nIndex, next, nIndex);
+      }
+    }
+  }
+
+  /** Direction code `1..8` to step next, or `0` for "no route from here" — which is also what a
+   *  goal tile returns, because there is nowhere left to step. {@link FlowField.costAt} tells
+   *  the two apart: a goal is `0` and no route is `-1`. */
+  dirAt(gx: number, gy: number): number {
+    const index = this.#indexOf(gx, gy);
+    return index < 0 ? 0 : (this.#dir[index] as number);
+  }
+
+  /** Accumulated cost to the nearest goal in {@link STEP_ORTHO} units, or `-1` when the tile is
+   *  unreachable or outside the field. */
+  costAt(gx: number, gy: number): number {
+    const index = this.#indexOf(gx, gy);
+    return index < 0 ? -1 : (this.#cost[index] as number);
+  }
+
+  /** Sugar over {@link FlowField.dirAt}: writes the next tile into `out` and returns `true`, or
+   *  returns `false` leaving `out` untouched when there is no route. */
+  step(gx: number, gy: number, out: GridPoint): boolean {
+    const code = this.dirAt(gx, gy);
+    if (code === 0) return false;
+    out.gx = gx + (DIR_DX[code] as number);
+    out.gy = gy + (DIR_DY[code] as number);
+    return true;
+  }
+
+  #indexOf(gx: number, gy: number): number {
+    const dx = gx - this.#gx0;
+    const dy = gy - this.#gy0;
+    if (!(dx >= 0 && dx < this.#w && dy >= 0 && dy < this.#h)) return -1;
+    if (!Number.isInteger(dx) || !Number.isInteger(dy)) return -1;
+    return dy * this.#w + dx;
+  }
+}
