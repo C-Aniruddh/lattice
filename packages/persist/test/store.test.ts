@@ -10,10 +10,13 @@ import {
   createStore,
   elapsedSince,
   inspect,
+  scheduleFrom,
   type Autosave,
   type Cancel,
   type FailureReason,
   type OpenResult,
+  type Schedule,
+  type SecondsTimeline,
   type Store,
   type StoreOptions,
 } from '../src/store.js';
@@ -753,6 +756,121 @@ describe('autosave', () => {
   });
 });
 
+// ── the seconds/milliseconds seam ────────────────────────────────────────────────
+
+/**
+ * `loop.real`, structurally — `after(delay: Seconds, fn): TimerId` and `cancel(id): boolean`,
+ * plus the rest of `Scheduler` so that assignability to `SecondsTimeline` is really tested and
+ * not merely asserted against a two-method stub.
+ */
+function fakeTimeline(): SecondsTimeline & {
+  readonly delaysSeen: number[];
+  readonly cancelledIds: number[];
+  readonly time: number;
+  readonly pending: number;
+  every(period: number, fn: (repeats: number) => void): number;
+  cancelAll(): void;
+  fire(id: number): void;
+} {
+  const timers = new Map<number, () => void>();
+  const delaysSeen: number[] = [];
+  const cancelledIds: number[] = [];
+  let nextId = 1;
+  return {
+    delaysSeen,
+    cancelledIds,
+    time: 0,
+    pending: 0,
+    after(delay: number, fn: () => void): number {
+      delaysSeen.push(delay);
+      const id = nextId;
+      nextId += 1;
+      timers.set(id, fn);
+      return id;
+    },
+    every(): number {
+      return 0;
+    },
+    cancel(id: number): boolean {
+      cancelledIds.push(id);
+      return timers.delete(id);
+    },
+    cancelAll(): void {
+      timers.clear();
+    },
+    fire(id: number): void {
+      timers.get(id)?.();
+    },
+  };
+}
+
+describe('scheduleFrom — the one place the 1000 lives', () => {
+  it('converts milliseconds to seconds, so four seconds is not sixty-seven minutes', () => {
+    const timeline = fakeTimeline();
+    const { store, spy } = harness({ minWriteIntervalMs: 4000 });
+    store.open();
+    const auto = store.autosave(() => FRESH, { schedule: scheduleFrom(timeline) });
+
+    // The assertion the whole function exists for. `4`, not `4000`.
+    expect(timeline.delaysSeen).toEqual([4]);
+    expect(spy.writes).toBe(0);
+
+    timeline.fire(1);
+    expect(spy.writes).toBe(1);
+    expect(auto.lastWrite?.written).toBe(true);
+    // …and it re-arms in seconds too.
+    expect(timeline.delaysSeen).toEqual([4, 4]);
+  });
+
+  it('cancels the timer it armed, exactly once, however many times the disposer is called', () => {
+    const timeline = fakeTimeline();
+    const schedule: Schedule = scheduleFrom(timeline);
+
+    const cancel: Cancel = schedule(2500, () => undefined);
+    expect(timeline.delaysSeen).toEqual([2.5]);
+
+    cancel();
+    cancel();
+    cancel();
+    expect(timeline.cancelledIds).toEqual([1]);
+  });
+
+  it('is what store.autosave().stop() reaches through', () => {
+    const timeline = fakeTimeline();
+    const { store } = harness();
+    store.open();
+    const auto = store.autosave(() => FRESH, { schedule: scheduleFrom(timeline) });
+
+    auto.stop();
+    expect(timeline.cancelledIds).toEqual([1]);
+    timeline.fire(1);
+    expect(auto.lastWrite).toBe(null);
+  });
+
+  it('makes the wrong wiring a compile error rather than an hour-long outage', () => {
+    const timeline = fakeTimeline();
+
+    // `loop.real.after` counts in seconds and returns a TimerId. Passing it as a `Schedule`
+    // fails on the return type — and forced through with a cast it would ask for a write
+    // every 4,000 seconds while reporting `ok` the entire time.
+    // @ts-expect-error a TimerId is not a Cancel, and the unit is seconds
+    const wrong: Schedule = timeline.after;
+    expect(typeof wrong).toBe('function');
+
+    expect(() => {
+      // @ts-expect-error scheduleFrom takes the timeline, not one of its methods
+      scheduleFrom(timeline.after);
+    }).toThrow(TypeError);
+  });
+
+  it('refuses a method or a nothing at wiring time, which beats the first missed autosave', () => {
+    const timeline = fakeTimeline();
+    expect(() => scheduleFrom(timeline.after as unknown as SecondsTimeline)).toThrow(/loop\.real\.after/);
+    expect(() => scheduleFrom(undefined as unknown as SecondsTimeline)).toThrow(TypeError);
+    expect(() => scheduleFrom({ after: timeline.after } as unknown as SecondsTimeline)).toThrow(TypeError);
+  });
+});
+
 // ── the status is a condition, not a message ─────────────────────────────────────
 
 describe('status', () => {
@@ -1264,5 +1382,102 @@ describe('Autosave is structurally what installFlushTriggers needs', () => {
     expect(typeof auto.flush).toBe('function');
     expect(typeof auto.stop).toBe('function');
     expect(auto.lastWrite).toBe(null);
+  });
+});
+
+// ── the README's example, under test rather than under review ────────────────────
+
+describe('the README example, verbatim', () => {
+  // The example on the front page of this package, copied line for line, with every
+  // `console.log` turned into the assertion it was implicitly making. It lives here because
+  // an example that is only checked when its author remembers to check it is the same kind of
+  // artefact as the two seams that rotted: a claim nothing compiles and nothing runs.
+  it('prints exactly what the README says it prints', () => {
+    interface V1 {
+      readonly version: 1;
+      readonly coins: number;
+    }
+    interface V2 {
+      readonly version: 2;
+      readonly wallet: { readonly coin: number };
+    }
+
+    const isReadmeV1: Recognise<V1> = (value) => {
+      const coins = (value as { coins?: unknown }).coins;
+      if (typeof coins !== 'number' || !Number.isFinite(coins)) {
+        throw new RangeError(`save.v1.coins: expected a finite number, got ${String(coins)}`);
+      }
+      return { version: 1, coins };
+    };
+
+    const isReadmeV2: Recognise<V2> = (value) => {
+      const coin = (value as { wallet?: { coin?: unknown } }).wallet?.coin;
+      if (typeof coin !== 'number' || !Number.isFinite(coin)) {
+        throw new RangeError(`save.v2.wallet.coin: expected a finite number, got ${String(coin)}`);
+      }
+      return { version: 2, wallet: { coin } };
+    };
+
+    const readmeChain = migrations(1, isReadmeV1)
+      .step(
+        2,
+        'one coin counter became a wallet of currencies',
+        (v1) => ({ version: 2 as const, wallet: { coin: v1.coins } }),
+        isReadmeV2,
+      )
+      .seal();
+
+    let clock = 1_700_000_000_000;
+    const adapter = memoryStorage();
+    const readmeStore = createStore({
+      key: 'campus:save',
+      chain: readmeChain,
+      adapter,
+      fresh: (): V2 => ({ version: 2, wallet: { coin: 0 } }),
+      now: () => asEpochMillis(clock),
+    });
+
+    const payload = '{"coins":250}';
+    adapter.set(
+      'campus:save',
+      JSON.stringify({ v: 1, t: clock - 90_000, n: 1, c: defaultChecksum(payload), d: payload }),
+    );
+
+    const opened = readmeStore.open();
+    // > save 1 {"version":2,"wallet":{"coin":250}}
+    expect([opened.source, opened.migratedFrom, JSON.stringify(opened.state)]).toEqual([
+      'save',
+      1,
+      '{"version":2,"wallet":{"coin":250}}',
+    ]);
+    // > not-persistent 2 90000
+    expect([readmeStore.status, readmeStore.version, elapsedSince(opened, asEpochMillis(clock))]).toEqual([
+      'not-persistent',
+      2,
+      90_000,
+    ]);
+
+    let live: V2 = opened.state;
+    const auto = readmeStore.autosave(() => live);
+    live = { version: 2, wallet: { coin: 300 } };
+    // > true false
+    expect([auto.tick(), auto.tick()]).toEqual([true, false]);
+    clock += 4001;
+    // > true 94
+    expect([auto.tick(), auto.lastWrite?.bytes]).toEqual([true, 94]);
+
+    adapter.set('campus:save', '{"v":2,"t":0,"n":9,"c":"00000000","d":"{}"}');
+    const broken = readmeStore.open();
+    // > fresh false corrupt
+    expect([broken.source, broken.firstRun, broken.failure?.reason]).toEqual(['fresh', false, 'corrupt']);
+    // > persist: save "campus:save" failed its checksum — the envelope claims 00000000 …
+    expect(readmeStore.rejected()?.failure.message).toBe(
+      'persist: save "campus:save" failed its checksum — the envelope claims 00000000 and the payload hashes to 446b98f4. The payload was not parsed.',
+    );
+
+    live = readmeStore.reset();
+    // > closed null
+    expect([auto.flush().skipped, adapter.get('campus:save')]).toEqual(['closed', null]);
+    expect(live).toEqual({ version: 2, wallet: { coin: 0 } });
   });
 });

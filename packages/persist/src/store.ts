@@ -217,15 +217,82 @@ export type Cancel = () => void;
  *
  * Injected, never created. `persist` may not import `@lattice/loop` — they are siblings on
  * layer 1 and the DAG forbids the edge — and it may not reach for a timer of its own, because
- * a package that creates a timer is a package that owns a leak. A browser game passes
- * `loop.real.after`; a Node test passes a function that records its callbacks and runs them
- * by hand, and every coalescing test then finishes in microseconds with no fake timers.
+ * a package that creates a timer is a package that owns a leak. A browser game wraps
+ * `loop.real` with {@link scheduleFrom}; a Node test passes a function that records its
+ * callbacks and runs them by hand, and every coalescing test then finishes in microseconds
+ * with no fake timers.
+ *
+ * **The unit is milliseconds**, as the parameter name says and as `minWriteIntervalMs`,
+ * `EpochMillis` and `elapsedSince` all say. `@lattice/loop` schedules in **seconds**, so
+ * `loop.real.after` is not a `Schedule` and must never be passed as one — use
+ * {@link scheduleFrom}.
  *
  * **Whatever you pass must keep firing in a hidden tab.** `requestAnimationFrame` is 0 Hz
  * when the tab is backgrounded, so an rAF-backed scheduler stops saving at precisely the
  * moment a player is most likely to close the tab.
  */
 export type Schedule = (afterMs: number, fn: () => void) => Cancel;
+
+/**
+ * A seconds-based timeline, structurally — `loop.real` and `loop.sim` both satisfy it.
+ *
+ * Declared rather than imported, exactly as `StorageLike` declares `localStorage` and
+ * `ListenerTarget` declares `document`: `@lattice/loop` is a sibling on layer 1 and the DAG
+ * forbids the edge, so the coupling is two method signatures and nothing else.
+ *
+ * `delay` is in **seconds** and the returned handle is an opaque id, which is the whole reason
+ * {@link scheduleFrom} exists.
+ */
+export interface SecondsTimeline {
+  after(delay: number, fn: () => void): number;
+  cancel(id: number): boolean;
+}
+
+/**
+ * Turn a seconds-based timeline into the millisecond {@link Schedule} this package takes.
+ *
+ * ```ts
+ * const auto = store.autosave(() => game.state, { schedule: scheduleFrom(loop.real) });
+ * ```
+ *
+ * **This function exists because the alternative is a silent hour-long outage.** `loop` counts
+ * in seconds throughout and this package counts in milliseconds throughout, and neither is
+ * wrong: a save file's calendar is `EpochMillis`, and a frame budget is naturally sub-second.
+ * But the two meet at exactly one call site, and a reader who writes
+ * `{ schedule: loop.real.after }` and silences the return-type error with a cast has just
+ * asked for a write every 4,000 **seconds** — 67 minutes — instead of every four. Nothing
+ * looks broken. The game plays, the store reports `ok`, and the player loses an hour of
+ * progress the first time the tab is closed at the wrong moment.
+ *
+ * So the conversion lives here, in one audited place, rather than in the same three-line shim
+ * in every game. It is also the only `/ 1000` in the package, and it should stay that way.
+ *
+ * The returned `Cancel` is idempotent: it forgets its id after the first call, so a stale
+ * disposer cannot cancel a timer that some later `after` was given the same id for. `loop`
+ * never reuses ids, but this takes any conforming timeline and the guard costs one boolean.
+ *
+ * @throws TypeError if `timeline` does not have `after` and `cancel` — a developer error at
+ *   wiring time, which is a much better moment than the first missed autosave.
+ */
+export function scheduleFrom(timeline: SecondsTimeline): Schedule {
+  if (typeof timeline?.after !== 'function' || typeof timeline.cancel !== 'function') {
+    // `String(fn)` would print the whole function body here, which buries the one sentence
+    // that fixes it — and the overwhelmingly likely mistake *is* passing the method.
+    const got = typeof timeline === 'function' ? 'a function' : String(timeline);
+    throw new TypeError(
+      `scheduleFrom: expected a timeline with after(seconds, fn) and cancel(id), got ${got} — pass \`loop.real\` itself, not \`loop.real.after\``,
+    );
+  }
+  return (afterMs: number, fn: () => void): Cancel => {
+    const id = timeline.after(afterMs / 1000, fn);
+    let live = true;
+    return (): void => {
+      if (!live) return;
+      live = false;
+      timeline.cancel(id);
+    };
+  };
+}
 
 /**
  * What is wrong with this store right now, as a **condition rather than a message**.

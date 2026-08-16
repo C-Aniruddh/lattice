@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { expectObject, expectRecordOfFinite } from '@lattice/core';
 import { migrations, type ChainBuilder, type Increment, type Recognise } from '../src/migrate.js';
 
 interface V1 {
@@ -193,6 +194,35 @@ describe('seal', () => {
     expect(short.head).toBe(1);
     expect(long.head).toBe(2);
     expect(short.steps).toEqual([]);
+  });
+});
+
+describe('the Recognise example from the doc comment, verbatim', () => {
+  // If this stops compiling, the doc comment on `Recognise` is wrong and a reader who copies
+  // it gets a type error they did not write. That is the entire point of it living here: an
+  // example nobody compiles is a claim nobody checks.
+  interface Wallet {
+    readonly version: 2;
+    readonly wallet: Record<string, number>;
+  }
+
+  const isWallet: Recognise<Wallet> = (value) => {
+    const o = expectObject(value, 'save.v2');
+    return { version: 2, wallet: expectRecordOfFinite(o['wallet'], 'save.v2.wallet') };
+  };
+
+  it('recognises a good payload and returns it typed', () => {
+    expect(isWallet({ wallet: { coin: 12, ore: 3 } })).toEqual({ version: 2, wallet: { coin: 12, ore: 3 } });
+  });
+
+  it('names the field that was wrong, which is what makes a rejection a bug report', () => {
+    expect(() => isWallet('not an object')).toThrow(/save\.v2/);
+    expect(() => isWallet({ wallet: { coin: Number.POSITIVE_INFINITY } })).toThrow(/save\.v2\.wallet\.coin/);
+  });
+
+  it('drives a chain built from it, so the composition is checked and not just the guard', () => {
+    const built = migrations(2, isWallet).seal();
+    expect(built.run({ wallet: { coin: 1 } }, 2)).toEqual({ version: 2, wallet: { coin: 1 } });
   });
 });
 

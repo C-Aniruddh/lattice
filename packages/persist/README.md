@@ -82,7 +82,7 @@ const opened = store.open();     // never throws, for any content whatsoever
 console.log(opened.source, opened.migratedFrom, JSON.stringify(opened.state));
 console.log(store.status, store.version, elapsedSince(opened, asEpochMillis(clock)));
 
-// Coalesced writes. No timer here: `tick()` polls, or inject `loop.real.after` as `schedule`.
+// Coalesced writes. No timer here: `tick()` polls, or pass `scheduleFrom(loop.real)`.
 let live: V2 = opened.state;
 const auto = store.autosave(() => live);
 live = { version: 2, wallet: { coin: 300 } };
@@ -125,9 +125,16 @@ In a browser the last three lines of wiring are:
 
 ```ts
 const store = createStore({ key: 'campus:save', chain, adapter: browserStorage(), fresh, now });
-const auto = store.autosave(() => game.state, { schedule: loop.real.after });
+const auto = store.autosave(() => game.state, { schedule: scheduleFrom(loop.real) });
 installFlushTriggers(auto, { visibility: document, page: window });
 ```
+
+`scheduleFrom(loop.real)`, **never** `loop.real.after`. `@lattice/loop` schedules in seconds
+and returns a `TimerId`; this package schedules in milliseconds and wants a `Cancel`. Passing
+the method directly does not compile — and cast through, it asks for a write every 4,000
+*seconds*, so the game autosaves once every 67 minutes while `store.status` reports `ok` the
+whole time. `scheduleFrom` is the only `/ 1000` in the package and it exists so that
+conversion happens once, here, instead of in a three-line shim in every game.
 
 ---
 
@@ -230,8 +237,11 @@ Both are injected and neither has a default.
   would pay out nothing, and *nothing would look broken*.
 - **`schedule: Schedule`** is optional on `autosave`, and when it is absent you drive `tick()`
   yourself. `persist` may not import `@lattice/loop` — siblings on layer 1, and the DAG forbids
-  the edge — so a browser game passes `loop.real.after` and a Node test passes a function that
-  records its callbacks and runs them by hand.
+  the edge — so a browser game passes `scheduleFrom(loop.real)` and a Node test passes a
+  function that records its callbacks and runs them by hand. `Schedule` counts in
+  **milliseconds**, like `minWriteIntervalMs` and every other duration here; `SecondsTimeline`
+  is the seconds-shaped thing `scheduleFrom` adapts, declared structurally so no edge is
+  needed.
 
 Whatever you pass as `schedule` **must keep firing in a hidden tab**. `requestAnimationFrame`
 is 0 Hz when the tab is backgrounded, which is precisely the moment before a tab is closed.
@@ -310,6 +320,25 @@ A few more, mined from the game this kit was extracted from:
 
 ---
 
+## A note on the examples in this file
+
+**Anything in this README or in a doc comment that looks like a call is reachable from a test,
+and that is a rule rather than an aspiration.** Two examples in this package were once wrong:
+one wired `loop.real.after` straight into `schedule`, and one composed a `core` guard that
+cannot accept an `unknown`. Both survived a review, a full suite and 100% coverage, because
+prose is not compiled and nothing was checking it.
+
+The lesson is narrower and more useful than "keep the docs current". **A run-tested example and
+a hand-written one are indistinguishable to a reader, and are read with equal trust** — nobody
+copies the snippet that happens to be under test, they copy the one nearest the symbol they are
+looking at. So an example here either compiles and runs somewhere, or it is marked as a sketch.
+The cheapest way to keep that honest is to paste the doc's example into a test file verbatim
+and let `tsc` and `vitest` own it from then on, which is what
+`test/migrate.test.ts > the Recognise example from the doc comment, verbatim` and
+`test/store.test.ts > scheduleFrom` now do.
+
+---
+
 ## What is deliberately absent
 
 Async adapters and promises anywhere in the surface (the page does not await a `pagehide`);
@@ -332,7 +361,7 @@ back.
 | **adapters** | `StorageLike`, `StorageAdapter`, `webStorage`, `memoryStorage` |
 | **chain** | `Increment`, `Recognise`, `MigrationStep`, `MigrationChain`, `ChainBuilder`, `migrations` |
 | **envelope** | `Envelope`, `FailureReason`, `ReadFailure`, `OpenResult`, `inspect`, `elapsedSince` |
-| **store** | `StoreOptions`, `Store`, `createStore`, `StoreStatus`, `WriteSkip`, `WriteFailure`, `WriteResult`, `Rejected`, `Schedule`, `Cancel`, `AutosaveOptions`, `Autosave` |
+| **store** | `StoreOptions`, `Store`, `createStore`, `StoreStatus`, `WriteSkip`, `WriteFailure`, `WriteResult`, `Rejected`, `Schedule`, `Cancel`, `SecondsTimeline`, `scheduleFrom`, `AutosaveOptions`, `Autosave` |
 | **replay** | `ReplayCompat`, `Digest`, `Checkpoint`, `ReplayLog`, `RecorderOptions`, `Recorder`, `createRecorder`, `Refusal`, `Divergence`, `ReplayVerdict`, `ReplayVerifier`, `createVerifier` |
 | **browser** | `ListenerTarget`, `FlushTargets`, `installFlushTriggers`, `browserStorage`, `VERSION` |
 

@@ -358,3 +358,33 @@ describe('expectRecordOfFinite', () => {
     expect(() => expectRecordOfFinite(written, 'stocks')).toThrow(/stocks\.coin:/);
   });
 });
+
+/**
+ * The widening that made the numeric guards usable on the save path.
+ *
+ * `expectFinite` and `expectSerializable` were typed `(value: number)` while runtime-checking
+ * for a number anyway — so a recogniser holding an `unknown` out of `JSON.parse` could not
+ * apply them without a cast, and casting defeats the check it was reaching for. `persist`
+ * reported that every one of its recognisers was hand-rolling a `typeof` as a result.
+ */
+describe('the numeric guards accept unknown', () => {
+  it('narrows a value that arrived as unknown', () => {
+    const fromJson: unknown = JSON.parse('42');
+    const n: number = expectFinite(fromJson, 'save.coins');
+    expect(n).toBe(42);
+    expect(expectSerializable(JSON.parse('1e308') as unknown, 'save.big')).toBe(1e308);
+  });
+
+  it('still rejects the wrong kind with a TypeError, and the wrong value with a RangeError', () => {
+    expect(() => expectFinite('42' as unknown, 'save.coins')).toThrow(TypeError);
+    expect(() => expectFinite(null as unknown, 'save.coins')).toThrow(TypeError);
+    expect(() => expectFinite(NaN as unknown, 'save.coins')).toThrow(RangeError);
+    expect(() => expectSerializable(Infinity as unknown, 'save.coins')).toThrow(RangeError);
+  });
+
+  // The -0 normalisation has to survive the widening: JSON.stringify(-0) is "0", so a value
+  // that changes across a round trip fails an integrity check for a reason nobody can find.
+  it('still normalises -0 through the unknown path', () => {
+    expect(Object.is(expectSerializable(-0 as unknown, 'save.zero'), 0)).toBe(true);
+  });
+});

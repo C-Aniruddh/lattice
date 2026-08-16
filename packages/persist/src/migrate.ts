@@ -36,11 +36,23 @@ export type Increment<N extends number, Counter extends readonly unknown[] = []>
  * module took for the same reason, and it composes directly with it:
  *
  * ```ts
+ * import { expectObject, expectRecordOfFinite } from '@lattice/core';
+ *
  * const isV2: Recognise<V2> = value => {
  *   const o = expectObject(value, 'save.v2');
- *   return { version: 2, coins: expectSerializable(o.coins, 'save.v2.coins') };
+ *   return { version: 2, wallet: expectRecordOfFinite(o['wallet'], 'save.v2.wallet') };
  * };
  * ```
+ *
+ * That example compiles, and `test/migrate.test.ts` runs it verbatim — see the note on
+ * examples in `index.ts` about why that matters.
+ *
+ * Note the bracket access. `expectObject` returns `Record<string, unknown>`, and the repo
+ * builds with `noPropertyAccessFromIndexSignature`, so `o.wallet` does not compile and
+ * `o['wallet']` does. The guards that take a `number` (`expectFinite`, `expectSerializable`)
+ * cannot be handed an `unknown` straight from `JSON.parse` without a cast; reach for the
+ * `unknown`-accepting ones (`expectObject`, `expectRecordOfFinite`) on the save path, and
+ * check a lone scalar with a `typeof` of your own until `core` widens the others.
  *
  * Two things fall out of returning rather than asserting. The thrown message travels into
  * `ReadFailure.message`, so a rejected save says *which field* was wrong instead of "the

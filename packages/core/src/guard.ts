@@ -40,10 +40,15 @@ function show(value: unknown): string {
  * The type half of every numeric guard below.
  *
  * A `TypeError` and not a `RangeError`, per the kit's rule: wrong kind of thing is a
- * `TypeError`, wrong value of the right kind is a `RangeError`. Only a caller from untyped
- * JavaScript — or a value that came out of `JSON.parse` — can reach this.
+ * `TypeError`, wrong value of the right kind is a `RangeError`.
+ *
+ * Takes `unknown` rather than `number`, which is the whole reason the two public guards below
+ * can be used on the save path. A value out of `JSON.parse` is `unknown`, and a guard typed
+ * `(value: number)` cannot be applied to one without a cast — so a recogniser either casts
+ * (defeating the check it was reaching for) or hand-rolls a `typeof`. The runtime behaviour
+ * was always correct here; only the signature was refusing the callers it was written for.
  */
-function expectNumber(value: number, label: string): number {
+function expectNumber(value: unknown, label: string): number {
   if (typeof value !== 'number') {
     throw new TypeError(`${label}: expected a number, got ${typeof value} ${show(value)}`);
   }
@@ -61,12 +66,12 @@ function expectNumber(value: number, label: string): number {
  *
  * @throws RangeError naming the label and the value.
  */
-export function expectFinite(value: number, label: string): number {
-  expectNumber(value, label);
-  if (!Number.isFinite(value)) {
-    throw new RangeError(`${label}: expected a finite number, got ${show(value)}`);
+export function expectFinite(value: unknown, label: string): number {
+  const n = expectNumber(value, label);
+  if (!Number.isFinite(n)) {
+    throw new RangeError(`${label}: expected a finite number, got ${show(n)}`);
   }
-  return value;
+  return n;
 }
 
 /**
@@ -161,14 +166,14 @@ export function expectNonEmpty<T>(items: readonly T[], label: string): readonly 
  *
  * @throws RangeError naming the caller and the value.
  */
-export function expectSerializable(value: number, label: string): number {
-  expectNumber(value, label);
-  if (!Number.isFinite(value)) {
+export function expectSerializable(value: unknown, label: string): number {
+  const n = expectNumber(value, label);
+  if (!Number.isFinite(n)) {
     throw new RangeError(
-      `${label}: expected a value that survives JSON, got ${show(value)} — JSON.stringify writes null for NaN and both infinities, so the save would load as a missing value with a valid checksum`,
+      `${label}: expected a value that survives JSON, got ${show(n)} — JSON.stringify writes null for NaN and both infinities, so the save would load as a missing value with a valid checksum`,
     );
   }
-  return value === 0 ? 0 : value;
+  return n === 0 ? 0 : n;
 }
 
 /**
