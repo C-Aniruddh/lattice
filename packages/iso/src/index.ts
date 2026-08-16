@@ -126,13 +126,8 @@ export { DepthSorter, pickSorted } from './depth.js';
 
 // ── tilemap and height ───────────────────────────────────────────────────────────
 
-export { TileGrid, ChunkGrid, tileSourceOf } from './tilemap.js';
-export type {
-  TileSource,
-  MutableTileSource,
-  TileGridOptions,
-  ChunkGridOptions,
-} from './tilemap.js';
+export { TileGrid, tileSourceOf } from './tilemap.js';
+export type { TileSource, MutableTileSource, TileGridOptions } from './tilemap.js';
 
 export { heightAt, slopeAt, unitsToPx, pxToUnits } from './height.js';
 export type { HeightField } from './height.js';

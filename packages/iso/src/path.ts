@@ -102,10 +102,12 @@ export interface PathOptions {
   /**
    * Hard ceiling on expanded nodes. Default `20000`.
    *
-   * Not a performance knob — a **determinism and liveness** one. On an unbounded `ChunkGrid`
-   * an unreachable goal otherwise searches until the tab dies, and the ceiling has to be a
-   * node count rather than a time limit so that the same query gives the same answer on a
-   * slow phone as on a desktop.
+   * Not a performance knob — a **determinism and liveness** one. A {@link TileSource} need not
+   * have an edge: `tileSourceOf` answers `has` with `true` everywhere, so on a procedural world
+   * an unreachable goal otherwise searches until the tab dies. Nothing else stops it — a
+   * bounded grid stops a search by running out of tiles, and an unbounded source never does.
+   * The ceiling has to be a node count rather than a time limit so that the same query gives
+   * the same answer on a slow phone as on a desktop.
    */
   readonly maxNodes?: number;
   /** Confine the search to a tile rectangle, half-open. Cheaper than making the cost function
@@ -745,8 +747,10 @@ const CLOSED = 2;
  *
  * Nodes are appended to dense arrays and found through a separate open-addressed index on
  * `core.hash2`, which is what lets both grow without invalidating the node indices the
- * frontier is holding. An unbounded `ChunkGrid` therefore costs exactly what a bounded island
- * does, and no allocation depends on how far from the origin the search happens to be.
+ * frontier is holding. An unbounded source — `tileSourceOf` over seeded noise, which has no
+ * edge at all — therefore costs exactly what a bounded island does, and no allocation depends
+ * on how far from the origin the search happens to be. A design keyed on grid extent would
+ * have made that impossible, which is why this one is not.
  */
 export class PathFinder {
   #nodeGx: Int32Array;

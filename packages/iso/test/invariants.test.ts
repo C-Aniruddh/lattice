@@ -314,12 +314,7 @@ describe('I15: nothing on the per-frame path allocates', () => {
     'hittest.ts': ['screenToTile', 'surfaceGap', 'boxSilhouette', 'pointInPolygon', 'pointInTile'],
     'path.ts': ['pathSample', 'pathDirAt', 'dirCodeOf', 'octile', 'segmentWorst'],
     'heap.ts': ['push', 'pop', 'sortIndicesByKey'],
-    'tilemap.ts': [
-      'class TileGrid::get',
-      'class TileGrid::has',
-      'class ChunkGrid::get',
-      'class ChunkGrid::has',
-    ],
+    'tilemap.ts': ['class TileGrid::get', 'class TileGrid::has'],
   };
 
   it('checks every function the list names, and the list is not empty', () => {
@@ -334,7 +329,11 @@ describe('I15: nothing on the per-frame path allocates', () => {
         checked += 1;
       }
     }
-    expect(checked).toBe(56);
+    // 14 projection + 15 camera + 5 depth + 2 height + 3 anchor + 5 hittest + 5 path + 3 heap
+    // + 2 tilemap. It was 56 when `tilemap` listed a second storage class's `get` and `has`
+    // as well; that class was deleted by K22 and `docs/rfc/chunkgrid.md` says why. Recount
+    // from the list above when you change it — do not fit the number to the failure.
+    expect(checked).toBe(54);
   });
 
   it('contains no object literal, array literal, closure or `new` in any of them', () => {

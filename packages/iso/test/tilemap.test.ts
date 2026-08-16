@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { hash2, toUnit } from '@lattice/core';
-import { ChunkGrid, TileGrid, tileSourceOf } from '../src/tilemap.js';
+import { TileGrid, tileSourceOf } from '../src/tilemap.js';
 import type { MutableTileSource } from '../src/tilemap.js';
 import type { TileRange } from '../src/projection.js';
 
@@ -148,123 +148,21 @@ describe('TileGrid', () => {
     g.forEach(range(0, 0, 2, 2), (gx, gy) => order.push(`${String(gx)},${String(gy)}`));
     expect(order).toEqual(['0,0', '1,0', '0,1', '1,1']);
   });
-});
 
-describe('ChunkGrid', () => {
-  it('refuses a degenerate chunk size or bit width', () => {
-    expect(() => new ChunkGrid({ chunk: 0 })).toThrow(/chunk to be an integer > 0, got 0/);
-    expect(() => new ChunkGrid({ chunk: 1.5 })).toThrow(RangeError);
-    // @ts-expect-error — checked at construction rather than minutes into a session.
-    expect(() => new ChunkGrid({ bits: 7 })).toThrow(/bits to be 8, 16 or 32, got 7/);
-  });
-
-  it('costs nothing until something is written', () => {
-    const g = new ChunkGrid({ defaultValue: 3 });
-    expect(g.chunkCount).toBe(0);
-    expect(g.get(0, 0)).toBe(3);
-    expect(g.get(1e6, -1e6)).toBe(3);
-    expect(g.chunkCount).toBe(0);
-    g.set(0, 0, 1);
-    expect(g.chunkCount).toBe(1);
-    g.set(31, 31, 1);
-    expect(g.chunkCount).toBe(1);
-    g.set(32, 0, 1);
-    expect(g.chunkCount).toBe(2);
-  });
-
-  it('reads and writes across the origin without a seam', () => {
-    // `Math.floor` and not a truncating divide: -1 belongs to chunk -1, and truncation would
-    // put both -1 and 0 in chunk 0 and overlay two regions of the world on one buffer.
-    const g = new ChunkGrid({ chunk: 4 });
-    for (let gx = -6; gx <= 6; gx++) {
-      for (let gy = -6; gy <= 6; gy++) g.set(gx, gy, ((gx + 8) * 13 + (gy + 8)) & 0xff);
-    }
-    for (let gx = -6; gx <= 6; gx++) {
-      for (let gy = -6; gy <= 6; gy++) {
-        expect(g.get(gx, gy)).toBe(((gx + 8) * 13 + (gy + 8)) & 0xff);
-      }
-    }
-  });
-
-  it('fills a new chunk with the default value', () => {
-    const g = new ChunkGrid({ chunk: 2, defaultValue: 9 });
-    g.set(0, 0, 1);
-    expect(g.get(1, 1)).toBe(9);
-  });
-
-  it('has no outside for a whole coordinate, and no tile at a fractional one', () => {
-    const g = new ChunkGrid();
-    expect(g.has(1e9, -1e9)).toBe(true);
-    expect(g.has(0.5, 0)).toBe(false);
-    expect(g.get(0.5, 0)).toBe(0);
-    // …and the same once the chunk exists, which is the branch where the fractional index
-    // reaches the typed array rather than being caught by an absent chunk.
-    g.set(0, 0, 7);
-    expect(g.get(0.5, 0)).toBe(0);
-    expect(g.get(0, 0)).toBe(7);
-    expect(() => g.set(0.5, 0, 1)).toThrow(/whole tile coordinates, got \(0.5, 0\)/);
-  });
-
-  it('reads beyond the chunk table as the default and refuses to write there', () => {
-    // Colliding two regions of the world onto one buffer would be a map that corrupts itself
-    // only very far out, and only for the player who got there.
-    const g = new ChunkGrid({ chunk: 32 });
-    const beyond = (1 << 20) * 32;
-    expect(g.get(beyond, 0)).toBe(0);
-    expect(() => g.set(beyond, 0, 1)).toThrow(/beyond the \+\/-33554432 tile reach/);
-  });
-
-  it('I24: bumps the version only on a change', () => {
-    const g = new ChunkGrid();
-    expect(g.version).toBe(0);
-    g.set(5, 5, 2);
-    expect(g.version).toBe(1);
-    g.set(5, 5, 2);
-    expect(g.version).toBe(1);
-    g.set(5, 5, 3);
-    expect(g.version).toBe(2);
-  });
-
-  it('refuses to be filled, because an unbounded map cannot be', () => {
-    const g = new ChunkGrid();
-    expect(() => g.fill(1)).toThrow(/cannot be filled.*use the defaultValue option/);
-    expect(() => g.fillFrom(() => 1)).toThrow(/wrap the function in tileSourceOf/);
-  });
-
-  it('hands every allocated chunk to persist, with the coordinates that place it', () => {
-    const g = new ChunkGrid({ chunk: 4 });
-    g.set(0, 0, 1);
-    g.set(-1, -1, 2);
-    g.set(9, 4, 3);
-    const seen: string[] = [];
-    g.forEachChunk((cgx, cgy, data) => {
-      seen.push(`${String(cgx)},${String(cgy)}`);
-      expect(data.length).toBe(16);
-    });
-    expect(seen.sort()).toEqual(['-1,-1', '0,0', '2,1']);
-  });
-
-  it('is interchangeable with a TileGrid through the interface', () => {
-    const sources: MutableTileSource[] = [new TileGrid(8, 8), new ChunkGrid({ chunk: 4 })];
-    for (const s of sources) {
-      s.set(3, 3, 5);
-      expect(s.get(3, 3)).toBe(5);
-      expect(s.has(3, 3)).toBe(true);
-      expect(s.version).toBeGreaterThan(0);
-    }
-  });
-
-  it('serves a repeated read of the same chunk from its one-slot cache', () => {
-    const g = new ChunkGrid({ chunk: 4 });
-    g.set(1, 1, 7);
-    // The cache is an optimization, so what is asserted is that it cannot change an answer:
-    // interleaved reads of two chunks agree with reads of each alone.
-    expect(g.get(1, 1)).toBe(7);
-    expect(g.get(100, 100)).toBe(0);
-    expect(g.get(1, 1)).toBe(7);
-    g.set(100, 100, 4);
-    expect(g.get(100, 100)).toBe(4);
-    expect(g.get(1, 1)).toBe(7);
+  it('is usable through MutableTileSource alone, with no TileGrid member named', () => {
+    // What survives of the old three-storage interchangeability case. It is not a tautology:
+    // the annotation is the assertion, and it stops compiling the day `TileGrid` drops a
+    // member of the interface `PathFinder`, `FlowField` and placement are all written against.
+    // Nothing here may name `w`, `h`, `data` or `forEach`.
+    const source: MutableTileSource = new TileGrid(8, 8);
+    source.fill(1);
+    source.fillFrom((gx, gy) => gx + gy);
+    source.set(3, 3, 5);
+    expect(source.get(3, 3)).toBe(5);
+    expect(source.has(3, 3)).toBe(true);
+    expect(source.has(3.5, 3)).toBe(false);
+    expect(source.get(99, 99)).toBe(0);
+    expect(source.version).toBeGreaterThan(0);
   });
 });
 

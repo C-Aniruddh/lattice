@@ -26,8 +26,8 @@ import type { TileSource } from './tilemap.js';
 /**
  * A tile layer read as terrain height, plus the world pixels one height unit is worth.
  *
- * Two fields rather than a class, so a game can point one at a `TileGrid` it saves, at a
- * `ChunkGrid` it streams, or at `tileSourceOf(seeded noise)` and store nothing at all.
+ * Two fields rather than a class, so a game can point one at a `TileGrid` it saves, or at
+ * `tileSourceOf(seeded noise)` — unbounded, no edge — and store nothing at all.
  */
 export interface HeightField {
   /** The layer. Values are height *units*, whatever the game decided those are — the

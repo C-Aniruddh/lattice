@@ -223,7 +223,7 @@ field-only shapes, so write the literal once at setup and reuse it. `Vec2` comes
 | `projection` | `TILE_W`/`TILE_H`, grid ↔ world both ways and both axes, `worldToTile`, `depthOf`, `isEdgeOn`, `tileDiamond`, `footprintBounds`, and the kit's `Rect` |
 | `camera` | pan, pointer-anchored zoom, `fitBounds` for framing, a clamp that does not invert, `visibleTileBounds`, `visibleWorldBounds`, `normalizedX` for stereo pan, and a policy that reads back and moves live |
 | `depth` | `DepthSorter` — fed footprints, hands back a permutation — and `pickSorted`, which walks the same instance backwards |
-| `tilemap` | `TileGrid` (the island), `ChunkGrid` (the infinite world), `tileSourceOf` (procedural), all behind one two-method interface |
+| `tilemap` | two storages behind one two-method read interface: `TileGrid` (a bounded world, one typed array) and `tileSourceOf` (an **unbounded** one — a function is defined everywhere, so it has no edge and costs no memory). Writing is `TileGrid` only |
 | `height` | one value per grid **vertex**, sampled bilinearly; `slopeAt` for movement cost; `unitsToPx`/`pxToUnits`, the one conversion between the game's height units and this package's world pixels |
 | `footprint` | occupancy, overlap, flatness, base height, and the anchor a label hangs from |
 | `hittest` | `screenToTile`, `screenToTileOnHeights` (terrain-aware), `boxSilhouette`, `pointInPolygon`, `pointInTile` |
