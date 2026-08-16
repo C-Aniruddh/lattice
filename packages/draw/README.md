@@ -264,6 +264,15 @@ at thumbnail size. `isoBox` draws left face, right face, top, then **one** close
 stroke — north-top, east-top, east-base, south-base, west-base, west-top, which is the order
 `iso.boxSilhouette` returns and is a cross-package contract, not a convention.
 
+**And `isoWall` refuses a wall it cannot draw.** World x is `(gx − gy) · HALF_W`, so a segment
+whose `gx` and `gy` change by the *same* amount projects to a vertical line of zero width: every
+number is finite, the projection is doing exactly what it promises, and the art is simply not
+there. A run of prayer flags laid along that diagonal cost the demo a full iteration with nothing
+anywhere saying why, so the primitive throws and names both tiles rather than painting nothing.
+A zero-length wall is refused by the same test. `iso.isEdgeOn(gx0, gy0, gx1, gy1)` is the
+predicate if you want to ask before calling — and note that an *animated* endpoint must not be
+able to sweep through the diagonal, because the frame it crosses is a frame that throws.
+
 ### 6. Night is an accumulator, not a filter
 
 Darkness is composited **once**, from a light buffer that blends by per-channel maximum. That is
@@ -290,9 +299,21 @@ would check to diagnose it said everything was fine. One reference comparison pe
 sentence on the first one.
 
 `resize` is **optional**: `begin` sizes the buffers to `pen.surface` on every active frame, so a
-field self-heals and forgetting the call costs one reallocation. And every option is live —
-`configure({ scale, falloff, bloom })` moves any of them on a running field, for a quality
-toggle or a screenshot mode that pins `scale` to 1.
+field self-heals and forgetting the call costs one reallocation. And every option is live *and*
+readable — `configure({ scale, falloff, bloom })` moves any of them on a running field, for a
+quality toggle or a screenshot mode that pins `scale` to 1, and `field.scale`, `field.falloff`
+and `field.bloom` read the current value back:
+
+```ts
+field.configure({ bloom: 0.6 });
+slider.value = String(field.bloom);   // and not a copy the panel remembered
+```
+
+Liveness without readback is half a fix, which is why non-negotiable 11 exists: a panel that can
+move the bloom and cannot read it has to keep a second copy, and the second copy is correct on
+the day it is written and drifts afterward with no error. **`scale` reports what you set, not
+what is currently rendering** — `configure` takes effect on the next `begin`, so between the two
+calls the getter is ahead of the buffers.
 
 ### 7. There is no sprite cache, and the benchmark is why
 
@@ -361,6 +382,31 @@ The Terrain pass is culled on the **ground plane**, because a camera has no idea
 heightfield is. Tell `renderFrame` the tallest ground you have — `passes.maxHeightPx` — or a
 summit vanishes the moment its own base leaves the bottom edge, with nothing else in the frame
 missing. The margin works out to `maxHeightPx / TILE_H` tiles, and the derivation is on the field.
+
+---
+
+## Every option reads back off the thing it configured
+
+Non-negotiable 11, audited across the package. A value you handed over and cannot read is a value
+you have to store twice, and two copies drift with no error when they do.
+
+| options bag | field | read it back as |
+|---|---|---|
+| `LightFieldOpts` | `scale` | `field.scale` — **what you set, not what is rendering**: `configure` takes effect on the next `begin` |
+| | `falloff` | `field.falloff`, the default a pool gets when `add` names none. A per-call falloff is not retained and is not readable |
+| | `bloom` | `field.bloom`, in force on the very next composite |
+| `Canvas2dOpts` | `pixelRatio` | `surface.pixelRatio` — the ratio *in force*, which `resize` then moves |
+| | `alpha` | `surface.hasAlpha`. Spelled differently because `Surface.alpha` is already the multiplier setter, and one word cannot mean both |
+| | `maxPixelRatio` | **nothing, on purpose.** It does not survive its constructor: it picks the opening ratio and `resize(w, h, ratio)` walks straight past it. A getter would report a ceiling the surface does not enforce, which is worse than none. It becomes readable in the change that makes `resize` honor it |
+| `OffscreenOpts` | `pixelRatio`, `alpha` | `surface.pixelRatio`, `surface.hasAlpha` |
+| `FrameOpts` | `surface`, `camera`, `palette`, `t`, `light` | the same names on the `Pen` |
+| | `snap` | `pen.snap`. **Not `snapX === 0`** — that is also what a *snapped* frame produces whenever the origin already lands on a whole device pixel, so inferring it from the offsets is wrong on exactly the frames where it looks right |
+| | `clear` | nothing, and honestly: it is painted and then gone. Nothing retains it |
+| `BoxOpts` | all | nothing retains a `BoxOpts` — it is one call's arguments, not configuration, and there is no object it configured to read it off |
+
+Which of these is also *settable* is a separate question with its own test:
+`docs/rfc/live-options.md`. `LightFieldOpts` is the package's live one; `alpha` is identity
+(`getContext` fixes the channel for the element's lifetime) and its setter is a new surface.
 
 ---
 

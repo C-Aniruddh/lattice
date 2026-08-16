@@ -321,10 +321,32 @@ export interface Pen {
   readonly snapX: number;
   /** See {@link Pen.snapX}. */
   readonly snapY: number;
+  /**
+   * Whether `FrameOpts.snap` asked for whole-device-pixel snapping — the option, read back off
+   * the pen it configured.
+   *
+   * **`snapX === 0` is not the same answer.** Zero is also what an origin that already lands on a
+   * whole device pixel produces, so a caller reading the offsets to find out whether snapping is
+   * on gets `true` for most of a pan and `false` for the frames it happens to line up on. That is
+   * the shadow-copy failure non-negotiable 11 exists to remove, arriving as a derived value
+   * rather than as a second variable: the information is genuinely not recoverable from what was
+   * already exposed, so it is exposed under its own name.
+   *
+   * A sub-pen always snaps and reports `true`; it is drawing into its own target, where there is
+   * no cinematic pan to keep continuous.
+   */
+  readonly snap: boolean;
 }
 
-/** What a frame needs to start. Named fields rather than positional, because the sixth is an
- *  optional `LightField` and nobody should have to count commas to reach it. */
+/**
+ * What a frame needs to start. Named fields rather than positional, because the sixth is an
+ * optional `LightField` and nobody should have to count commas to reach it.
+ *
+ * Every field that survives the call reads back off the {@link Pen} it made, under its own name:
+ * `surface`, `camera`, `palette`, `t`, `light`, `snap`. **`clear` is the one exception and it is
+ * an honest one** — it is painted and then gone. Nothing retains it, and a getter would have to
+ * invent a value out of pixels that any subsequent draw has already covered.
+ */
 export interface FrameOpts {
   /** Where the frame lands. */
   readonly surface: Surface;
@@ -403,6 +425,7 @@ export function beginFrame(opts: FrameOpts): Pen {
     light: opts.light,
     snapX: snap ? snapOffset(opts.camera.toScreenX(0), ratio) : 0,
     snapY: snap ? snapOffset(opts.camera.toScreenY(0), ratio) : 0,
+    snap,
   };
 }
 
@@ -433,5 +456,6 @@ export function subPen(pen: Pen, surface: Surface, camera: Camera): Pen {
     light: undefined,
     snapX: snapOffset(camera.toScreenX(0), surface.pixelRatio),
     snapY: snapOffset(camera.toScreenY(0), surface.pixelRatio),
+    snap: true,
   };
 }

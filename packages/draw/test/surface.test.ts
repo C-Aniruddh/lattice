@@ -137,6 +137,28 @@ describe('the device-pixel snap', () => {
       expect(Math.abs(pen.snapY)).toBeLessThanOrEqual(0.25 + 1e-12);
     }
   });
+
+  it('reads the option back off the pen, because the offsets cannot answer for it', () => {
+    // Non-negotiable 11, and the reason it is a field rather than something a caller derives:
+    // `snapX === 0` is also what a snapped frame produces whenever the origin already lands on a
+    // whole device pixel, so a caller inferring "is snapping on?" from the offsets gets the wrong
+    // answer on exactly the frames where it looks right. The camera below is centered on the
+    // origin, which is that case.
+    const opts = {
+      surface: createRecordingSurface(400, 300, 2),
+      camera: freeCamera(),
+      palette: createPalette(BASE_SLOTS),
+      t: 0,
+    };
+    const snapped = beginFrame(opts);
+    expect(snapped.snapX).toBe(0);
+    expect(snapped.snap).toBe(true);
+    const loose = beginFrame({ ...opts, snap: false });
+    expect(loose.snapX).toBe(0);
+    expect(loose.snap).toBe(false);
+    // The two pens agree on every offset and disagree on the option, which is the whole point.
+    expect(snapped.snapY).toBe(loose.snapY);
+  });
 });
 
 describe('endFrame', () => {
@@ -153,6 +175,7 @@ describe('endFrame', () => {
       light: undefined,
       snapX: 0,
       snapY: 0,
+      snap: true,
     });
     expect(ended).toBe(1);
   });
@@ -182,6 +205,16 @@ describe('subPen', () => {
     const { pen } = scene();
     const sub = subPen(pen, createRecordingSurface(64, 64), freeCamera(64, 64));
     expect(sub.light).toBeUndefined();
+  });
+
+  it('always snaps, and says so, whatever the pen it came from was asked for', () => {
+    // A sub-pen draws into its own target — a thumbnail, a cache fill, a minimap — where there
+    // is no cinematic pan to keep continuous, so there is nothing for the snap to cost. The
+    // field reports the fact rather than leaving a caller to infer it from an offset.
+    const { pen } = scene({ snap: false });
+    expect(pen.snap).toBe(false);
+    const sub = subPen(pen, createRecordingSurface(64, 64), freeCamera(64, 64));
+    expect(sub.snap).toBe(true);
   });
 
   it('snaps to its own surface’s ratio rather than inheriting the parent’s', () => {

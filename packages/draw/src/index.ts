@@ -118,9 +118,16 @@ export type {
 
 // ── the two backends ────────────────────────────────────────────────────────────
 //
-// `canvas2d` is the only module in the package that names a canvas. `record` is the one a Node
-// test imports, and it is `src/` rather than `test/` because `ui` wants it for layout
-// measurement without a canvas.
+// `canvas2d` is the only module in the package that names a canvas. `record` is `src/` rather
+// than `test/` because a headless op stream is a product feature, not a test fixture: the Replay
+// exhibit (`G11`) proves "same seed, same log, same pixel" by comparing op streams, which needs
+// no canvas and no image diff. **It has no consumer today** — `ui`'s thumbnails use
+// `createOffscreenSurface`, not this, and nothing in `ui` or `examples/` names
+// `createRecordingSurface`. The comment this replaces claimed `ui` wanted it for layout
+// measurement without a canvas; that reader did not exist, and a justification naming a present
+// consumer nobody checked for is how an orphan survives two audits. Naming a *planned* one
+// instead makes the next audit checkable: measure this module against `G11` shipping, and if
+// `G11` is cut, revisit it the same day — it is 0.85 kB of a package that is over budget.
 
 export { createCanvas2dSurface, createOffscreenSurface } from './canvas2d.js';
 export type { Canvas2dOpts, OffscreenOpts, OffscreenSurface } from './canvas2d.js';

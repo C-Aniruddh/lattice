@@ -349,6 +349,83 @@ describe('configure — every option is live', () => {
   });
 });
 
+describe('readback — non-negotiable 11', () => {
+  it('reads every option back under its own name, defaults included', () => {
+    // The defaults are the documented ones and they are asserted as literals rather than against
+    // the constants, so that moving a default is a decision somebody makes here rather than a
+    // test that agrees with whatever the source now says.
+    const surface = createRecordingSurface(100, 80);
+    const plain = createLightField(surface);
+    expect([plain.scale, plain.falloff, plain.bloom]).toEqual([0.5, 2, 0.35]);
+    const tuned = createLightField(surface, { scale: 0.25, falloff: 4, bloom: 0 });
+    expect([tuned.scale, tuned.falloff, tuned.bloom]).toEqual([0.25, 4, 0]);
+  });
+
+  it('reads back what `configure` set, so a panel needs no second copy of it', () => {
+    // The failure this closes: a control panel rendering the current bloom beside its slider had
+    // to remember what it last set, and a remembered copy is correct on the day it is written and
+    // drifts afterward with no error. Every field, because the half-fix is what made this a rule.
+    const surface = createRecordingSurface(100, 80);
+    const field = createLightField(surface);
+    field.configure({ bloom: 0.6 });
+    expect(field.bloom).toBe(0.6);
+    field.configure({ scale: 1 });
+    expect(field.scale).toBe(1);
+    field.configure({ falloff: 3 });
+    expect(field.falloff).toBe(3);
+    // Omitted fields keep their current value, and the readers say so rather than reverting to
+    // the defaults the constructor used.
+    field.configure({});
+    expect([field.scale, field.falloff, field.bloom]).toEqual([1, 3, 0.6]);
+  });
+
+  it('reports the value that is in force after a rejected configure, not the one refused', () => {
+    // Invariant 3 of `docs/rfc/live-options.md`, now observable from outside: before these
+    // getters existed, "a rejected configure changes nothing" could only be checked by rendering
+    // a frame and reading the composite back out of an op log.
+    const surface = createRecordingSurface(100, 80);
+    const field = createLightField(surface, { scale: 0.25, falloff: 3, bloom: 0.5 });
+    expect(() => field.configure({ scale: 0.75, bloom: 2 })).toThrow(/bloom/);
+    expect([field.scale, field.falloff, field.bloom]).toEqual([0.25, 3, 0.5]);
+  });
+
+  it('reports the scale that was set, which is not yet the scale the buffers are at', () => {
+    // The hole named in `docs/rfc/live-options.md` §6b, asserted rather than left to be
+    // discovered: `configure` takes effect on the next `begin`, so between the two calls the
+    // getter reports 1 while the buffers are still 0.5 × the surface. A caller sizing anything
+    // off this value in that window is sizing it off a resolution that does not exist yet.
+    const seen: number[] = [];
+    const { surface, pen } = scene();
+    const spy = {
+      ...surface,
+      createTarget: (w: number, h: number, m?: 'image' | 'light'): RecordingTarget =>
+        (seen.push(w), surface.createTarget(w, h, m) as RecordingTarget),
+    };
+    const field = createLightField(spy);
+    field.begin(penFor(field, pen, spy), 1, 'night');
+    // 200 CSS px of scene width at the default scale of 0.5.
+    expect(seen).toEqual([200, 200]);
+    field.configure({ scale: 1 });
+    expect(field.scale).toBe(1);
+    expect(seen).toEqual([200, 200]);
+    field.begin(penFor(field, pen, spy), 1, 'night');
+    expect(seen).toEqual([200, 200, 400, 400]);
+  });
+
+  it('reads the default falloff, and a per-call falloff is deliberately not recorded anywhere', () => {
+    // `add`'s seventh argument overrides the field's default for one pool and is then gone: the
+    // field retains nothing about a pool once it is drawn, so there is no per-pool falloff to
+    // read back and the getter keeps reporting the default. A reader that changed would be
+    // reporting the last pool drawn, which is a different fact wearing the same name.
+    const { surface, pen } = scene();
+    const field = createLightField(surface, { falloff: 2 });
+    field.begin(penFor(field, pen), 1, 'night');
+    field.add(0, 0, 0, 2, 1, 'warn', 4);
+    field.addScreen(10, 10, 8, 1, 1, 'warn', 4);
+    expect(field.falloff).toBe(2);
+  });
+});
+
 describe('lifetime', () => {
   it('retains nothing between frames — a lamp that stops drawing stops lighting', () => {
     // There is no registration and therefore nothing to forget to unregister. A builder who

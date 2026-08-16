@@ -307,6 +307,49 @@ describe('isoWall', () => {
     isoWall(pen, 0, 0, 1, 0, 0, 1, 'glass');
     expect(opsOf(surface, 'stroke')).toHaveLength(0);
   });
+
+  it('refuses an edge-on wall and names both tiles, rather than drawing nothing', () => {
+    // World x is `(gx − gy) · HALF_W`, so equal deltas give a world-x delta of exactly zero and
+    // the wall projects to a vertical line covering no pixels. Nothing throws in the projection,
+    // nothing warns, and the art is simply absent — which cost the demo's prayer flags a full
+    // iteration. The two tiles are in the message because the fix always needs both.
+    const { surface, pen } = scene();
+    expect(() => isoWall(pen, 1, 1, 4, 4, 0, 1, 'glass')).toThrow(
+      /isoWall: \(1, 1\) → \(4, 4\) is edge-on/,
+    );
+    // Both signs of the diagonal, and a fractional one: the test is on the deltas, not on the
+    // tiles being integers or the wall running away from the origin.
+    expect(() => isoWall(pen, 4, 4, 1, 1, 0, 1, 'glass')).toThrow(/edge-on/);
+    expect(() => isoWall(pen, 0, 3, 0.5, 3.5, 0, 1, 'glass')).toThrow(/edge-on/);
+    // Refused before anything is submitted: a half-drawn wall would leave a poly on the surface
+    // with no stroke around it, which is a worse artifact than the one being prevented.
+    expect(surface.ops).toHaveLength(0);
+  });
+
+  it('refuses a zero-length wall by the same test — a point has no width either', () => {
+    const { pen } = scene();
+    expect(() => isoWall(pen, 2, 2, 2, 2, 0, 1, 'glass')).toThrow(/isoWall: \(2, 2\) → \(2, 2\)/);
+  });
+
+  it('accepts the anti-diagonal, which is thin and visible rather than absent', () => {
+    // `dgx = 1, dgy = −1` projects to a horizontal line: zero *height*, full width. That is a
+    // legitimate wall — it is what a face along the other diagonal looks like — and refusing it
+    // would refuse half the walls in the kit. The predicate is about screen width alone.
+    const { surface, pen } = scene({ snap: false });
+    isoWall(pen, 0, 0, 2, -2, 0, 1, 'glass');
+    const xy = firstOp(surface, 'poly').xy;
+    // Four corners, and the two ends are 2 · HALF_W apart in x at zoom 1: the wall has width.
+    expect((xy[2] as number) - (xy[0] as number)).toBe(4 * HALF_W);
+  });
+
+  it('would have let the invisible wall through before — the refusal is not vacuous', () => {
+    // A test that cannot fail is worse than no test. This is the control: the same call with one
+    // endpoint moved off the diagonal by a single tile draws, so the throw above is the diagonal
+    // and not something that refuses every wall.
+    const { surface, pen } = scene();
+    isoWall(pen, 1, 1, 4, 5, 0, 1, 'glass');
+    expect(opsOf(surface, 'poly')).toHaveLength(1);
+  });
 });
 
 describe('isoRoof', () => {

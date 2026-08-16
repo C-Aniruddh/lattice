@@ -17,7 +17,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { rgba } from '../src/color.js';
 import { createCanvas2dSurface, createOffscreenSurface } from '../src/canvas2d.js';
 import { DEFAULT_TEXT } from '../src/text.js';
-import type { Surface } from '../src/surface.js';
 import type { OffscreenSurface } from '../src/canvas2d.js';
 import { fakeCanvas, installDom } from './fake-canvas.js';
 import type { DomHandle, FakeCanvas } from './fake-canvas.js';
@@ -33,7 +32,7 @@ afterEach(() => {
 function screen(
   opts?: Parameters<typeof createCanvas2dSurface>[1],
   devicePixelRatio = 1,
-): { surface: Surface; canvas: FakeCanvas } {
+): { surface: OffscreenSurface; canvas: FakeCanvas } {
   // Put back any DOM this test already installed before installing another, or the handles
   // nest and the outermost `window` survives into the next test.
   dom?.restore();
@@ -97,6 +96,29 @@ describe('createCanvas2dSurface', () => {
     const element = canvas as unknown as HTMLCanvasElement;
     expect(() => createCanvas2dSurface(element, { pixelRatio: 0 })).toThrow(/pixelRatio/);
     expect(() => createCanvas2dSurface(element, { maxPixelRatio: -1 })).toThrow(/maxPixelRatio/);
+  });
+
+  it('reads back both options a caller can set, per non-negotiable 11', () => {
+    // `pixelRatio` reads back as the ratio in force; `alpha` as `hasAlpha`, which is spelled
+    // differently only because `Surface.alpha` is already the multiplier setter.
+    expect(screen({ pixelRatio: 2, alpha: true }).surface.hasAlpha).toBe(true);
+    const opaque = screen({ pixelRatio: 2, alpha: false }).surface;
+    expect(opaque.hasAlpha).toBe(false);
+    expect(opaque.pixelRatio).toBe(2);
+    // The default is false — the kit always clears, so the compositor may skip a blend — and it
+    // reads back as the default rather than as `undefined`.
+    expect(screen().surface.hasAlpha).toBe(false);
+  });
+
+  it('reads back the ratio that is in force, which resize moves and maxPixelRatio does not bound', () => {
+    // Two facts in one, and the second is why `maxPixelRatio` has no getter: the clamp is
+    // consumed once at construction and `resize` walks straight past it, so a reader over it
+    // would report a ceiling the surface does not enforce. `docs/rfc/live-options.md` finding 4
+    // is the change that makes it survive, and the getter belongs in that change.
+    const { surface } = screen({ maxPixelRatio: 2 }, 3);
+    expect(surface.pixelRatio).toBe(2);
+    surface.resize(400, 300, 4);
+    expect(surface.pixelRatio).toBe(4);
   });
 
   it('says why there is no context rather than reaching for a non-null assertion', () => {
@@ -404,5 +426,11 @@ describe('createOffscreenSurface', () => {
     const element = dom.created[0];
     const context = element?.ctx.calls.find((call) => call.fn === 'getContext');
     expect(context?.args[1]).toEqual({ alpha: false });
+    // …and reads both of them back off the surface they configured.
+    expect(surface.hasAlpha).toBe(false);
+    // The documented default is an alpha channel: a thumbnail with an opaque background cannot
+    // sit on a card.
+    expect(createOffscreenSurface(50, 50).hasAlpha).toBe(true);
+    expect(createOffscreenSurface(50, 50).pixelRatio).toBe(1);
   });
 });

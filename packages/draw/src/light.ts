@@ -52,6 +52,11 @@ import type { Pen, RenderTarget, Surface } from './surface.js';
  * start; that the other two were frozen at construction was an accident of where they happened
  * to be read, and an option that cannot move is an option a game has to rebuild the world to
  * change.
+ *
+ * **And every field here reads back off the field under its own name** — {@link LightField.scale},
+ * {@link LightField.falloff}, {@link LightField.bloom}. Liveness without readback is half a fix:
+ * a panel that can move the bloom and cannot read it has to remember what it set, and the copy it
+ * remembers is what drifts.
  */
 export interface LightFieldOpts {
   /**
@@ -86,6 +91,33 @@ export interface LightField {
   readonly active: boolean;
   /** Pools accumulated this frame. For a budget assertion and for `docs/PERFORMANCE.md`. */
   readonly count: number;
+
+  /**
+   * The buffer resolution last supplied. See {@link LightFieldOpts.scale}.
+   *
+   * **These three readers are what stops a control panel keeping a shadow copy.** A panel that
+   * renders the current bloom beside its slider has to get that number from somewhere, and
+   * before these existed the only place to get it was a second variable in the panel — correct
+   * on the day it is written and one `configure` from disagreeing with the field it describes,
+   * forever, with no error. Non-negotiable 11 is that failure written down.
+   *
+   * **It reports what you set, not what is currently rendering.** {@link LightField.configure}
+   * takes effect on the next {@link LightField.begin}, so between a `configure({ scale })` and
+   * the next frame this reads the new number while the buffers are still at the old one. That is
+   * the right trade — the alternative is reallocating halfway through a frame's accumulation —
+   * but a caller sizing something off this value between those two moments is sizing it off a
+   * resolution that does not exist yet.
+   */
+  readonly scale: number;
+  /** The falloff every pool defaults to. See {@link LightFieldOpts.falloff}. This is the
+   *  *default* the field applies when {@link LightField.add} is given none; a pool that named its
+   *  own falloff is not recorded anywhere and is not readable, because the field retains nothing
+   *  about a pool once it is drawn. */
+  readonly falloff: number;
+  /** The warm spill fraction in force. See {@link LightFieldOpts.bloom}. Unlike `scale` this one
+   *  is read inside {@link LightField.composite} rather than baked into anything, so it is in
+   *  force on the very next composite. */
+  readonly bloom: number;
 
   /**
    * Start the frame's light field. **Call it before the Terrain pass, not in the Light pass** —
@@ -334,6 +366,17 @@ export function createLightField(surface: Surface, opts?: LightFieldOpts): Light
     },
     get count() {
       return count;
+    },
+    // The readback half of `configure`. `adopt` assigns through these same three variables, which
+    // is what stops a getter from drifting into a stale local of its own.
+    get scale() {
+      return scale;
+    },
+    get falloff() {
+      return falloffDefault;
+    },
+    get bloom() {
+      return bloom;
     },
 
     begin(nextPen: Pen, nextDarkness: number, nextTint: Ink): void {

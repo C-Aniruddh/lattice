@@ -1912,7 +1912,7 @@
       "dependsOn": [
         "K5"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-builder",
       "acceptance": [
         "iso now exports isEdgeOn — the predicate for a wall whose two points have equal gx and gy deltas, which projects to a vertical line and draws zero pixels",
@@ -1955,7 +1955,7 @@
         "this is the strongest single piece of evidence for the readback rule: mutability is the interesting half and gets thought about, readback costs three lines and gets skipped",
         "also fix the record.ts comment in draw/src/index.ts — it claims ui wants the recording surface for layout measurement, and nothing in ui references it. The real justification is a PLANNED consumer, the Replay exhibit, and the replacement text must say planned rather than reading as already-true"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-builder",
       "notes": ""
     },
@@ -2141,6 +2141,46 @@
         "the bucket test already asserts the gap as a tripwire, so whoever adds the flag is told where to come back"
       ],
       "notes": "A helper outside the package could not close it, and said so rather than shipping a detector that would cry wolf. That is the right call and it routes here."
+    },
+    {
+      "id": "K29",
+      "phase": "gaps",
+      "role": "lattice-designer",
+      "title": "The waypost flag can reach isoWall's new refusal",
+      "package": "demo",
+      "paths": [
+        "examples/demo/src/sprites.ts"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "the flag animates sway into BOTH coordinates in proportion, which is edge-on exactly when sway is 0 — and isoWall now throws rather than silently drawing nothing",
+        "it does not fire today, and the check for that was thorough: core noise2 returns exactly 0 at 397k of 14M lattice samples, but only when BOTH inputs are lattice points, and the phase here is fractional — 0 exact zeros in 200k samples",
+        "move the sway onto one axis rather than relying on a fractional phase nobody will remember is load-bearing",
+        "two neighboring sprites were checked and are safe by construction — their wave would have to reach 1.2 and 0.52 against ranges of 0.12 and 0.17"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "The one shape in the repo that can reach the new throw. Safe by accident is not safe."
+    },
+    {
+      "id": "K30",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "The size tool sums two backends no consumer ships together",
+      "package": "*",
+      "paths": [
+        "tools/size.mjs"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "draw is the only package with two mutually exclusive backends: a browser game ships canvas2d and not record, a headless replay ships record and not canvas2d",
+        "the gate reads their sum, which is a bundle nobody downloads — 12.93 against a real 12.08 or 11.30",
+        "this is the same species as the adapter finding already fixed, but the fix is different: an adapter IS downloaded by a game and must stay counted, whereas mutually exclusive backends genuinely cannot both ship",
+        "decide whether the tool should report a per-entry-point figure, and note that getting this right retires draw's override rather than merely explaining it"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
     }
   ]
 }

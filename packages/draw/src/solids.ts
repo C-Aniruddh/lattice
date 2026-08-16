@@ -29,7 +29,7 @@
  * package can see that from the inside.
  */
 
-import { HALF_H, HALF_W } from '@lattice/iso';
+import { HALF_H, HALF_W, isEdgeOn } from '@lattice/iso';
 import type { Ink, Rgba } from './color.js';
 import { FACE_LEFT, FACE_RIGHT, FACE_TOP, outlineOf, shade, withAlpha } from './color.js';
 import type { Pen } from './surface.js';
@@ -572,6 +572,28 @@ export function isoRoof(
  * it lands flush on the face rather than hovering in front of it. This is the primitive
  * {@link isoPatch} is not: a patch lies flat, and a window drawn with one is a horizontal
  * sliver in mid-air.
+ *
+ * ## It refuses an edge-on wall rather than painting nothing
+ *
+ * World x is `(gx − gy) · HALF_W` and nothing else, so a segment whose `gx` and `gy` change by
+ * the **same** amount has a world-x delta of exactly zero: it projects to a vertical line and
+ * covers no pixels. Every number involved is finite, the projection is doing precisely what it
+ * promises, and the art is simply not there — which is why this is a refusal and not a warning.
+ * A run of prayer flags laid along the near-far diagonal cost the demo a full iteration with
+ * nothing anywhere saying why, and a warning is a thing an author reads *after* they have spent
+ * the afternoon. `iso.isEdgeOn` is the predicate; the two tiles are in the message, because the
+ * fix is always "run it across the lattice, not into it" and that needs both endpoints.
+ *
+ * A zero-length wall is refused by the same test and for the same reason: a point has no width
+ * either, and it is the same bug arriving from the other direction.
+ *
+ * **A wall with an animated endpoint must not be able to sweep *through* the diagonal.** This
+ * throws on the frame it crosses, which is correct — that frame draws nothing — but it ends the
+ * frame rather than dropping one flag, so animate the endpoint on an axis that cannot reach
+ * `dgx === dgy`. A sway added to *both* coordinates in proportion is the shape that can: it
+ * passes through the degenerate point every time it changes sign.
+ *
+ * @throws RangeError if the two endpoints differ equally in `gx` and `gy`, naming both.
  */
 export function isoWall(
   pen: Pen,
@@ -584,6 +606,11 @@ export function isoWall(
   fill: Ink,
   stroke?: Ink,
 ): void {
+  if (isEdgeOn(ax, ay, bx, by)) {
+    throw new RangeError(
+      `isoWall: (${String(ax)}, ${String(ay)}) → (${String(bx)}, ${String(by)}) is edge-on — equal gx and gy deltas project to a vertical line of zero width, so this wall would paint no pixels. Run it across the lattice, not along it`,
+    );
+  }
   const lo = levelsToPx(z0);
   const hi = levelsToPx(z1);
   let at = put(pen, 0, ax, ay, hi);

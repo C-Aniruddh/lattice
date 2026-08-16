@@ -36,20 +36,43 @@ import type {
   TextStyle,
 } from './surface.js';
 
-/** How a screen surface is configured. */
+/**
+ * How a screen surface is configured.
+ *
+ * Every field reads back off the surface it configured, per non-negotiable 11: `pixelRatio` as
+ * {@link Surface.pixelRatio} and `alpha` as {@link OffscreenSurface.hasAlpha}. `maxPixelRatio` is
+ * the one that does not, and the reason is written on it.
+ */
 export interface Canvas2dOpts {
-  /** Override the device pixel ratio outright. Tests and thumbnails pin it to 1, which is what
-   *  makes a thumbnail byte-identical across machines. */
+  /**
+   * Override the device pixel ratio outright. Tests and thumbnails pin it to 1, which is what
+   * makes a thumbnail byte-identical across machines.
+   *
+   * Reads back as {@link Surface.pixelRatio} — the ratio *in force*, which is this value if it
+   * was given and the clamped device ratio if it was not, and which `resize` then moves.
+   */
   readonly pixelRatio?: number | undefined;
-  /** Clamp for `devicePixelRatio`. Defaults to 2: a 3× phone costs 2.25× the fill for a
-   *  difference nobody can see on a five-inch screen, and it is the single cheapest frame-time
-   *  win available on the hardware that needs one most. */
+  /**
+   * Clamp for `devicePixelRatio`. Defaults to 2: a 3× phone costs 2.25× the fill for a
+   * difference nobody can see on a five-inch screen, and it is the single cheapest frame-time
+   * win available on the hardware that needs one most.
+   *
+   * **This one is deliberately not readable, and that is not an oversight.** It does not survive
+   * its constructor: it is consumed once to pick the opening ratio and nothing reads it again —
+   * `resize(w, h, ratio)` takes a ratio and walks straight past this clamp. A getter over it
+   * would report a bound the surface does not enforce, which is the stale-local loophole
+   * `docs/rfc/live-options.md` §6b names, and a caller who trusted it would size a buffer against
+   * a ceiling that is not there. It becomes readable in the same change that makes it *live* —
+   * that RFC's finding 4, which is what makes `resize` honor it — and not before.
+   */
   readonly maxPixelRatio?: number | undefined;
-  /** `false` lets the compositor skip a blend. Defaults to false — the kit always clears. */
+  /** `false` lets the compositor skip a blend. Defaults to false — the kit always clears. Reads
+   *  back as {@link OffscreenSurface.hasAlpha}. */
   readonly alpha?: boolean | undefined;
 }
 
-/** How a detached surface is configured. */
+/** How a detached surface is configured. Both fields read back off the surface:
+ *  {@link Surface.pixelRatio} and {@link OffscreenSurface.hasAlpha}. */
 export interface OffscreenOpts {
   /** Default 1. A thumbnail pinned to 1 is byte-identical across machines, which a test wants
    *  and a shop card does not care about. */
@@ -59,12 +82,18 @@ export interface OffscreenOpts {
 }
 
 /**
- * A `Surface` that renders into a detached canvas and hands the result back to the DOM.
+ * A `Surface` backed by a `<canvas>` element — **both factories in this file return one**, the
+ * detached thumbnail and the screen alike.
  *
  * The same seam as `createRecordingSurface`, pointed at a browser instead of at Node: one
  * `Surface` interface, three places it can end up — a screen, a memory image, an op log — and
  * one body of drawing code that cannot tell which. It is what stops a shop card and the building
  * it sells from ever drifting apart.
+ *
+ * The name says *offscreen* because for most of this package's life only the detached factory
+ * declared it. It is the canvas-backed surface type; a screen surface has an `element` and a
+ * `toDataUrl` for the same reason a thumbnail does, and it needs {@link OffscreenSurface.hasAlpha}
+ * so that a caller can read back what they configured.
  */
 export interface OffscreenSurface extends Surface {
   /** Narrowed, so a caller holding one knows it can reach {@link OffscreenSurface.element}. */
@@ -72,6 +101,26 @@ export interface OffscreenSurface extends Surface {
   /** The backing element. **Prefer this**: it can be appended, or drawn into another surface,
    *  with no encode and no decode. */
   readonly element: HTMLCanvasElement;
+  /**
+   * Whether the backing context was opened with an alpha channel — `Canvas2dOpts.alpha` and
+   * `OffscreenOpts.alpha`, read back off the surface they configured.
+   *
+   * **It is `hasAlpha` and not `alpha` because `alpha` is taken**, by {@link Surface.alpha}, which
+   * sets the *multiplier* applied to subsequent draws. Two different meanings of one word, and
+   * non-negotiable 11's "a getter of the same name" loses to that: a boolean channel flag sharing
+   * a name with a number-returning method is a collision the compiler catches once and a reader
+   * trips over forever. Where the name is unavailable the rule's second form applies — the value
+   * is readable, under a name that says which alpha it means.
+   *
+   * **It has no setter and cannot have one.** `getContext('2d', { alpha })` fixes the channel for
+   * the element's lifetime; a second `getContext` with different attributes returns the *first*
+   * context, ignoring them silently. So this is identity in the sense of
+   * `docs/rfc/live-options.md` §4 Q1 — the honest signature for changing it is a new surface —
+   * and identity still means readable, which is what this getter is for. A caller compositing the
+   * canvas against a page background needs to know which it got, and guessing from the default is
+   * how a thumbnail ends up with a black rectangle behind it.
+   */
+  readonly hasAlpha: boolean;
   /**
    * A `data:` URL of the current contents.
    *
@@ -212,6 +261,7 @@ function makeCanvasSurface(
   const surface: OffscreenSurface & RenderTarget = {
     kind: 'canvas2d',
     element,
+    hasAlpha: alpha,
     bitmap,
     get width() {
       return w;
@@ -423,10 +473,18 @@ const DEFAULT_MAX_RATIO = 2;
  * not in the document yet has no client size, so its `width`/`height` attributes are used
  * instead and a later `resize` picks up the real one.
  *
+ * Returns an {@link OffscreenSurface} rather than a bare `Surface` so that the two things a
+ * caller configured here are readable off the thing they configured: the ratio in force as
+ * `pixelRatio`, and the alpha channel as `alpha`. `element` and `toDataUrl` come with that type
+ * and are both meaningful on a screen canvas — the second is how a game screenshots itself.
+ *
  * @throws RangeError if an explicit `pixelRatio` or `maxPixelRatio` is not finite and positive.
  * @throws Error if the element has no 2D context.
  */
-export function createCanvas2dSurface(canvas: HTMLCanvasElement, opts?: Canvas2dOpts): Surface {
+export function createCanvas2dSurface(
+  canvas: HTMLCanvasElement,
+  opts?: Canvas2dOpts,
+): OffscreenSurface {
   const maxRatio = opts?.maxPixelRatio ?? DEFAULT_MAX_RATIO;
   expectPositive(maxRatio, 'createCanvas2dSurface', 'maxPixelRatio');
   const device = typeof window === 'undefined' ? 1 : (window.devicePixelRatio ?? 1);
