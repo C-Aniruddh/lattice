@@ -208,27 +208,91 @@
       "notes": "Ten gaps found and routed to the nine in-flight architects. Top three: iso path arc-length sampling (out-param), draw emissive light + night mask, sim piecewise alternating rates + closed-form depletion time."
     },
     {
-      "id": "B1",
+      "id": "B1a",
       "phase": "build",
       "role": "lattice-builder",
-      "title": "Implement @lattice/core",
+      "title": "Implement @lattice/core: rng, hash, noise — the determinism heart",
       "package": "core",
       "paths": [
-        "packages/core/**"
+        "packages/core/src/rng.ts",
+        "packages/core/src/hash.ts",
+        "packages/core/src/noise.ts",
+        "packages/core/test/rng.test.ts",
+        "packages/core/test/hash.test.ts",
+        "packages/core/test/noise.test.ts"
       ],
       "dependsOn": [
         "A1"
       ],
       "acceptance": [
-        "npm run verify passes from the repo root",
-        "test/ mirrors src/ one file to one file, >=90% statements (100% for core)",
-        "benchmarks exist for every per-frame or per-entity path",
-        "README.md opens with an example that has actually been run",
-        "npm run lint -- --fix leaves kit.json accurate"
+        "npm run typecheck and vitest run packages/core both pass",
+        "100% statement coverage — core is the floor for the whole kit",
+        "benchmarks for anything on a per-frame path",
+        "every public symbol documented with what breaks if a caller gets it wrong"
       ],
-      "status": "todo",
-      "owner": null,
-      "notes": ""
+      "status": "in_progress",
+      "owner": "lattice-builder",
+      "notes": "must NOT touch src/index.ts or run lint --fix; the orchestrator assembles the barrel"
+    },
+    {
+      "id": "B1b",
+      "phase": "build",
+      "role": "lattice-builder",
+      "title": "Implement @lattice/core: math, easing, vec2, time",
+      "package": "core",
+      "paths": [
+        "packages/core/src/math.ts",
+        "packages/core/src/easing.ts",
+        "packages/core/src/vec2.ts",
+        "packages/core/src/time.ts",
+        "packages/core/test/math.test.ts",
+        "packages/core/test/easing.test.ts",
+        "packages/core/test/vec2.test.ts",
+        "packages/core/test/time.test.ts"
+      ],
+      "dependsOn": [
+        "A1"
+      ],
+      "acceptance": [
+        "npm run typecheck and vitest run packages/core both pass",
+        "100% statement coverage — core is the floor for the whole kit",
+        "benchmarks for anything on a per-frame path",
+        "every public symbol documented with what breaks if a caller gets it wrong"
+      ],
+      "status": "in_progress",
+      "owner": "lattice-builder",
+      "notes": "must NOT touch src/index.ts or run lint --fix; the orchestrator assembles the barrel"
+    },
+    {
+      "id": "B1c",
+      "phase": "build",
+      "role": "lattice-builder",
+      "title": "Implement @lattice/core: events, pool, dispose, guard, format",
+      "package": "core",
+      "paths": [
+        "packages/core/src/events.ts",
+        "packages/core/src/pool.ts",
+        "packages/core/src/dispose.ts",
+        "packages/core/src/guard.ts",
+        "packages/core/src/format.ts",
+        "packages/core/test/events.test.ts",
+        "packages/core/test/pool.test.ts",
+        "packages/core/test/dispose.test.ts",
+        "packages/core/test/guard.test.ts",
+        "packages/core/test/format.test.ts"
+      ],
+      "dependsOn": [
+        "A1"
+      ],
+      "acceptance": [
+        "npm run typecheck and vitest run packages/core both pass",
+        "100% statement coverage — core is the floor for the whole kit",
+        "benchmarks for anything on a per-frame path",
+        "every public symbol documented with what breaks if a caller gets it wrong"
+      ],
+      "status": "in_progress",
+      "owner": "lattice-builder",
+      "notes": "must NOT touch src/index.ts or run lint --fix; the orchestrator assembles the barrel"
     },
     {
       "id": "B2",
@@ -729,9 +793,9 @@
         "a verdict: if direct drawing fits the budget, the cache module is DELETED from the draw RFC rather than built",
         "numbers recorded in docs/PERFORMANCE.md with the machine named"
       ],
-      "status": "todo",
+      "status": "merged",
       "owner": null,
-      "notes": ""
+      "notes": "Folded into B3: the draw builder benchmarks first and deletes the cache module if direct drawing fits the budget."
     },
     {
       "id": "E2",
@@ -797,8 +861,8 @@
         "decide whether oil burn is exempt from the warp, or the design changes",
         "whichever it is, the reason is written into the demo RFC"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-designer",
       "notes": ""
     }
   ]

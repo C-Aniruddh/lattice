@@ -1668,7 +1668,7 @@ the surface above; this is the index, so that no builder has to re-derive a deci
 |---|---|---|---|
 | **draw (A3)** | projection must not return `{ x, y }` | **already true, now unmissable.** Three shapes only — scalar, out-parameter, buffer — set out before the first signature, with a testable invariant (I26). `toScreenX(wx)`/`toScreenY(wy)` *is* the write-into-a-`Float64Array` form | §3 preamble, I26 |
 | **draw (A3)** | `visibleTileBounds` for culling | **taken and renamed** to the name `draw` asked for, plus `visibleWorldBounds` for the things that are not on the lattice — backdrops, light pools, cached chunks | §3.3 |
-| **draw (A3)** | export `LEVEL_H` rather than re-derive it | **taken, reversing my earlier position.** I already own `TILE_W` and `TILE_H`, which are exactly as much art constants; disowning the third was an inconsistency, not a principle | §3.1, §4.3 |
+| **draw (A3)** | export `LEVEL_H` rather than re-derive it | **declined, after taking it and being overruled.** `draw` keeps it: `iso`'s height vocabulary is world pixels throughout, so no storey can enter through any signature here, and the export would publish a number the package never reads. `TILE_W`/`TILE_H` are projection facts; `LEVEL_H` is an art proportion | §4.3 |
 | **draw (A3)** | who owns the sorted draw list | **`draw` does; I dropped `Scene`.** `iso` keeps the comparator, the order and the backwards walk — `DepthSorter` hands back a permutation of integers and never learns what a drawable is | §3.4, §4.10 |
 | **input (A5)** | `screenToTile` that floors | **taken, and it fixed my naming**: `pickTile` was the odd one out among `gridToWorld` / `worldToGrid` / `worldToTile` / `gridToScreen`. Floors, never rounds | §3.7, T1 |
 | **input (A5)** | camera in CSS pixels, out-param `toWorld`/`toScreen` | **confirmed**, and now stated as the reason the camera takes a viewport rather than a canvas. `devicePixelRatio` is `draw`'s, at the point it sets a transform | §3.3 |
@@ -1705,28 +1705,36 @@ routings sharpened them:
 
 Things a game developer would otherwise hand-roll on top of Lattice. None is mine to build.
 
-**`@lattice/core` (A1) — two shapes I still depend on.**
-1. **`Vec2` must have mutable fields.** `interface Vec2 { x: number; y: number }`. An
-   out-parameter API cannot be handed a `Readonly<Vec2>`, and if core exports the readonly form
-   the whole kit ends up with two point types. Core should export the mutable interface and a
-   `freeze`-free convention, not `readonly` fields. Four packages now want this; I have taken
-   `GridPoint` (§3.0) on the same terms and will re-export `Vec2` from wherever `core` lands it,
-   so that there is exactly one of each in the kit.
-2. **A deterministic binary heap / priority queue with an explicit insertion tie-break.** A* needs
-   one, `sim` will want one for its scheduler, and it is core-shaped, not iso-shaped. If core
-   does not export it, `iso` will have to, and then two packages own a heap.
+**`@lattice/core` (A1) — nothing outstanding. All of it closed, one way or the other.**
 
-`core.hash2(seed, x, y)` as delivered is exactly right for per-tile variation, and `iso` reaches
-it through `TileSource.fillFrom` / `tileSourceOf` rather than holding an `Rng` of its own.
-`clamp` and `lerp` are assumed to exist in `core/math`; if not, say so and they become internals.
+- **`Vec2` — granted, in the shape asked for.** `Vec2` assignable to `ReadonlyVec2` and not the
+  reverse, one type to declare and one that appears only in signatures, no `MutableVec2` in the
+  kit. `iso` imports both and declares neither (§3.0).
+- **The priority queue — refused, and correctly.** The heap is mine, unexported, built to the
+  Lattice ordering rule that core took in its place (§4.12). The rule is the part that could not
+  be duplicated, and it now binds `DepthSorter` as well as the path heap.
+- **`hash2` — granted**, and exactly right for per-tile variation. `iso` reaches it through
+  `TileSource.fillFrom` / `tileSourceOf` and holds no `Rng` of its own.
+- **`EpochMillis` / `MonotonicMillis` branded — granted, and it lands on me indirectly.**
+  Nothing in `iso` takes a time, which is now a structural fact rather than a stated intention:
+  there is no parameter in this package a timestamp of either brand could be passed to. The
+  branding protects the packages either side of me, and I benefit because `pathSample` is
+  parameterised by arc length rather than by `t`, so a walker's position cannot silently
+  inherit a clock that runs at quarter speed in a hidden tab.
+- **`Scope` / `Disposer` — granted as an interface with a factory**, which suits me: `iso`
+  creates no listeners, timers or contexts and therefore returns no disposers at all. If a
+  builder finds themselves needing one here, they have put something impure in the wrong
+  package.
+- `clamp` and `lerp` are assumed to exist in `core/math`; if not, say so and they become
+  internals.
 
 **`@lattice/draw` (A3) — the silhouette contract.** `boxSilhouette` returns the six-point outline
 in the order north-top, east-top, east-base, south-base, west-base, west-top. `draw`'s solid kit
 must stroke a box in that same order, or hit-testing and pixels diverge with no test in either
 package noticing. This needs to be one shared assertion, and it is the only genuine coupling
 between the two packages. `draw` also owns the storey height (`LEVEL_H ≈ 26`, deliberately not
-32 — a one-tile-tall storey reads as a cube and cubes read as programmer art) and the
-whole-device-pixel rounding of the camera translate (T13).
+32 — a one-tile-tall storey reads as a cube and cubes read as programmer art; settled in its
+favour at §4.3) and the whole-device-pixel rounding of the camera translate (T13).
 
 **`@lattice/input` (A5) — the camera controller.** Drag, inertia, pinch, edge-scroll and keyboard
 pan belong there and must drive this camera only through `panByScreen`, `zoomAt` and
