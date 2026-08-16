@@ -224,8 +224,13 @@ for (const [id] of Object.entries(kit.packages)) {
       const decl = line.match(/^export\s+(?:declare\s+)?(?:abstract\s+)?(?:const|function|class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/);
       if (decl) {
         exported.add(decl[1]);
+        // The line above must *close* a block comment. Checking `startsWith('*/')` was
+        // wrong and cost two agents an afternoon: a doc comment whose last line reads
+        // `… and that is why. */` closes perfectly well and failed the rule, so the fix
+        // looked like reflowing good prose to satisfy a linter. Ending in `*/` is the
+        // property that actually matters.
         const above = (rawLines[n - 1] ?? '').trim();
-        if (!above.startsWith('*/') && !above.startsWith('/**')) {
+        if (!above.endsWith('*/')) {
           fail(rel, at, 'docs', `\`${decl[1]}\` is public and undocumented — say what breaks if a caller gets it wrong`);
         }
       }
