@@ -348,3 +348,18 @@ One `Pen` per frame is this package's entire per-frame allocation. That includes
 each sprite hook receives: streams are held by seed and rewound in place, because `core` is
 explicit that one `Rng` per sprite per frame is precisely the small, short-lived, invisible-in-a-
 mean allocation the rule at the top of this file exists to prevent.
+
+## `@lattice/ui`
+
+| operation | per call |
+|---|---:|
+| `setText`, unchanged value | 22 ns |
+| cadence dispatch, 32 subscribers | 51 ns |
+| roll paint step | 250 ns |
+| `floats.spawn` | 339 ns |
+| `applyPalette`, unchanged (10 keys) | 991 ns |
+
+A busy HUD costs about **4.5 µs** of an 8 ms frame. The `setText` figure is the interesting
+one: it is a guard, not a write, and it exists because assigning `textContent` invalidates
+layout whether or not the string changed. Twenty readouts updating every frame with the same
+numbers is a layout pass per frame for nothing.
