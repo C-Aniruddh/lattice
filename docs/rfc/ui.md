@@ -77,7 +77,7 @@ to update it (I own only this file):
 | **keep floating numbers inside `roll`** | `+120` rising off a building and a wallet ticking up to 1,240 are the same feature seen twice: a number in screen space, animated, that must be correct without animation. One module, two exports. |
 | **reword this package's third invariant** | It currently reads *"anything that is not painting updates on an interval, not inside the frame loop."* Right in spirit, wrong in letter. `@lattice/loop`'s `update` **already is** the interval; a `ui` that reads that sentence literally starts a `setInterval` of its own and now the HUD polls on one clock while the simulation settles on another — which is `PLAYBOOK.md` trap 12, the bug that overwrote a player's typed company name. It must read: **"anything that is not painting updates on the loop's `update` callback, never inside `render`."** The two sentences sound identical and are not. |
 
-Seven modules, nineteen exported functions. Everything else in this section is a type.
+Seven modules, twenty exported functions. Everything else in this section is a type.
 
 ### 3.1 What this package needs from its dependencies
 
@@ -172,30 +172,72 @@ export interface Overlay {
   mount<T extends HTMLElement>(node: T, opts?: MountOptions): T;
 
   /**
-   * Register work on the **state cadence**: an interval, so it keeps running when
-   * `requestAnimationFrame` is throttled to zero in a backgrounded tab. Anything whose absence
-   * would be a *wrong* HUD — prices, affordability, disabled buttons, timers — goes here.
+   * Register work on the **state cadence** — everything `tick()` runs, and therefore
+   * `@lattice/loop`'s `update` callback, which advances on wall time whether or not anything
+   * paints. Anything whose absence would be a *wrong* HUD goes here: prices, affordability,
+   * disabled buttons, build timers, toast expiry, the day/night palette.
+   *
+   * Note what this is **not**: it is not a `setInterval` of this package's own. `update` is
+   * already the interval, and a HUD polling beside the simulation instead of with it is a poll
+   * racing a settle — see §6, trap 4, where that pattern silently replaced a player's typed
+   * company name with a random one.
    */
   every(fn: (nowMs: number) => void): Dispose;
 
   /**
-   * Register work on the **paint cadence**: `requestAnimationFrame`, and therefore 0 Hz in a
-   * hidden tab, throttled on a low-power device and skipped entirely under load. Anything
-   * registered here must be *cosmetic*: if it never runs once, every number on screen must
-   * still be right. That is the whole rule, and §5, invariant 2 tests it.
+   * Register work on the **paint cadence** — everything `repaint()` runs, and therefore
+   * `@lattice/loop`'s `render` callback: `requestAnimationFrame`, 0 Hz in a hidden tab,
+   * throttled on a low-power device, skipped entirely under load. Anything registered here
+   * must be *cosmetic*: if it never runs once, every number on screen must still be right.
+   * That is the whole rule, and §5, invariant 2 tests it.
    */
   paint(fn: (nowMs: number) => void): Dispose;
 
-  /** Run the state cadence once, now. Idempotent: writes are change-guarded, so calling it from your frame loop as well is free. */
+  /**
+   * Advance the state cadence to `nowMs`. Call this from your loop's `update` and nowhere
+   * else. Idempotent and change-guarded, so a loop that updates at 20 Hz costs no DOM writes
+   * that a 1 Hz one would not.
+   *
+   * Bound to the overlay, so `loop.onUpdate(ui.tick)` works without a wrapper — an unbound
+   * method reference here is a `TypeError` on the first tick, when the loop is already running.
+   *
+   * @throws Error, naming the mistake, if the overlay was created with `driver: 'standalone'`.
+   */
   tick(nowMs: number): void;
-  /** Run the paint cadence once, now. */
+  /** Advance the paint cadence. Call this from your loop's `render`. Bound, like `tick`. */
   repaint(nowMs: number): void;
 
-  /** Remove the root, cancel the interval and the rAF loop, drop every listener this package added. */
+  /** Remove the root, cancel anything the standalone driver started, drop every listener this package added. */
   destroy(): void;
 }
 
 export function createOverlay(opts: OverlayOptions): Overlay;
+
+/**
+ * The shape of a game loop, as this package needs it.
+ *
+ * Declared structurally rather than imported: `ui` is layer 3 and depends on `core` and `draw`
+ * only, so it cannot name `@lattice/loop` — but it can describe it, and the real `Loop`
+ * satisfies this without knowing that `ui` exists.
+ */
+export interface Driven {
+  onUpdate(fn: (nowMs: number) => void): Dispose;
+  onRender(fn: (nowMs: number) => void): Dispose;
+}
+
+/**
+ * Wire an overlay to a loop: `update` drives `tick`, `render` drives `repaint`.
+ *
+ * One export for two lines a caller could write, and it earns its place because those two
+ * lines are the ones it is fatal to cross. `render`-drives-`tick` is a HUD that freezes with
+ * stale prices and stale disabled states the moment the tab goes behind another — the bug the
+ * source game shipped and then fixed with a comment. Here it is not a comment; it is a
+ * function whose whole body is the correct pairing, and the only reason to write the wiring by
+ * hand is a host that has no loop at all.
+ *
+ * Returns a disposer that unwires both.
+ */
+export function drive(ui: Overlay, loop: Driven): Dispose;
 
 /**
  * Dev-time audit. Returns one English sentence per problem found, empty when clean.
@@ -286,7 +328,7 @@ export function interactive<T extends HTMLElement>(node: T): T;
 export function passthrough<T extends HTMLElement>(node: T): T;
 ```
 
-### 3.4 `panel` — sheets, modals, and the latch
+### 3.4 `panel` — sheets, modals, and the things that must be answered
 
 ```ts
 export interface PanelOptions {
@@ -327,6 +369,58 @@ export interface Panel {
 }
 
 export function panel(ui: Overlay, opts?: PanelOptions): Panel;
+
+export interface AcknowledgeOptions {
+  /** Short. It is the line the player reads before deciding whether this matters. */
+  readonly title: string;
+  /**
+   * The explanation, in the player's terms: what has happened, and what it means for them.
+   * A `Node` if you need structure — this package will not parse an HTML string for you (§3.3).
+   */
+  readonly body: string | Node;
+  /**
+   * The button. Default `'OK'`, and you should nearly always replace it: a label that names
+   * the acknowledgement ("I understand") is read, and "OK" is pressed without being read.
+   */
+  readonly confirmText?: string;
+}
+
+/**
+ * Tell the player something that must not be missed, and wait until they say they have seen it.
+ *
+ * A modal panel with `dismissible: false`, one button, and a promise that resolves when it is
+ * pressed. Escape does nothing, the scrim does nothing, and there is no close cross — the only
+ * way out is the acknowledgement, which is the entire point.
+ *
+ * **This exists for a specific class of message: the session has silently stopped working and
+ * the player cannot tell.** `@lattice/persist` found the case that named it — a save written by
+ * a newer deploy, which `persist` correctly refuses to overwrite, so the player's progress is
+ * safe and their *current session* is no longer being recorded. A toast is exactly wrong here:
+ * it is dismissible, it expires whether or not it was read, and it competes with the toast that
+ * said "Refinery online" three seconds earlier. A player who dismisses it keeps playing a
+ * session that will not survive the tab closing, and they were told, and it did not matter.
+ *
+ * Guarantees worth relying on:
+ *
+ * - **It works before the loop is running.** Panels are event-driven, not tick-driven, so a
+ *   dialog raised at boot — before `drive(ui, loop)`, or when the loop will never start because
+ *   whatever it would have run is the thing that failed — is fully functional. A message about
+ *   a broken session must not depend on the session.
+ * - **The confirm button takes focus on open**, so Enter answers it and a keyboard-only player
+ *   is never trapped in a dialog that ignores Escape by design.
+ * - **It stacks.** Raised over an open modal it goes on top, and the one underneath is still
+ *   there when it closes.
+ * - **If the overlay is destroyed first, the promise never settles.** Deliberate, and the one
+ *   sharp edge in this function: a continuation written after `await acknowledge(...)` is
+ *   written for a player who agreed, and running it because the page is being torn down would
+ *   be a lie. If you need to know about teardown instead, build it from `panel` directly.
+ *
+ * **One action only.** Two buttons is a *choice*, not an acknowledgement, and a choice has an
+ * outcome the caller must handle — that is a different function with a different return type,
+ * and it is the first step into a dialog system this package refuses to become (§4). Build it
+ * from `panel`; that is what `panel` is for.
+ */
+export function acknowledge(ui: Overlay, opts: AcknowledgeOptions): Promise<void>;
 ```
 
 Modals are a **stack**. Opening a second over the first pushes; Escape and the scrim pop the
@@ -358,6 +452,29 @@ export interface ToastHost {
    * who must not lose it — and a tap dismisses it early rather than making them wait it out.
    */
   show(text: string, kind?: ToastKind): void;
+
+  /**
+   * Show one **at most once per key for this session**, and say whether this call was the one
+   * that showed it.
+   *
+   * The case that named it, from `@lattice/persist`: storage may be non-persistent — private
+   * browsing, a quota-constrained device, a user who has blocked site data — and the autosave
+   * rediscovers this every thirty seconds for the rest of the session. Shown every time, "your
+   * browser will not keep this save" becomes furniture: the player learns the shape of a toast
+   * and dismisses it unread, and the next one, which mattered, goes with it. **A notice that
+   * repeats is worse than no notice, because it trains the dismissal.**
+   *
+   * `key` must name the **condition**, not the message: `'storage-not-persistent'`, never the
+   * rendered text. A text that carries a detail — a timestamp, a byte count, an attempt number
+   * — changes on every discovery and defeats a latch that keys on it, which is a deduplication
+   * that silently stops deduplicating in exactly the case it was written for.
+   *
+   * The scope is **this session and this host**, held in memory. It is deliberately not
+   * persisted: see §4 — "once ever, across reloads" is a flag in your saved state, and
+   * `@lattice/persist` owns that. This package never touches storage.
+   */
+  once(key: string, text: string, kind?: ToastKind): boolean;
+
   clear(): void;
   destroy(): void;
 }
@@ -369,6 +486,12 @@ Toasts live in the topmost layer, **above the scrim**. A message that lands unde
 not been shown, it has been lost, and holding it in a queue instead means the queue has to be
 drained by somebody. Expiry runs on the state cadence, so a tab that was hidden for a minute
 comes back with the backlog already gone rather than with forty toasts to dismiss.
+
+`once` and `Panel.openOnce` are the same idea at two sizes, and the pairing is intentional: a
+panel is one thing so its latch needs no key, a toast host shows many things so its latch is
+keyed. Both exist because the natural way to drive UI from a game — check a condition on every
+update — is a poll, and a poll without a latch either repeats (this) or reopens (§3.4, and the
+company-name bug that came of it).
 
 ### 3.6 `roll` — numbers that move, and numbers that fly
 
@@ -564,12 +687,14 @@ export interface PaletteOptions {
  * has to darken with the world — a HUD glowing in its daytime colours over a night scene is
  * the most obvious way an overlay reveals itself as a separate layer bolted on top.
  *
- * **Write it on the state cadence, never the frame loop.** The whole palette is one object of
+ * **Write it from `update`, never from `render`.** The whole palette is one object of
  * short strings; the cost is not building it, it is that a custom property written on the root
  * invalidates style for every node that inherits it — the entire overlay. At 60 Hz that is
  * sixty full-subtree style recalculations a second to animate something the eye reads over
- * three minutes, and it is the exact pattern trap 3 is about: put it in the frame loop and it
- * stops in a backgrounded tab, so the player returns to a night world under a noon HUD.
+ * three minutes. And it is the exact pattern trap 3 is about: a palette is not painting, so in
+ * `render` it stops in a backgrounded tab and the player returns to a night world under a noon
+ * HUD. `ui.every` puts it where it belongs without the caller having to remember which
+ * callback is which.
  *
  * ```ts
  * ui.every(() => applyPalette(ui, lerpPalette(DAY, NIGHT, world.dayT)));
@@ -578,7 +703,7 @@ export interface PaletteOptions {
  * Three properties make that correct rather than merely cheap:
  *
  * 1. **It is change-guarded per key.** An identical palette writes nothing and returns
- *    `false`, so pushing every tick — or from your frame loop, if you insist — is wasteful
+ *    `false`, so pushing on every update — or even from `render`, if you insist — is wasteful
  *    rather than wrong. Quantise `t` on your side (1/64 is plenty for a dusk) and the guard
  *    turns most pushes into no-ops for free.
  * 2. **Smoothing is a CSS transition, not a JavaScript tween.** One-second steps look like
@@ -606,6 +731,7 @@ structure and these names. Renaming one is a breaking change.
 | `lattice-ui` | the overlay root |
 | `lattice-layer`, `lattice-layer-floats` / `-panels` / `-modal` / `-toasts` | the four layer containers |
 | `lattice-panel`, `lattice-panel-modal` | a panel wrapper |
+| `lattice-ack`, `lattice-ack-title`, `lattice-ack-body`, `lattice-ack-confirm` | the four nodes `acknowledge` builds inside a panel |
 | `lattice-scrim` | the modal scrim |
 | `lattice-toast`, `lattice-toast-plain` / `-good` / `-bad`, `lattice-toast-bar` | a toast and its life bar |
 | `lattice-roll` | a roll's default node |
@@ -638,6 +764,7 @@ that is fifteen lines and a mature version that is a framework.
 | **A stylesheet, a theme preset, or a dark mode** | Non-negotiable 8 is zero assets, and a CSS file is an asset. `setBrand` is a bridge from `@lattice/draw`'s colour model into three custom properties; that is the entire opinion this package holds about how anything looks. |
 | **Input handling** — gestures, pointer normalisation, drag, long-press, keyboard maps | `@lattice/input` (layer 2). This package sets `pointer-events` and attaches `click`; if you find yourself computing a drag threshold in here, you are writing the wrong package. |
 | **Colour interpolation, palette blending, contrast checking** | `@lattice/draw` owns the colour model, including interpolating two palettes by a `t` for day and night. `applyPalette` takes the *result* — a bag of name-to-CSS-string — so the overlay darkens with the world without this package learning what "dusk" is, or holding a second opinion about how a colour is derived. |
+| **A clock, a scheduler, a `setInterval`, a `requestAnimationFrame` loop** | `@lattice/loop` owns time, and a HUD that brings its own clock is a HUD that polls while the simulation settles. The overlay is *driven*: `tick` from `update`, `repaint` from `render`. `driver: 'standalone'` exists only for a page with no game behind it, and it refuses to coexist with a host that also calls `tick()`. |
 | **Tweening and easing curves** | `@lattice/loop` has tweens and `@lattice/core` has easing. The roll uses `easeOutCubic` from core; floats and toast bars use Web Animations, which is the platform's own tween and runs off the main thread. |
 | **Number formatting, pluralisation, i18n** | `@lattice/core`'s `format` module. The source game put `fmt` in its DOM helpers and that is exactly the accretion this table exists to prevent: formatting is a pure function of a number and belongs where pure functions live. `RollOptions.format` is how it gets here. |
 | **A camera, a projection, or world-space anchoring** | `@lattice/iso`. `FloatOptions.project` is a hook, not a dependency: three lines of `worldToScreen` on the game's side, and this package stays runnable with no world at all — which is what makes it usable on a menu screen. |
@@ -657,45 +784,54 @@ implementation.
    click at the centre of the viewport: the listener fires. Add a game stylesheet containing
    `.lattice-layer > * { pointer-events: auto }` and the test must *still* pass, because the
    package's own `none` is inline and inline wins.
-2. **The HUD is correct with the paint cadence never running.** Construct with
-   `autoStart: false`, call `tick()` only, never `repaint()`, and every readout — roll text,
-   panel disabled states, toast expiry — reaches its final value. A roll left frozen mid-count
-   is a failure. This is the executable form of "a backgrounded tab must not freeze the HUD
-   into stale prices".
-3. **Coming back from hidden is instant and correct.** Dispatch `visibilitychange` to visible:
+2. **The HUD is correct with the paint cadence never running.** Call `tick()` only, never
+   `repaint()`, and every readout — roll text, panel disabled states, toast expiry, palette
+   properties — reaches its final value. A roll left frozen mid-count is a failure. This is the
+   executable form of "a backgrounded tab must not freeze the HUD into stale prices", because a
+   `render` that never fires is exactly what a hidden tab is.
+3. **A default overlay starts no clock.** Spy on `setInterval` and `requestAnimationFrame`
+   across `createOverlay(opts)` with default options and both counts are zero; the overlay does
+   nothing until `tick()` is called. The failing case is not a crash, it is a HUD that appears
+   to work: one cadence from the loop and one of its own, drifting, until a poll lands between
+   a player's confirm and the settle that clears it.
+4. **The two cadences cannot be crossed by accident.** `drive(ui, loop)` subscribes `tick` to
+   `onUpdate` and `repaint` to `onRender`, never the reverse; disposing it unsubscribes both.
+   With `driver: 'standalone'`, `tick()` throws an `Error` that names the mistake rather than
+   quietly running a second clock.
+5. **Coming back from hidden is instant and correct.** Dispatch `visibilitychange` to visible:
    every roll snaps to its target within the same task, and expired toasts are gone before the
    next frame — not counted up from an hour ago and not dismissed one at a time.
-4. **`openOnce` opens at most once**, across any number of calls, including calls made while
+6. **`openOnce` opens at most once**, across any number of calls, including calls made while
    the panel is open, after it has been closed, and interleaved with `open()`. The property to
    test is a loop of 1,000 `openOnce()` calls producing exactly one `true`.
-5. **`spawn` allocates nothing after warm-up.** Spawn `capacity` floats, then spawn 1,000 more:
+7. **`spawn` allocates nothing after warm-up.** Spawn `capacity` floats, then spawn 1,000 more:
    the layer's child count never exceeds `capacity`, and no new element is created. Measurable
    with a `MutationObserver` counting `addedNodes`.
-6. **Everything is disposable.** After `ui.destroy()`, `document.body` contains no node this
-   package created, `setInterval`/`rAF` handles are cancelled, and no listener remains on
-   `window` or `document`. A game that hot-reloads twice must not accumulate two overlays —
+8. **Everything is disposable.** After `ui.destroy()`, `document.body` contains no node this
+   package created, any standalone-driver handles are cancelled, the loop subscriptions taken by
+   `drive` are released, and no listener remains on `window` or `document`. A game that hot-reloads twice must not accumulate two overlays —
    the source game had two live instances driving one canvas and could not tell.
-7. **The package writes only structural CSS.** Grep the built output for `.style.` assignments
+9. **The package writes only structural CSS.** Grep the built output for `.style.` assignments
    and `setProperty`: the property set is exactly `position`, `inset`, `left`, `top`, `z-index`,
    `pointer-events`, `display`, plus custom properties written by
    `setTokens`/`setBrand`/`applyPalette`. A `color` or a `font-family` in that list means the
    package started having opinions.
 
-8. **Pushing an unchanged palette costs one string comparison per key and no DOM write.**
+10. **Pushing an unchanged palette costs one string comparison per key and no DOM write.**
    `applyPalette(ui, p)` twice with the same object returns `true` then `false`, and a spy on
    `root.style.setProperty` records writes only for keys whose value actually differs. The
    failing case is a dusk that reflows the HUD sixty times a second and a profile that blames
    the game.
-9. **`setText` writes only on change.** Spy on the text node: setting the same string twice
+11. **`setText` writes only on change.** Spy on the text node: setting the same string twice
    performs one write and returns `false` the second time.
-10. **`hide` beats a stylesheet.** With `.thing { display: flex !important }` in the document,
+12. **`hide` beats a stylesheet.** With `.thing { display: flex !important }` in the document,
    `hide(node)` still results in a zero-size box. (Inline `!important` is the fallback if the
    plain inline value loses; the test is written against the observable, not the mechanism.)
-11. **Thumbnails are keyed and bounded, and a palette push does not disturb them.** The same
+13. **Thumbnails are keyed and bounded, and a palette push does not disturb them.** The same
     key twice paints once and returns an identical string; `setBrand` makes the next call paint
     again; a thousand `applyPalette` calls make it paint *zero* more times; adding
     `capacity + 1` distinct keys leaves `capacity` entries.
-12. **No banned clocks.** `npm run lint` finds no `Date.now`, `performance.now` or
+14. **No banned clocks.** `npm run lint` finds no `Date.now`, `performance.now` or
     `Math.random` in `src/`. Time enters through `OverlayOptions.now` and nowhere else — the
     `requestAnimationFrame` timestamp argument is deliberately *ignored*, because two clocks
     in one widget is how a roll ends up ahead of the toast that announced it.
@@ -721,21 +857,38 @@ What a naive implementation gets wrong. Numbers in brackets are traps from
    the attribute is the naive version and it is wrong for exactly the elements a HUD hides.
 
 3. **`requestAnimationFrame` is 0 Hz in a background tab** *(traps 3, 9)*. The canvas keeps
-   showing its last painted frame so the game *looks* alive, and a HUD updated inside the frame
-   loop freezes with it: stale prices, stale disabled buttons, a build timer that stopped. The
-   source game's fix was one `setInterval(…, 1000)` running everything that is not painting,
-   and this package makes that the default by having no frame-loop registration for state at
-   all. Two further points a naive interval gets wrong: browsers clamp background intervals
-   hard (Chrome to roughly one per minute after five minutes), so the overlay must **also**
-   resync on `visibilitychange` rather than trusting the interval alone; and the resync must
-   *snap* animations rather than starting them, or the player returns to a tab that spends four
-   seconds counting up.
+   showing its last painted frame so the game *looks* alive, and a HUD updated inside the render
+   callback freezes with it: stale prices, stale disabled buttons, a build timer that stopped.
+   The source game — which had no loop package under it — fixed this with one
+   `setInterval(…, 1000)` running everything that is not painting. **Do not copy that fix here**
+   (trap 3b, below). Copy the shape of it: this package has no registration point that can put
+   state work in `render`, and `every()` is the only door.
+
+   Two further points a naive implementation gets wrong. Background throttling is not only
+   about rAF: a tab hidden long enough has its timers clamped too (Chrome to roughly one per
+   minute after five minutes) and `update` on a wall clock catches up in one large step, so the
+   overlay must **also** resync on `visibilitychange` rather than trusting any cadence alone.
+   And the resync must *snap* animations rather than start them, or the player returns to a tab
+   that spends four seconds counting up to a number it already knew.
+
+3b. **"Not in the frame loop" and "not in the render callback" are not the same sentence.**
+   This is the subtlest trap in the package and it was caught in review, not in code.
+   `@lattice/loop` runs *two* callbacks: `render`, driven by rAF and dead in a hidden tab, and
+   `update`, driven by the wall clock and alive. **`update` already is the interval.** So an
+   implementer who reads "put non-painting work on an interval, not in the frame loop" and
+   dutifully calls `setInterval` has not obeyed the rule — they have built a second clock beside
+   the loop's, and the HUD now polls while the simulation settles. That is trap 12 with a
+   different costume, and trap 12 is not a flicker, it is data loss (below). The rule is: **the
+   loop's `update`, never `render`, and never a timer of your own.** `driver: 'driven'` is the
+   default for this reason, and `driver: 'standalone'` makes `tick()` throw so the two can never
+   both be running.
 
 4. **A poll racing a settle is data loss, not a flicker** *(trap 12)*. Covered by `openOnce`
    above, and it deserves repeating in the implementation's own comments: the failure mode is
    not a modal that blinks. It is a modal that reappears *blank* after a confirm, invites the
    player to press confirm again, and overwrites what they typed. Any one-shot UI driven off a
-   poll of derived state has this bug latent in it.
+   poll of derived state has this bug latent in it — and note that a second clock (3b) is how a
+   game acquires a poll it did not know it had written.
 
 5. **Restarting a CSS animation needs a forced reflow.** `classList.remove('bump')` then
    `classList.add('bump')` in the same task does nothing at all — the browser never observes
@@ -783,19 +936,19 @@ What a naive implementation gets wrong. Numbers in brackets are traps from
     `Dispose` that `overlay.destroy()` calls. A controller that cannot be torn down leaks a
     whole game — and under Vite HMR it leaks a second one that also thinks it owns the canvas.
 
-13. **A palette pushed from the frame loop is trap 3 wearing a new hat.** It is the most
-    natural place to put it — the palette is derived from the same `t` that tints the world, and
-    the world is drawn there — and it is wrong twice over. It stops in a backgrounded tab, so
-    the player returns to a night scene under a noon HUD until the next state tick; and while it
-    is running it invalidates the whole overlay's style sixty times a second to move a colour a
-    player perceives over minutes. The state cadence is the right place, and the correct way to
-    make one-second steps look continuous is a `transition` in the game's stylesheet, which the
+13. **A palette pushed from `render` is trap 3 wearing a new hat.** It is the most natural
+    place to put it — the palette comes from the same `t` that tints the world, and the world is
+    drawn there — and it is wrong twice over. It stops in a backgrounded tab, so the player
+    returns to a night scene under a noon HUD until the next update; and while it is running it
+    invalidates the whole overlay's style sixty times a second to move a colour a player
+    perceives over minutes. `update` is the right callback, and the correct way to make
+    one-second steps look continuous is a `transition` in the game's stylesheet, which the
     compositor runs and a hidden tab simply skips.
 
 14. **Floats that outlive their animation.** Web Animations do not run in a hidden tab, so
-    `onfinish` never fires and the recycler never gets the node back. Expiry must be driven by
-    the state cadence — compare `now` against the spawn time — with the animation callback as
-    an optimisation, never as the mechanism. The same applies to toasts.
+    `onfinish` never fires and the recycler never gets the node back. Expiry must be driven from
+    `update` — compare `now` against the spawn time — with the animation callback as an
+    optimisation, never as the mechanism. The same applies to toasts.
 
 ---
 
@@ -814,6 +967,16 @@ orchestrator, not a change I can make from here.
   so the seam is one structural type and neither side imports the other's opinions. The demo
   should quantise `t` — 1/64 steps over a dusk is beyond what anyone can see — so that the
   overlay's per-key change guard turns most pushes into no-ops.
+- **`@lattice/loop` must present `onUpdate` / `onRender` subscriptions**, or tell me the two
+  names it does present. `Driven` in §3.2 is a structural type — `ui` cannot import `loop` and
+  does not want to — so `drive(ui, loop)` compiles only if the loop's real shape has those two
+  methods, each returning a disposer. If the loop instead takes its callbacks at construction
+  (`createLoop({ update, render })`), `drive` should be dropped from this package and the demo
+  wires `ui.tick` and `ui.repaint` by hand; both are one line, and the RFC's requirement is only
+  that `tick` never lands on `render`. **This is the one open question in the document.**
+- **`.lattice/kit.json`'s third `ui` invariant needs the reword in §3.0** — "on the loop's
+  `update` callback, never inside `render`", not "on an interval, not inside the frame loop".
+  The current wording instructs the builder to create the second clock this RFC forbids.
 - **`@lattice/core`** owns `fmt`, `fmtRate`, `fmtDuration` (its `format` module) and
   `easeOutCubic` (its `easing` module). This package imports the easing and deliberately does
   not import the formatters.

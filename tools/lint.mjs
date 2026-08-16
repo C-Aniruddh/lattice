@@ -39,6 +39,15 @@ const DOM_GLOBALS =
 const problems = [];
 const fail = (file, line, rule, message) => problems.push({ file, line, rule, message });
 
+/**
+ * Modules that have declared themselves `@browser-only` — the adapters.
+ *
+ * Reported on every clean run rather than kept quiet, because this list going up is the
+ * single clearest early sign that the kit is drifting out of Node. Three is a design; ten
+ * is a browser engine wearing an isomorphic label.
+ */
+const adapters = [];
+
 /** Every `.ts` file under a directory, sorted so output is stable across machines. */
 function walk(dir) {
   const out = [];
@@ -127,6 +136,10 @@ for (const [id] of Object.entries(kit.packages)) {
     const lines = code.split('\n');
     const isIndex = basename(file) === 'index.ts';
 
+    /** A module that declares itself the adapter, and is therefore allowed to touch a host. */
+    const browserOnly = raw.slice(0, 2000).includes('@browser-only');
+    if (browserOnly) adapters.push(rel);
+
     lines.forEach((line, n) => {
       const at = n + 1;
 
@@ -155,11 +168,24 @@ for (const [id] of Object.entries(kit.packages)) {
         }
       }
 
-      // 3. Environment purity.
-      if (ISOMORPHIC.has(id)) {
+      // 3. Environment purity, and the one declared way out of it.
+      //
+      //    `loop` needs exactly one module that reads `requestAnimationFrame`, and `persist`
+      //    needs exactly one that reads `localStorage`. Both packages are otherwise
+      //    isomorphic and both would be worse if they were not: the adapter is the point.
+      //
+      //    So the rule is not "no DOM in these packages" but "the DOM lives in a file that
+      //    says so". A module whose header carries `@browser-only` is exempt and is counted;
+      //    everything else in the package must still run unchanged in Node. The count is
+      //    printed on a clean run, because the number going up is the thing worth noticing.
+      if (ISOMORPHIC.has(id) && !browserOnly) {
         const dom = line.match(DOM_GLOBALS);
         if (dom) {
-          fail(rel, at, 'purity', `${dom[1]} in an isomorphic package — inject it as an adapter`);
+          fail(rel, at, 'purity', `${dom[1]} in an isomorphic package — inject it as an adapter, or declare this module \`@browser-only\` in its header if it IS the adapter`);
+        }
+        const timer = line.match(/\b(setTimeout|setInterval|queueMicrotask)\b/);
+        if (timer) {
+          fail(rel, at, 'purity', `${timer[1]} — take an injected schedule function instead, so a test does not have to wait`);
         }
       }
 
@@ -242,7 +268,8 @@ if (FIX && kitStale) {
 
 if (problems.length === 0) {
   const total = [...observedExports.values()].reduce((n, e) => n + e.length, 0);
-  console.log(`lint: clean — ${observedExports.size} packages, ${total} public symbols`);
+  const note = adapters.length ? `, ${adapters.length} declared adapter${adapters.length === 1 ? '' : 's'} (${adapters.join(', ')})` : '';
+  console.log(`lint: clean — ${observedExports.size} packages, ${total} public symbols${note}`);
   process.exit(0);
 }
 

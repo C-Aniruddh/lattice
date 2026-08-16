@@ -65,11 +65,16 @@ format, assert`. Two changes are proposed.
 | **split `hash` out of `rng`** | `persist` needs a checksum for its integrity check, `draw` needs a stable key for its sprite cache, and `iso` needs a stable per-tile scramble. All three will otherwise write their own 32-bit hash, and we will end up with three. The mixing functions are already inside `rng`; exporting them as their own module costs nothing and pre-empts three duplicates. `rng` then imports `hash`. |
 | **rename `assert` → `guard`** | a module called `assert` invites `assert(cond, 'message')`. That form cannot name the offending value (it only sees a boolean), which violates non-negotiable #9, and it is the exact shape that build tools strip in production — so the check exists only where it is least needed. `guard` exports *validators that return the value*, so the check is load-bearing and cannot be stripped. See §4.4. |
 
-Everything else stands. The resulting ten modules:
+A third change arrived after the first draft was accepted: **`time`**, a module of types
+only, added because `loop`, `persist` and `sim` are siblings who all name the calendar and
+have no shared home below core. It is argued in full at [§3.12](#312-time--the-calendar-type-and-only-the-type),
+and it spends the charter's module budget — see [§4.0](#40-the-charter--what-core-will-never-grow-into).
+
+The resulting eleven modules:
 
 | module | tier (§3.1) | one line |
 |---|---|---|
-| `hash` | A | 32-bit avalanche mixing for seeds, cache keys and checksums |
+| `hash` | A | 32-bit avalanche mixing for seeds, coordinates, cache keys and checksums |
 | `rng` | A | the seeded stream: `Rng`, `createRng`, snapshots, forks |
 | `noise` | A | value/gradient noise and fBm, as pure functions of a seed |
 | `math` | A + one B | clamp, lerp, remap, euclidean mod, smoothstep, frame-rate-independent damping |
@@ -79,6 +84,7 @@ Everything else stands. The resulting ten modules:
 | `pool` | A | object reuse for the hot path |
 | `format` | A | numbers a player can read at a glance, with no `Intl` |
 | `guard` | A | argument validators that throw the error non-negotiable #9 demands |
+| `time` | A | the calendar *type* — `EpochMillis` vs `MonotonicMillis`. No clock, no reading |
 
 ### 3.1 Two determinism tiers, stated once
 
@@ -105,6 +111,22 @@ inside any other core module (this needs a rule beyond the existing `Math.random
 ban — routed to whoever owns `tools/`).
 
 ### 3.2 `hash`
+
+> **Do not fold this module back into `rng`.** It was split out on a prediction, and the
+> prediction has since been tested four times by packages that could not see each other's
+> work: `persist` wanted a save checksum, `iso` a per-tile scramble, `audio` a stateless
+> roll over `(bar, step, track)`, `draw` a sprite-cache key and a frame digest. Four
+> independent callers, four different domains, one module — and only one of the four
+> (`iso`, sometimes) also wanted an `Rng`. That is the strongest evidence in this repo that
+> layer 0 is drawn in the right place, and it is recorded here because the fold-it-back
+> proposal is the kind that sounds like tidying.
+>
+> The shape of the convergence is worth naming, because it is what the module is *for*:
+> every one of those callers needed a value that depends **only on its coordinates** — a
+> tile, a bar, a sprite key — and not on how many times anything else had been drawn,
+> played or saved first. That is a different primitive from a random stream, and giving it
+> a different module makes choosing correctly the obvious thing rather than the informed
+> thing.
 
 ```ts
 /**
@@ -134,12 +156,31 @@ export declare function hashString(value: string): number;
 export declare function hashNumber(value: number): number;
 
 /**
+ * Fold one more value into a running hash. **This is the general mechanism; everything
+ * below is a convenience over it.**
+ *
+ * `hash2` and `hash3` are literally two and three of these, unrolled — not separate
+ * algorithms — which is why there is no `hash4` and never will be. Four coordinates is
+ * `hashStep(hashStep(hashStep(hashStep(seed, a), b), c), d)`: still one expression, still
+ * allocation-free, still the same avalanche. A package that needs five does the same
+ * thing. Nothing gets added to core.
+ *
+ * The step avalanches the incoming value *before* combining it and avalanches the
+ * accumulator *after*, which is what makes the result non-linear in every argument
+ * independently. It is order-sensitive by construction: the nesting differs, so
+ * `(a, b)` and `(b, a)` fold to different values.
+ *
+ * `value` is truncated to int32.
+ */
+export declare function hashStep(accumulator: number, value: number): number;
+
+/**
  * Combine parts into one uint32, non-commutatively: `hashParts('a', 'b')` and
  * `hashParts('b', 'a')` differ. This is what makes `(worldSeed, chunkX, chunkY)` a usable
- * key.
+ * key. A `hashStep` fold, with string parts routed through `hashString` first.
  *
- * Variadic, so it allocates a rest array. Setup and cache keys, not the hot path — use
- * `hash2` per tile.
+ * Variadic, so it allocates a rest array, and it accepts strings. Setup and cache keys,
+ * not the hot path — use `hash2`/`hash3`/`hashStep` for numbers in a loop.
  *
  * @throws RangeError if called with no parts.
  */
@@ -165,6 +206,42 @@ export declare function hashParts(...parts: readonly (number | string)[]): numbe
 export declare function hash2(seed: number, x: number, y: number): number;
 
 /**
+ * The same, over three integers — `hash2` plus one `hashStep`.
+ *
+ * It exists because two packages arrived at it independently from different domains:
+ * `iso` samples a tile grid by `(x, y)` and needed a third axis for layers; `audio`'s
+ * sequencer rolls per `(bar, step, track)`, where there is no stream position to advance
+ * and no ordering guarantee between tracks — a track muted at load must not shift what
+ * every other track plays. Two unrelated callers with the same shape is what a layer-0
+ * primitive is for.
+ *
+ * Beyond three axes, fold with `hashStep` directly. That is the whole point of `hashStep`
+ * being exported.
+ */
+export declare function hash3(
+  seed: number, x: number, y: number, z: number,
+): number;
+
+/**
+ * Digest an integer array — a frame buffer, a serialised save, any byte sequence.
+ *
+ * `draw`'s headless renderer digests a rendered frame to compare against a golden;
+ * `persist` digests a serialised save to detect corruption. Neither can reach `hashString`
+ * without first turning a megabyte of bytes into a string, which allocates the megabyte
+ * again to hash it once.
+ *
+ * **Values are truncated to int32**, like every other input in this module. That is
+ * correct for `Uint8Array`, `Uint8ClampedArray` and integer arrays generally, and silently
+ * wrong for a `Float32Array` — every value between -1 and 1 truncates to zero, and the
+ * digest of a float buffer becomes a digest of its length. View the bytes instead:
+ * `new Uint8Array(floats.buffer, floats.byteOffset, floats.byteLength)`.
+ *
+ * Length is folded in, so a run of trailing zeroes cannot be dropped without changing the
+ * digest.
+ */
+export declare function hashBytes(seed: number, bytes: ArrayLike<number>): number;
+
+/**
  * A uint32 as a float in [0, 1) — exactly `hashed / 2**32`, the same normalisation
  * `Rng.next` uses, so a hashed value and a drawn value are interchangeable in any
  * threshold test.
@@ -178,6 +255,13 @@ export declare function toUnit(hashed: number): number;
 `hashString` is 32-bit, which is a birthday collision at ~77,000 distinct inputs. That is
 plenty for corruption detection and cache keys and **not** a content-address. It is not
 cryptographic and never will be — see §4.
+
+**There is deliberately no symbol named `hash32`** (requested by `draw`). Every function in
+this module returns a uint32, so a name that describes only the output width says nothing
+about which one to call, and it would sit in the import list next to four functions it could
+plausibly be any of. The request maps onto existing surface: a sprite-cache key is
+`hashString(key)` or `hashParts(kind, tint, zoom)`; a frame digest is `hashBytes(seed,
+pixels)`. If a call site genuinely wants "the general one", it wants `hashParts`.
 
 ### 3.3 `rng`
 
@@ -195,6 +279,28 @@ covers the corollary — `derive('a','b')` and `derive('b','a')` must not collid
 
 The rule the demo should follow: **one `Rng` per subsystem, obtained by `derive`, never
 shared.** Two subsystems on one stream is the bug; a stream per subsystem is free.
+
+**On `rngFrom(seed)`** (asked for by `draw`, which has written cache invariants against the
+answer): **no new export — `createRng(key)` is exactly that function, and it is the right
+one.** It hashes its argument and returns a fresh, independent stream, so per-instance
+sprite variation drawn from `createRng(spriteKey)` is identical whether the sprite is drawn
+directly, drawn into a cache, or redrawn after an eviction. Nothing about it depends on how
+many other sprites were drawn first, which is the hazard.
+
+Two notes for that call site, since the cache key already exists by the time this is called:
+
+- **Pass the key itself**, `createRng(key)`, not `createRng(hashString(key))`. `createRng`
+  hashes internally, so the second form hashes twice — harmless, but it reads as though the
+  first hash were load-bearing, and someone will later "optimise" the wrong one away.
+- **Allocation is fine here and only here.** An `Rng` is a two-field object; one per cache
+  *miss* is nothing. One per sprite per *frame* would violate non-negotiable #7 — if that is
+  where this ends up, the answer is `hash2`/`hash3` with `toUnit`, which allocates nothing
+  and needs no stream at all.
+
+`derive` is for the other case: forking a child from a stream that already exists, where the
+child must not move when the parent draws. `createRng` is for materialising a stream from a
+key that already identifies the thing. Neither is a shared stream, which is the only property
+that actually matters.
 
 ```ts
 /**
@@ -495,12 +601,59 @@ Every function that produces a vector takes `out` **first** and returns it. That
 non-negotiable #7 made concrete: at 400 sprites and 60Hz, a returned `{ x, y }` is 24,000
 allocations a second.
 
+#### The mutability ruling, and the rule for callers
+
+`iso`, `draw`, `input` and `ui` all inherit this, so it is settled here once. **`Vec2` is
+mutable.** `ui` and `iso` asked for this independently, and `draw`, `iso` and `ui` have all
+now written signatures against a mutable `{ x, y }`; three packages agreeing before seeing
+each other's work is the same evidence that settled the `hash` split. `iso` put the
+mechanism most sharply — *an out-parameter API cannot take a `Readonly<Vec2>`* — and this
+RFC adopts that reading: `AGENTS.md`'s
+"`readonly` on every interface field that is not deliberately mutated" is *satisfied*, not
+broken, because an output parameter is the definition of deliberately mutated. A `readonly`
+`Vec2` would force a second writable type into every signature that fills one, and the kit
+would carry `Vec2` and `MutableVec2` side by side with the compiler unable to tell anyone
+which to pick.
+
+The resolution is the pair already in the surface below, and the reason it does not become
+that same two-type problem is one fact about structural typing:
+
+> **`Vec2` is assignable to `ReadonlyVec2`. `ReadonlyVec2` is not assignable to `Vec2`.**
+
+The assignability runs exactly one way, and it is the useful way. So there is only ever one
+type a caller *declares* — `Vec2`, for every variable, field, scratch and array element —
+and one that appears *only inside signatures*, `ReadonlyVec2`, on parameters that are read.
+Nobody converts, nobody casts, and no call site has to choose.
+
+Three rules, for every package downstream:
+
+1. **Read-only parameters are `ReadonlyVec2`.** If a function does not write to it, it says
+   so in the type. This costs the author one word and buys the caller the guarantee.
+2. **Output parameters are `Vec2`, come first, and are returned.** `out` first is a
+   convention worth more than argument-order aesthetics: it makes the writable argument
+   visible at a glance at every call site in the kit.
+3. **Declare a shared constant as `ReadonlyVec2` and freeze it.** `const ORIGIN: ReadonlyVec2
+   = Object.freeze(v2(0, 0))` cannot be passed as an `out` — the compiler rejects it, rather
+   than a frozen object throwing at runtime in strict mode on the one frame that path
+   executes. This is the case that would otherwise justify a separate `Point` type; it does
+   not, because the pair already covers it.
+
+A distinct readonly `Point` type for values was considered and rejected: two names for one
+shape means conversion functions, conversion functions mean allocation, and allocation in
+this module is the thing the whole design exists to avoid.
+
 ```ts
-/** A mutable 2D point. Mutable on purpose — the whole module writes through `out`. */
+/**
+ * A mutable 2D point — the storage, scratch and output type. Mutable **on purpose**; see
+ * the ruling above. Declare your variables and fields as this.
+ */
 export interface Vec2 { x: number; y: number; }
 
-/** The read side. Take this in any signature that does not write, so a caller can pass a
- *  frozen constant without a cast. */
+/**
+ * The read side. Use it for any parameter that is not written to. `Vec2` is assignable to
+ * it, so a caller never converts; the reverse is not, which is what stops a frozen shared
+ * constant being handed in as an output parameter.
+ */
 export interface ReadonlyVec2 { readonly x: number; readonly y: number; }
 
 /** Allocate. Call this at setup, never inside a loop. */
@@ -666,6 +819,17 @@ the same frame you acquire — is the one that keeps a pool honest.
 Ported and sharpened from `foom-simple-ui/src/ui/dom.ts`. Every function here is
 locale-free by construction; see §4.5.
 
+> **Known pressure point — this module's place in layer 0 is the weakest claim in the RFC.**
+> `ui` has delivered and deliberately does *not* import `fmt`: it judged number display to
+> belong to the game. That is a live vote against the argument in §1's charter, and it is
+> recorded here rather than rediscovered in cycle three. The module survives on `draw`
+> alone, which needs it for canvas text and cannot import `ui` (the DAG points the other
+> way). **The test to apply later:** if `draw` ends up formatting only through a game-supplied
+> callback, `format` has one consumer, fails charter question 1, and should move out of core
+> — to `ui`, or to the demo game. Nothing else in core depends on it, so that move is cheap
+> for exactly as long as nobody builds on it. Do not add a tenth formatter here in the
+> meantime.
+
 ```ts
 /**
  * Compact magnitude: `12500` → `'12.5K'`.
@@ -740,6 +904,45 @@ export declare function expectNonEmpty<T>(
 ): readonly T[];
 
 /**
+ * Reject a number that will not survive `JSON.stringify` — the save-path guard.
+ *
+ * `JSON.stringify(Infinity)` is `"null"`, and so is `NaN`. That is the worst corruption
+ * shape in the kit: the bytes are intact, the checksum matches, the schema is the right
+ * shape, and an infinite stock silently returns as nothing. No layer downstream can detect
+ * it, which is why the check belongs at the moment of writing rather than the moment of
+ * reading. See §4.8.
+ *
+ * Normalises `-0` to `0`, because `JSON.stringify(-0)` is `"0"` and a value that changes
+ * across a round trip fails an integrity comparison for a reason nobody will find.
+ *
+ * @throws RangeError naming the caller and the value, per non-negotiable #9.
+ */
+export declare function expectSerializable(value: number, label: string): number;
+
+/**
+ * The non-throwing form — the load-path predicate.
+ *
+ * `persist`'s invariant is that a corrupt save degrades to a fresh one with a reported
+ * reason and never throws on boot, so the load path needs to *ask* rather than assert.
+ * Same rule, both directions of the boundary.
+ */
+export declare function isSerializable(value: number): boolean;
+
+/**
+ * Reject a count that has left the exactly-representable integers — `Number.isSafeInteger`
+ * with a message.
+ *
+ * For quantities that must be counted rather than measured: buildings owned, ticks
+ * elapsed, entity ids. Above 2^53 a double cannot hold consecutive integers, so `n + 1`
+ * quietly becomes `n` and two different logical values compare equal. See §4.8 for why
+ * this is a *different* problem from the one `expectSerializable` solves, and why an idle
+ * game's stocks are deliberately not subject to it.
+ *
+ * @throws RangeError
+ */
+export declare function expectSafeInteger(value: number, label: string): number;
+
+/**
  * Exhaustiveness check for a discriminated union. In the default branch of a switch,
  * `unreachable(kind, 'building.kind')` fails to compile the day a case is added — which
  * is the only kind of error worth having.
@@ -747,7 +950,124 @@ export declare function expectNonEmpty<T>(
 export declare function unreachable(value: never, label: string): never;
 ```
 
-### 3.12 Package metadata
+### 3.12 `time` — the calendar type, and only the type
+
+`loop` has refused to own an epoch, correctly: its `Clock` is monotonic, `performance.now()`
+has no calendar, and a package that cannot stamp anything should not define the stamp. But
+`persist` stamps the save, `sim` integrates elapsed time from that stamp, and the game
+injects the one function that reads a wall clock. Three packages now name the same concept.
+
+**This module is types and two validators. Core still may not read a clock** — non-negotiable
+#1 is unchanged, `lint` still bans `Date.now()` in every `src/`, and there is deliberately no
+default implementation of `Now` anywhere in the kit. Owning the *word* is not owning the
+*reading*.
+
+#### Why the calendar comes back up to layer 0 when `Rect` and entity ids did not
+
+The charter question is *not* "does more than one package want it" — it is **"do its
+consumers have a common ancestor below core?"** Work the three cases:
+
+| type | consumers | common ancestor below core | verdict |
+|---|---|---|---|
+| `Rect`/`Bounds` | `draw`, `input`, `ui` | **`iso`** — every consumer sits above it in the DAG | `iso` owns it |
+| entity ids | `sim`, and the game | **`sim`** — sole consumer in the kit | `sim` owns it |
+| `EpochMillis` | `persist`, `sim`, `loop` (by exclusion), and the game | **none** — all three are layer-1 siblings | **core owns it** |
+
+Siblings have no shared home but core. That is the whole rule, and it is why this one type
+travels upward while the other two travelled down.
+
+Two facts make it cheap. A type is **erased**: it adds zero bytes to the bundle, so the
+"everyone pays" objection that blocks most core additions does not apply — core may own a
+type where it would refuse the corresponding function. And the alternative is not "no type",
+it is *three* `type Millis = number` aliases that agree today and drift later, which is
+exactly how a save file ends up carrying the wrong unit.
+
+```ts
+declare const EPOCH_MILLIS: unique symbol;
+declare const MONOTONIC_MILLIS: unique symbol;
+
+/**
+ * Milliseconds since the Unix epoch — **wall-clock calendar time**, as `Date.now()`
+ * returns it.
+ *
+ * It answers "what time is it", it survives a reload, and it is the only kind of time
+ * that may be written to a save file. It can also jump backwards: an NTP correction, a
+ * timezone change, or a player setting their clock forward to skip a timer all move it.
+ * Anything that subtracts two of these must tolerate a negative result.
+ *
+ * Branded, so a monotonic reading cannot be assigned here by accident. See the note on
+ * the brand below.
+ */
+export type EpochMillis = number & { readonly [EPOCH_MILLIS]: true };
+
+/**
+ * Milliseconds from an arbitrary origin — **monotonic time**, as `performance.now()`
+ * returns it.
+ *
+ * It answers "how long since", it never goes backwards, and it is **meaningless in a save
+ * file**: the origin is the document, so a value stamped before a reload compares against
+ * a different zero afterwards. It may also freeze while the machine sleeps, which is why
+ * `loop` clamps catch-up and credits nothing.
+ *
+ * Branded for symmetry, and because the confusion runs both ways.
+ */
+export type MonotonicMillis = number & { readonly [MONOTONIC_MILLIS]: true };
+
+/**
+ * The calendar: the game's single wall-clock reading, injected.
+ *
+ * There is exactly one of these per application, the game owns it, and it is almost always
+ * `() => asEpochMillis(Date.now())`. `persist` takes one to stamp a save; `sim` takes one
+ * to integrate to the present. Injecting it is what lets a test run a year of offline
+ * accrual in a millisecond, and what lets `lint` ban the global read everywhere else.
+ */
+export type Now = () => EpochMillis;
+
+/**
+ * The stopwatch: a monotonic reading, injected. Usually
+ * `() => asMonotonicMillis(performance.now())`.
+ *
+ * Separate from `Now` so the two cannot be swapped at an injection site — which is the
+ * failure this whole module exists to prevent, and which no amount of documentation on a
+ * `number` prevents on its own.
+ */
+export type MonotonicNow = () => MonotonicMillis;
+
+/**
+ * Brand a number as calendar time, at the one boundary where a real clock is read.
+ *
+ * Validates finite and nothing else — deliberately. A range check that rejected "this
+ * looks like seconds, not milliseconds" would also reject `0` and `1000`, which is what
+ * every manual clock in every test starts at.
+ *
+ * @throws RangeError naming the caller, per non-negotiable #9.
+ */
+export declare function asEpochMillis(value: number, label?: string): EpochMillis;
+
+/** As `asEpochMillis`, for monotonic readings. @throws RangeError */
+export declare function asMonotonicMillis(
+  value: number, label?: string,
+): MonotonicMillis;
+```
+
+**On the brand, since it costs something.** A bare `type EpochMillis = number` documents and
+enforces nothing, and the two kinds of millisecond are silently interchangeable — which is
+precisely the bug. The brand makes the dangerous assignment a compile error. The cost is one
+call to `asEpochMillis` per application (at the single `Date.now()` the kit permits) and a
+re-brand after arithmetic, because `epochA + 1000` widens to `number`. That widening is a
+feature: `epochA - epochB` is a *duration*, not a calendar instant, and the type system
+saying so out loud is worth the keystroke.
+
+The brand is erased at runtime. A value read back from storage is a plain `number` and an
+unvalidated `as EpochMillis` cast is a lie about data you did not produce — `persist` must
+put it through `asEpochMillis` at the load boundary, which is a real check, not a cast.
+
+**Core does not export `Millis` or `Seconds`.** `loop` already owns those two names for
+durations, and a second identical alias in core would be the exact drift this module exists
+to prevent, with core as the culprit. Durations elsewhere in the kit stay plain `number`
+with the unit in the parameter name.
+
+### 3.13 Package metadata
 
 ```ts
 /** The kit version this package was built as part of. */
@@ -777,17 +1097,28 @@ package must import in full.
 
 Three questions. An addition needs **all three**, and the burden is on the proposer.
 
-1. **Do two packages in different layers already need it?** Not "might". Point at the
-   RFCs. One consumer means it belongs in that consumer.
+1. **Do its consumers have no common ancestor below core?** Not "do two packages want it" —
+   that test was too weak, and §3.12 is where it was corrected. Find the lowest package in
+   the DAG that every consumer already depends on; if one exists, it owns the thing and core
+   does not. `Rect` has `iso`. Entity ids have `sim`. The calendar type has nothing but core,
+   because `loop`, `persist` and `sim` are siblings. Point at the RFCs, not at a guess about
+   who might want it later.
 2. **Is it Tier A, or Tier B with a named presentation-only justification?** If its output
    can differ between two machines and anyone might persist it, it is not a core primitive.
 3. **Is there exactly one reasonable implementation?** If a game could plausibly want a
    different curve, layout, policy or algorithm, core would be picking a winner for
    everybody. That is a decision for the layer that renders, simulates, or saves.
 
-And two hard limits, checkable by a script: **ten modules** and **6 KB gzipped** (half the
+And two hard limits, checkable by a script: **eleven modules** and **6 KB gzipped** (half the
 kit's 12 KB per-package budget — core is the floor everyone pays, not a place to spend).
 Crossing either is an RFC amendment with a name on it, not a commit.
+
+> **The module limit has been raised once, from ten to eleven, and this is that amendment.**
+> It bought `time` (§3.12), which is types only and therefore costs zero of the size budget.
+> Recording it here rather than quietly editing the number is the point of the rule. The
+> twelfth module gets the same three questions and a harder time, and a module of types is
+> the only kind that can plausibly clear them — anything with an implementation is competing
+> for 6 KB that nine packages already spend.
 
 The requests below will be made. Here is the answer in advance.
 
@@ -829,6 +1160,19 @@ no scheduler, no tweens. Non-negotiable #1 says time arrives as a parameter, and
 owns the parameter. Core exports `Easing` functions — pure `(t) => t'` — and `loop` builds
 tweens from them. The instant core knows what "now" is, every package below it can become
 non-deterministic without changing a line of its own code.
+
+§3.12 adds the calendar *type* and nothing else, and that distinction is the whole of it:
+
+| core owns | core will never own |
+|---|---|
+| `EpochMillis`, `MonotonicMillis` — the vocabulary | any function that returns one |
+| `Now`, `MonotonicNow` — the shape of the injected reading | a default implementation of either |
+| `asEpochMillis` — validation of a number you already read | the read itself |
+
+Also absent permanently: any `Date` wrapper, timezone handling, calendar arithmetic ("start
+of day", "days between"), and date/time *formatting*. The last is §4.5 again —
+`Intl.DateTimeFormat` is locale-dependent, engine-dependent and enormous. A game that shows
+"last played Tuesday" formats it in its own layer, where the locale actually lives.
 
 ### 4.3 A default `Rng`, and any `Rng`-shaped interface
 

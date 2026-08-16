@@ -81,20 +81,25 @@
       ],
       "modules": [
         "projection",
+        "footprint",
         "camera",
         "depth",
         "tilemap",
-        "footprint",
+        "height",
         "hittest",
+        "anchor",
         "path"
       ],
       "exports": [
         "VERSION"
       ],
       "invariants": [
-        "Three coordinate spaces \u2014 grid, world, screen \u2014 never conflated. Every conversion is a named function.",
-        "Tile lookup floors, never rounds.",
-        "Hit-testing is computed from state and camera, never cached during a draw pass."
+        "Three coordinate spaces \u2014 grid, world, screen \u2014 never conflated. Every conversion is a named function taking an output parameter.",
+        "Tile lookup floors, never rounds. Rounding snaps to the nearest lattice vertex and picks the wrong tile for three quarters of every diamond.",
+        "Hit-testing is computed from state and camera, never cached during a draw pass. pick() is a method on the sorted Scene, so 'reverse of paint order' is structural rather than remembered.",
+        "Tile size is fixed at 64x32. Any other uniform size is exactly a camera zoom, and parameterising it would infect draw, input and ui signatures permanently.",
+        "Elevation lives on grid vertices, not tile centres. Once z exists the projection is no longer invertible, so picking must be terrain-aware.",
+        "A path is a curve to be sampled by arc length, not a list of nodes to be stepped. Grid-unit parameterisation would make a walker 58% faster on one diagonal than the other."
       ]
     },
     "draw": {
@@ -160,20 +165,22 @@
         "iso"
       ],
       "modules": [
-        "pointer",
-        "keyboard",
-        "gamepad",
+        "sample",
+        "recognise",
+        "dom",
         "gestures",
         "actions",
-        "cameracontrol"
+        "camera"
       ],
       "exports": [
         "VERSION"
       ],
       "invariants": [
-        "Tap and drag are discriminated by distance and time, with the thresholds as named constants.",
-        "Zoom is anchored to the pointer.",
-        "Every listener returns a disposer. A controller that cannot be torn down leaks a whole game."
+        "Input never learns what is in the world. No registry, no rects, no pickable flag \u2014 so there is nowhere to cache a hit box and nothing that would read one.",
+        "Every event carries the tile it resolved to, through the camera as it stood when the tick opened.",
+        "Zoom is anchored to the pointer, and zoom is not publicly assignable \u2014 zoomAt is the only mutator, so skipping the anchoring is unavailable rather than discouraged.",
+        "There is no free-function binder. Listeners come only from a scope, so an unowned listener cannot be constructed.",
+        "A tick sees a bucket closed before it started. Mid-tick arrivals go to the next bucket; overflow collapses moves and never drops a down or an up."
       ]
     },
     "audio": {
@@ -213,15 +220,20 @@
         "store",
         "migrate",
         "adapters",
-        "integrity"
+        "integrity",
+        "replay",
+        "browser"
       ],
       "exports": [
         "VERSION"
       ],
       "invariants": [
-        "Every save carries a version and every version has a migration to the next. A save can never be orphaned.",
-        "Writes flush on visibilitychange, not on beforeunload \u2014 mobile Safari does not reliably deliver the latter.",
-        "A corrupt save degrades to a fresh one with a reported reason, never to a thrown exception on boot."
+        "The chain IS the version. createStore reads the head off the migration chain, so declaring version 7 and shipping a chain that ends at 6 is inexpressible.",
+        "Every migration steps exactly one rung, and every rung carries a recogniser. A save can never be orphaned.",
+        "Writes flush on visibilitychange, not beforeunload \u2014 mobile Safari does not reliably deliver the latter. reset() closes handles BEFORE removing the key, or the autosave writes the live state back over the clear.",
+        "A corrupt save degrades to a fresh one with one of seven closed reasons, returned as a value. Never a thrown exception on boot.",
+        "A save from the future makes the store read-only. A stale deploy must not eat a good save.",
+        "A replay log is evidence, not progress: it is never migrated. A version, stepMs or profile mismatch is refused by name, because a migrated recording would produce a confident wrong answer."
       ]
     },
     "sim": {

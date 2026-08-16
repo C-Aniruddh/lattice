@@ -8,6 +8,11 @@
 > `["store", "migrate", "adapters", "integrity", "replay", "browser"]` — two more than declared.
 > `replay` is accepted ownership of the kit's headline claim (§4.9); `browser` is the one
 > DOM-shaped module. Routed in §8 because this file is the only one I own.
+>
+> **The architect brief's six sections, in its order:** the one sentence (§1), the five-line
+> example (§2), the public surface (§3), what is deliberately absent (§5), the invariants (§6),
+> the traps (§7). §4 argues the decisions the surface encodes — four of them settle seams other
+> RFCs asked about — and §8 routes what belongs elsewhere.
 
 ---
 
@@ -189,7 +194,7 @@ export type Increment<N extends number, Counter extends readonly unknown[] = []>
  * ```
  *
  * Two things fall out of returning rather than asserting. The thrown message travels into
- * `SaveFailure.message`, so a rejected save says *which field* was wrong instead of "the
+ * `ReadFailure.message`, so a rejected save says *which field* was wrong instead of "the
  * guard said no" — the difference between a fixable bug report and a shrug. And a recogniser
  * may **normalise as it validates**, returning a repaired value, which is the cheapest
  * possible migration for a field that only ever needed a default.
@@ -284,7 +289,7 @@ export declare function migrations<Floor extends number, T>(
  *      require parsing a payload written by a build that no longer exists.
  * Use `inspect()` rather than eyeballing it in devtools.
  */
-export interface SaveEnvelope {
+export interface Envelope {
   /** Save format version. */
   readonly v: number;
   /** When it was written, in epoch ms, read from the store's injected `now` — this package
@@ -325,7 +330,7 @@ export type FailureReason =
  * It hands the game a record the game can log, count, put behind a debug panel, or show as
  * "we could not read your save" in its own voice — and that a test can assert on exactly.
  */
-export interface SaveFailure {
+export interface ReadFailure {
   readonly reason: FailureReason;
   /** House rule 9: names the caller's mistake in prose, e.g.
    *  `persist: save "campus" is version 9 but this build reads up to 7 — the player has an
@@ -360,7 +365,7 @@ export interface OpenResult<T> {
   /** From the adapter. False means this session will not be there tomorrow. */
   readonly durable: boolean;
   /** Non-null exactly when `source === 'fresh' && !firstRun`. */
-  readonly failure: SaveFailure | null;
+  readonly failure: ReadFailure | null;
 }
 ```
 
@@ -384,8 +389,8 @@ export interface WriteResult {
 }
 
 /** A save that could not be read, kept so a bug report can carry it. §4.5. */
-export interface RejectedSave {
-  readonly failure: SaveFailure;
+export interface Rejected {
+  readonly failure: ReadFailure;
   readonly text: string;
   readonly truncated: boolean;
 }
@@ -410,7 +415,16 @@ export type Cancel = () => void;
 export type Schedule = (afterMs: number, fn: () => void) => Cancel;
 
 export interface StoreOptions<Head extends number, T> {
-  /** The storage key. Save slots are separate stores on separate keys; there is no slot concept. */
+  /**
+   * The storage key, and with it the lifetime. **One store, one key, and no store ever reads
+   * or writes another store's key** — which is what makes progress, settings and replays
+   * genuinely independent rather than independent by convention. See §4.10.
+   *
+   * The convention the demo game uses and this RFC recommends:
+   * `campus:save`, `campus:settings`, `campus:replay:<id>`, plus `campus:save:rejected` which
+   * the store manages itself. Save slots are separate stores on separate keys; there is no
+   * slot concept and there does not need to be one.
+   */
   readonly key: string;
   readonly chain: MigrationChain<Head, T>;
   readonly adapter: StorageAdapter;
@@ -448,7 +462,7 @@ export interface StoreOptions<Head extends number, T> {
   readonly maxBytes?: number;
   /** Called once, during `open`/`decode`, with the same record the result carries. For a
    *  counter or a breadcrumb — the result is the source of truth. */
-  readonly onFailure?: (failure: SaveFailure) => void;
+  readonly onFailure?: (failure: ReadFailure) => void;
   /** Called on a failed write. Expect it more than once: quota does not heal. */
   readonly onWriteError?: (failure: WriteFailure) => void;
 }
@@ -489,11 +503,11 @@ export interface Autosave {
   /** The last write this handle attempted, or `null`. One object per real write, not per tick. */
   readonly lastWrite: WriteResult | null;
   /** Detach and cancel any scheduled write. Idempotent. A stopped handle's `tick` and `flush`
-   *  are no-ops reporting `'closed'` — which is half of why the reset in §6.2 actually works. */
+   *  are no-ops reporting `'closed'` — which is half of why the reset in trap §7.2 actually works. */
   stop(): void;
 }
 
-export interface SaveStore<T> {
+export interface Store<T> {
   readonly key: string;
   /** The chain head. There is no other version number in the system. */
   readonly version: number;
@@ -506,7 +520,7 @@ export interface SaveStore<T> {
    * `open()` minus the adapter: the entire read pipeline as a function of a string.
    *
    * This is the testing seam. A fixture file per historical version, run through `decode`, is
-   * the regression test that the chain still reaches the head (§4.3, §5.4).
+   * the regression test that the chain still reaches the head (§4.3, invariant §6.4).
    */
   decode(text: string): OpenResult<T>;
   /** The envelope text for `state`, exactly as `save` would write it. A backup or share-code
@@ -521,9 +535,9 @@ export interface SaveStore<T> {
    *
    * The ordering is the whole point. `localStorage.clear()` followed by a reload does *not*
    * reset a game — the live autosave flushes on `pagehide` and writes the state back over the
-   * clear. The source game lost real time to this (§6.2) and its fix was a hand-rolled
+   * clear. The source game lost real time to this (trap §7.2) and its fix was a hand-rolled
    * `window.foom.reset()`. Here it is the API: after `reset()` returns, no code path in this
-   * package writes to the adapter until `open()` is called again. That is invariant §5.2, and
+   * package writes to the adapter until `open()` is called again. That is invariant §6.2, and
    * it is testable without a browser.
    */
   reset(): T;
@@ -532,17 +546,17 @@ export interface SaveStore<T> {
   close(options?: { readonly flush?: false } | { readonly flush: true; readonly get: () => T }): void;
   /** The last save this store could not read, if quarantine kept it. For a debug panel or a
    *  bug-report payload. */
-  rejected(): RejectedSave | null;
+  rejected(): Rejected | null;
   clearRejected(): void;
 }
 
 /** Throws `RangeError`/`TypeError` on nonsense options — a developer error at construction,
  *  which is a different moment from a player's save at boot and is allowed to be loud. */
-export declare function createStore<Head extends number, T>(options: StoreOptions<Head, T>): SaveStore<T>;
+export declare function createStore<Head extends number, T>(options: StoreOptions<Head, T>): Store<T>;
 
 /** The envelope only, payload untouched, or `null` if this is not one. For tools, debug panels,
  *  and the `future` check that must work without parsing a payload it cannot understand. */
-export declare function inspect(text: string): SaveEnvelope | null;
+export declare function inspect(text: string): Envelope | null;
 
 /**
  * Milliseconds between the loaded save and now — the offline gap, and the one derived
@@ -738,7 +752,7 @@ export interface FlushTargets {
  * moment that actually corresponds to "the player has stopped playing".
  *
  * The returned disposer removes both listeners. It does **not** flush — a disposer that writes
- * is the mechanism behind the reset trap in §6.2.
+ * is the mechanism behind the reset trap in §7.2.
  */
 export declare function installFlushTriggers(autosave: Autosave, targets: FlushTargets): () => void;
 
@@ -791,7 +805,7 @@ here because nothing is being destroyed.
 The first two make a hole unwritable. Only the third catches a rung that exists and is *wrong*,
 which is the failure that actually ships, so it is not optional: **the kit's own demo game keeps
 one fixture per version from the floor up, and adding a rung without adding a fixture should
-fail lint.** That last clause is a change to `tools/lint` and is routed in §7.
+fail lint.** That last clause is a change to `tools/lint` and is routed in §8.
 
 Design notes on the chain itself:
 
@@ -847,17 +861,28 @@ The reason `firstRun` is a separate field from `source` exists for this: a game 
 distinguish "new player" from "player whose save we destroyed" will report a healthy funnel
 while quietly losing people.
 
-### 4.6 The store owns no timer
+### 4.6 The store owns no timer, and does not create one
 
-`tick(nowMs)` is driven by the caller, and time arrives as a parameter — the kit's first
-non-negotiable. This makes every coalescing test a loop over numbers with no fake timers, keeps
-`setTimeout` out of `src/`, and lets the store compose with `@lattice/loop`'s scheduler instead
-of racing it.
+The debounced write and `loop.real` are the same feature seen twice, and this package cannot
+import `loop` — they are siblings on layer 1 and the DAG forbids the edge. The resolution is not
+to reimplement it: **`Schedule` is injected.** A browser game passes `loop.real.after`, a Node
+test passes a function that queues callbacks it can run by hand, and `setTimeout` never appears
+in `src/`.
 
-It also puts one obligation on the game, which the doc comment on `tick` states: **drive it
-from the interval that drives your simulation, not from `requestAnimationFrame`.** rAF is 0 Hz
-in a hidden tab, so an rAF-driven autosave stops saving at precisely the moment the player is
-most likely to close the tab.
+That removes the last reason this package would need anything global, which is what keeps it
+isomorphic and completely testable: invariant §6.13 asserts that with a recording `schedule`, no
+write happens until the test chooses to run one. A coalescing test is then a few function calls,
+not a fake timer library.
+
+`tick()` remains for a game with no scheduler at all — a poll cannot leak a timer and needs no
+cancellation semantics, so it is the smaller thing to fall back to. When both are wired, `tick`
+is a no-op rather than a double write.
+
+One obligation falls on whatever is passed as `schedule`, and both forms state it: **it must
+keep firing in a hidden tab.** rAF is 0 Hz when the tab is backgrounded, so an rAF-backed
+scheduler stops saving at precisely the moment a player is most likely to close the tab. A
+simulation-driven `tick` has the same failure if the simulation pauses, which is the reason
+`schedule` is the recommended form and not merely an alternative.
 
 ### 4.7 This package owns the envelope. It does not own your schema — but it names who does
 
@@ -886,11 +911,12 @@ with no hedging.
 
 | question | answer |
 |---|---|
-| does the envelope carry it? | **Yes.** `SaveEnvelope.t`, integer epoch milliseconds. It is the only timestamp in the format. |
+| does the envelope carry it? | **Yes.** `Envelope.t`, integer epoch milliseconds. It is the only timestamp in the format. |
 | who stamps it? | **The caller. Always.** This package may not read a clock — non-negotiable #1 bans `Date.now` inside `src/` and the linter enforces it — so `persist` stamps *what it is given* and never a default. |
-| how is forgetting made impossible? | `nowMs` is a **required, non-optional, first positional parameter** of every entry point that can write: `save(nowMs, state)`, `encode(nowMs, state)`, `Autosave.tick(nowMs)`, `Autosave.flush(nowMs)`, `close({ flush: true, nowMs, get })`. `installFlushTriggers` requires `now: () => number` in `FlushTargets`. There is no overload without it and no `?`, so omitting it is a compile error rather than a silent `0` and an elapsed time of fifty-six years. |
+| how is forgetting made impossible? | `now: Now` is a **required, non-optional field of `StoreOptions` with no default**. `createStore` cannot be called without it, so a store that has no calendar does not exist. This was verified, not assumed: dropping `now` from the §2 example fails to compile. Defaulting it to `() => 0` would be the worst bug in this package's reach — every save would load with an elapsed of zero, offline progress would pay out nothing, and nothing would *look* broken. |
 | what reads it back? | `OpenResult.savedAt: number | null` — the instant on disk, unmodified, including a value in the future. `null` **only** when no save was loaded (`firstRun`, or any degraded read). |
-| what computes the gap? | `elapsedSince(opened, nowMs): number` — `nowMs - savedAt`, clamped at zero below, `0` when there is nothing to measure. |
+| what computes the gap? | `elapsedSince(opened, now): number` — `now - savedAt`, clamped at zero below, `0` when there is nothing to measure. |
+| why one calendar rather than a parameter per call? | Six required parameters are six chances to thread the wrong number in; one required construction argument is one. `loop` has explicitly refused the timestamp (it has no epoch), so the calendar is game-owned and passed to both this package and `sim` — one function, two consumers, no disagreement possible. |
 | in what unit? | Milliseconds, integer, epoch. `persist` does not convert to seconds, does not apply a warp, and does not cap. |
 
 The division of labour that follows, for the orchestrator to check the other two RFCs against:
@@ -945,6 +971,50 @@ recorded under a different kit build, game build or step returns `refused`, neve
 `matched: true`. A verifier that reports green because it declined to check is precisely how a
 determinism claim rots.
 
+### 4.10 Three lifetimes, one envelope
+
+`audio` needs somewhere to keep per-bus gain and mute flags, and it is right that they are not
+progress. Once `replay` landed here too, the package has three things to store with three
+different lifetimes — and the question is whether that is three envelope types or one.
+
+**One.** The reasoning, since it was asked for rather than the conclusion: the envelope has
+never had an opinion about the payload. `d` is a string, `v` is the payload's version, and
+everything in §3.4 and §3.5 — the chain, the checksum, the seven failure reasons, quarantine,
+coalescing, the future-version lock — is a function of the envelope alone. Three bespoke
+envelopes would be the same four fields written three times, three migration mechanisms, and
+three places to get the `future` case wrong. `createStore` is already generic in its payload and
+its chain; a settings store is `createStore` with a different key, a different chain and a
+different `fresh`. That is the whole feature, and it exists today.
+
+What was genuinely missing is the doctrine, so here it is, stated hard enough to test:
+
+| | **save** | **settings** | **replay** |
+|---|---|---|---|
+| key | `game:save` | `game:settings` | `game:replay:<id>` |
+| payload | the run | device preferences: volume, mute, reduced motion, colour-blind palette | a `ReplayLog` |
+| written | coalesced, every 4 s, by an `Autosave` | immediately on change, via `save(state)` | once, at `stop()` |
+| survives **START OVER** | no — that is what START OVER means | **yes** | yes |
+| in an export | yes | **never** | separately, on purpose |
+| `fresh()` returns | a new game | the **defaults**, which is a real answer and not a failure | n/a |
+
+Three consequences a builder must not blur:
+
+1. **`reset()` is scoped to one store, and a game's START OVER calls it on the save store only.**
+   Resetting the settings store means "back to factory volume", which is a different button that
+   most games do not have. `reset()` removes `key` and `${key}:rejected` and touches nothing
+   else; there is no `resetEverything`, and the absence is deliberate (§5.13).
+2. **An export contains exactly one store's payload.** `store.encode(state)` serialises the
+   state you pass through that store's chain and checksum. It has no access to another key, so a
+   save shared between two players cannot carry one of them's mute flag into the other's
+   speakers. This is a structural guarantee, not a discipline, and invariant §6.11 tests it.
+3. **The future-version lock is per store.** A save written by a newer deploy locks the save
+   store (§4.2) and leaves the settings store writable, because a player stuck on a stale build
+   should still be able to turn the volume down.
+
+`audio` cannot reach this package — both are layer 1 with no edge — and it should not try. It
+returns a plain versioned snapshot; the game passes that snapshot to a settings store it owns.
+That indirection is the layering working, not the layering getting in the way.
+
 ## 5. What is deliberately absent
 
 This section is the one that stops the next agent adding it back.
@@ -975,14 +1045,27 @@ This section is the one that stops the next agent adding it back.
 8. **Save slots, profiles, and named saves.** A slot is a second store on a second key. Growing a
    slot concept means growing a slot *index*, which means a second thing to migrate and a second
    thing to corrupt.
-9. **Undo, rewind, and snapshot history.** That is a replay concern, and in a deterministic kit a
-   replay is a seed plus an input log, not a ring buffer of saves. It belongs near `loop`, not
-   here — routed in §7.
-10. **Timers.** §4.6. The caller drives `tick`.
-11. **Automatic or inferred migration** — "spread the new defaults over the old object". Every
-    rung is a named function with a `why` a reviewer can read. See §6.6 for what the alternative
-    actually costs.
-12. **Version skipping.** No 3→7 rung. §4.3.
+9. **Undo, rewind, and a ring buffer of snapshots.** This package took replay (§4.9) and
+   deliberately took only half of it: a replay is a seed, a cursor and an input log, and its
+   checkpoints are 8-byte digests. Storing states instead would make it a save-scumming format,
+   a hundred times larger, and would answer a question ("what did it look like") that nothing
+   asked, in place of the one that matters ("did it diverge").
+10. **The replay driver.** Also §4.9, and the sharpest of these boundaries: constructing a game,
+    restoring the snapshot and turning the fixed-step crank needs `loop`, which this package may
+    not import. It is routed in §8, and if `loop` does not take it the recorder records sessions
+    nobody replays.
+11. **Timers, and a clock.** §4.6 and §4.8. Both are injected, both are required, and neither has
+    a default — a defaulted clock is the single worst bug in this package's reach.
+12. **Automatic or inferred migration** — "spread the new defaults over the old object". Every
+    rung is a named function with a `why` a reviewer can read. See trap §7.6 for what the
+    alternative actually costs.
+13. **Version skipping.** No 3→7 rung. §4.3.
+14. **A `resetEverything()` that clears the origin.** §4.10. It would be four lines and it would
+    be wrong: it is the API shape of `localStorage.clear()`, which is trap §7.2, and the one
+    thing a player resetting their game does *not* expect is their volume back at full at one in
+    the morning. Reset the stores you mean, by name.
+15. **A settings-store convenience wrapper.** Same reason as save slots: it would be
+    `createStore` with three arguments pre-filled and a second name for one concept.
 
 ---
 
@@ -997,7 +1080,7 @@ Each is phrased so the failing case is obvious. All run in Node against `memoryS
 2. **`reset()` is final until `open()`.** Write a save, take an autosave handle, call `reset()`,
    then call `autosave.flush(now)`, `autosave.tick(now)`, `store.save(now, state)` and invoke
    the disposer from `installFlushTriggers`. The adapter's write count is unchanged and its
-   `get(key)` is `null`. *Fails when:* the trap in §6.2 has been reintroduced.
+   `get(key)` is `null`. *Fails when:* the trap in §7.2 has been reintroduced.
 3. **Round trip.** For any JSON-round-trippable `T`, `store.decode(store.encode(t, s))` yields
    `source: 'save'`, `migratedFrom: null`, `savedAt: t`, and a state deep-equal to `s`.
 4. **The floor still reaches the head.** For every fixture from `chain.floor` to `head - 1`,
@@ -1017,10 +1100,34 @@ Each is phrased so the failing case is obvious. All run in Node against `memoryS
    exactly one write; the 241st tick at 4001 ms produces a second.
 9. **Failures are values, not noise.** No path in `src/` calls `console`, and every degraded read
    populates `failure` with a `message` that names the key and the versions involved.
-10. **The package is isomorphic.** `src/` contains no reference to `localStorage`, `document`,
-    `window`, `Date.now`, `performance.now`, `setTimeout` or `setInterval` — except
-    `browserStorage`, which reaches for `localStorage` behind a guard, and that is one grep-able
-    exception. The suite imports nothing browser-shaped and passes under plain `node`.
+10. **The package is isomorphic and owns neither a clock nor a timer.** `src/` contains no
+    reference to `localStorage`, `document`, `window`, `Date.now`, `performance.now`,
+    `setTimeout`, `setInterval` or `requestAnimationFrame` — except `browserStorage`, which
+    reaches for `localStorage` behind a guard, and that is one grep-able exception. The suite
+    imports nothing browser-shaped and passes under plain `node`. *Fails when:* someone adds a
+    default for `now` or `schedule` "so the tests are shorter".
+11. **Stores are isolated.** Given a save store and a settings store on one adapter: writing,
+    resetting or corrupting either leaves every key belonging to the other byte-identical, and
+    `saveStore.encode(state)` produces a string containing none of the settings payload. *Fails
+    when:* an exported save carries the exporter's volume into someone else's speakers.
+12. **The timestamp is the caller's.** `createStore` with a `now` that returns a fixed 1000
+    produces an envelope with `t: 1000`; there is no code path that produces a `t` the injected
+    `now` did not return. And `elapsedSince(opened, now)` is `0` for a first run, `0` for a save
+    stamped in the future, and exact otherwise. *Fails when:* offline progress silently pays out
+    nothing because a default clock returned zero.
+13. **Coalescing is driven, not timed.** With an injected `schedule` that records its callbacks
+    instead of running them, no write happens until the test runs one — proving no real timer
+    exists anywhere in the package.
+14. **A replay verdict is never a false green.** A `ReplayLog` recorded under a different `kit`,
+    `game` or `stepMs` returns `matched: false` with `refused` set, never `matched: true`. A log
+    whose `dropped` count is non-zero is reported, not silently verified.
+15. **Divergence is bracketed and first-only.** Given a driver that perturbs state at tick 900
+    with checkpoints every 600: `divergence.tick` is 1200, `lastAgreedTick` is 600, and
+    `divergence` describes that one comparison and no later one.
+16. **A replay round-trips its rng.** `createRecorder` with an `RngSnapshot`, then a replay
+    restoring that snapshot and driving the same inputs, produces identical digests at every
+    checkpoint. *Fails when:* the log stored a seed but not the cursor — the failure this
+    invariant exists to catch, because it looks correct for the first few draws.
 
 ---
 
@@ -1079,7 +1186,18 @@ Mined from `../foom-simple-ui`, which shipped this problem once already. `src/ga
     a skip rather than an exception at `pagehide`.
 11. **Do not do work in the page-hide path beyond the write.** No analytics, no async, no second
     key. The page is being discarded; you get one synchronous write and the rest is fiction.
-12. **A `!` is a place where the compiler was told to stop helping.** PLAYBOOK trap 14: a single
+12. **"Reset everything" wipes the settings with the save.** The naive START OVER clears the
+    origin or loops every key with the game's prefix, and the player's volume comes back at full
+    in a quiet room. Reset the stores you mean, by name (§4.10). This is trap §7.2 wearing a
+    tidier hat, and it is the reason there is no `resetEverything()`.
+13. **Persist the hue, never the derived tokens.** Inherited from the source game and raised by
+    the `core` architect as a joint `draw`/`persist` constraint neither RFC stated: a save that
+    stores computed colours pins a player to the palette of the build that wrote it, so a
+    retuned shadow or a fixed contrast bug never reaches anyone who already played. Store the
+    input to the derivation — one hue — and derive on load, every time. It is also forty bytes
+    instead of four hundred. The same rule generalises: **a save stores causes, not consequences**,
+    which is why a replay stores inputs and digests rather than states.
+14. **A `!` is a place where the compiler was told to stop helping.** PLAYBOOK trap 14: a single
     non-null assertion bricked two of four biomes on load. The parse path in this package is the
     highest-density source of `unknown` in the kit and will attract them. There are none in this
     surface and there should be none in the implementation.
@@ -1088,36 +1206,62 @@ Mined from `../foom-simple-ui`, which shipped this problem once already. `src/ga
 
 ## 8. Gaps this found that belong to other packages
 
-Routed rather than fixed, per `docs/LOOP.md` rule 5.
+Routed rather than fixed, per `docs/LOOP.md` rule 5. Four cross-package questions arrived during
+this design and are answered in place: the timestamp seam (§4.8), replay ownership (§4.9), the
+settings lifetime (§4.10), and the injected scheduler (§4.6). What follows is what is still open.
 
-- **`core` — the RNG state must be serialisable, or determinism dies at the first reload.** A
-  save carrying only the seed re-rolls every draw the session already spent, so a reloaded game
-  diverges from the one the player left. `Rng` needs a `state` that round-trips through JSON
-  (`snapshot(): number` or a small tuple, and `restore`). This is a cross-package invariant with
-  no owner right now, and it is the most important item on this list.
-- **`core` — `fnv1a32` probably belongs in `core/hash`, not here.** `draw` will want a stable hash
-  for sprite cache keys and `iso` for chunk identity. If `core` takes it, this package imports it
-  and drops one export; until then it lives in `integrity`.
+**Settled here, needing the other side to agree**
+
+- **`loop` — the replay driver.** §4.9 takes the envelope, the recorder, the cursor and the
+  verifier, and explicitly does not take the driver: constructing the game, restoring the rng
+  snapshot, running the fixed step and pumping the cursor needs the loop and the tick index,
+  and `persist` may not import a sibling. `loop` should expose it, taking a `ReplayCursor` and a
+  `ReplayVerifier`. **Without this the recorder records sessions nobody replays and the kit's
+  headline claim is still unfalsifiable** — it is the largest open item in this document.
+- **`loop` — `real.after` must keep firing in a hidden tab.** §4.6 injects `Schedule` and the
+  demo game will pass `loop.real.after`. If that is implemented on `requestAnimationFrame` it is
+  0 Hz in a background tab and the autosave silently stops in the one situation that most often
+  precedes a tab being closed. It needs to be interval-backed, and `loop` should be the single
+  place in the kit that says so rather than five packages each warning about rAF.
+- **`sim` — the upper clamp on the offline gap is yours.** §4.8 splits the clamps: `persist`
+  clamps `elapsedSince` at zero from below because a backwards device clock is a correctness
+  problem, and does not clamp from above because "how much of eight hours away pays out" is a
+  balance decision. If `sim`'s RFC does not cap it, a phone whose clock jumps forward a year
+  pays out a year, and that hole is `sim`'s.
+- **`core` — `EpochMillis` and `Now`.** Already routed by the orchestrator. §3.5 is written
+  against those names; if `core` brands `EpochMillis` rather than aliasing `number`, better
+  still, because `elapsedSince(opened, tickCount)` would then stop compiling.
+- **`draw` — persist the hue, never the derived tokens** (trap §7.13). A joint constraint that
+  neither RFC stated; it belongs in `draw`'s colour section as well as here, because the package
+  that derives the tokens is the one best placed to say they are not save data.
+
+**Resolved by other RFCs since this was drafted, noted so nobody re-routes them**
+
+- `core` provides `RngSnapshot` with the cursor included, which is what makes a replay honest
+  and what invariant §6.16 tests. This was going to be this document's loudest gap.
+- `core` split `hash` into its own module, so §3.1 uses `hashString` instead of growing a
+  private FNV. One hash in the kit, not three.
+- `core` renamed `assert` → `guard` with validators that return their argument; §3.3 adopts that
+  shape for `Recognise<T>`, which is why a rejected save can name the field that was wrong.
+
+**Still unowned**
+
 - **`core` — a number representation that survives JSON and exceeds `Number.MAX_SAFE_INTEGER`.**
-  Idle economies pass 2^53 routinely, and `format` will have to render those numbers anyway. See
-  trap §7.8.
-- **`loop` — an interval-driven ticker.** `Autosave.tick` must keep being called in a hidden tab,
-  which means `setInterval`, not rAF. `loop` should own the one place in the kit that says so,
-  and the demo game should use it rather than each package warning about it separately.
-- **`sim` — offline accrual must handle a `savedAt` in the future and clamp a large gap.** This
-  package reports the timestamp; something has to decide that a save from "tomorrow" accrues
-  zero rather than negative, and that a save from last year does not pay out a year at once.
-  Same clamp `loop` already promises for catch-up ticks.
-- **`ui` — two first-run notices with nowhere to live.** "Your browser will not keep this save"
-  (`durable: false`, shown once) and "this save was made by a newer version of the game"
-  (`writable: false`, which needs a blocking dialog, not a toast). Both are the correct response
-  to a field on `OpenResult` and neither has a primitive today.
-- **`tools/lint` — a rung without a fixture should fail the build.** Invariant §6.4 is only worth
-  what its fixtures are worth. Lint knows the chain head is a literal in the demo game's source;
-  it can check that a fixture file exists for every version from floor to head.
-- **`.lattice/kit.json` — needs a routed edit.** `packages.persist.modules` should become
-  `["store", "migrate", "adapters", "integrity", "browser"]`, and `exports` should list the
-  symbols in §3. I own only this file and cannot make that change.
-- **Replay is unowned.** Deliberately absent item 9 says snapshots belong to a seed plus an input
-  log. Nothing in `kit.json` owns that, and a deterministic kit that cannot replay a session has
-  left its headline claim untested. Worth a package or a `loop` module before v1.
+  Idle economies pass 2^53 routinely; JSON turns `Infinity` into `null` with a valid checksum
+  (trap §7.8), and `format` will have to render those numbers anyway.
+- **`ui` — two notices with nowhere to live.** "Your browser will not keep this save"
+  (`durable: false`, shown once, not every thirty seconds) and "this save was made by a newer
+  version of the game" (`writable: false`, which needs a blocking dialog rather than a toast,
+  because the correct action is to reload and the wrong action is to keep playing). Both are the
+  correct response to a field on `OpenResult` and neither has a primitive today.
+- **`tools/lint` — a rung without a fixture should fail the build.** Invariant §6.4 is worth
+  exactly what its fixtures are worth. Lint can read the chain head as a literal and check that
+  a fixture exists for every version from floor to head. Two further rules worth adding while
+  there: ban `!` non-null assertions (`PLAYBOOK.md` trap 14, and the parse path in this package
+  will attract them), and ban `setTimeout`/`setInterval` in package `src/` now that scheduling is
+  injected everywhere.
+- **`.lattice/kit.json` — needs a routed edit I cannot make.** `packages.persist.modules` becomes
+  `["store", "migrate", "adapters", "integrity", "replay", "browser"]`, `exports` should list the
+  symbols in §3, and the `invariants` array should gain a fourth line: *"A replay verdict is
+  never a false green — a log from another build is refused, not matched."* The existing three
+  lines all still hold verbatim.

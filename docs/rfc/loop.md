@@ -214,6 +214,26 @@ export const DEFAULT_IDLE_PUMP_MS = 1000;
 /** A pump costing more than this counts against `stats.overBudget`. Matches `kit.json`. */
 export const DEFAULT_BUDGET_MS = 8;
 
+/** What every subscription returns. Calling it twice is not an error. */
+export type Disposer = () => void;
+
+/** Where an exception came from, for `onError`. */
+export type LoopPhase = 'update' | 'render' | 'job' | 'timer';
+
+/**
+ * A unit of work that must happen **soon, at most once per pump, and never on the paint
+ * path** — a navigation field rebuilt after the map changed, a spatial index reinserted, a
+ * layout recomputed after a resize. See §3.3b.
+ */
+export interface Job {
+  /** Mark the work as needed. Idempotent within a pump: ten requests are one run. */
+  request(): void;
+  /** Un-request it. A job that has already run this pump is unaffected. */
+  cancel(): void;
+  /** Requested and not yet run. */
+  readonly queued: boolean;
+}
+
 export interface LoopOptions {
   readonly clock: Clock;
   readonly frames: FrameSource;
@@ -223,14 +243,19 @@ export interface LoopOptions {
    * `maxCatchUpMs`; called on `'tick'` pumps as well, so this is where **everything that is
    * not painting** belongs — economy, HUD data, autosave decisions, quest settlement.
    *
-   * `tick` counts fixed steps since `start()` and never skips: it is the cursor a replay
-   * indexes an input log by.
+   * `tick` is a **non-negative integer**, starts at 0, increments by exactly one per call,
+   * and never skips or repeats for the life of the loop. `@lattice/input` keys its event
+   * buckets by it and `@lattice/persist` keys its replay envelope by it: the index *is* the
+   * alignment between an input log and a session, so it is a guarantee, not a convenience.
    *
    * Must not: read a clock, read live input listeners (sample them into a buffer instead),
    * touch the canvas, allocate per entity, or assume it runs once per frame. Must: copy
    * *current* to *previous* for anything the renderer interpolates, before moving it.
+   *
+   * Optional only because it is shorthand: giving it here is exactly `onUpdate(fn)` called
+   * before `start()`, and it is therefore always the first subscriber. See §3.3a.
    */
-  readonly update: (dt: Seconds, tick: number) => void;
+  readonly update?: (dt: Seconds, tick: number) => void;
 
   /**
    * Draw the world as it stands `alpha` of the way from the last completed step to the next
@@ -241,12 +266,26 @@ export interface LoopOptions {
    * everything sampled from a clock — bobbing, pulsing, shimmer — is sampled at one
    * consistent moment rather than at whatever `alpha` happened to be per call site.
    *
-   * Must not: mutate simulation state, accumulate its own delta, step tweens, cache
-   * hit-boxes, or start timers.
+   * `nowMs` is this pump's single reading of the injected clock — the same value the loop
+   * used for its own accounting (§6.7), handed over so that a frame-integrated presentation
+   * value can take a delta without reading a clock of its own. `@lattice/input`'s camera
+   * needs exactly this. It is monotonic and **has no epoch**: it is not the calendar, cannot
+   * be stored, and must not be compared across a reload (§4.1a).
+   *
+   * Must not: mutate simulation state, accumulate anything the simulation reads, step
+   * tweens, cache hit-boxes, or start timers.
+   *
+   * Optional for the same reason `update` is: it is shorthand for `onRender(fn)`.
    */
-  readonly render: (alpha: number, time: Seconds) => void;
+  readonly render?: (alpha: number, time: Seconds, nowMs: Millis) => void;
 
-  /** Fixed steps per second. Default {@link DEFAULT_HZ}. An idle game is happy at 20. */
+  /**
+   * Fixed steps per second. Default {@link DEFAULT_HZ}. An idle game is happy at 20.
+   *
+   * Must be a **positive integer** — `RangeError` otherwise — because the accumulator is
+   * integer microseconds and `hz` is what divides it (§6.6). Changing it changes `stepMs`,
+   * which is written into recorded input logs: see the warning on {@link Loop.stepMs}.
+   */
   readonly hz?: number;
 
   /** Catch-up ceiling. Default {@link DEFAULT_MAX_CATCH_UP_MS}. */
@@ -267,13 +306,13 @@ export interface LoopOptions {
   readonly onStall?: (droppedSeconds: Seconds) => void;
 
   /**
-   * Called when `update` or `render` throws. The loop stops itself first, then calls this,
-   * then rethrows if this is absent.
+   * Called when anything the loop invoked throws — a subscriber, a timer, a job. The loop
+   * stops itself first, then calls this, then rethrows if this is absent.
    *
    * A loop that swallows an exception and keeps pumping produces the worst bug shape there
    * is: the picture still moves, the state is frozen, and nothing in the console says so.
    */
-  readonly onError?: (error: unknown, phase: 'update' | 'render') => void;
+  readonly onError?: (error: unknown, phase: LoopPhase) => void;
 }
 
 export interface Loop {

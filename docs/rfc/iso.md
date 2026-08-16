@@ -27,16 +27,16 @@ The thing a game does every single frame: turn state into a back-to-front draw l
 
 ```ts
 const camera = createCamera(960, 540, { bounds: tileBounds(0, 0, 48, 48) });
-const scene = new Scene(512);                                  // allocated once, reused for ever
-for (const b of state.buildings) scene.add(b.uid, b.gx, b.gy, b.w, b.d, b.heightPx);
-scene.sort(camera);                                            // culls, then orders back-to-front
-for (let i = 0; i < scene.count; i++) paint(scene.idAt(i));    // painter's algorithm, correct
+const order = new DepthSorter(512);                          // allocated once, reused for ever
+for (const b of buildings) order.add(b.gx, b.gy, b.w, b.d, b.heightPx);
+order.sort(camera);                                          // culls, then orders back-to-front
+for (let i = 0; i < order.count; i++) paint(buildings[order.indexAt(i)]);
 ```
 
 And the sixth line, on tap — the one that has to be the exact reverse of the fifth:
 
 ```ts
-const hitUid = scene.pick(camera, pointerX, pointerY, (id, sx, sy) => silhouetteHit(id, sx, sy));
+const hit = pickSorted(order, (i) => silhouetteHit(buildings[i], pointerX, pointerY));
 ```
 
 Everything below exists to make those six lines true. Three consequences fall straight out of
@@ -44,9 +44,9 @@ them and drive the whole design:
 
 | the example says | so the API must |
 |---|---|
-| `scene` is created once, outside the frame | nothing per-frame allocates: no `{x,y}` returns, no closures per item, no arrays per sort |
-| `scene.add` takes an **id**, not an object | `iso` never owns your entities. It owns integers and geometry |
-| `pick` is a method on the **sorted scene** | the "picking is reverse paint order" rule is structural, not a comment someone must remember |
+| `order` is created once, outside the frame | nothing per-frame allocates: no `{x,y}` returns, no closures per item, no arrays per sort |
+| `order.add` takes a **footprint**, and gives back an **index** | `iso` never sees your entities, only rectangles. `buildings[...]` is the caller's array and stays the caller's |
+| `pickSorted` consumes the same `order` that painted | the "picking is reverse paint order" rule is structural, not a comment someone must remember |
 
 ### The other example, which is the demo's whole crowd
 
@@ -55,8 +55,8 @@ no per-walker state, nothing allocated, fully deterministic, replayable from `t`
 
 ```ts
 for (let i = 0; i < n; i++) {
-  pathSample(road, ((t * speed + (i / n) * road.arcLength) % road.arcLength), here);
-  scene.addPoint(FIRST_PILGRIM + i, here.x, here.y, heightAt(valley, here.x, here.y));
+  pathSample(road, (t * speed + (i / n) * road.arcLength) % road.arcLength, here);
+  order.addPoint(here.x, here.y, heightAt(valley, here.x, here.y));
 }
 ```
 
@@ -70,6 +70,32 @@ up the road in the demo's ending, and the `reach` number the entire economy is b
 ---
 
 ## 3. The public surface
+
+### The allocation contract, which is not negotiable
+
+> **Routed from `@lattice/draw` (A3), as a blocking requirement: no function in this package
+> returns a point.** Confirmed — it never did, and this block exists so that no builder has to
+> read three sections to be sure. `draw` has packed colours into `uint32` and put polygon
+> corners into a scratch `Float64Array`; a projection returning `{ x, y }` would put the source
+> game's largest per-frame allocation straight back, and `draw` could not satisfy constitution
+> rule 7 at all.
+
+Three shapes, and every hot-path function in this document is one of them:
+
+| shape | signature | for |
+|---|---|---|
+| **scalar** | `toScreenX(wx): number` | the innermost loop. Returns a number, so it cannot allocate and the engine inlines it. **This is the form that writes into a `Float64Array`:** `pen[i] = cam.toScreenX(wx); pen[i+1] = cam.toScreenY(wy);` — no intermediate object at any point |
+| **out-parameter** | `gridToScreen(cam, gx, gy, zPx, out): Vec2` | everywhere a point is genuinely wanted as a point. Writes into a caller-owned `Vec2` and returns it so calls chain |
+| **buffer** | `boxSilhouette(cam, gx, gy, vol, out: Float64Array)` | geometry with more than one point. Writes `n` pairs into the caller's array at once |
+
+Note that `Camera.toScreenX` takes only `wx` and `toScreenY` only `wy`: screen x depends on
+world x alone. A caller projecting eight box corners that share four x values can project four
+numbers instead of eight.
+
+**The convergence `draw` points at is real and deliberate.** Projection into an out-parameter
+and `pathSample` into an out-parameter are the same discipline, and they came out the same
+shape on purpose: both write a two-component value into a caller-owned `Vec2` and return it.
+If a reviewer finds a function here that returns a fresh point, it is a defect, not a variant.
 
 ### 3.0 Shared types
 
@@ -86,11 +112,29 @@ export interface Vec2 {
   y: number;
 }
 
-/** An integer tile address. Mutable for the same reason as {@link Vec2}. */
-export interface Tile {
+/**
+ * A position in **grid** space, fractional or integer. Mutable, for the same reason as
+ * {@link Vec2}. *(Named by `@lattice/input`, which needs it on every event it emits.)*
+ *
+ * The fields are `gx`/`gy`, not `x`/`y`, and that is the whole point: invariant I‑zero of this
+ * package is that the three spaces are never conflated, and a grid position that arrives in a
+ * `Vec2` can be handed to a world-space function with nothing to stop it. Every function here
+ * that produces a grid position — {@link worldToGrid}, {@link pathSample}, {@link screenToTile}
+ * — writes into one of these, so the type system does the checking that comments cannot.
+ */
+export interface GridPoint {
   gx: number;
   gy: number;
 }
+
+/**
+ * A {@link GridPoint} whose components are whole numbers: a tile address.
+ *
+ * The same shape, deliberately — a separate nominal type would force a conversion at every
+ * boundary and buy nothing the name does not already say. Use `Tile` in a signature to tell
+ * the caller the value is floored, and `GridPoint` where fractions are meaningful.
+ */
+export type Tile = GridPoint;
 
 /**
  * **The kit's rectangle.** `iso` owns it, because `iso` is the lowest common ancestor of
@@ -193,6 +237,23 @@ export declare const HALF_W: 32;
 export declare const HALF_H: 16;
 
 /**
+ * World pixels per unit of building height. *(Requested by `@lattice/draw`, which would
+ * otherwise re-derive it — see §4.3 for why I changed my mind about owning this.)*
+ *
+ * Deliberately **not** {@link TILE_H}. A storey exactly one tile tall reads as a cube, and
+ * cubes read as programmer art; 26 makes buildings slightly squat, which is the
+ * cartoon-isometric proportion — heavy base, small top. The source game shipped on this
+ * number.
+ *
+ * A recommended unit, not a law: every function in this package takes `heightPx` and none of
+ * them knows what a level is. A game with taller storeys multiplies by its own constant and
+ * nothing here notices. What the export buys is that `draw`, `iso` and the game agree on the
+ * default, which is the one thing that has to be true for a building's culling box and its
+ * painted silhouette to be the same height.
+ */
+export declare const LEVEL_H: 26;
+
+/**
  * grid → world, x only.
  *
  * The scalar forms are what the renderer calls; they return a number, so they cannot
@@ -213,8 +274,8 @@ export declare function worldToGridX(wx: number, wy: number): number;
 /** world → grid, y only. */
 export declare function worldToGridY(wx: number, wy: number): number;
 
-/** world → grid, both axes, fractional. */
-export declare function worldToGrid(wx: number, wy: number, out: Vec2): Vec2;
+/** world → grid, both axes, fractional. Writes a {@link GridPoint}, not a {@link Vec2}. */
+export declare function worldToGrid(wx: number, wy: number, out: GridPoint): GridPoint;
 
 /**
  * The tile *containing* a world point.
@@ -379,6 +440,20 @@ export interface Camera {
   toScreenY(wy: number): number;
   toScreen(wx: number, wy: number, out: Vec2): Vec2;
 
+  /**
+   * Where a world x sits **across** the viewport: `-1` at the left edge, `0` at the centre,
+   * `+1` at the right, and it keeps going beyond them rather than clamping.
+   *
+   * The third member of the projection family, and it exists because `@lattice/audio` needs
+   * it and may not depend on this package: a sound's stereo pan is `normalizedX` of the
+   * thing that made it. Unclamped on purpose — how far a pan is allowed to go is a mixing
+   * policy (`audio` caps at ±0.6, because full-width panning on headphones is unpleasant and
+   * on a phone speaker is inaudible), and a policy does not belong in a projection.
+   *
+   * There is no `normalizedY`. Stereo has one axis, and a vertical pan is not a thing.
+   */
+  normalizedX(wx: number): number;
+
   /** screen → world. The exact inverse of {@link Camera.toScreen}. */
   toWorldX(sx: number): number;
   toWorldY(sy: number): number;
@@ -423,7 +498,8 @@ export interface Camera {
   isVisible(minX: number, minY: number, maxX: number, maxY: number): boolean;
 
   /**
-   * The conservative grid rectangle covering the viewport, for the terrain loop.
+   * The conservative **grid** rectangle covering the viewport — the terrain loop's bounds.
+   * *(Named by `@lattice/draw`, which asked for it; it is the culling entry point.)*
    *
    * Computed by projecting the four **screen** corners into grid space and taking the
    * min/max — because the visible region is a diamond in grid space, not a rectangle. A
@@ -431,10 +507,19 @@ export interface Camera {
    * screen (trap T9). The returned range over-covers by roughly 2×; that is the correct
    * trade against per-tile diamond intersection tests.
    *
-   * @param marginTiles Extra tiles on every side. Pass the tallest thing on your map
-   *   divided by `TILE_H`, or roofs will pop in along the top edge.
+   * @param marginTiles Extra tiles on every side. Pass the tallest thing on your map divided
+   *   by `LEVEL_H`, or roofs will pop in along the top edge.
    */
-  visibleTiles(out: TileRange, marginTiles?: number): TileRange;
+  visibleTileBounds(out: TileRange, marginTiles?: number): TileRange;
+
+  /**
+   * The **world** rectangle covering the viewport, for culling anything that is not on the
+   * tile lattice — a backdrop gradient, a light pool, a cached scenery chunk.
+   *
+   * The `Rect`-shaped counterpart to {@link Camera.isVisible}: that one asks about a known
+   * box, this one hands over the box to test against.
+   */
+  visibleWorldBounds(out: Rect, marginPx?: number): Rect;
 }
 
 /**
@@ -465,55 +550,79 @@ export declare function gridToScreen(
 ): Vec2;
 ```
 
-### 3.4 `depth` — the Scene
+### 3.4 `depth` — an order over footprints, and nothing else
+
+> **Boundary, settled. `draw` is right and I have dropped my `Scene`.**
+>
+> An earlier draft of this RFC exported a `Scene` that held ids, culled, sorted and picked.
+> `draw` claims pass ordering and the sorted draw bucket, and grants that depth *values* are
+> mine. Two packages owning a draw list is exactly the overlap that survives review and costs
+> a rewrite later, so one of us drops it, and it is me — for a reason better than deference:
+>
+> **A draw list is a list of things to draw, and `iso` must not know what a drawable is.** The
+> moment `Scene` holds ids, it is modelling the caller's entities; the moment it has passes,
+> it is a renderer. What is genuinely mine is narrower and sharper — *given a set of ground
+> footprints, what order do they occlude in* — and that is a permutation of integers, with no
+> notion of an item at all.
+>
+> So: **`draw` owns the items, the passes and the bucket; `iso` owns the comparator, the
+> order, and the backwards walk that makes picking correct.** `DepthSorter` is fed footprints
+> and hands back a permutation. It never learns what was drawn.
+>
+> The one thing this must not break is the invariant `Scene` existed to enforce — that picking
+> is the exact reverse of painting (trap T3). It does not, and this is the load-bearing part
+> of the split: `draw` paints `for i in 0..count: paint(items[order.indexAt(i)])`, and
+> `pickSorted` walks *that same `DepthSorter` instance* backwards. The two cannot disagree
+> unless `draw` re-orders after sorting, which is now a written contract (I9) rather than a
+> thing each package hopes the other remembered.
 
 ```ts
 /**
- * A frame's worth of sortable, pickable things.
+ * An order over a frame's ground footprints: fed rectangles, hands back a permutation.
  *
- * Holds ids and geometry in flat typed arrays — never your entities, never a draw closure.
- * The source game pushed `{ depth, x0, x1, y0, y1, draw: () => …}` per item per frame; that
- * is one object plus one closure per sprite per frame, and it is the largest avoidable
- * allocation in an isometric renderer.
+ * Holds five numbers per item in flat typed arrays — no ids, no closures, no entities. The
+ * source game pushed `{ depth, x0, x1, y0, y1, draw: () => … }` per item per frame; that is
+ * one object plus one closure per sprite per frame, and it was the largest avoidable
+ * allocation in the whole renderer.
  *
- * Build it, sort it, walk it forwards to paint, and let it walk itself backwards to pick.
+ * Fill it, sort it, walk it forwards to paint, walk it backwards to pick. What sits at each
+ * position is the caller's business — `@lattice/draw` keeps the items, this keeps the order.
  */
-export declare class Scene {
+export declare class DepthSorter {
   /** @param capacity Items to pre-allocate for. Grows by doubling; sized right it never grows. */
   constructor(capacity?: number);
 
-  /** Drawable item count. Before {@link Scene.sort} this is everything added; after, only what survived culling. */
+  /** Items surviving the cull. Before {@link DepthSorter.sort} this is everything added. */
   readonly count: number;
 
   /** Drop every item, keeping the buffers. Call once at the top of the frame. */
   clear(): void;
 
   /**
-   * Add a footprint-shaped item.
+   * Add a footprint.
    *
-   * @param id Whatever integer identifies this thing to you — an entity uid, an index. It
-   *   comes back out of {@link Scene.idAt} and {@link Scene.pick} unchanged.
    * @param heightPx Height above the `z = 0` plane, for culling only — ground elevation plus
    *   the object's own height. Under-declare it and the roof pops; over-declare it and you
    *   draw a few items you did not need to.
-   * @returns the item's insertion index, which is the sort's final tie-break.
+   * @returns the insertion index. **Keep it**: it is how the caller maps a sorted position
+   *   back to its own item, and it is the sort's final tie-break.
    *
    * Elevation deliberately does **not** enter the sort. A lamp on the ridge and a lamp in the
    * valley sort by their ground footprints, because in a 2:1 projection what occludes what is
    * decided on the ground plane; adding `z` to the depth key draws the ridge lamp in front of
    * a gate that is plainly standing between it and the camera (trap T15).
    */
-  add(id: number, gx: number, gy: number, w: number, d: number, heightPx: number): number;
+  add(gx: number, gy: number, w: number, d: number, heightPx: number): number;
 
   /**
-   * Add a point-like item — a walker, a floating number's origin, a dropped resource.
+   * Add a point-like thing — a walker, a floating number's origin, a dropped resource.
    *
    * Given a small square footprint (`radius` tiles, default `0.15`) rather than zero extent,
    * so it can be strictly *beside* a wall instead of forever ambiguous with it. A true point
    * is incomparable with every footprint that shares either of its spans, which is how
    * pedestrians end up drawn through a wall at second-storey height.
    */
-  addPoint(id: number, gx: number, gy: number, heightPx: number, radius?: number): number;
+  addPoint(gx: number, gy: number, heightPx: number, radius?: number): number;
 
   /**
    * Cull against the camera, then order back-to-front. Allocation-free after warm-up.
@@ -528,35 +637,40 @@ export declare class Scene {
    * (which is implementation-defined and can flicker between frames and between engines).
    * Genuinely incomparable pairs fall back to {@link depthOf}, then to insertion index.
    *
+   * Culling lives here rather than in `draw` because it is a camera-geometry question, not a
+   * rendering one — it is {@link Camera.isVisible} applied to a footprint's bounds, and every
+   * consumer would otherwise write the same six lines and one of them would forget the height.
+   *
    * @param camera Omit to sort without culling — useful for tests and for offscreen passes.
    */
   sort(camera?: Camera): void;
 
-  /** The id at sorted position `i`, `0 ≤ i < count`, back to front. Paint in this order. */
-  idAt(i: number): number;
-
-  /** The insertion index at sorted position `i`, if you kept parallel arrays of your own. */
-  indexAt(i: number): number;
-
   /**
-   * What the player tapped: the **last-painted** item whose `test` returns true, or `-1`.
+   * The **insertion index** at sorted position `i`, `0 ≤ i < count`, back to front.
    *
-   * Walks the sorted array backwards, so it is the exact reverse of the paint order,
-   * including the tie-break. That equivalence is the whole reason `pick` lives on `Scene`
-   * and not in a free function: a tap on a rack that opened the headquarters beside it —
-   * both at the same depth, the pick testing the one that had been painted *under* — was a
-   * real, shipped, player-found bug (trap T3), and it is unreproducible with this shape.
-   *
-   * `test` is called with the item's id and the screen point. Hoist it out of the frame;
-   * it is called at most `count` times and should not be allocated per tap.
+   * This is the whole output. `for (let i = 0; i < s.count; i++) paint(myItems[s.indexAt(i)])`
+   * is the painter's algorithm, correctly.
    */
-  pick(
-    camera: Camera,
-    sx: number,
-    sy: number,
-    test: (id: number, sx: number, sy: number) => boolean,
-  ): number;
+  indexAt(i: number): number;
 }
+
+/**
+ * What the player tapped: the insertion index of the **last-painted** item whose `test`
+ * returns true, or `-1`.
+ *
+ * Walks a sorted {@link DepthSorter} backwards, so it is the exact reverse of the paint order,
+ * including the tie-break. A tap on a rack that opened the headquarters beside it — both at
+ * the same depth, the pick testing the one that had been painted *under* — was a real,
+ * shipped, player-found bug (trap T3), and it cannot recur as long as the sorter passed here
+ * is the one that produced the paint order.
+ *
+ * `test` receives the insertion index; hoist it out of the frame, because a closure allocated
+ * per tap is a closure allocated per tap.
+ */
+export declare function pickSorted(
+  sorted: DepthSorter,
+  test: (index: number) => boolean,
+): number;
 ```
 
 ### 3.5 `tilemap` — storage
@@ -739,27 +853,34 @@ export declare function slopeAt(field: HeightField, gx: number, gy: number): num
 > the demo RFC is right that it is the seam two packages can each plausibly disown. The split:
 > **`input` owns the event, `iso` owns the geometry, and the composition is `input`'s and is
 > one line.** `input` turns a `PointerEvent` into CSS-pixel coordinates relative to the
-> viewport, decides whether it was a tap or a drag, and then calls `pickTile(camera, sx, sy,
+> viewport, decides whether it was a tap or a drag, and then calls `screenToTile(camera, sx, sy,
 > out)` — a function that takes two numbers, touches no DOM, and is testable in Node. The
-> inverse split is unbuildable: a `pickTile` in `input` would drag the projection, the camera
+> inverse split is unbuildable: a `screenToTile` in `input` would drag the projection, the camera
 > and the heightfield up a layer, and `iso` cannot own the event because it may not name a DOM
 > global. If a builder finds themselves writing a `pointerToTile(ev, ...)` here, they have the
 > seam the wrong way round.
 
 ```ts
 /**
- * The tile under a screen point, on flat ground. Floors, like {@link worldToTile}.
+ * The tile under a screen point, on flat ground. **The exact inverse of {@link gridToScreen}
+ * at `zPx = 0`**, and the last member of the conversion family: `gridToWorld`, `worldToGrid`,
+ * `worldToTile`, `gridToScreen`, `screenToTile`.
  *
- * This is the function `@lattice/input` calls to turn a tap into a cell.
+ * *(Named by `@lattice/input`, which was right that `pickTile` — the earlier name — was the
+ * odd one out in a package whose every other conversion is spelled `aToB`.)*
+ *
+ * **Floors, never rounds** (trap T1). `@lattice/input` resolves this on every pointer event
+ * against the camera as the tick opened, so it is on that package's hottest path: two
+ * multiplies, two adds and two floors, no allocation, no branch.
  */
-export declare function pickTile(camera: Camera, sx: number, sy: number, out: Tile): Tile;
+export declare function screenToTile(camera: Camera, sx: number, sy: number, out: Tile): Tile;
 
 /**
  * The tile under a screen point **on a heightfield**, or `false` if the ray leaves the map.
  *
  * Needed because the projection is not invertible once terrain has height (trap T11): the
  * pixel under the cursor is on the ground at one place *and* on the side of the ridge behind
- * it at another, and `pickTile` will confidently return the first. Marches tiles from the far
+ * it at another, and `screenToTile` will confidently return the first. Marches tiles from the far
  * end of the screen ray towards the viewer and returns the first whose surface contains the
  * point — far to near, because the near one is what the player can see and therefore what
  * they meant.
@@ -767,7 +888,7 @@ export declare function pickTile(camera: Camera, sx: number, sy: number, out: Ti
  * @param maxHeightPx The tallest terrain on the map, which bounds how far back the march has
  *   to start. Pass it, or the march either misses a peak or scans the whole map per tap.
  */
-export declare function pickTileOnHeights(
+export declare function screenToTileOnHeights(
   camera: Camera,
   sx: number,
   sy: number,
@@ -1116,6 +1237,18 @@ export declare function anchorToScreen(camera: Camera, a: Readonly<Anchor>, out:
  * measurable frame cost for something nobody can see.
  */
 export declare function anchorVisible(camera: Camera, a: Readonly<Anchor>, marginPx?: number): boolean;
+
+/**
+ * Stereo pan for a sound made at this anchor: `-1` hard left, `0` centre, `+1` hard right,
+ * unclamped beyond the viewport edges.
+ *
+ * Sugar over {@link Camera.normalizedX}, and the third of the three things a world position
+ * has to become — a screen point for drawing, a screen point for a DOM overlay, and a pan for
+ * a sound. `@lattice/audio` cannot compute this because the mapping needs a camera and audio
+ * may not depend on `iso`; the demo should not compute it because then every game rewrites
+ * it. It lives here, next to the other two, and it is one line.
+ */
+export declare function anchorPan(camera: Camera, a: Readonly<Anchor>): number;
 ```
 
 **What is still not mine.** Drawing the tag, the ring or the bar — `draw` on canvas, `ui` in
@@ -1189,26 +1322,28 @@ different algorithm over a different data structure. A game that wants floors dr
 `Scene` per floor, in order, which is what every shipped 2:1 game with floors actually does
 and which this API already supports at no extra cost.
 
-### 4.9 Incremental replanning (D* Lite, LPA*)
-
-The demo asks for "path recompute cheap enough to run on a tap", and the answer is
-**recompute it entirely**, plus the `version` counter of §3.5 so it happens exactly once. Some
-arithmetic, because this is a decision that sounds wrong until it is measured: a 48×48 valley
-is 2,304 tiles, so a worst-case A* that expands every tile is a few tens of microseconds and a
-full `FlowField.build` is one linear sweep in the low hundreds. The frame budget is 8 ms. An
-incremental replanner buys back a fraction of a percent of one frame, in exchange for a few
-hundred lines of the subtlest code in the package, a second invalidation protocol, and a class
-of bug — a stale key in the priority queue — that reproduces once an hour and never in a test.
-If a game appears whose maps are large enough for this to matter, it will also be a game that
-wants chunked flow fields, and that is a different design conversation with real numbers in it.
-
 ### 4.3 Anything that draws
 
 No canvas, no colour, no sprite, no `CanvasRenderingContext2D`, no `devicePixelRatio`.
 `tileDiamond` and `boxSilhouette` return **geometry**. The package must run unchanged in Node,
 because the depth sort and the pathfinder are the two things most worth testing and neither
-should need a DOM to test. `LEVEL_H = 26` — the storey height that makes buildings read as
-cartoon-isometric rather than as cubes — is an art proportion and belongs to `@lattice/draw`.
+should need a DOM to test.
+
+**Except `LEVEL_H`, and I have reversed myself on it.** An earlier draft pushed the storey
+height to `draw` as an art proportion. `draw` asked for it back rather than re-deriving it, and
+it is right, for a reason that is really an argument about consistency: **I already own
+`TILE_W = 64` and `TILE_H = 32`, which are exactly as much art constants as `LEVEL_H = 26` is.**
+Owning two thirds of a proportion and disowning the third is not a principle, it is an
+inconsistency with a justification attached. All three are the *units of the lattice*, and the
+lattice is this package. The line that still holds is the one about behaviour: `iso` exports
+the number and never uses it — every function here takes `heightPx`.
+
+### 4.10 A draw list
+
+Settled with `draw` and set out in full at §3.4. `DepthSorter` hands back a permutation of
+integers; it has no items, no passes, no layers, no z-order groups, and no notion that anything
+is drawn at all. If a builder finds themselves adding an `idAt`, a `pass` argument or a draw
+callback, they are rebuilding `draw`'s bucket inside `iso`, and the two will diverge.
 
 ### 4.4 Camera feel
 
@@ -1248,6 +1383,19 @@ Not in v1. Each is a genuine feature with genuine design questions (does a wall 
 its centre or its edge?), and none has a caller yet. Listed here so that adding one is a decision
 rather than a drift.
 
+### 4.9 Incremental replanning (D* Lite, LPA*)
+
+The demo asks for "path recompute cheap enough to run on a tap", and the answer is
+**recompute it entirely**, plus the `version` counter of §3.5 so it happens exactly once. Some
+arithmetic, because this is a decision that sounds wrong until it is measured: a 48×48 valley
+is 2,304 tiles, so a worst-case A* that expands every tile is a few tens of microseconds and a
+full `FlowField.build` is one linear sweep in the low hundreds. The frame budget is 8 ms. An
+incremental replanner buys back a fraction of a percent of one frame, in exchange for a few
+hundred lines of the subtlest code in the package, a second invalidation protocol, and a class
+of bug — a stale key in the priority queue — that reproduces once an hour and never in a test.
+If a game appears whose maps are large enough for this to matter, it will also be a game that
+wants chunked flow fields, and that is a different design conversation with real numbers in it.
+
 ---
 
 ## 5. Invariants a reviewer can test
@@ -1278,7 +1426,7 @@ rather than a drift.
 | I22 | `heightAt` at integer grid coordinates equals `heights.get(gx, gy) × stepPx` exactly, and is continuous across tile boundaries. | Terrain seams: heights were sampled at tile centres rather than at vertices. |
 | I23 | `footprintFlatness` is `0` for every footprint on level ground and is invariant under adding a constant to the whole heightfield. | A press can be placed on a cliff, or cannot be placed anywhere above sea level. |
 | I24 | One `set` on a `TileGrid` increments `version` by at least one; a `set` writing the value already there does not have to, but must never decrement. | A cached flow field is never rebuilt after the rockfall, and the crowd walks the old road for ever. |
-| I25 | `pickTileOnHeights` on a ridge returns the tile whose *surface* the cursor is over, not the flat-ground tile behind it, for every pixel of a rendered slope. | Tapping a lamp on the ridge selects the ground two tiles beyond it (trap T11). |
+| I25 | `screenToTileOnHeights` on a ridge returns the tile whose *surface* the cursor is over, not the flat-ground tile behind it, for every pixel of a rendered slope. | Tapping a lamp on the ridge selects the ground two tiles beyond it (trap T11). |
 
 ---
 
@@ -1371,6 +1519,11 @@ each other, which is worse than the shimmer. The rounding happens in `@lattice/d
 device pixel ratio lives — this package deliberately hands out unrounded floats so that the
 choice is available.
 
+**T14 — Sort scenery and buildings in one list.** Two separately sorted lists make trees pop
+through walls, no matter how correct each list is on its own. `Scene` takes everything —
+buildings, scenery, walkers, ghosts — and that is why it takes an opaque `id` rather than a
+typed entity. *(PLAYBOOK trap 6.)*
+
 **T15 — Elevation must not enter the depth key.** The first instinct on adding a heightfield is
 to sort by `gx + gy + z`, and it draws a lamp on the ridge in front of the gate that is plainly
 standing between it and the camera. In a 2:1 projection what occludes what is decided entirely
@@ -1396,19 +1549,44 @@ seam at every tile boundary, because two adjacent tiles disagree about the heigh
 they share. It is invisible until the terrain is drawn, at which point it is a rewrite of every
 function that reads a height. `heights.get(gx, gy)` is the north **corner** of tile `(gx, gy)`.
 
-**T14 — Sort scenery and buildings in one list.** Two separately sorted lists make trees pop
-through walls, no matter how correct each list is on its own. `Scene` takes everything —
-buildings, scenery, walkers, ghosts — and that is why it takes an opaque `id` rather than a
-typed entity. *(PLAYBOOK trap 6.)*
+**T19 — An overlay must hold its entity's anchor, not a copy of it.** A name tag that copied
+`{gx, gy, zPx}` at creation stays where the building used to be when the building is moved, and
+stays on screen when it is demolished. `iso` cannot help: it does not know entity lifetimes. The
+rule is that the entity owns exactly one `Anchor`, everything attached to it holds a reference,
+and whatever destroys the entity destroys the overlay in the same statement.
 
 ---
 
-## 7. Notes for the orchestrator: gaps outside this package
+## 7. Seams, taken and declined
 
-These are things a game developer would otherwise hand-roll on top of Lattice. None of them is
-mine to build.
+### 7.1 What I have taken ownership of
 
-**`@lattice/core` (A1) — three shapes I depend on and cannot declare myself.**
+Four routings landed while this RFC was being written. All four are answered in the surface
+above; this is the index, so that no builder has to re-derive a decision.
+
+| routed from | the question | answer | where |
+|---|---|---|---|
+| demo (A10) | sample a position at arc length along a path | **taken**, and it is the module's organising idea, not a helper: `pathSample` / `pathProject` / `pathDirAt` / `Path.arcLength`, plus `pathSimplify` because a sampled staircase wobbles | §3.8, T16, T17 |
+| demo (A10) | elevation | **taken**, as a new `height` module: a value per grid **vertex**, bilinear sampling, slope, flatness, and terrain-aware picking. Not a third grid axis | §3.6, §4.2, T15, T18 |
+| demo (A10) | weighted terrain cost, cheap recompute on a tile change | **taken**: `TileCost` is a weight, not a boolean, and recompute is full recompute gated on `MutableTileSource.version`. No incremental replanner, with the arithmetic for why | §3.8, §4.9 |
+| demo (A10) + input (A5) | who owns tap → grid cell | **iso owns the projection maths; `input` owns the gesture and the composition.** Confirmed without hedge: `input` turns an event into CSS pixels and a tap/drag verdict, then calls `screenToTile`. The reverse split is unbuildable | §3.7 |
+| core (A1) | `Rect` / `Bounds` ownership, declined by core | **taken**, in min/max form, space-agnostic, with the ten functions `draw`, `input` and `ui` need so none of them wraps it | §3.0 |
+| core (A1) | tier-A determinism | **accepted, and it costs nothing**: no trig, no `pow`, no `log` anywhere in the package, testably (I17). The A* heuristic is integer octile; only `sqrt` is used, for arc length | §3.10 |
+| ui (A9) | an anchor for persistent world-attached things | **taken**, and `ui` was right that it must unify with path sampling: both produce a **grid position**, so `Anchor` is three mutable numbers and `pathSample` fills two of them. No class, no registry, no teardown | §3.9, T19 |
+| audio (A6) | world position → stereo pan | **taken**: `Camera.normalizedX` and `anchorPan`. It is the third member of the world→screen family, and audio may not depend on `iso` to write it | §3.3, §3.9 |
+
+**Proposed change to `.lattice/kit.json`.** `packages.iso.modules` should gain **`height`**;
+`Rect`, `Anchor` and `normalizedX` fold into the existing `projection` and `camera` modules
+without a new file. The `exports` list will be long — around seventy symbols — and that is the
+honest cost of being the kit's spatial layer; if the reviewer wants it shorter, the candidates
+to cut are the `rect*` helpers (`draw` and `ui` would then each write four of them) and the
+scalar `gridToWorldX`/`Y` forms (at a measurable per-frame cost).
+
+### 7.2 What still has no owner
+
+Things a game developer would otherwise hand-roll on top of Lattice. None is mine to build.
+
+**`@lattice/core` (A1) — two shapes I still depend on.**
 1. **`Vec2` must have mutable fields.** `interface Vec2 { x: number; y: number }`. An
    out-parameter API cannot be handed a `Readonly<Vec2>`, and if core exports the readonly form
    the whole kit ends up with two point types. Core should export the mutable interface and a
@@ -1416,8 +1594,10 @@ mine to build.
 2. **A deterministic binary heap / priority queue with an explicit insertion tie-break.** A* needs
    one, `sim` will want one for its scheduler, and it is core-shaped, not iso-shaped. If core
    does not export it, `iso` will have to, and then two packages own a heap.
-3. **`clamp`, `lerp`, and an integer `hash2(x, y)`** for chunk keys. I have assumed all three
-   exist in `core/math`; if they do not, say so and I will fold them into the RFC as internals.
+
+`core.hash2(seed, x, y)` as delivered is exactly right for per-tile variation, and `iso` reaches
+it through `TileSource.fillFrom` / `tileSourceOf` rather than holding an `Rng` of its own.
+`clamp` and `lerp` are assumed to exist in `core/math`; if not, say so and they become internals.
 
 **`@lattice/draw` (A3) — the silhouette contract.** `boxSilhouette` returns the six-point outline
 in the order north-top, east-top, east-base, south-base, west-base, west-top. `draw`'s solid kit
@@ -1432,15 +1612,24 @@ pan belong there and must drive this camera only through `panByScreen`, `zoomAt`
 `centerOn` — never by assigning `zoom`, which would skip the clamp and the pointer anchor.
 Input's tap/drag discrimination is what decides whether `Scene.pick` is called at all.
 
-**Nobody owns walker steering.** `iso` returns tiles; something must interpolate along a path,
-smooth the corners, and stop fifty agents from piling into one doorway. This is the largest gap
-in the kit as scoped: a base-builder demo will hand-roll it. It needs a clock, so it is `loop`-
-or `sim`-shaped; my suggestion is a small `sim/steer` module taking a `Path` or a `FlowField` and
-a dt, because it is behaviour over time rather than geometry.
+**`@lattice/draw` (A3) — the light layer is the demo's premise and it is not mine.** The demo
+ranks "an emissive glow and a night mask" second only to path sampling, and `iso` contributes
+only the geometry: a lamp's pool of light is a world circle, and where it lands on screen is
+`anchorToScreen` plus `zoom`. That the pool must be an *ellipse* — a circle on the ground plane
+projects 2:1 like everything else — is the kind of thing that will be got wrong once.
 
-**Nobody owns flow-field invalidation.** Rebuilding a `FlowField` after a wall is placed is a
-Dijkstra sweep and must not happen inside the frame that placed the wall. `@lattice/loop`'s
-scheduler should own "do this expensive thing on the next idle tick, coalescing duplicates".
+**Nobody owns walker steering, and after this RFC that is a smaller gap than it was.** A crowd
+that is `s = (t · v + offset) mod arcLength` needs no steering at all, which is the demo's bet.
+What is still unowned is the *stateful* walker: one that accelerates, queues at a door, or waits
+for another. That needs a clock, so it is `sim`-shaped; my suggestion remains a small `sim/steer`
+taking a `Path` or a `FlowField` and a `dt`. It should not be built until a game asks, because
+the closed-form crowd may well answer every question the kit gets.
+
+**Nobody owns flow-field invalidation *scheduling*.** The *detection* is now solved —
+`MutableTileSource.version` versus `FlowField.builtAtVersion` — but the rebuild is a Dijkstra
+sweep and should not run inside the frame that placed the wall. `@lattice/loop`'s scheduler
+should own "do this expensive thing on the next idle tick, coalescing duplicates", and if it
+does, the whole rockfall beat is the three lines at the end of §3.8.
 
 **`@lattice/persist` (A7) — map serialisation.** `TileGrid.data` and `ChunkGrid.forEachChunk`
 exist so persist can take the buffers whole. Persist should own the version and the migration;

@@ -44,9 +44,9 @@
         "every signature type-checks if pasted into a .ts file",
         "the deliberately-absent section names at least three things and says why"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-architect",
-      "notes": ""
+      "notes": "Tile size fixed at 64x32 (any other size is exactly a camera zoom). Three tilemap storages behind one TileSource so pathfinding cannot tell them apart. A* AND flow fields. Path reframed as a curve sampled by arc length — the demo crowd collapses to one expression. Elevation on vertices. Took the tap-to-tile maths, Rect, and the anchor primitive."
     },
     {
       "id": "A3",
@@ -104,9 +104,9 @@
         "every signature type-checks if pasted into a .ts file",
         "the deliberately-absent section names at least three things and says why"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-architect",
-      "notes": ""
+      "notes": "Cut the gamepad, arguing it cannot answer WHERE without a reticle the kit has not designed. Took the tap-to-tile seam, the per-tick sample buffer, and pointer capture without hedging. No free-function binder, so an unowned listener is unconstructable."
     },
     {
       "id": "A6",
@@ -144,9 +144,9 @@
         "every signature type-checks if pasted into a .ts file",
         "the deliberately-absent section names at least three things and says why"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-architect",
-      "notes": ""
+      "notes": "The chain IS the version. Took replay and drew the boundary along the DAG — envelope, recorder, cursor, verifier here; the driver needs loop. Three keys, three lifetimes, one primitive. A future save makes the store read-only."
     },
     {
       "id": "A8",
@@ -708,6 +708,47 @@
         "root README earns a star in the first screen: what it is, what it looks like, one example",
         "CONTRIBUTING and a CI workflow that runs npm run verify on every push",
         "every package.json is publish-ready: files, exports, sideEffects, repository, license"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "B0",
+      "phase": "build",
+      "role": "lattice-perf",
+      "title": "Measure whether @lattice/draw needs a sprite cache at all",
+      "package": "draw",
+      "paths": [
+        "docs/PERFORMANCE.md",
+        "packages/draw/test/cache.bench.ts"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "a benchmark of direct polygon drawing at 200, 400 and 1000 sprites of a few dozen polygons each, against the 8ms frame budget",
+        "a verdict: if direct drawing fits the budget, the cache module is DELETED from the draw RFC rather than built",
+        "numbers recorded in docs/PERFORMANCE.md with the machine named"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": ""
+    },
+    {
+      "id": "E2",
+      "phase": "ship",
+      "role": "lattice-architect",
+      "title": "Decide where ready-made archetypes live",
+      "package": "*",
+      "paths": [
+        "docs/rfc/archetypes.md"
+      ],
+      "dependsOn": [
+        "D1"
+      ],
+      "acceptance": [
+        "the draw architect found that a game still authors every silhouette from primitives — most of the distance between installing the kit and having a game",
+        "decide: a tenth package, examples/demo with an explicit copy-paste promise, or a documented refusal",
+        "whatever is chosen, the reason is written down so cycle three does not relitigate it"
       ],
       "status": "todo",
       "owner": null,
