@@ -12,6 +12,12 @@
  *
  * Nothing in this module allocates: no object literal, no array, no closure. It is called
  * per entity per frame by four packages downstream.
+ *
+ * **And nothing here calls a `guard` validator, deliberately.** These functions run per entity
+ * per frame; a validator in that loop is a measurable cost paid every frame for a mistake a
+ * caller makes once, at construction. Validate at the API entry point that accepted the value,
+ * and let the arithmetic here propagate `NaN` where it must — which is why `clamp` does not
+ * swallow one.
  */
 
 /**

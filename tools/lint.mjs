@@ -48,6 +48,16 @@ const fail = (file, line, rule, message) => problems.push({ file, line, rule, me
  */
 const adapters = [];
 
+/**
+ * The only modules of `@lattice/core` permitted a Tier B call site.
+ *
+ * `damp` needs `exp`; `v2Rotate`, `v2Angle` and `v2FromAngle` need `cos`/`sin`/`atan2`.
+ * That is the complete list, and it is a list rather than a marker because layer 0 is the
+ * foundation every other package's determinism stands on — an escape hatch anyone may write
+ * for themselves is a rule anyone may opt out of.
+ */
+const TIER_B_MODULES = new Set(['math', 'vec2']);
+
 /** Every `.ts` file under a directory, sorted so output is stable across machines. */
 function walk(dir) {
   const out = [];
@@ -162,8 +172,15 @@ for (const [id] of Object.entries(kit.packages)) {
       //    whether it ever reaches a save file.
       const transcendental = line.match(/\bMath\.(sin|cos|tan|asin|acos|atan|atan2|pow|exp|log|log2|log10|cbrt|hypot|sinh|cosh|tanh)\b/);
       if (transcendental) {
+        //    In `core`, the escape hatch is narrower still. Layer 0 is what every other
+        //    package's determinism rests on, so a Tier B site here is not merely declared —
+        //    it is enumerated. Two modules may hold one, and the rest of the package may
+        //    not, because a marker anyone can write is a rule anyone can opt out of.
+        const enumerated = id === 'core' && !TIER_B_MODULES.has(basename(file, '.ts'));
         const window = rawLines.slice(Math.max(0, n - 4), n + 1).join('\n');
-        if (!window.includes('@tier-b')) {
+        if (enumerated) {
+          fail(rel, at, 'determinism', `Math.${transcendental[1]} in @lattice/core outside ${[...TIER_B_MODULES].join('/')} — layer 0 is what every other package's determinism rests on, and its Tier B sites are enumerated rather than self-declared`);
+        } else if (!window.includes('@tier-b')) {
           fail(rel, at, 'determinism', `Math.${transcendental[1]} is not correctly rounded by spec — mark the site \`@tier-b\` (presentation only, never hashed or persisted) or use Tier A arithmetic`);
         }
       }

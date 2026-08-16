@@ -29,6 +29,11 @@
  *
  * Three functions here are Tier B — `v2Rotate`, `v2Angle`, `v2FromAngle` — and each says so.
  * Everything else is Tier A: `+ - * /` and `Math.sqrt` only.
+ *
+ * No function here calls a `guard` validator, for the reason `math` gives at more length: this
+ * is the per-entity, per-frame path, and a check here is paid every frame for a mistake made
+ * once. `v2Normalize` is the one place a bad input is handled at all, and it returns `(0, 0)`
+ * rather than throwing — because the frame after a division by zero is not the place to throw.
  */
 
 import { EPSILON } from './math.js';

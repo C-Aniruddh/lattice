@@ -615,37 +615,93 @@ allocations a second.
 `iso`, `draw`, `input` and `ui` all inherit this, so it is settled here once. **`Vec2` is
 mutable.** `ui` and `iso` asked for this independently, and `draw`, `iso` and `ui` have all
 now written signatures against a mutable `{ x, y }`; three packages agreeing before seeing
-each other's work is the same evidence that settled the `hash` split. `iso` put the
-mechanism most sharply — *an out-parameter API cannot take a `Readonly<Vec2>`* — and this
-RFC adopts that reading: `AGENTS.md`'s
+each other's work is the same evidence that settled the `hash` split. `iso` put the intent
+most sharply — *an out-parameter API cannot be built on a read-only vector* — and this RFC
+adopts that reading, though not its phrasing: `Readonly<Vec2>` turns out to be assignable to
+`Vec2`, so the compiler will accept exactly what that sentence says it cannot. See the
+correction below. `AGENTS.md`'s
 "`readonly` on every interface field that is not deliberately mutated" is *satisfied*, not
 broken, because an output parameter is the definition of deliberately mutated. A `readonly`
 `Vec2` would force a second writable type into every signature that fills one, and the kit
 would carry `Vec2` and `MutableVec2` side by side with the compiler unable to tell anyone
 which to pick.
 
-The resolution is the pair already in the surface below, and the reason it does not become
-that same two-type problem is one fact about structural typing:
+The resolution is the pair in the surface below. What must run one way is the assignability:
+`Vec2` has to flow into `ReadonlyVec2` on every line a caller writes, and `ReadonlyVec2` must
+not flow back — otherwise a frozen shared constant can be handed in as an output parameter.
 
-> **`Vec2` is assignable to `ReadonlyVec2`. `ReadonlyVec2` is not assignable to `Vec2`.**
+#### The correction: `readonly` does not do this, and a phantom property does
 
-The assignability runs exactly one way, and it is the useful way. So there is only ever one
-type a caller *declares* — `Vec2`, for every variable, field, scratch and array element —
-and one that appears *only inside signatures*, `ReadonlyVec2`, on parameters that are read.
-Nobody converts, nobody casts, and no call site has to choose.
+> **An earlier draft of this section asserted that a `readonly` modifier gives that
+> one-way relationship. It does not. TypeScript ignores property `readonly` modifiers when
+> checking assignability**, so two interfaces differing only in `readonly` are assignable to
+> each other in *both* directions. Written naively, `v2Add(ORIGIN, …)` on a frozen
+> `ReadonlyVec2` compiles clean and throws a `TypeError` at runtime — exactly the failure
+> this section claims cannot happen.
+>
+> It was caught by the builder implementing it, who checked the claim against the compiler
+> instead of against the prose. It had survived a type-check of this surface, the architect
+> who wrote it, and review. **This is why the mechanism is written out below rather than
+> described:** anyone who copies the pattern from prose will build something they believe is
+> protected and is not, which is worse than no protection, because it will be trusted.
 
-Three rules, for every package downstream:
+The mechanism is a **phantom optional property** carrying a `unique symbol` key, with types
+that conflict in exactly one direction:
 
-1. **Read-only parameters are `ReadonlyVec2`.** If a function does not write to it, it says
-   so in the type. This costs the author one word and buys the caller the guarantee.
+| | `Vec2` | `ReadonlyVec2` |
+|---|---|---|
+| phantom | `[RO]?: never` | `[RO]?: true` |
+
+`never` is assignable to `true`, so `Vec2` still flows into `ReadonlyVec2` everywhere. `true`
+is not assignable to `never`, so the read type does not flow back. Because the property is
+**optional on both sides**, a bare `{ x: 0, y: 0 }` literal, a class instance with `x` and
+`y` fields, a spread, or any foreign vector still satisfies either type with nothing to
+import and nothing to declare. It is a type-level construct only: it erases completely and
+costs zero bytes.
+
+Verified against the compiler in both directions, with `exactOptionalPropertyTypes` on *and*
+off — the latter because a consumer of the published package may not enable it. Invariant 41
+is that fixture, and it includes the no-phantom control that fails, so the day someone
+deletes the phantom as noise the suite says why it was there.
+
+**Do not remove the phantom, and do not "simplify" it to a plain `readonly` pair.** It looks
+like decoration. It is the only thing making the distinction real.
+
+#### `Readonly<Vec2>` is not `ReadonlyVec2`
+
+Also verified, and the more likely mistake of the two, because `Readonly<T>` is the reflex:
+
+```ts
+declare const pointA: ReadonlyVec2;
+declare const pointB: ReadonlyVec2;
+
+const frozen: Readonly<Vec2> = Object.freeze(v2(0, 0));
+v2Add(frozen, pointA, pointB);   // compiles clean. throws at runtime.
+```
+
+`Readonly<Vec2>` is a mapped type over `Vec2`, so it carries `Vec2`'s phantom (`never`),
+which means **it remains assignable to `Vec2` and protects nothing.** The same applies to
+`Readonly<{ x: number; y: number }>` and to any locally-declared read-only-looking vector.
+`iso`, `draw`, `input` and `ui` all have read parameters that must be spelled
+`ReadonlyVec2`, **imported from `@lattice/core`**. `AGENTS.md`'s house rule about `Readonly<T>`
+on boundary-crossing values does not extend to this pair, and has been corrected.
+
+Four rules, for every package downstream:
+
+1. **Read-only parameters are `ReadonlyVec2`, imported.** Not `Readonly<Vec2>`, not a local
+   `{ readonly x, readonly y }`, not `Readonly<Point>`. Only the imported name carries the
+   phantom that makes it mean anything.
 2. **Output parameters are `Vec2`, come first, and are returned.** `out` first is a
    convention worth more than argument-order aesthetics: it makes the writable argument
    visible at a glance at every call site in the kit.
-3. **Declare a shared constant as `ReadonlyVec2` and freeze it.** `const ORIGIN: ReadonlyVec2
-   = Object.freeze(v2(0, 0))` cannot be passed as an `out` — the compiler rejects it, rather
-   than a frozen object throwing at runtime in strict mode on the one frame that path
-   executes. This is the case that would otherwise justify a separate `Point` type; it does
-   not, because the pair already covers it.
+3. **Annotate a frozen shared constant as `ReadonlyVec2`. The annotation is load-bearing.**
+   `const ORIGIN: ReadonlyVec2 = Object.freeze(v2(0, 0))` cannot be passed as an `out` and
+   the compiler says so. Drop the annotation and `Object.freeze` infers `Readonly<Vec2>`,
+   which compiles at the call site and throws at runtime in strict mode — on the one frame
+   that path executes. Verified both ways in the same fixture.
+4. **A vector you did not annotate is a mutable vector.** Inference never produces
+   `ReadonlyVec2`, because nothing constructs the phantom. Protection here is opt-in by
+   annotation, which is a real limitation of the approach and cheaper than every alternative.
 
 A distinct readonly `Point` type for values was considered and rejected: two names for one
 shape means conversion functions, conversion functions mean allocation, and allocation in
@@ -653,17 +709,42 @@ this module is the thing the whole design exists to avoid.
 
 ```ts
 /**
- * A mutable 2D point — the storage, scratch and output type. Mutable **on purpose**; see
- * the ruling above. Declare your variables and fields as this.
+ * The phantom key that makes the two vector types one-way assignable. Not exported: it is
+ * unreachable and unnameable outside this module, which is what stops a foreign object
+ * claiming to be a `ReadonlyVec2`.
  */
-export interface Vec2 { x: number; y: number; }
+declare const RO_VEC2: unique symbol;
 
 /**
- * The read side. Use it for any parameter that is not written to. `Vec2` is assignable to
- * it, so a caller never converts; the reverse is not, which is what stops a frozen shared
- * constant being handed in as an output parameter.
+ * A mutable 2D point — the storage, scratch and output type. Mutable **on purpose**; see
+ * the ruling above. Declare your variables, fields and array elements as this.
+ *
+ * The optional `[RO_VEC2]` is a phantom: it never exists at runtime, and because it is
+ * optional a plain `{ x, y }` object satisfies this type with nothing imported. **Do not
+ * delete it** — `readonly` alone is ignored by TypeScript's assignability check, so without
+ * it a frozen vector can be passed as an output parameter and throw.
  */
-export interface ReadonlyVec2 { readonly x: number; readonly y: number; }
+export interface Vec2 {
+  x: number;
+  y: number;
+  [RO_VEC2]?: never;
+}
+
+/**
+ * The read side. Use it for every parameter that is not written to.
+ *
+ * `Vec2` is assignable to this (`never` → `true`), so a caller never converts or casts.
+ * This is *not* assignable to `Vec2` (`true` → `never` fails), which is what stops a frozen
+ * shared constant reaching an output parameter.
+ *
+ * **`Readonly<Vec2>` is not this type** and gives no protection — it is a mapped type over
+ * `Vec2` and inherits `Vec2`'s phantom. Import this name.
+ */
+export interface ReadonlyVec2 {
+  readonly x: number;
+  readonly y: number;
+  [RO_VEC2]?: true;
+}
 
 /** Allocate. Call this at setup, never inside a loop. */
 export declare function v2(x?: number, y?: number): Vec2;
@@ -1551,8 +1632,21 @@ coverage floor is 100%.
     `expect-error` assertions: `const t: EpochMillis = 5` fails, `asEpochMillis(5)` succeeds,
     and `asMonotonicMillis(5)` is not assignable to `EpochMillis`. Type-level behaviour needs
     a type-level test; a runtime suite cannot see any of this.
-41. **`Vec2` is assignable to `ReadonlyVec2` and not the reverse.** Same fixture. If this
-    ever inverts, every out-parameter signature in the kit silently stops protecting anyone.
+41. **`Vec2` is assignable to `ReadonlyVec2` and not the reverse** — and the fixture proves
+    the *mechanism*, not just the outcome, because the outcome was asserted for a week while
+    being false. Five parts, all in the type-level fixture:
+    - `const r: ReadonlyVec2 = someVec2` compiles; `const m: Vec2 = someReadonlyVec2` is
+      `@ts-expect-error`; `v2Add(readonlyVec, a, b)` is `@ts-expect-error`.
+    - **The control:** a local pair of interfaces differing only in `readonly` is assignable
+      in *both* directions. This one asserts the false thing is false, so deleting the
+      phantom fails the suite with a test that explains itself.
+    - `Readonly<Vec2>` **is** assignable to `Vec2` — the trap, asserted as compiling, so
+      nobody "fixes" the docs by claiming otherwise.
+    - `{ x: 0, y: 0 }`, a spread, and a class instance with `x`/`y` all satisfy both types,
+      with nothing imported. The phantom must never become something a caller has to supply.
+    - The whole fixture compiles under `exactOptionalPropertyTypes` both **on and off**. A
+      consumer of the published package may not enable it, and the guarantee has to survive
+      their config, not just ours.
 
 ---
 
@@ -1731,7 +1825,26 @@ shape invites.
     different frames compare equal. View the bytes:
     `new Uint8Array(f.buffer, f.byteOffset, f.byteLength)`.
 
-37. **A comparator that returns 0 for ties.** The §4.9 ordering rule in its most common
+37. **Believing `readonly` protects a parameter.** TypeScript ignores property `readonly`
+    modifiers when checking assignability, so `Readonly<Vec2>`, a local
+    `{ readonly x: number; readonly y: number }`, and `ReadonlyArray`-style intuition all
+    give **zero** protection against a value reaching an output parameter. The frozen object
+    then throws a `TypeError` on write, in strict mode, on whichever frame that path first
+    executes — so it is a crash in the field and not a red build. Import `ReadonlyVec2`;
+    §3.7 has the mechanism and why it is needed.
+
+38. **Dropping the annotation on a frozen constant.** `const ORIGIN = Object.freeze(v2(0,0))`
+    infers `Readonly<Vec2>`, which is assignable to `Vec2`, so the constant sails into an out
+    parameter. `const ORIGIN: ReadonlyVec2 = …` is rejected at the call site. One annotation
+    is the whole difference, which is why it is rule 3 rather than a style note.
+
+39. **Asserting a type-level guarantee in a runtime suite.** A `vitest` case cannot observe
+    assignability; it passes whether or not the types mean anything, which is how the false
+    claim in §3.7 survived a green build and a review. Type-level behaviour needs
+    `@ts-expect-error` fixtures compiled as part of `verify`, and it needs a control case
+    that fails when the mechanism is removed.
+
+40. **A comparator that returns 0 for ties.** The §4.9 ordering rule in its most common
     disguise: `sort((a, b) => a.cost - b.cost)` is stable in `Array.prototype.sort` and
     *not* stable through a binary heap's sift. Tied grid routes then resolve by sift order,
     and A\* returns a different path on a different engine. Break ties on insertion
@@ -1799,3 +1912,9 @@ adds a second spelling of something that already exists.
 - **Every package**: return a core `Disposer` from anything that binds, and take a `Scope`
   rather than shipping a free-function binder. `input` has already built this shape and it is
   now the kit's.
+- **`iso`, `draw`, `input`, `ui`** — none of which have started building: every read-only
+  vector parameter must be spelled `ReadonlyVec2`, **imported from `@lattice/core`**. Not
+  `Readonly<Vec2>`, which is assignable to `Vec2` and protects nothing (§3.7). `AGENTS.md`'s
+  house rule about `Readonly<T>` has been corrected; this is the one place in the kit where
+  the reflex is actively wrong, and it is free to fix now and four packages' worth of edits
+  later.

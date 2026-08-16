@@ -16,13 +16,16 @@
  * save with a number whose origin was the document, so offline accrual credits the few seconds
  * since the page loaded and the report reads "offline progress is broken" rather than "wrong
  * clock". The brands make that assignment a compile error. That is the entire product of this
- * module — everything else here is two range checks.
+ * module — everything else here is two calls to `guard`'s `expectFinite`, at the one boundary
+ * where a real clock is read.
  *
  * **Core does not export `Millis` or `Seconds`.** `loop` owns those two names for durations,
  * and a second identical alias in core would be exactly the drift this module exists to
  * prevent, with core as the culprit. Durations elsewhere stay plain `number` with the unit in
  * the parameter name.
  */
+
+import { expectFinite } from './guard.js';
 
 declare const EPOCH_MILLIS: unique symbol;
 declare const MONOTONIC_MILLIS: unique symbol;
@@ -92,17 +95,21 @@ export type MonotonicNow = () => MonotonicMillis;
  * clock in every test starts at — so the unit lives in the name and nowhere else. Never divide
  * an `EpochMillis` by 1000 and keep the type.
  *
- * @param label - the caller's symbol, for the error message. Defaults to `'value'`; pass the
- *   real name (`'save.stampedAt'`) or the message will not tell anyone where to look.
- * @throws RangeError naming the caller and the value received, per non-negotiable #9.
+ * The check is `guard`'s `expectFinite`, not a hand-written one, so this error reads like
+ * every other error in the package.
+ *
+ * @param label - the caller's symbol, for the error message. Defaults to `'epochMillis'` —
+ *   which names the *unit* when nothing better is available, since the unit is the thing that
+ *   goes wrong. Pass the real name (`'save.stampedAt'`) or the message cannot tell anyone
+ *   where to look.
+ * @throws RangeError for `NaN` or either infinity — a number whose value is impossible.
+ * @throws TypeError for something that is not a number at all, which only a caller from
+ *   untyped JavaScript or a value straight out of `JSON.parse` can manage. Wrong kind of
+ *   thing is a `TypeError`, wrong value of the right kind is a `RangeError`, everywhere in
+ *   this kit.
  */
-export function asEpochMillis(value: number, label = 'value'): EpochMillis {
-  if (!Number.isFinite(value)) {
-    throw new RangeError(
-      `${label}: expected a finite number of milliseconds since the Unix epoch, got ${String(value)}`,
-    );
-  }
-  return value as EpochMillis;
+export function asEpochMillis(value: number, label = 'epochMillis'): EpochMillis {
+  return expectFinite(value, label) as EpochMillis;
 }
 
 /**
@@ -113,13 +120,9 @@ export function asEpochMillis(value: number, label = 'value'): EpochMillis {
  * brands what you hand it. Call it at the injection site, next to the `performance.now()`, and
  * nowhere else.
  *
- * @throws RangeError naming the caller and the value received.
+ * @throws RangeError for `NaN` or either infinity; `TypeError` for a non-number. See
+ *   `asEpochMillis` for the split.
  */
-export function asMonotonicMillis(value: number, label = 'value'): MonotonicMillis {
-  if (!Number.isFinite(value)) {
-    throw new RangeError(
-      `${label}: expected a finite number of milliseconds from a monotonic origin, got ${String(value)}`,
-    );
-  }
-  return value as MonotonicMillis;
+export function asMonotonicMillis(value: number, label = 'monotonicMillis'): MonotonicMillis {
+  return expectFinite(value, label) as MonotonicMillis;
 }

@@ -24,6 +24,8 @@
  * its own note.
  */
 
+import { expectFinite } from './guard.js';
+
 /** Two to the 32nd: the uint32 modulus, and the exact divisor {@link toUnit} uses. */
 const TWO_32 = 4294967296;
 
@@ -114,9 +116,7 @@ export function hashString(value: string): number {
  *   0 under `ToUint32`, silently seeding one stream from two different mistakes.
  */
 export function hashNumber(value: number): number {
-  if (!Number.isFinite(value)) {
-    throw new RangeError(`hashNumber: expected a finite number, got ${String(value)}`);
-  }
+  expectFinite(value, 'hashNumber');
   const truncated = Math.trunc(value);
   const low = truncated >>> 0;
   const high = Math.trunc(truncated / TWO_32) >>> 0;
@@ -191,7 +191,10 @@ export function hashParts(...parts: readonly (number | string)[]): number {
  *
  * `x` and `y` are truncated to int32. Fractional coordinates therefore hash to their
  * integer cell — which is what a tile lookup wants, and a surprise to anyone passing world
- * pixels.
+ * pixels. Truncation is toward zero and not `Math.floor`, so `-0.5` and `0.5` land in the
+ * same cell 0: west and south of the origin, a fractional coordinate belongs to the cell on
+ * the origin's side of it. Floor the coordinate yourself if the cells must be uniform
+ * across the axes — which they must be for anything the player can walk past.
  */
 export function hash2(seed: number, x: number, y: number): number {
   return hashStep(hashStep(seed, x), y);

@@ -21,6 +21,7 @@
  * `shuffleInPlace` and the {@link hashStep} fold added.
  */
 
+import { expectFinite, expectNonEmpty } from './guard.js';
 import { hashNumber, hashStep, hashString } from './hash.js';
 
 /** Two to the 32nd: the uint32 modulus, and the exact divisor {@link Rng.next} uses. */
@@ -44,10 +45,7 @@ function isUint32(value: number): boolean {
  */
 function seedPart(part: number | string, caller: string): number {
   if (typeof part === 'string') return hashString(part);
-  if (!Number.isFinite(part)) {
-    throw new RangeError(`${caller}: expected a finite number, got ${String(part)}`);
-  }
-  return hashNumber(part);
+  return hashNumber(expectFinite(part, caller));
 }
 
 /**
@@ -159,6 +157,10 @@ export class Rng {
    * a d6, and visible on a one-in-three loot table over a session — a bias with no symptom
    * until someone counts. The expected number of retries is below one.
    *
+   * The bound checks are written out here rather than delegated to `guard`, deliberately:
+   * `shuffleInPlace` calls this once per element per frame, and `guard`'s own contract is
+   * that a validator belongs at an API entry point and not in a per-entity loop.
+   *
    * @throws RangeError unless both bounds are integers, `max > min`, and the span is at
    *   most 2^32. A span of exactly 2^32 is allowed and never rejects a draw.
    */
@@ -194,9 +196,8 @@ export class Rng {
    *   value that vanishes from a save with the checksum still matching.
    */
   float(min: number, max: number): number {
-    if (!Number.isFinite(min) || !Number.isFinite(max)) {
-      throw new RangeError(`rng.float: expected finite bounds, got [${String(min)}, ${String(max)})`);
-    }
+    expectFinite(min, 'rng.float(min)');
+    expectFinite(max, 'rng.float(max)');
     if (max < min) {
       throw new RangeError(`rng.float: expected max >= min, got [${min}, ${max})`);
     }
@@ -215,9 +216,7 @@ export class Rng {
    *   everything and read as a silently dead branch.
    */
   bool(probability = 0.5): boolean {
-    if (!Number.isFinite(probability)) {
-      throw new RangeError(`rng.bool: expected a finite probability, got ${String(probability)}`);
-    }
+    expectFinite(probability, 'rng.bool(probability)');
     return this.next() < probability;
   }
 
@@ -230,9 +229,7 @@ export class Rng {
    *   shape that shipped a black screen in the source game.
    */
   pick<T>(items: readonly T[]): T {
-    if (items.length === 0) {
-      throw new RangeError('rng.pick: expected a non-empty array, got length 0');
-    }
+    expectNonEmpty(items, 'rng.pick');
     const index = this.int(0, items.length);
     // Guarded by the length check above: the index is < items.length by construction.
     return items[index] as T;
@@ -247,14 +244,14 @@ export class Rng {
    * draw is consumed regardless of the table's size, so adding a zero-weight row to a loot
    * table does not shift every later draw in the session.
    *
+   * A hole in a sparse array counts as a zero weight, the same as an explicit 0.
+   *
    * @throws RangeError if `weights` is empty, contains a negative or non-finite value, or
    *   sums to zero. A table that sums to zero has no answer to give, and returning 0 would
    *   make "everything is disabled" look like "the first one always wins".
    */
   weighted(weights: readonly number[]): number {
-    if (weights.length === 0) {
-      throw new RangeError('rng.weighted: expected at least one weight, got an empty array');
-    }
+    expectNonEmpty(weights, 'rng.weighted');
     let total = 0;
     let last = -1;
     for (let i = 0; i < weights.length; i += 1) {
@@ -329,7 +326,9 @@ export class Rng {
    * make unreachable.
    *
    * Labels are order-sensitive: `derive('a', 'b')` and `derive('b', 'a')` are different
-   * streams, so a `(category, id)` pair cannot collide with its own transpose.
+   * streams, so a `(category, id)` pair cannot collide with its own transpose. They are also
+   * a *path*: `derive('a').derive('b')` is `derive('a', 'b')`, so a subsystem may be handed
+   * either a pre-derived stream or the labels to derive with and reach the same world.
    *
    * @throws RangeError if called with no labels — an unlabelled fork is a clone, and
    *   silently sharing a stream is the bug this method exists to prevent — or if a numeric

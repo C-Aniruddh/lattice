@@ -58,15 +58,26 @@ describe('asEpochMillis', () => {
     expect(() => asEpochMillis(Infinity, 'save.stampedAt')).toThrow(/Infinity/);
   });
 
-  it('falls back to a generic label rather than an empty one', () => {
-    expect(() => asEpochMillis(NaN)).toThrow(/value/);
+  it('falls back to naming the unit, which is the thing that goes wrong', () => {
+    expect(() => asEpochMillis(NaN)).toThrow(/epochMillis/);
   });
 
   it('is the load-boundary check that a cast is not', () => {
     // Trap 31: a save hand-edited to `"lastSeen": null` becomes an EpochMillis of null under a
     // cast, and every later subtraction is NaN with no exception anywhere near the cause.
+    // `null` is not a number at all, so this is the wrong *kind* of value: a TypeError.
     const fromStorage = JSON.parse('{"lastSeen": null}') as { lastSeen: number };
-    expect(() => asEpochMillis(fromStorage.lastSeen, 'save.lastSeen')).toThrow(RangeError);
+    expect(() => asEpochMillis(fromStorage.lastSeen, 'save.lastSeen')).toThrow(TypeError);
+    expect(() => asEpochMillis(fromStorage.lastSeen, 'save.lastSeen')).toThrow(/save\.lastSeen/);
+  });
+
+  it('splits the two error kinds the way the rest of the kit does', () => {
+    // Wrong kind of thing is a TypeError; wrong value of the right kind is a RangeError. The
+    // check is `guard`'s `expectFinite`, so this module cannot drift from that split.
+    const notANumber = '1700000000000' as unknown as number;
+    expect(() => asEpochMillis(notANumber, 'save.stampedAt')).toThrow(TypeError);
+    expect(() => asEpochMillis(NaN, 'save.stampedAt')).toThrow(RangeError);
+    expect(() => asEpochMillis(NaN, 'save.stampedAt')).not.toThrow(TypeError);
   });
 });
 
@@ -83,9 +94,12 @@ describe('asMonotonicMillis', () => {
     expect(() => asMonotonicMillis(NaN, 'clock.now')).toThrow(/NaN/);
   });
 
-  it('says "monotonic origin" and not "Unix epoch", so the two errors are distinguishable', () => {
-    expect(() => asMonotonicMillis(NaN)).toThrow(/monotonic/);
-    expect(() => asEpochMillis(NaN)).toThrow(/Unix epoch/);
+  it('names its own unit by default, so the two errors are distinguishable', () => {
+    // The unit lives in the name — in the type, and here in the label. Two messages that read
+    // identically would leave a reader unable to tell which clock was handed the bad value.
+    expect(() => asMonotonicMillis(NaN)).toThrow(/monotonicMillis/);
+    expect(() => asEpochMillis(NaN)).toThrow(/epochMillis/);
+    expect(() => asEpochMillis(NaN)).not.toThrow(/monotonicMillis/);
   });
 });
 

@@ -21,6 +21,7 @@
  * something else.
  */
 
+import { expectFinite, expectInt, expectRange } from './guard.js';
 import { hash2, hash3, hashStep } from './hash.js';
 
 /**
@@ -61,6 +62,20 @@ function fade(t: number): number {
 /** Linear interpolation in the form that lands exactly on `b` at `t === 1`. */
 function mix(a: number, b: number, t: number): number {
   return (1 - t) * a + t * b;
+}
+
+/**
+ * Turn a negative zero into a positive one, and leave every other double untouched.
+ *
+ * A gradient dotted with a zero distance vector produces `-0` for half the directions in the
+ * table, so without this a lattice point returns `-0` — which is not `Object.is`-equal to
+ * the exactly-zero this module promises, and which `JSON.stringify` writes as `"0"`. A
+ * heightfield persisted and reloaded would then differ from the one that was saved, and an
+ * integrity comparison would fail for a reason nobody would ever find. Adding zero is exact
+ * for every other value, so no sample moves.
+ */
+function unsignZero(value: number): number {
+  return value + 0;
 }
 
 /**
@@ -140,10 +155,11 @@ function grad3(hash: number, x: number, y: number, z: number): number {
  * 2D gradient noise in [-1, 1]. A pure function of `(seed, x, y)`: no cursor, no setup, no
  * permutation table.
  *
- * Integer coordinates land on lattice points and return **exactly 0** — sample at a
- * fractional scale (`x * 0.06`) or you will get a field of zeroes and conclude the noise is
- * broken. That is a property of gradient noise, not a bug: the gradient at a lattice point
- * is dotted with a zero distance vector.
+ * Integer coordinates land on lattice points and return **exactly 0** (positive zero, so
+ * `Object.is(noise2(s, 1, 1), 0)` holds and a saved value survives a JSON round trip) —
+ * sample at a fractional scale (`x * 0.06`) or you will get a field of zeroes and conclude
+ * the noise is broken. That is a property of gradient noise and not a bug: the gradient at a
+ * lattice point is dotted with a zero distance vector.
  *
  * The `seed` argument separates fields that sample the same coordinates. Two systems on one
  * seed (height and moisture, say) receive the same field and the map reads as one feature
@@ -166,7 +182,7 @@ export function noise2(seed: number, x: number, y: number): number {
   const n01 = grad2(hash2(seed, ix, iy + 1), fx, fy - 1);
   const n11 = grad2(hash2(seed, ix + 1, iy + 1), fx - 1, fy - 1);
 
-  return mix(mix(n00, n10, u), mix(n01, n11, u), v) * SCALE_2D;
+  return unsignZero(mix(mix(n00, n10, u), mix(n01, n11, u), v) * SCALE_2D);
 }
 
 /**
@@ -202,7 +218,7 @@ export function noise3(seed: number, x: number, y: number, z: number): number {
 
   const z0 = mix(mix(n000, n100, u), mix(n010, n110, u), v);
   const z1 = mix(mix(n001, n101, u), mix(n011, n111, u), v);
-  return mix(z0, z1, w) * SCALE_3D;
+  return unsignZero(mix(z0, z1, w) * SCALE_3D);
 }
 
 /**
@@ -214,13 +230,13 @@ export function noise3(seed: number, x: number, y: number, z: number): number {
  * anything.
  */
 function checkFbm(octaves: number, gain: number, caller: string): void {
-  if (!Number.isInteger(octaves) || octaves < 1 || octaves > MAX_OCTAVES) {
-    throw new RangeError(
-      `${caller}: expected octaves to be an integer in [1, ${MAX_OCTAVES}], got ${String(octaves)}`,
-    );
-  }
-  if (!Number.isFinite(gain) || gain <= 0 || gain > 1) {
-    throw new RangeError(`${caller}: expected gain in (0, 1], got ${String(gain)}`);
+  expectRange(expectInt(octaves, `${caller}.octaves`), 1, MAX_OCTAVES, `${caller}.octaves`);
+  expectFinite(gain, `${caller}.gain`);
+  // `guard` has no exclusive-bound validator and should not grow one for a single caller:
+  // a gain of exactly 0 is a silent one-octave field, which is a different mistake from a
+  // gain above 1 and worth its own message.
+  if (gain <= 0 || gain > 1) {
+    throw new RangeError(`${caller}.gain: expected a number in (0, 1], got ${String(gain)}`);
   }
 }
 
