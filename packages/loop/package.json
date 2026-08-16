@@ -1,0 +1,37 @@
+{
+  "name": "@lattice/loop",
+  "version": "0.1.0",
+  "description": "Time. A wall-clock game loop with fixed-step simulation and interpolated rendering, plus scheduling, tweens and frame statistics.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/C-Aniruddh/lattice.git",
+    "directory": "packages/loop"
+  },
+  "homepage": "https://github.com/C-Aniruddh/lattice/tree/main/packages/loop",
+  "keywords": [
+    "lattice",
+    "gamedev",
+    "isometric",
+    "typescript",
+    "deterministic",
+    "loop"
+  ],
+  "dependencies": {
+    "@lattice/core": "^0.1.0"
+  }
+}

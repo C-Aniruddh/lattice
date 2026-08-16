@@ -1,0 +1,38 @@
+{
+  "name": "@lattice/draw",
+  "version": "0.1.0",
+  "description": "The rendering layer: a Surface interface with a Canvas2D backend, colour derivation, and the isometric solid kit that makes procedural art read as designed.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/C-Aniruddh/lattice.git",
+    "directory": "packages/draw"
+  },
+  "homepage": "https://github.com/C-Aniruddh/lattice/tree/main/packages/draw",
+  "keywords": [
+    "lattice",
+    "gamedev",
+    "isometric",
+    "typescript",
+    "deterministic",
+    "draw"
+  ],
+  "dependencies": {
+    "@lattice/core": "^0.1.0",
+    "@lattice/iso": "^0.1.0"
+  }
+}

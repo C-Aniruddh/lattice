@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "incremental": false,
+    "types": [
+      "node"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@lattice/*": [
+        "packages/*/src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "packages/*/test/**/*",
+    "packages/*/src/**/*",
+    "examples/*/src/**/*",
+    "tools/**/*"
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "name": "@lattice/input",
+  "version": "0.1.0",
+  "description": "Normalised input: pointer, touch, keyboard and gamepad into one event stream, plus gestures, an action map, and a camera controller.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/C-Aniruddh/lattice.git",
+    "directory": "packages/input"
+  },
+  "homepage": "https://github.com/C-Aniruddh/lattice/tree/main/packages/input",
+  "keywords": [
+    "lattice",
+    "gamedev",
+    "isometric",
+    "typescript",
+    "deterministic",
+    "input"
+  ],
+  "dependencies": {
+    "@lattice/core": "^0.1.0",
+    "@lattice/iso": "^0.1.0"
+  }
+}

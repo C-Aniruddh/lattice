@@ -1,0 +1,37 @@
+{
+  "name": "@lattice/iso",
+  "version": "0.1.0",
+  "description": "Isometric space: the projection, the camera, depth sorting, tile maps, footprints, hit-testing, and grid pathfinding.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/C-Aniruddh/lattice.git",
+    "directory": "packages/iso"
+  },
+  "homepage": "https://github.com/C-Aniruddh/lattice/tree/main/packages/iso",
+  "keywords": [
+    "lattice",
+    "gamedev",
+    "isometric",
+    "typescript",
+    "deterministic",
+    "iso"
+  ],
+  "dependencies": {
+    "@lattice/core": "^0.1.0"
+  }
+}

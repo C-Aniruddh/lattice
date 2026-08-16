@@ -1,0 +1,266 @@
+{
+  "$comment": "The machine-readable index of the kit. Agents read this before reading source. Every package MUST keep its `exports` and `invariants` current; `npm run lint` fails the build if a package exports a symbol that is not listed here.",
+  "name": "lattice",
+  "tagline": "The grid underneath.",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": "https://github.com/C-Aniruddh/lattice",
+  "scope": "@lattice",
+  "budgets": {
+    "coverageStatements": 0.9,
+    "coverageCore": 1,
+    "maxGzipKbPerPackage": 12,
+    "maxFrameBudgetMs": 8
+  },
+  "layers": [
+    {
+      "layer": 0,
+      "packages": [
+        "core"
+      ]
+    },
+    {
+      "layer": 1,
+      "packages": [
+        "iso",
+        "loop",
+        "sim",
+        "persist",
+        "audio"
+      ]
+    },
+    {
+      "layer": 2,
+      "packages": [
+        "draw",
+        "input"
+      ]
+    },
+    {
+      "layer": 3,
+      "packages": [
+        "ui"
+      ]
+    }
+  ],
+  "packages": {
+    "core": {
+      "name": "@lattice/core",
+      "purpose": "Deterministic primitives. Seeded randomness, noise, maths, easing, typed events, pools, formatting.",
+      "environment": "isomorphic",
+      "dependsOn": [],
+      "modules": [
+        "rng",
+        "noise",
+        "math",
+        "easing",
+        "vec2",
+        "events",
+        "pool",
+        "format",
+        "assert"
+      ],
+      "exports": [
+        "VERSION"
+      ],
+      "invariants": [
+        "Zero dependencies and zero DOM references.",
+        "Bit-identical output across platforms: all RNG arithmetic stays in uint32 via Math.imul/>>>/^.",
+        "No module-level mutable state. There is no global Rng, deliberately."
+      ]
+    },
+    "iso": {
+      "name": "@lattice/iso",
+      "purpose": "Isometric space: the projection, the camera, depth sorting, tile maps, footprints, hit-testing, and grid pathfinding.",
+      "environment": "isomorphic",
+      "dependsOn": [
+        "core"
+      ],
+      "modules": [
+        "projection",
+        "camera",
+        "depth",
+        "tilemap",
+        "footprint",
+        "hittest",
+        "path"
+      ],
+      "exports": [
+        "VERSION"
+      ],
+      "invariants": [
+        "Three coordinate spaces \u2014 grid, world, screen \u2014 never conflated. Every conversion is a named function.",
+        "Tile lookup floors, never rounds.",
+        "Hit-testing is computed from state and camera, never cached during a draw pass."
+      ]
+    },
+    "draw": {
+      "name": "@lattice/draw",
+      "purpose": "The rendering layer: a Surface interface with a Canvas2D backend, colour derivation, and the isometric solid kit that makes procedural art read as designed.",
+      "environment": "browser (Canvas2D) with an offscreen/headless backend for tests",
+      "dependsOn": [
+        "core",
+        "iso"
+      ],
+      "modules": [
+        "surface",
+        "canvas2d",
+        "color",
+        "palette",
+        "solids",
+        "shadow",
+        "text",
+        "layers",
+        "cache"
+      ],
+      "exports": [
+        "VERSION"
+      ],
+      "invariants": [
+        "Draw calls go through Surface. No package reaches for CanvasRenderingContext2D directly.",
+        "A solid is described by one colour; its faces are derived. Shadows cool, highlights warm.",
+        "Everything is drawable into an offscreen surface, which is what makes UI thumbnails and golden tests possible."
+      ]
+    },
+    "loop": {
+      "name": "@lattice/loop",
+      "purpose": "Time. A wall-clock game loop with fixed-step simulation and interpolated rendering, plus scheduling, tweens and frame statistics.",
+      "environment": "isomorphic (host clock is injected)",
+      "dependsOn": [
+        "core"
+      ],
+      "modules": [
+        "clock",
+        "loop",
+        "scheduler",
+        "tween",
+        "stats"
+      ],
+      "exports": [
+        "VERSION"
+      ],
+      "invariants": [
+        "Simulation advances on the wall clock, never on frame deltas \u2014 rAF is 0 Hz in a hidden tab.",
+        "Catch-up is clamped; a tab restored after an hour must not run an hour of ticks in one frame.",
+        "The clock is injected, so every test runs at whatever speed it likes with no timers."
+      ]
+    },
+    "input": {
+      "name": "@lattice/input",
+      "purpose": "Normalised input: pointer, touch, keyboard and gamepad into one event stream, plus gestures, an action map, and a camera controller.",
+      "environment": "browser",
+      "dependsOn": [
+        "core",
+        "iso"
+      ],
+      "modules": [
+        "pointer",
+        "keyboard",
+        "gamepad",
+        "gestures",
+        "actions",
+        "cameracontrol"
+      ],
+      "exports": [
+        "VERSION"
+      ],
+      "invariants": [
+        "Tap and drag are discriminated by distance and time, with the thresholds as named constants.",
+        "Zoom is anchored to the pointer.",
+        "Every listener returns a disposer. A controller that cannot be torn down leaks a whole game."
+      ]
+    },
+    "audio": {
+      "name": "@lattice/audio",
+      "purpose": "Sound without assets: WebAudio synthesis from declarative sound definitions, with voice limiting, buses and a music sequencer.",
+      "environment": "browser",
+      "dependsOn": [
+        "core"
+      ],
+      "modules": [
+        "engine",
+        "voice",
+        "sounds",
+        "bus",
+        "music"
+      ],
+      "exports": [
+        "VERSION"
+      ],
+      "invariants": [
+        "No AudioContext exists until a user gesture unlocks it.",
+        "Silent, not throwing, where there is no WebAudio \u2014 importing this in a test is free.",
+        "A hard voice ceiling. Summed gains above 1 clip into a click, and twenty voices never sound twenty times better."
+      ]
+    },
+    "persist": {
+      "name": "@lattice/persist",
+      "purpose": "Saves that survive: versioned state, an explicit migration chain, pluggable storage, debounced writes and integrity checks.",
+      "environment": "isomorphic (storage adapter is injected)",
+      "dependsOn": [
+        "core"
+      ],
+      "modules": [
+        "store",
+        "migrate",
+        "adapters",
+        "integrity"
+      ],
+      "exports": [
+        "VERSION"
+      ],
+      "invariants": [
+        "Every save carries a version and every version has a migration to the next. A save can never be orphaned.",
+        "Writes flush on visibilitychange, not on beforeunload \u2014 mobile Safari does not reliably deliver the latter.",
+        "A corrupt save degrades to a fresh one with a reported reason, never to a thrown exception on boot."
+      ]
+    },
+    "sim": {
+      "name": "@lattice/sim",
+      "purpose": "Idle-economy mathematics in closed form: cost curves, the flow integrator, offline accrual, and capacity gating.",
+      "environment": "isomorphic",
+      "dependsOn": [
+        "core"
+      ],
+      "modules": [
+        "cost",
+        "graph",
+        "flow",
+        "offline",
+        "capacity"
+      ],
+      "exports": [
+        "VERSION"
+      ],
+      "invariants": [
+        "Closed form, never a loop. 'Buy max' at 4,000 owned must not be 4,000 iterations on a hot path.",
+        "The economy has no tick. State is (stocks, rates, lastTimestamp), integrated on read.",
+        "Offline progress warps time, never yield \u2014 scaling the output lets a player return with more than their producers could have made."
+      ]
+    },
+    "ui": {
+      "name": "@lattice/ui",
+      "purpose": "DOM overlay primitives \u2014 a declarative element builder, panels, toasts, number rolls, and thumbnails rendered from the draw kit. Deliberately not a framework.",
+      "environment": "browser",
+      "dependsOn": [
+        "core",
+        "draw"
+      ],
+      "modules": [
+        "el",
+        "panel",
+        "toast",
+        "roll",
+        "thumb"
+      ],
+      "exports": [
+        "VERSION"
+      ],
+      "invariants": [
+        "No virtual DOM. The whole overlay is a few dozen nodes that change a few times a second.",
+        "The overlay root is pointer-transparent and re-enables per child, and the child rule out-specifies bare classes.",
+        "Anything that is not painting updates on an interval, not inside the frame loop \u2014 a hidden tab must not freeze the HUD."
+      ]
+    }
+  }
+}

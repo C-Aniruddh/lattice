@@ -1,0 +1,23 @@
+{
+  "name": "@lattice/demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A complete small game built from nothing but the kit. The proof that the seams fit.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5173 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview --port 5174 --strictPort"
+  },
+  "dependencies": {
+    "@lattice/audio": "^0.1.0",
+    "@lattice/core": "^0.1.0",
+    "@lattice/draw": "^0.1.0",
+    "@lattice/input": "^0.1.0",
+    "@lattice/iso": "^0.1.0",
+    "@lattice/loop": "^0.1.0",
+    "@lattice/persist": "^0.1.0",
+    "@lattice/sim": "^0.1.0",
+    "@lattice/ui": "^0.1.0"
+  }
+}

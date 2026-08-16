@@ -1,0 +1,37 @@
+{
+  "name": "@lattice/audio",
+  "version": "0.1.0",
+  "description": "Sound without assets: WebAudio synthesis from declarative sound definitions, with voice limiting, buses and a music sequencer.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/C-Aniruddh/lattice.git",
+    "directory": "packages/audio"
+  },
+  "homepage": "https://github.com/C-Aniruddh/lattice/tree/main/packages/audio",
+  "keywords": [
+    "lattice",
+    "gamedev",
+    "isometric",
+    "typescript",
+    "deterministic",
+    "audio"
+  ],
+  "dependencies": {
+    "@lattice/core": "^0.1.0"
+  }
+}
