@@ -95,9 +95,14 @@ for (const id of Object.keys(kit.packages)) {
     .join('\n');
   const kb = gzipSync(source, { level: 9 }).byteLength / 1024;
   total += kb;
-  const ok = kb <= budgetKb;
+  // A package may hold a documented override. The reason lives in kit.json beside the number,
+  // so an exception is something a reviewer reads rather than something a number hides.
+  const override = kit.budgets.overrides?.[id];
+  const limit = override?.maxGzipKb ?? budgetKb;
+  const ok = kb <= limit;
   if (!ok) over += 1;
-  rows.push([id, `${kb.toFixed(2)} kB`, ok ? 'ok' : `OVER by ${(kb - budgetKb).toFixed(2)} kB`]);
+  const note = ok ? (override ? `ok (override ${limit} kB)` : 'ok') : `OVER by ${(kb - limit).toFixed(2)} kB`;
+  rows.push([id, `${kb.toFixed(2)} kB`, note]);
 }
 
 const w = Math.max(...rows.map((r) => r[0].length));

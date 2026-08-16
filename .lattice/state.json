@@ -1,10 +1,9 @@
 {
   "$comment": "Where the build is. One line per cycle in docs/PROGRESS.md; this is the machine-readable head.",
-  "cycle": 1,
-  "phase": "design",
+  "cycle": 2,
+  "phase": "build",
   "started": "2026-08-15",
-  "done": [],
-  "inFlight": [
+  "done": [
     "A1",
     "A2",
     "A3",
@@ -14,13 +13,29 @@
     "A7",
     "A8",
     "A9",
-    "A10"
+    "A10",
+    "B1a",
+    "B1b",
+    "B1c",
+    "B2",
+    "B3",
+    "B4",
+    "B5",
+    "B6",
+    "B7",
+    "B8",
+    "D2"
+  ],
+  "inFlight": [
+    "B9",
+    "D1",
+    "E1"
   ],
   "blocked": [],
   "health": {
     "verify": "green",
-    "packages": 0,
-    "publicSymbols": 9,
-    "coverage": null
+    "packages": 8,
+    "publicSymbols": 484,
+    "tests": 2312
   }
 }

@@ -336,7 +336,7 @@
         "README.md opens with an example that has actually been run",
         "npm run lint -- --fix leaves kit.json accurate"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-builder",
       "notes": ""
     },
@@ -382,7 +382,7 @@
         "README.md opens with an example that has actually been run",
         "npm run lint -- --fix leaves kit.json accurate"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-builder",
       "notes": ""
     },
@@ -476,8 +476,8 @@
         "README.md opens with an example that has actually been run",
         "npm run lint -- --fix leaves kit.json accurate"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-builder",
       "notes": ""
     },
     {
@@ -752,8 +752,8 @@
         "deterministic: same seed, same world",
         "the ranked list of kit gaps it hit is the primary deliverable"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-designer",
       "notes": ""
     },
     {
@@ -775,8 +775,8 @@
         "CONTRIBUTING and a CI workflow that runs npm run verify on every push",
         "every package.json is publish-ready: files, exports, sideEffects, repository, license"
       ],
-      "status": "todo",
-      "owner": null,
+      "status": "in_progress",
+      "owner": "lattice-scribe",
       "notes": ""
     },
     {
