@@ -20,6 +20,7 @@ import {
   gridToWorld,
   gridToWorldX,
   gridToWorldY,
+  isEdgeOn,
   rectCenterX,
   rectCenterY,
   rectContains,
@@ -57,6 +58,47 @@ describe('the constants', () => {
   it('has no LEVEL_H — a storey is an art proportion and belongs to draw', async () => {
     const iso: Record<string, unknown> = await import('../src/index.js');
     expect(Object.keys(iso)).not.toContain('LEVEL_H');
+  });
+});
+
+describe('isEdgeOn', () => {
+  it('is true exactly when the two ends share a world x', () => {
+    // World x is (gx - gy) * HALF_W and nothing else, so equal deltas cancel. This is the
+    // whole of the invisible-wall bug: a fence along the near-far diagonal has no width to
+    // draw, nothing throws, and the art is simply not there.
+    expect(isEdgeOn(2, 2, 5, 5)).toBe(true);
+    expect(gridToWorldX(5, 5)).toBe(gridToWorldX(2, 2));
+    expect(isEdgeOn(2, 2, 5, 6)).toBe(false);
+    expect(isEdgeOn(0, 0, 3, 0)).toBe(false);
+    expect(isEdgeOn(0, 0, 0, 3)).toBe(false);
+    // Negative and fractional deltas are the same rule: -2 and -2 cancel just as well.
+    expect(isEdgeOn(9, 9, 7, 7)).toBe(true);
+    expect(isEdgeOn(0, 0, 0.5, 0.5)).toBe(true);
+  });
+
+  it('agrees with the projection over a neighborhood, which is the only definition it has', () => {
+    for (let dgx = -3; dgx <= 3; dgx++) {
+      for (let dgy = -3; dgy <= 3; dgy++) {
+        const width = gridToWorldX(4 + dgx, 6 + dgy) - gridToWorldX(4, 6);
+        expect(isEdgeOn(4, 6, 4 + dgx, 6 + dgy)).toBe(width === 0);
+      }
+    }
+  });
+
+  it('calls a zero-length segment edge-on and a NaN one not', () => {
+    // A point has no width either, and it is the same bug arriving from a different direction.
+    expect(isEdgeOn(3, 3, 3, 3)).toBe(true);
+    // NaN is not a projection question. Answering `true` would let a broken coordinate be
+    // reported as an art problem, which is the wrong department.
+    expect(isEdgeOn(0, 0, Number.NaN, 0)).toBe(false);
+    expect(isEdgeOn(0, 0, 0, Number.NaN)).toBe(false);
+  });
+
+  it('does not say anything about the other diagonal, which is thin but visible', () => {
+    // (1, -1) has zero world *height*, not zero width. A wall along it draws as a horizontal
+    // line of full width and reads perfectly well, so it is not this predicate's business.
+    expect(isEdgeOn(0, 0, 3, -3)).toBe(false);
+    expect(gridToWorldY(3, -3)).toBe(gridToWorldY(0, 0));
   });
 });
 

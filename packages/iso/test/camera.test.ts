@@ -15,6 +15,7 @@ import {
   HALF_W,
   gridToWorldX,
   gridToWorldY,
+  rectMakeEmpty,
   rectSet,
   tileBounds,
 } from '../src/projection.js';
@@ -342,6 +343,143 @@ describe('culling', () => {
     expect(wide.gx1).toBe(plain.gx1 + 3);
     expect(wide.gy1).toBe(plain.gy1 + 3);
     expect(plain.gx1).toBeGreaterThan(plain.gx0);
+  });
+});
+
+describe('fitBounds', () => {
+  it('puts the rectangle exactly against the viewport edges', () => {
+    // 800 / 400 = 2 across, 600 / 200 = 3 down; the tighter of the two wins, so zoom is 2 and
+    // the vertical span leaves 600 - 200 * 2 = 200 CSS px of slack.
+    const cam = createCamera(800, 600, { bounds: huge() });
+    cam.fitBounds(rectSet(rect(), 0, 0, 400, 200));
+    expect(cam.zoom).toBe(2);
+    expect(cam.x).toBe(200);
+    expect(cam.y).toBe(100);
+    expect(cam.toScreenX(0)).toBe(0);
+    expect(cam.toScreenX(400)).toBe(800);
+    expect(cam.toScreenY(0)).toBe(100);
+    expect(cam.toScreenY(200)).toBe(500);
+  });
+
+  it('is exactly the zoomAt(want / zoom, center) every example writes by hand', () => {
+    // The expression this method replaces. Both cameras start at a different zoom, because the
+    // whole point of the division in the hand-written form is that it undoes wherever you were.
+    const a = createCamera(960, 540, { bounds: huge(), zoom: 3 });
+    const b = createCamera(960, 540, { bounds: huge(), zoom: 3 });
+    const box = rectSet(rect(), -300, -100, 500, 700);
+    const want = Math.min(960 / (500 - -300), 540 / (700 - -100));
+    a.zoomAt(want / a.zoom, 960 / 2, 540 / 2);
+    a.centerOn(100, 300);
+    b.fitBounds(box);
+    expect(b.zoom).toBe(a.zoom);
+    expect(b.x).toBe(a.x);
+    expect(b.y).toBe(a.y);
+  });
+
+  it('takes its margin in CSS pixels, so the gutter is the same at every fitted zoom', () => {
+    // 50 px on each side leaves 700 of 800 across and 500 of 600 down: 700 / 400 = 1.75 beats
+    // 500 / 200 = 2.5, and 1.75 is exact in binary so the edges land on whole pixels.
+    const cam = createCamera(800, 600, { bounds: huge() });
+    cam.fitBounds(rectSet(rect(), 0, 0, 400, 200), 50);
+    expect(cam.zoom).toBe(1.75);
+    expect(cam.toScreenX(0)).toBe(50);
+    expect(cam.toScreenX(400)).toBe(750);
+  });
+
+  it('frames a tall world taller, because the height is in the rectangle', () => {
+    // tileBounds(0, 0, 8, 8, h) is 512 world px across and 256 + h down — `minY` extends up by
+    // the height, which is the only route content height has into a framing decision.
+    const flat = createCamera(512, 256, { bounds: huge() });
+    const tall = createCamera(512, 256, { bounds: huge() });
+    flat.fitBounds(tileBounds(0, 0, 8, 8, 0, rect()));
+    tall.fitBounds(tileBounds(0, 0, 8, 8, 256, rect()));
+    // 512 / 512 = 1 across and 256 / 256 = 1 down for the flat map; the tall one pays
+    // 256 / 512 = 0.5 down.
+    expect(flat.zoom).toBe(1);
+    expect(tall.zoom).toBe(0.5);
+    // And the summit is on screen, which is the failure this is about: at the flat framing the
+    // top of the 256 px mass sits 256 CSS px above the viewport.
+    expect(flat.toScreenY(-256)).toBe(-256);
+    expect(tall.toScreenY(-256)).toBe(0);
+  });
+
+  it('clamps into the zoom limits at both ends', () => {
+    const cam = createCamera(800, 600, { bounds: huge(), minZoom: 0.5, maxZoom: 4 });
+    // 800 / 8000 = 0.1, below minZoom: the island does not fit and the camera says so by
+    // sitting at its limit rather than by mirroring the world.
+    cam.fitBounds(rectSet(rect(), 0, 0, 8000, 6000));
+    expect(cam.zoom).toBe(0.5);
+    // 800 / 8 = 100, above maxZoom.
+    cam.fitBounds(rectSet(rect(), 0, 0, 8, 6));
+    expect(cam.zoom).toBe(4);
+  });
+
+  it('treats a degenerate axis as no constraint, and a point as maxZoom', () => {
+    const cam = createCamera(800, 600, { bounds: huge() });
+    // A wall along the near-far diagonal has zero world width — see isEdgeOn. Only the
+    // vertical span constrains: 600 / 300 = 2.
+    cam.fitBounds(rectSet(rect(), 40, 0, 40, 300));
+    expect(cam.zoom).toBe(2);
+    expect(cam.x).toBe(40);
+    // Both axes degenerate: nothing constrains, so the fit is as close as it is allowed.
+    cam.fitBounds(rectSet(rect(), 7, 9, 7, 9));
+    expect(cam.zoom).toBe(4);
+    expect(cam.x).toBe(7);
+    expect(cam.y).toBe(9);
+  });
+
+  it('survives a margin wider than the viewport instead of inverting', () => {
+    // 800 - 2 * 500 is negative. One CSS pixel of usable viewport instead: 1 / 400 = 0.0025,
+    // which clamps to minZoom. A negative zoom would mirror the world silently.
+    const cam = createCamera(800, 600, { bounds: huge() });
+    cam.fitBounds(rectSet(rect(), 0, 0, 400, 200), 500);
+    expect(cam.zoom).toBe(0.5);
+  });
+
+  it('lets the bounds clamp win, so the center is not always the rectangle center', () => {
+    // A 640-px-wide island, a 640-px viewport at zoom 1, and keepVisible 1: the camera may not
+    // look past the island's edge, so framing a box off to its east settles on the island.
+    const cam = createCamera(640, 320, {
+      bounds: rectSet(rect(), -320, -160, 320, 160),
+      keepVisible: 1,
+      minZoom: 1,
+      maxZoom: 1,
+    });
+    cam.fitBounds(rectSet(rect(), 4000, 0, 4640, 320));
+    expect(cam.zoom).toBe(1);
+    expect(cam.x).toBe(0);
+    expect(cam.y).toBe(0);
+  });
+
+  it('is idempotent, like every other mutator here', () => {
+    const cam = createCamera(800, 600, { bounds: huge() });
+    const box = rectSet(rect(), -17, 3, 933, 411);
+    cam.fitBounds(box, 12);
+    const first = { x: cam.x, y: cam.y, zoom: cam.zoom };
+    cam.fitBounds(box, 12);
+    expect({ x: cam.x, y: cam.y, zoom: cam.zoom }).toEqual(first);
+  });
+
+  it('names the caller mistake in every rejection', () => {
+    const cam = createCamera(800, 600, { bounds: huge() });
+    // The rectMakeEmpty state: an accumulator loop that unioned nothing into it. Naming it in
+    // the message is the difference between one minute and twenty.
+    expect(() => cam.fitBounds(rectMakeEmpty(rect()))).toThrow(/rectMakeEmpty state/);
+    expect(() => cam.fitBounds(rectSet(rect(), 0, 0, Number.NaN, 10))).toThrow(
+      /camera.fitBounds: expected finite rectangle edges, got minX 0, minY 0, maxX NaN, maxY 10/,
+    );
+    expect(() => cam.fitBounds(rectSet(rect(), 0, 0, -10, 10))).toThrow(
+      /expected maxX >= minX and maxY >= minY, got spans -10 and 10/,
+    );
+    expect(() => cam.fitBounds(rectSet(rect(), 0, 0, 10, -10))).toThrow(/spans 10 and -10/);
+    expect(() => cam.fitBounds(rectSet(rect(), 0, 0, 10, 10), -1)).toThrow(
+      /expected marginPx to be a finite number >= 0, got -1/,
+    );
+    expect(() => cam.fitBounds(rectSet(rect(), 0, 0, 10, 10), Infinity)).toThrow(
+      /marginPx.*got Infinity/,
+    );
+    // And none of them moved the camera.
+    expect(cam.zoom).toBe(1);
   });
 });
 

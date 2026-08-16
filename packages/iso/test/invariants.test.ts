@@ -312,7 +312,7 @@ describe('I15: nothing on the per-frame path allocates', () => {
     'height.ts': ['heightAt', 'slopeAt'],
     'anchor.ts': ['anchorToScreen', 'anchorVisible', 'anchorPan'],
     'hittest.ts': ['screenToTile', 'surfaceGap', 'boxSilhouette', 'pointInPolygon', 'pointInTile'],
-    'path.ts': ['pathSample', 'pathDirAt', 'dirCodeOf', 'octile', 'segmentPassable'],
+    'path.ts': ['pathSample', 'pathDirAt', 'dirCodeOf', 'octile', 'segmentWorst'],
     'heap.ts': ['push', 'pop', 'sortIndicesByKey'],
     'tilemap.ts': [
       'class TileGrid::get',

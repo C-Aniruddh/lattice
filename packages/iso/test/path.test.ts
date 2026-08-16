@@ -40,6 +40,14 @@ function worldDist(ax: number, ay: number, bx: number, by: number): number {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
+/** A half-open search rectangle, spelled once. */
+const box = (gx0: number, gy0: number, gx1: number, gy1: number): TileRange => ({
+  gx0,
+  gy0,
+  gx1,
+  gy1,
+});
+
 function nodes(p: Path): [number, number][] {
   const out: [number, number][] = [];
   for (let i = 0; i < p.nodeCount; i++) out.push([p.gxAt(i), p.gyAt(i)]);
@@ -354,7 +362,11 @@ describe('pathProject', () => {
     const s = pathProject(p, 5, 3);
     const out = gp();
     pathSample(p, s, out);
-    expect(gridToWorldY(out.gx, out.gy)).toBeCloseTo(gridToWorldY(5, 3), 9);
+    // 1e-12 is the derivation, not a guess: the projection is one multiply-and-add on values
+    // below 300, and the arc-length round trip through `pathProject` and `pathSample` adds a
+    // division and a lerp — four operations, so the error cannot exceed a few ulps of 128,
+    // which is under 1e-13.
+    expect(Math.abs(gridToWorldY(out.gx, out.gy) - gridToWorldY(5, 3))).toBeLessThan(1e-12);
   });
 
   it('clamps to the ends for a point beyond either', () => {
@@ -507,10 +519,14 @@ describe('pathSimplify', () => {
     ];
     for (const [dx, dy] of legs) {
       const p = new Path(16);
+      // Nudged off the straight line, or the collinear pass would remove the interior nodes
+      // before the pull ever walked a segment — and this test would assert nothing about the
+      // walk it is named for.
       p.push(0, 0);
-      p.push(dx / 3, dy / 3);
-      p.push((dx * 2) / 3, (dy * 2) / 3);
+      p.push(dx * 0.4 - dy * 0.05, dy * 0.4 + dx * 0.05);
+      p.push(dx * 0.7 - dy * 0.05, dy * 0.7 + dx * 0.05);
       p.push(dx, dy);
+      expect(p.nodeCount).toBe(4);
       pathSimplify(p, open);
       // Open ground everywhere, so the whole leg collapses to its two endpoints.
       expect(nodes(p)).toEqual([
@@ -535,6 +551,237 @@ describe('pathSimplify', () => {
     expect(road.arcLength).toBeLessThanOrEqual(before + 1e-9);
     expect(road.gxAt(0)).toBe(0);
     expect(road.gxAt(road.nodeCount - 1)).toBe(29);
+  });
+});
+
+describe('pathSimplify keeps the weighted route', () => {
+  /**
+   * A cheap L through expensive-but-passable ground.
+   *
+   * Weight 1 along the north edge and the east edge, 25 everywhere else. The L costs
+   * `11 + 11 = 22` tiles of ordinary ground; the diagonal costs eleven diagonal steps of scree
+   * at 25 each. A weighted search takes the L, which is the entire reason weights exist.
+   */
+  function lShaped(): TileCost {
+    const grid = new TileGrid(12, 12, { fill: 25 });
+    for (let i = 0; i < 12; i++) {
+      grid.set(i, 0, 1);
+      grid.set(11, i, 1);
+    }
+    return (gx, gy) => grid.get(gx, gy);
+  }
+
+  const roadAlongTheL = (cost: TileCost): Path => {
+    const road = new Path(64);
+    expect(new PathFinder(1024).find(cost, 0, 0, 11, 11, road, undefined)).toBe(true);
+    // The search really did contour: every node it produced is on the cheap ground.
+    for (let i = 0; i < road.nodeCount; i++) {
+      expect(cost(road.gxAt(i), road.gyAt(i))).toBe(1);
+    }
+    return road;
+  };
+
+  it('refuses a shortcut that costs more than the stretch it replaces', () => {
+    // The headline. The straight line from (0, 0) to (11, 11) is perfectly passable — it is
+    // scree, not a wall — so a passability-only pull takes it and hands back exactly the route
+    // the weights existed to avoid. Compared instead: the heaviest tile the shortcut touches is
+    // 25, the cheapest tile on the L it would replace is 1, and 25 is not <= 1.
+    const cost = lShaped();
+    const road = roadAlongTheL(cost);
+    pathSimplify(road, cost);
+    // One turn survives — the corner of the L — where the passability-only pull leaves none.
+    expect(road.nodeCount).toBe(3);
+    expect(nodes(road)[0]).toEqual([0, 0]);
+    expect(nodes(road)[2]).toEqual([11, 11]);
+    const out = gp();
+    for (let i = 0; i <= 500; i++) {
+      pathSample(road, (i / 500) * road.arcLength, out);
+      expect(cost(Math.floor(out.gx), Math.floor(out.gy))).toBe(1);
+    }
+  });
+
+  it('is what a passability-only pull would have thrown away', () => {
+    // The bug, reproduced deliberately: the same route pulled against "is it passable" rather
+    // than against its own cost function collapses to the diagonal, and every sample of it
+    // lands on weight-25 ground. This is the assertion that would fail if the cost comparison
+    // were ever removed, and it is why the workaround was to pass a *different* predicate.
+    const cost = lShaped();
+    const road = roadAlongTheL(cost);
+    pathSimplify(road, (gx, gy) => (cost(gx, gy) > 0 ? 1 : 0));
+    expect(nodes(road)).toEqual([
+      [0, 0],
+      [11, 11],
+    ]);
+    expect(cost(5, 5)).toBe(25);
+  });
+
+  it('collapses the staircase on uniform ground at any weight, which is the case that must not regress', () => {
+    // On one weight the shortcut is `w × straight` and the run is `w × polyline`, so the
+    // triangle inequality decides it and the answer is the same as it always was — whatever w
+    // is. A weight of 1 would not prove that.
+    for (const weight of [1, 3, 40]) {
+      const uniform: TileCost = () => weight;
+      const road = new Path(64);
+      expect(new PathFinder(1024).find(uniform, 0, 0, 12, 5, road, undefined)).toBe(true);
+      expect(road.nodeCount).toBeGreaterThan(2);
+      pathSimplify(road, uniform);
+      expect(nodes(road)).toEqual([
+        [0, 0],
+        [12, 5],
+      ]);
+    }
+  });
+
+  it('takes any passable shortcut across a route standing on ground it now refuses', () => {
+    // The map changed under the route, or the caller is simplifying against a stricter
+    // predicate than it searched with. Either way the route is already illegal, so a passable
+    // line across it wins — which is also what the old passability-only pull did, and the one
+    // case where that was right.
+    const wall = new TileGrid(8, 8, { fill: 1 });
+    wall.set(1, 0, 50);
+    wall.set(2, 0, 50);
+    const detour = (): Path => {
+      const p = new Path(8);
+      p.push(0.5, 0.5);
+      p.push(0.5, 3.5);
+      p.push(4.5, 0.5);
+      return p;
+    };
+    // Control: every tile of the detour is legal, so the floor of the run is 1, the straight
+    // line's heaviest tile is 50, and the shortcut is refused.
+    const legal = detour();
+    pathSimplify(legal, (gx, gy) => wall.get(gx, gy));
+    expect(legal.nodeCount).toBe(3);
+    // The same geometry with the corner node's own tile refused. Nothing else changes.
+    const refused = detour();
+    pathSimplify(refused, (gx, gy) => (gx === 0 && gy === 3 ? 0 : wall.get(gx, gy)));
+    expect(nodes(refused)).toEqual([
+      [0.5, 0.5],
+      [4.5, 0.5],
+    ]);
+  });
+
+  it('refuses a shortcut whose own line is impassable even when the run is refused too', () => {
+    // Both sides blocked: the pull has nothing legal to offer, so the route survives untouched
+    // rather than being straightened through the wall on the grounds that it was already bad.
+    const grid = new TileGrid(8, 8, { fill: 1 });
+    for (let gy = 0; gy < 8; gy++) grid.set(3, gy, 0);
+    const cost: TileCost = (gx, gy) => grid.get(gx, gy);
+    const p = new Path(8);
+    p.push(0, 0);
+    p.push(1, 4);
+    p.push(6, 4);
+    pathSimplify(p, cost);
+    expect(p.nodeCount).toBe(3);
+  });
+
+  it('compares weights, not totals — which is what a length-based test got wrong', () => {
+    // The version tried first priced both sides as an integral of weight along the segment.
+    // Any such test needs a length, and no length means the same thing on both sides: A*
+    // charges the tile each step *enters*, while a straight line crosses tiles part-way and
+    // clips corners. This is the shape where that mattered — the shortcut is short and heavy,
+    // the route is long and light — and a total can be made to prefer either one by choosing
+    // whether to measure in world pixels or in the searcher's 10/14 units.
+    const cost: TileCost = (gx, gy) => (gx === gy ? 2 : 1);
+    const p = new Path(8);
+    p.push(0, 0);
+    p.push(4, 0);
+    p.push(4, 4);
+    pathSimplify(p, cost);
+    // Weight 2 on the diagonal against a floor of 1 on the route: refused, no arithmetic.
+    expect(p.nodeCount).toBe(3);
+    expect(p.arcLength).toBe(worldDist(0, 0, 4, 0) + worldDist(4, 0, 4, 4));
+    // And at weight 1 the same diagonal is taken, so the refusal above is about the weight and
+    // not about the geometry.
+    const flat = new Path(8);
+    flat.push(0, 0);
+    flat.push(4, 0);
+    flat.push(4, 4);
+    pathSimplify(flat, () => 1);
+    expect(flat.nodeCount).toBe(2);
+  });
+});
+
+describe('an empty path says why it is empty', () => {
+  it('records the two tiles that have no route between them', () => {
+    // Finding 8: a failed search clears its out path, an empty path throws from the *sampler*,
+    // and the sampler runs in the render loop — so the first anyone hears of it is a white
+    // screen at boot, thrown a long way from the search that caused it.
+    const grid = new TileGrid(10, 10, { fill: 1 });
+    for (let gy = 0; gy < 10; gy++) grid.set(5, gy, 0);
+    const cost: TileCost = (gx, gy) => grid.get(gx, gy);
+    const road = new Path(16);
+    expect(new PathFinder(512).find(cost, 1, 1, 9, 9, road, { bounds: box(0, 0, 10, 10) })).toBe(
+      false,
+    );
+    expect(road.searchFailure).toBe('no route from (1, 1) to (9, 9)');
+    expect(() => pathSample(road, 0, gp())).toThrow(
+      /pathSample: the path is empty — the last PathFinder.find on it failed with no route from \(1, 1\) to \(9, 9\)/,
+    );
+    expect(() => pathProject(road, 3, 3)).toThrow(/no route from \(1, 1\) to \(9, 9\)/);
+    // And the message says what to do about it, which is the half that saves the hour.
+    expect(() => pathProject(road, 3, 3)).toThrow(/check the boolean find returns/);
+  });
+
+  it('tells a never-built path apart from a failed one', () => {
+    const blank = new Path(4);
+    expect(blank.searchFailure).toBeUndefined();
+    expect(() => pathSample(blank, 0, gp())).toThrow(/nothing was ever pushed onto it/);
+    expect(() => pathProject(blank, 0, 0)).toThrow(/build it before sampling it/);
+  });
+
+  it('forgets the failure the moment the path has a route again', () => {
+    const road = new Path(8);
+    expect(new PathFinder(64).find(() => 0, 0, 0, 3, 3, road, undefined)).toBe(false);
+    expect(road.searchFailure).toBe('no route from (0, 0) to (3, 3)');
+    road.push(1, 1);
+    // A node makes the failure history rather than news; a stale clause would send the next
+    // reader after the wrong thing.
+    expect(road.searchFailure).toBeUndefined();
+    road.noteSearchFailed(4, 5, 6, 7);
+    expect(road.searchFailure).toBe('no route from (4, 5) to (6, 7)');
+    // A deliberate clear is not a failed search.
+    road.clear();
+    expect(road.searchFailure).toBeUndefined();
+  });
+
+  it('records it on every one of the four ways a search can fail', () => {
+    // Four `return false`s, and one of them forgetting is how a diagnostic ends up being right
+    // only in the cases nobody hits.
+    const finder = new PathFinder(512);
+    const road = new Path(16);
+    const bounds = box(0, 0, 4, 4);
+    // 1. an endpoint outside the search rectangle
+    expect(finder.find(open, 0, 0, 9, 9, road, { bounds })).toBe(false);
+    expect(road.searchFailure).toBe('no route from (0, 0) to (9, 9)');
+    // 2. a goal standing on an impassable tile
+    road.clear();
+    expect(finder.find((gx, gy) => (gx === 3 && gy === 3 ? 0 : 1), 0, 0, 3, 3, road, { bounds })).toBe(
+      false,
+    );
+    expect(road.searchFailure).toBe('no route from (0, 0) to (3, 3)');
+    // 3. the node ceiling, which is a liveness limit rather than a performance knob
+    road.clear();
+    expect(finder.find(open, 0, 0, 30, 30, road, { maxNodes: 5 })).toBe(false);
+    expect(road.searchFailure).toBe('no route from (0, 0) to (30, 30)');
+    // 4. the frontier emptied — genuinely unreachable
+    road.clear();
+    expect(finder.find(open, 0, 0, 3, 3, road, { bounds: box(0, 0, 4, 4), maxNodes: 20000 })).toBe(
+      true,
+    );
+    expect(road.searchFailure).toBeUndefined();
+    const walled: TileCost = (gx, gy) => (gx === 1 ? 0 : 1);
+    expect(finder.find(walled, 0, 0, 3, 3, road, { bounds })).toBe(false);
+    expect(road.searchFailure).toBe('no route from (0, 0) to (3, 3)');
+  });
+
+  it('is undefined after a search that found something, including the trivial one', () => {
+    const road = new Path(8);
+    road.noteSearchFailed(0, 0, 1, 1);
+    expect(new PathFinder(64).find(open, 2, 2, 2, 2, road, undefined)).toBe(true);
+    // Start === goal pushes one node and returns true, and that push is what clears the mark.
+    expect(road.nodeCount).toBe(1);
+    expect(road.searchFailure).toBeUndefined();
   });
 });
 

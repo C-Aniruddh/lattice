@@ -168,6 +168,46 @@ export interface Camera {
   /** Put a world point at the center of the viewport immediately, then clamp. */
   centerOn(wx: number, wy: number): void;
 
+  /**
+   * Frame a world rectangle: the zoom that makes it fit, then the center that shows it.
+   *
+   * **The first thing every game does, and the one thing {@link Camera.zoomAt} cannot do.**
+   * `zoomAt` takes a *factor* and a required anchor because that is what a wheel notch and a
+   * pinch are. Framing a generated world is the other problem: the caller knows the rectangle
+   * it wants on screen and does not know — must not have to compute — the ratio between that
+   * and the zoom it happens to be at. Written against `zoomAt` it comes out as
+   * `zoomAt(want / camera.zoom, viewW / 2, viewH / 2)`, and that division is this method's
+   * absence rather than anyone's style.
+   *
+   * **Content height enters through the rectangle, and there is nowhere else it can.** A
+   * rectangle is the whole of what this method knows, so a caller that frames
+   * `tileBounds(0, 0, w, d, 0, out)` frames the *ground plane* and a 440-pixel summit lands off
+   * the top of the screen on the first frame. Pass the map's tallest elevation as
+   * {@link tileBounds}'s `heightPx` — it extends `minY` upward, which is exactly the extra span
+   * the fit has to pay for — or union in the boxes of whatever stands on the map. There is
+   * deliberately no separate height parameter: two ways to say the same thing is how one of
+   * them gets passed twice.
+   *
+   * The final center is the rectangle's center *after* the bounds clamp, so on a map smaller
+   * than `keepVisible` demands the two differ, and the clamp wins. Frame first, then read
+   * {@link Camera.x} if you need to know where it settled.
+   *
+   * **Zoom is written directly here, and that is not a hole in the anchoring rule.** `zoomAt`
+   * exists so that a *gesture* cannot skip pinning the world point under the pointer; a fit has
+   * no pointer and pins the rectangle's center instead. The invariant is "no path changes zoom
+   * without deciding what stays put", and this path decides.
+   *
+   * @param worldRect The world box to show. Not retained.
+   * @param marginPx Gutter in **CSS pixels** on every side — screen pixels, not world pixels,
+   *   so the visible margin is the same at every fitted zoom. A world-pixel margin instead
+   *   would shrink on screen exactly when the fit zoomed out to accommodate it, which is when
+   *   the caller wanted it most. Default `0`.
+   * @throws RangeError if any edge is not finite — including the `rectMakeEmpty` state, which
+   *   is what an accumulator loop that unioned nothing leaves behind — if the rectangle is
+   *   inverted, or if `marginPx` is negative or not finite.
+   */
+  fitBounds(worldRect: Readonly<Rect>, marginPx?: number): void;
+
   /** Put a tile at the center. The form callers actually want after loading a save, and the
    *  one that stops every game writing `gridToWorld` into a scratch vector to do it. */
   centerOnTile(gx: number, gy: number): void;
@@ -386,6 +426,49 @@ export function createCamera(viewW: number, viewH: number, options?: CameraOptio
     centerOn(wx: number, wy: number): void {
       cx = wx;
       cy = wy;
+      reclamp();
+    },
+
+    fitBounds(worldRect: Readonly<Rect>, marginPx = 0): void {
+      if (
+        !Number.isFinite(worldRect.minX) ||
+        !Number.isFinite(worldRect.minY) ||
+        !Number.isFinite(worldRect.maxX) ||
+        !Number.isFinite(worldRect.maxY)
+      ) {
+        throw new RangeError(
+          `camera.fitBounds: expected finite rectangle edges, got minX ${String(worldRect.minX)}, minY ${String(worldRect.minY)}, maxX ${String(worldRect.maxX)}, maxY ${String(worldRect.maxY)} — an all-infinite rectangle is the rectMakeEmpty state, which means nothing was unioned into it`,
+        );
+      }
+      const spanX = worldRect.maxX - worldRect.minX;
+      const spanY = worldRect.maxY - worldRect.minY;
+      if (spanX < 0 || spanY < 0) {
+        throw new RangeError(
+          `camera.fitBounds: expected maxX >= minX and maxY >= minY, got spans ${String(spanX)} and ${String(spanY)}`,
+        );
+      }
+      if (!(Number.isFinite(marginPx) && marginPx >= 0)) {
+        throw new RangeError(
+          `camera.fitBounds: expected marginPx to be a finite number >= 0, got ${String(marginPx)}`,
+        );
+      }
+      // A margin wider than half the viewport would ask for a zero or negative zoom, and a
+      // negative zoom mirrors the world silently. One CSS pixel of usable viewport instead:
+      // the frame comes out uselessly tight, which is visible, rather than inside out.
+      const grossW = vw - 2 * marginPx;
+      const grossH = vh - 2 * marginPx;
+      const usableW = grossW > 1 ? grossW : 1;
+      const usableH = grossH > 1 ? grossH : 1;
+      // A zero-span axis constrains nothing: framing a single point or a wall that projects to
+      // a line means "as close as you are allowed", not a division by zero. If both axes are
+      // degenerate both fits are Infinity and the clamp below settles on `maxZoom`.
+      const fitX = spanX > 0 ? usableW / spanX : Infinity;
+      const fitY = spanY > 0 ? usableH / spanY : Infinity;
+      zoom = clamp(fitX < fitY ? fitX : fitY, minZoom, maxZoom);
+      // `min/2 + max/2`, not `(min + max) / 2`: a rectangle spanning most of the double range
+      // still finds its own middle instead of `Infinity`. Halving is exact in binary.
+      cx = worldRect.minX * 0.5 + worldRect.maxX * 0.5;
+      cy = worldRect.minY * 0.5 + worldRect.maxY * 0.5;
       reclamp();
     },
 

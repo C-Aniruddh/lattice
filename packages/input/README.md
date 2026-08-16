@@ -34,6 +34,13 @@ tile game, and making every game write that wiring is how every game gets it sub
 `'colect'` in the handler is a **compile error** — the action names are inferred from the object
 literal above it.
 
+> **Under Vite, `dispose` on hot reload or the game becomes a zombie.** HMR re-evaluates the
+> module, `createInput` correctly throws on the second binding to the same canvas — and the
+> *first* instance is still bound and still rendering. So the symptom is not the error: it is a
+> game that keeps drawing while every tap does nothing and the HUD is frozen at whatever it last
+> showed, with the real message buried in a console nobody is looking at by then. One line pays
+> for itself: `if (import.meta.hot) import.meta.hot.dispose(() => input.dispose());`
+
 ---
 
 ## The same thing, with no browser, run end to end

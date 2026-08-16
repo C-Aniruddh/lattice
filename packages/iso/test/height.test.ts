@@ -8,14 +8,123 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { v2 } from '@lattice/core';
+import { createCamera, gridToScreen } from '../src/camera.js';
+import { footprintBase } from '../src/footprint.js';
+import { tileBounds } from '../src/projection.js';
+import type { Rect } from '../src/projection.js';
 import { TileGrid, tileSourceOf } from '../src/tilemap.js';
-import { heightAt, slopeAt } from '../src/height.js';
+import { heightAt, pxToUnits, slopeAt, unitsToPx } from '../src/height.js';
 import type { HeightField } from '../src/height.js';
 
 /** A ramp rising one unit per step of gx, defined everywhere including negative coordinates. */
 const ramp = (stepPx = 8): HeightField => ({
   heights: tileSourceOf((gx) => gx),
   stepPx,
+});
+
+describe('the elevation seam', () => {
+  /**
+   * `iso`'s half of the geometry `@lattice/draw` has to agree with.
+   *
+   * Both packages have full coverage and neither had a test that mentioned the other, which is
+   * exactly how a heightfield shipped with every sprite floating. These assertions are written
+   * as *geometry* rather than as implementation — an equation a contract test sited above both
+   * packages can restate without either one's source open — so that the day `draw` grows its own
+   * `zPx` the two can be checked against the same sentence.
+   */
+  const field = (): HeightField => ({ heights: tileSourceOf((gx, gy) => gx + 2 * gy), stepPx: 8 });
+
+  it('answers every height in world pixels, and only world pixels', () => {
+    // There is no storey here and no signature one could enter through. A storey is `draw`'s
+    // LEVEL_H; a unit is the game's stepPx; world pixels are what the two convert through.
+    const f = field();
+    expect(heightAt(f, 3, 4)).toBe((3 + 8) * 8);
+    expect(slopeAt(f, 3, 4)).toBe(2 * 8);
+    expect(pxToUnits(f, heightAt(f, 3, 4))).toBe(11);
+  });
+
+  it('puts elevation on screen y alone, scaled by zoom — never on x', () => {
+    // The whole of the projection's answer to elevation: `-zPx · zoom`. A sprite, a shadow, a
+    // terrain quad and a light all have to apply the same shift or they separate as the camera
+    // zooms, which reads as a parallax bug rather than a unit mismatch.
+    const cam = createCamera(800, 600, { bounds: { minX: -1e6, minY: -1e6, maxX: 1e6, maxY: 1e6 } });
+    const f = field();
+    for (const zoom of [0.5, 1, 2]) {
+      cam.fitBounds({ minX: -400 / zoom, minY: -300 / zoom, maxX: 400 / zoom, maxY: 300 / zoom });
+      expect(cam.zoom).toBe(zoom);
+      const zPx = heightAt(f, 5, 6);
+      const flat = gridToScreen(cam, 5, 6, 0, v2());
+      const raised = gridToScreen(cam, 5, 6, zPx, v2());
+      expect(raised.x).toBe(flat.x);
+      expect(raised.y).toBe(flat.y - zPx * zoom);
+    }
+  });
+
+  it('stands a footprint on the highest corner it covers, in the same pixels', () => {
+    // What a building's `zPx` is, and the number the exhibit had to smuggle through a sprite
+    // variant because `drawSprite` had nowhere to take it. Highest rather than mean: a building
+    // resting on the average of its corners has one corner buried.
+    const f = field();
+    const base = footprintBase(f, { gx: 2, gy: 2, w: 1, d: 1 });
+    expect(base).toBe(heightAt(f, 3, 3));
+    expect(base).toBe(Math.max(
+      heightAt(f, 2, 2),
+      heightAt(f, 3, 2),
+      heightAt(f, 2, 3),
+      heightAt(f, 3, 3),
+    ));
+  });
+
+  it('extends a world box upward by the height, which is how framing sees a summit', () => {
+    // `tileBounds`'s heightPx moves minY up and nothing else. It is the only route a map's
+    // tallest elevation has into `camera.fitBounds`, and passing 0 there is what frames a tall
+    // world as though it were flat.
+    const flat: Rect = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+    const tall: Rect = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+    tileBounds(0, 0, 8, 8, 0, flat);
+    tileBounds(0, 0, 8, 8, 440, tall);
+    expect(tall.minY).toBe(flat.minY - 440);
+    expect({ minX: tall.minX, maxX: tall.maxX, maxY: tall.maxY }).toEqual({
+      minX: flat.minX,
+      maxX: flat.maxX,
+      maxY: flat.maxY,
+    });
+  });
+});
+
+describe('the unit conversion', () => {
+  it('is the multiply heightAt already ends in, and its exact inverse', () => {
+    const field = ramp(8);
+    for (const units of [0, 1, -3, 0.5, 1e6]) {
+      expect(unitsToPx(field, units)).toBe(units * 8);
+      // Exact both ways: 8 is a power of two, so neither direction rounds. That is the whole
+      // reason a placement test and a draw call can agree about whether a corner is level.
+      expect(pxToUnits(field, unitsToPx(field, units))).toBe(units);
+    }
+    // And it agrees with the sampler at whole coordinates, which is the property that makes it
+    // an inverse of anything worth having: heightAt(field, 5, 0) is 5 units of ramp.
+    expect(pxToUnits(field, heightAt(field, 5, 0))).toBe(5);
+  });
+
+  it('is the slope half of a movement cost, written once instead of at every boundary', () => {
+    // The rule from slopeAt's own documentation: `1 + steps of rise`. Written as a division at
+    // the call site it is un-greppable, and the day stepPx changes it is one of five.
+    const field = ramp(8);
+    const cost = (gx: number, gy: number): number =>
+      1 + (pxToUnits(field, slopeAt(field, gx, gy)) | 0);
+    // The ramp rises exactly one unit per step of gx, so every tile is one step of rise.
+    expect(cost(3, 3)).toBe(2);
+  });
+
+  it('answers Infinity rather than throwing on a field with no vertical scale', () => {
+    // Arithmetic on a per-entity path. A stepPx of zero is a construction mistake that heightAt
+    // has already flattened to a plane by the time anything asks this.
+    const flat: HeightField = { heights: tileSourceOf(() => 3), stepPx: 0 };
+    expect(unitsToPx(flat, 5)).toBe(0);
+    expect(pxToUnits(flat, 5)).toBe(Infinity);
+    expect(pxToUnits(flat, -5)).toBe(-Infinity);
+  });
 });
 
 describe('heightAt', () => {

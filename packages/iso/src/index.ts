@@ -88,6 +88,7 @@ export {
   worldToGrid,
   worldToTile,
   depthOf,
+  isEdgeOn,
   tileDiamond,
   footprintBounds,
   tileBounds,
@@ -133,7 +134,7 @@ export type {
   ChunkGridOptions,
 } from './tilemap.js';
 
-export { heightAt, slopeAt } from './height.js';
+export { heightAt, slopeAt, unitsToPx, pxToUnits } from './height.js';
 export type { HeightField } from './height.js';
 
 // ── footprints and anchors ───────────────────────────────────────────────────────

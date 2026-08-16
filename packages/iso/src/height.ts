@@ -44,6 +44,51 @@ export interface HeightField {
 }
 
 /**
+ * Height **units** → world pixels. The direction everything in this module already goes:
+ * {@link heightAt} and {@link slopeAt} both end in this multiply.
+ *
+ * It exists as a function so that the reverse can exist as a function — see {@link pxToUnits},
+ * which is the one that was missing.
+ */
+export function unitsToPx(field: HeightField, units: number): number {
+  return units * field.stepPx;
+}
+
+/**
+ * World pixels → height **units**: the inverse of {@link unitsToPx}, and the conversion that
+ * was being written by hand at every boundary.
+ *
+ * Everything this package produces is world pixels — `heightAt`, `slopeAt`, `footprintBase`,
+ * `Volume.zPx`. Everything a *game* authors is units: the numbers in the `TileSource` behind
+ * {@link HeightField.heights}, the step counts a cost function reasons about, the storey a
+ * sprite is drawn at. So `/ field.stepPx` appears wherever the two meet, un-named and
+ * un-audited, and a division written by hand is a division nobody can grep for the day
+ * `stepPx` changes.
+ *
+ * The canonical use is the slope half of a movement cost, which this module's own
+ * {@link slopeAt} documentation used to spell out as a raw division:
+ *
+ * ```ts
+ * const cost = 1 + (pxToUnits(field, slopeAt(field, gx, gy)) | 0);
+ * ```
+ *
+ * **Units here are the game's, not `draw`'s storeys.** One height unit is `stepPx` world
+ * pixels and is whatever the game decided a step of terrain is; one storey is `LEVEL_H` world
+ * pixels and is an art proportion that lives in `@lattice/draw` with its own pair,
+ * `levelsToPx`/`pxToLevels`. World pixels are the currency both convert through, and mixing
+ * the two conversions gives a building that stands `stepPx / LEVEL_H` of the way up its own
+ * hill — close enough to look like a shading bug.
+ *
+ * @throws nothing. A `stepPx` of zero yields `Infinity` rather than an error: this is
+ *   arithmetic on a per-entity path, and a field with no vertical scale is a construction-time
+ *   mistake that {@link heightAt} has already flattened to a plane by the time anyone gets
+ *   here.
+ */
+export function pxToUnits(field: HeightField, px: number): number {
+  return px / field.stepPx;
+}
+
+/**
  * Height in world pixels at a **fractional** grid position, bilinear between the four vertex
  * values the position lies between.
  *
@@ -86,9 +131,11 @@ export function heightAt(field: HeightField, gx: number, gy: number): number {
  * are deliberately not measured — a tile whose two diagonal corners differ but whose edges do
  * not is a saddle, and a saddle is not steep.
  *
- * The terrain half of a movement cost function: `cost = 1 + (slopeAt(field, gx, gy) /
- * field.stepPx | 0)` is a complete, deterministic "rough ground is slower" rule in one line,
- * and it is what makes a ridge route *shorter but harder* rather than merely shorter.
+ * The terrain half of a movement cost function: `cost = 1 + (pxToUnits(field, slopeAt(field,
+ * gx, gy)) | 0)` is a complete, deterministic "rough ground is slower" rule in one line, and it
+ * is what makes a ridge route *shorter but harder* rather than merely shorter. Through
+ * {@link pxToUnits} and not a hand-written `/ field.stepPx`, so that the one conversion between
+ * this package's pixels and the game's units is greppable.
  *
  * Floors its arguments, because a tile address with a fraction in it is a bug and answering
  * for two different tiles depending on the fraction would hide it.

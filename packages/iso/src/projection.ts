@@ -228,6 +228,36 @@ export function depthOf(gx: number, gy: number, w = 0, d = 0): number {
   return gx + w + (gy + d);
 }
 
+/**
+ * Does a grid-space segment project to a **vertical line with no screen width** — is it edge-on
+ * to the camera?
+ *
+ * World x is `(gx − gy) · HALF_W` and nothing else, so a segment whose `gx` and `gy` change by
+ * the *same* amount has a world-x delta of exactly zero. On screen it is a line. This is not a
+ * degenerate case in the numerical sense — every number involved is finite and the projection is
+ * doing precisely what it promises — which is why it is silent, and why it has to be a named
+ * predicate rather than a paragraph somebody reads afterwards.
+ *
+ * | segment | `dgx`, `dgy` | on screen |
+ * |---|---|---|
+ * | along `+gx` | `1, 0` | down-right, full width |
+ * | along the `(1, 1)` diagonal | `1, 1` | **straight down, zero width** |
+ * | along the `(1, −1)` diagonal | `1, −1` | straight across, zero height — thin, but visible |
+ *
+ * The trap it names: a wall, fence, hedge or run of flags drawn between two grid points that
+ * differ equally in `gx` and `gy` has no width to draw. Nothing throws, nothing warns, and the
+ * art is simply not there. Test the two endpoints before drawing — or, better, in the assertion
+ * a drawing kit runs in development — and either refuse the call or say which two tiles were
+ * asked for.
+ *
+ * A zero-length segment answers `true`: a point also has no width, and it is the same bug
+ * arriving from a different direction. A segment with a `NaN` coordinate answers `false`; this
+ * asks about the projection, not about whether the coordinates are worth projecting.
+ */
+export function isEdgeOn(gx0: number, gy0: number, gx1: number, gy1: number): boolean {
+  return gx1 - gx0 === gy1 - gy0;
+}
+
 // ─── geometry ────────────────────────────────────────────────────────────────────
 
 /**

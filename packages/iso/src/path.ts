@@ -137,6 +137,7 @@ export class Path {
   #s: Float64Array;
   #count = 0;
   #version = 0;
+  #failure: string | undefined = undefined;
 
   constructor(capacity = 64) {
     const n = Math.max(1, capacity);
@@ -160,6 +161,46 @@ export class Path {
    *  spacing, a `reach`, a set of lamp offsets — and the recompute happens exactly once. */
   get version(): number {
     return this.#version;
+  }
+
+  /**
+   * Why the last {@link PathFinder.find} writing into this path found nothing — a clause naming
+   * the two tiles — or `undefined` if the last thing to touch it was a successful search, a
+   * {@link Path.push} or a {@link Path.clear}.
+   *
+   * **This is the boot-time check that the boolean from `find` cannot be, because the search and
+   * the sampling are usually in different modules.** A failed search clears its out path, an
+   * empty path throws from {@link pathSample} and {@link pathProject}, and a generated world
+   * puts a river across the gate on roughly one seed in fifty — so the first anyone hears of it
+   * is a white screen on somebody else's machine, thrown from the render loop, a long way from
+   * the search that caused it. A world builder that hands out a `Path` should either check the
+   * boolean where it searched or leave this for whoever receives the path:
+   *
+   * ```ts
+   * if (road.searchFailure !== undefined) {
+   *   // no route, and the clause says between which two tiles. Author a fallback, pick another
+   *   // seed, or refuse to start — but do it here, not sixty frames later.
+   * }
+   * ```
+   *
+   * A string rather than a boolean so the reason survives the trip: `pathSample` quotes it, and
+   * "no route from (25, 9) to (7, 22)" is the difference between a bug report and a bug.
+   */
+  get searchFailure(): string | undefined {
+    return this.#failure;
+  }
+
+  /**
+   * Record that a search found no route, so an empty path can say why instead of only that it
+   * is empty.
+   *
+   * Called by {@link PathFinder.find} on every failing return. Public because a game that
+   * authors its routes some other way — a flow field walk, a hand-written spline generator —
+   * has the same gap and the same need to say so; harmless to call, and cleared by the next
+   * {@link Path.push} or {@link Path.clear}.
+   */
+  noteSearchFailed(fromGx: number, fromGy: number, toGx: number, toGy: number): void {
+    this.#failure = `no route from (${String(fromGx)}, ${String(fromGy)}) to (${String(toGx)}, ${String(toGy)})`;
   }
 
   /** Grid x of node `i`. @throws RangeError when `i` is out of range, rather than returning
@@ -214,12 +255,18 @@ export class Path {
     this.#gy[i] = gy;
     this.#count = i + 1;
     this.#version += 1;
+    // A node makes any recorded failure history rather than news: this path now has a route,
+    // whoever put it there, and a stale clause would send the next reader after the wrong thing.
+    this.#failure = undefined;
   }
 
-  /** Drop every node, keeping the buffers, and bump {@link Path.version}. */
+  /** Drop every node, keeping the buffers, and bump {@link Path.version}. Also forgets any
+   *  {@link Path.searchFailure}: a deliberate clear is not a failed search, and a path that
+   *  reported one after being emptied on purpose would cry wolf. */
   clear(): void {
     this.#count = 0;
     this.#version += 1;
+    this.#failure = undefined;
   }
 
   /** Recompute the cumulative arc lengths in place after nodes have been removed. Internal to
@@ -251,6 +298,26 @@ export class Path {
 }
 
 /**
+ * The second half of the sentence an empty path throws.
+ *
+ * **This is the whole of finding 8, and it is three lines.** An empty `Path` is thrown from
+ * wherever it is *sampled* — the render loop — and caused wherever it was *searched*, usually
+ * another module and always another moment. `PathFinder.find` returns `false` and clears its out
+ * path, so a seed that puts a river across the gate produces a white screen at boot with a
+ * message about position sampling and nothing at all about routes. Quoting
+ * {@link Path.searchFailure} moves the two tiles that have no route between them into the error
+ * a developer actually reads, and the same message tells the other case — an authored path that
+ * nobody pushed to — which of the two it is.
+ */
+function emptyPathReason(path: Path): string {
+  const failure = path.searchFailure;
+  if (failure === undefined) {
+    return 'nothing was ever pushed onto it, or it was cleared — build it before sampling it';
+  }
+  return `the last PathFinder.find on it failed with ${failure} — check the boolean find returns, or Path.searchFailure, before sampling`;
+}
+
+/**
  * The grid position at arc length `sPx` along the path, written into `out`.
  *
  * **The most important function in this package.** Fifty walkers are fifty calls, no
@@ -270,12 +337,14 @@ export class Path {
  *
  * @throws RangeError on an empty path. A walker sampling a path that was cleared this frame
  *   would otherwise sit silently at whatever `out` last held, which is a bug that looks like
- *   a rendering problem for as long as it takes to find.
+ *   a rendering problem for as long as it takes to find. When the path is empty because a
+ *   search failed, the message says so and names the two tiles — see {@link emptyPathReason}
+ *   for why that sentence is worth building.
  */
 export function pathSample(path: Path, sPx: number, out: GridPoint): GridPoint {
   const n = path.nodeCount;
   if (n === 0) {
-    throw new RangeError('pathSample: the path is empty — there is no position to sample');
+    throw new RangeError(`pathSample: the path is empty — ${emptyPathReason(path)}`);
   }
   if (n === 1 || !(sPx > 0)) {
     out.gx = path.gxAt(0);
@@ -379,12 +448,13 @@ function dirCodeOf(dgx: number, dgy: number): number {
  * the grid metric would put it. Ties go to the smaller arc length, which keeps the answer
  * stable when a road doubles back on itself.
  *
- * @throws RangeError on an empty path — there is no point to be nearest to.
+ * @throws RangeError on an empty path — there is no point to be nearest to. The message names
+ *   the reason, including the two tiles when a search is what emptied it.
  */
 export function pathProject(path: Path, gx: number, gy: number): number {
   const n = path.nodeCount;
   if (n === 0) {
-    throw new RangeError('pathProject: the path is empty — there is no point to project onto');
+    throw new RangeError(`pathProject: the path is empty — ${emptyPathReason(path)}`);
   }
   const px = (gx - gy) * HALF_W;
   const py = (gx + gy) * HALF_H;
@@ -423,7 +493,8 @@ export function pathProject(path: Path, gx: number, gy: number): number {
 
 /**
  * Collapse the staircase: remove collinear runs, then pull the path straight wherever the
- * shortcut is passable. Mutates in place and shortens {@link Path.arcLength}.
+ * straight line is passable **and does not move the route onto worse ground than it was already
+ * on**. Mutates in place and shortens {@link Path.arcLength}.
  *
  * A raw 8-way A\* result is a stair of unit steps — a road across open ground comes back as
  * alternating east and south-east moves — and a walker sampled along it weaves from side to
@@ -431,62 +502,146 @@ export function pathProject(path: Path, gx: number, gy: number): number {
  * broken" when the path is in fact optimal. The same staircase also makes `arcLength` about 8%
  * longer than the road looks, which quietly overpays a `reach`-based economy.
  *
- * This is the one function in the package that allocates on purpose: it needs a list of the
- * nodes to keep, and the alternatives are a module-level scratch buffer — module-level mutable
- * state, banned, and non-re-entrant besides — or a second parameter every caller would have to
- * carry. It runs when a route changes, not per frame, so one array per re-route is the right
- * side of that trade.
+ * ## The pull is cost-aware, and that is not an optimization
+ *
+ * **A shortcut test that asks only "is this passable?" throws away the weighted route it was
+ * handed.** Weighted movement cost is this module's headline feature: a searcher told that
+ * scree is three times a road, or that a slope is `1 + steps of rise`, contours around the hard
+ * ground and comes back with a route that is longer and cheaper. Hand that route to a
+ * passability-only simplifier and every one of those contours is a shortcut it will happily
+ * take, because the expensive ground is still *passable* — so the road comes back as exactly
+ * the straight line the weights existed to avoid, the search having been run for nothing. The
+ * only visible symptom is that the road looks wrong, and the natural conclusion is that the
+ * cost function is wrong, which it is not.
+ *
+ * The rule instead is one sentence: **a pull may straighten the route, and may never move it
+ * onto worse ground than the route was already on.** A shortcut is taken only when every tile
+ * its straight line touches weighs no more than the cheapest tile on the stretch of route it
+ * would remove.
+ *
+ * | ground under the run | what happens |
+ * |---|---|
+ * | one uniform weight | the line is never worse, so it always wins — the staircase collapses exactly as it did before |
+ * | a detour around expensive ground | the line enters the expensive ground and is refused, contour intact |
+ * | a route standing on ground the cost function now *refuses* | the route is already illegal, so any passable shortcut is taken |
+ *
+ * **A comparison of weights and not of totals**, which is the version that was tried first and
+ * does not work. Two totals can only be compared through some notion of length, and there is no
+ * length here that means the same thing on both sides: `PathFinder` prices a route by the tile
+ * each *step enters*, while a straight line crosses tiles part-way and clips their corners, so
+ * an integral along it is a different quantity that happens to have the same units. On a real
+ * heightfield the two disagreed by 12% — enough that a dead-straight line came out "cheaper"
+ * than the contour A\* had chosen, which is precisely the bug this is here to prevent. Weights
+ * compare exactly, need no metric at all, and cannot be decided by a last-bit difference.
+ *
+ * The floor is taken over the route's own **nodes**, which for a searched route are exactly the
+ * tiles it entered and were exactly what the search paid for. A node the cost function now
+ * refuses drops the floor to zero or below, which is the third row of the table.
+ *
+ * On a map whose weights vary tile to tile — a heightfield with a slope term, which is the case
+ * this exists for — that rule refuses most shortcuts, and the collinear pass below is where
+ * nearly all the node count goes. That is the correct division of labour: removing a node that
+ * lies exactly on the line between its neighbors cannot change the route at all, and moving one
+ * always can.
+ *
+ * ## What it allocates
+ *
+ * Three small typed arrays, one per re-route: the surviving node list, one weight per node, and
+ * the pulled list. The alternatives are a module-level scratch buffer — module-level mutable
+ * state, banned by the constitution, and non-re-entrant besides — or three more parameters at
+ * every call site. This runs when a route changes, not per frame.
  *
  * @param cost Omit to remove only exactly-collinear nodes, which is free and always safe. Pass
- *   one to also string-pull through open ground, which is what makes a route look like a road.
- *   The pull only ever shortens the path, and the passability walk is a supercover — it visits
- *   every tile the straight line touches, including the ones it only clips — so it can refuse
- *   a legal shortcut but never accept an illegal one.
+ *   one — **the same one the search used** — to also string-pull, which is what makes a route
+ *   look like a road. Passing a different, stricter predicate used to be the only way to keep a
+ *   weighted route; it is no longer, and it never should have been. The passability walk is a
+ *   supercover — it visits every tile the straight line touches, including the ones it only
+ *   clips — so a pull can refuse a legal shortcut but never accept an illegal one.
  */
 export function pathSimplify(path: Path, cost?: TileCost): void {
   const n = path.nodeCount;
   if (n < 3) return;
+
+  // Pass one, always: drop the nodes that lie exactly on the line between their neighbors. The
+  // route through them is unchanged to the last bit — they are on it — so this is free and safe
+  // whatever the cost function says, and on weighted ground where the pull below refuses almost
+  // everything it is the only simplification there is.
   const keep = new Int32Array(n);
   let kept = 0;
+  keep[kept++] = 0;
+  for (let i = 1; i < n - 1; i++) {
+    const px = path.gxAt(i) - path.gxAt(i - 1);
+    const py = path.gyAt(i) - path.gyAt(i - 1);
+    const qx = path.gxAt(i + 1) - path.gxAt(i);
+    const qy = path.gyAt(i + 1) - path.gyAt(i);
+    // Collinear *and* same-facing: a zero cross product also describes a path that doubles
+    // straight back on itself, and dropping the turn-around node there would cut a corner
+    // the route deliberately did not cut.
+    if (px * qy - py * qx !== 0 || px * qx + py * qy <= 0) keep[kept++] = i;
+  }
+  keep[kept++] = n - 1;
 
   if (cost === undefined) {
-    keep[kept++] = 0;
-    for (let i = 1; i < n - 1; i++) {
-      const px = path.gxAt(i) - path.gxAt(i - 1);
-      const py = path.gyAt(i) - path.gyAt(i - 1);
-      const qx = path.gxAt(i + 1) - path.gxAt(i);
-      const qy = path.gyAt(i + 1) - path.gyAt(i);
-      // Collinear *and* same-facing: a zero cross product also describes a path that doubles
-      // straight back on itself, and dropping the turn-around node there would cut a corner
-      // the route deliberately did not cut.
-      if (px * qy - py * qx !== 0 || px * qx + py * qy <= 0) keep[kept++] = i;
-    }
-    keep[kept++] = n - 1;
     path.compactTo(keep, kept);
     return;
   }
 
-  // Greedy string pull: from the node we have committed to, reach as far ahead as the straight
-  // line stays passable. Greedy rather than a funnel because the funnel algorithm wants a
-  // corridor of portals, and what we have is a line of tiles.
-  keep[kept++] = 0;
+  // One `cost` call per node, kept so the floor of any stretch of route is a running minimum
+  // rather than a walk. These are the route's own tiles — for a searched route, exactly the ones
+  // the search paid to enter.
+  const nodeWeight = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    nodeWeight[i] = cost(Math.floor(path.gxAt(i)), Math.floor(path.gyAt(i)));
+  }
+
+  // Greedy string pull: from the node we have committed to, reach as far ahead as a straight
+  // line is both passable and no worse than the ground it replaces. Greedy rather than a funnel
+  // because the funnel algorithm wants a corridor of portals, and what we have is a line of
+  // tiles.
+  const pulled = new Int32Array(kept);
+  let count = 0;
+  pulled[count++] = 0;
   let anchor = 0;
-  while (anchor < n - 1) {
+  while (anchor < kept - 1) {
     let far = anchor + 1;
-    for (let j = n - 1; j > anchor + 1; j--) {
-      if (segmentPassable(cost, path.gxAt(anchor), path.gyAt(anchor), path.gxAt(j), path.gyAt(j))) {
-        far = j;
-        break;
+    // The cheapest tile on the route from `anchor` up to `j`, folded in as `j` advances. Scanned
+    // upward rather than downward — a downward scan could stop at its first success, but it
+    // would need this figure for an arbitrary `j`, and a running minimum only runs one way.
+    let cheapest = Infinity;
+    for (let j = anchor + 1; j < kept; j++) {
+      for (let i = (keep[j - 1] as number) + 1; i <= (keep[j] as number); i++) {
+        const w = nodeWeight[i] as number;
+        if (w < cheapest) cheapest = w;
       }
+      if (j === anchor + 1) continue;
+      const a = keep[anchor] as number;
+      const b = keep[j] as number;
+      const worst = segmentWorst(cost, path.gxAt(a), path.gyAt(a), path.gxAt(b), path.gyAt(b));
+      if (worst === Infinity) continue;
+      // A route standing on ground the cost function now refuses is not worth preserving — the
+      // map changed under it, or the caller is simplifying against a stricter predicate than the
+      // one it searched with — so any passable line across it wins.
+      if (!(cheapest > 0) || worst <= cheapest) far = j;
     }
-    keep[kept++] = far;
+    pulled[count++] = far;
     anchor = far;
   }
-  path.compactTo(keep, kept);
+
+  // The pull indexed the survivors; `compactTo` wants indices into the path. Rewritten in place
+  // because `pulled[k] >= k` at every k, so nothing is read after it is overwritten.
+  for (let k = 0; k < count; k++) pulled[k] = keep[pulled[k] as number] as number;
+  path.compactTo(pulled, count);
 }
 
 /**
- * Is every tile the straight line from `(x0, y0)` to `(x1, y1)` touches passable?
+ * The **heaviest tile** the straight line from `(x0, y0)` to `(x1, y1)` touches, or `Infinity`
+ * if it touches any tile the cost function refuses.
+ *
+ * The whole of {@link pathSimplify}'s shortcut test: a pull is allowed when this is no more than
+ * the cheapest tile on the stretch of route it would replace. An extremum rather than a total,
+ * because a total would need a length, and no length means the same thing on both sides of that
+ * comparison — see {@link pathSimplify}. It also makes the test exact: two weights are integers
+ * and compare without a tolerance.
  *
  * **The line between the node coordinates, not between cell centers.** That distinction is the
  * whole of this function's correctness and it cost a bug to find: a Bresenham walk between
@@ -499,18 +654,13 @@ export function pathSimplify(path: Path, cost?: TileCost): void {
  * an exact corner crossing — which is every crossing on a diagonal between whole nodes —
  * require *both* adjoining tiles rather than slipping between them. That is the same rule the
  * searcher applies with `cutCorners: false`, so a pull can never legalise a step the search
- * itself refused.
+ * itself refused. A corner tile is only touched, never crossed, so it can veto a shortcut by
+ * being impassable but does not otherwise weigh on it.
  *
  * Conservative in one direction only: it can refuse a legal shortcut, which costs a slightly
  * longer road, and it cannot accept an illegal one.
  */
-function segmentPassable(
-  cost: TileCost,
-  x0: number,
-  y0: number,
-  x1: number,
-  y1: number,
-): boolean {
+function segmentWorst(cost: TileCost, x0: number, y0: number, x1: number, y1: number): number {
   let ix = Math.floor(x0);
   let iy = Math.floor(y0);
   const ex = Math.floor(x1);
@@ -521,12 +671,15 @@ function segmentPassable(
   const stepY = dy < 0 ? -1 : 1;
   const runX = dx < 0 ? -dx : dx;
   const runY = dy < 0 ? -dy : dy;
+  let worst = 0;
   // One crossing per tile boundary on each axis, plus the two tiles at the ends. Written out
   // rather than trusted so a coordinate that arrives as a NaN cannot spin here for ever.
   let guard = (ex > ix ? ex - ix : ix - ex) + (ey > iy ? ey - iy : iy - ey) + 2;
   for (; guard >= 0; guard--) {
-    if (!(cost(ix, iy) > 0)) return false;
-    if (ix === ex && iy === ey) return true;
+    const weight = cost(ix, iy);
+    if (!(weight > 0)) return Infinity;
+    if (weight > worst) worst = weight;
+    if (ix === ex && iy === ey) return worst;
     // **Recomputed from the current cell, never accumulated.** Adding a constant step to a
     // running parameter drifts: nine additions of 1/9 are not 1, so the moment the ray passes
     // exactly through a lattice corner is missed by an ulp and the walk takes one axis twice
@@ -550,13 +703,13 @@ function segmentPassable(
       // Exactly through a lattice corner with both axes still to cover. Both diagonal
       // neighbors must be clear, or this is the join of two walls — the same rule the search
       // applies with `cutCorners: false`, so a pull can never legalise a step it refused.
-      if (!(cost(ix + stepX, iy) > 0)) return false;
-      if (!(cost(ix, iy + stepY) > 0)) return false;
+      if (!(cost(ix + stepX, iy) > 0)) return Infinity;
+      if (!(cost(ix, iy + stepY) > 0)) return Infinity;
       ix += stepX;
       iy += stepY;
     }
   }
-  return false;
+  return Infinity;
 }
 
 /**
@@ -633,7 +786,9 @@ export class PathFinder {
    *   **or** the node ceiling was hit — deliberately not distinguished, because a caller that
    *   behaves differently in the two cases has written a bug that only appears on large maps.
    *   `out` is cleared either way, so a failed search cannot leave the previous route behind to
-   *   be walked by mistake.
+   *   be walked by mistake — and {@link Path.searchFailure} is set, so the *emptiness* can still
+   *   explain itself later even if this boolean is dropped. A dropped boolean is the normal way
+   *   this goes wrong: the search is in the world builder and the sampling is in the frame.
    * @throws RangeError if the cost function returns a non-integer weight for a passable tile.
    *   Float costs are the replay divergence this module's header is about, and one comparison
    *   per examined neighbor is a cheap price for a bug whose only symptom is two players
@@ -659,14 +814,19 @@ export class PathFinder {
     const goalGx = Math.floor(toGx);
     const goalGy = Math.floor(toGy);
 
-    if (!inRange(bounds, startGx, startGy) || !inRange(bounds, goalGx, goalGy)) return false;
+    // Every failing exit goes through `#fail`, which records the two tiles on the out path.
+    // Four `return false`s and one of them forgetting is exactly how the diagnostic would end
+    // up being right in the cases nobody hits.
+    if (!inRange(bounds, startGx, startGy) || !inRange(bounds, goalGx, goalGy)) {
+      return this.#fail(out, startGx, startGy, goalGx, goalGy);
+    }
     if (startGx === goalGx && startGy === goalGy) {
       out.push(startGx, startGy);
       return true;
     }
     // A goal standing on an impassable tile is unreachable by definition, and finding that out
     // now saves searching the whole reachable region to discover it.
-    if (!(cost(goalGx, goalGy) > 0)) return false;
+    if (!(cost(goalGx, goalGy) > 0)) return this.#fail(out, startGx, startGy, goalGx, goalGy);
 
     this.#reset();
     const start = this.#node(startGx, startGy);
@@ -692,7 +852,7 @@ export class PathFinder {
         return true;
       }
       expanded += 1;
-      if (expanded >= maxNodes) return false;
+      if (expanded >= maxNodes) return this.#fail(out, startGx, startGy, goalGx, goalGy);
 
       const gCurrent = this.#nodeG[current] as number;
       for (let code = 1; code <= dirs; code += step) {
@@ -723,6 +883,13 @@ export class PathFinder {
         this.#open.push(node, tentative + octile(nx - goalGx, ny - goalGy, diagonals), this.#seq++);
       }
     }
+    return this.#fail(out, startGx, startGy, goalGx, goalGy);
+  }
+
+  /** Mark the out path with why it is empty and answer `false`, in one expression so that every
+   *  failing exit of {@link PathFinder.find} is one line and none of them can forget. */
+  #fail(out: Path, fromGx: number, fromGy: number, toGx: number, toGy: number): false {
+    out.noteSearchFailed(fromGx, fromGy, toGx, toGy);
     return false;
   }
 

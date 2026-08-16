@@ -38,8 +38,14 @@ for (let gy = 10; gy < 40; gy++) ground.set(24, gy, 0);    // a rockfall across 
 
 // ── the camera ──────────────────────────────────────────────────────────────
 const worldRect: Rect = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
-const camera = createCamera(960, 540, { bounds: tileBounds(0, 0, 48, 48, 0, worldRect) });
-camera.centerOnTile(8, 8);
+const camera = createCamera(960, 540, {
+  bounds: tileBounds(0, 0, 48, 48, 0, worldRect),
+  minZoom: 0.25,                    // a finite island should always pass its own limits
+});
+// Frame the whole island on the first frame, whatever the viewport, with a 24 px gutter.
+// The 96 is the tallest thing on the map: content height reaches a framing decision
+// through the rectangle and nowhere else, and a 0 there frames it as though it were flat.
+camera.fitBounds(tileBounds(0, 0, 48, 48, 96, worldRect), 24);
 
 // ── one frame ───────────────────────────────────────────────────────────────
 const buildings = [
@@ -88,25 +94,55 @@ const screen = anchorToScreen(camera, label, v2());
 ```
 paint order: 0, 1, 2
 tapped building 1
-tile under the middle of the screen: 8, 8
+tile under the middle of the screen: 22, 22
 road: 59 nodes, 1976.9 world px
-simplified: 3 nodes, 1701.0 world px
-50 walkers, mean ground height 3.04 px
+simplified: 3 nodes, 1706.1 world px
+50 walkers, mean ground height 2.55 px
 blocked:  cost from (2,2) is 684
 cleared:  cost from (2,2) is 600
-label at 496, 118 CSS px
+label at 485, 87 CSS px
 ```
 
 Three things in that output are the whole design:
 
-- **`1976.9` becoming `1701.0`.** A raw 8-way A\* result is a staircase, and a walker sampled
+- **`1976.9` becoming `1706.1`.** A raw 8-way A\* result is a staircase, and a walker sampled
   along one weaves from side to side. `pathSimplify` collapses 59 nodes to 3 and takes 14% off
-  the arc length — which a `reach`-based economy was otherwise overpaying.
+  the arc length — which a `reach`-based economy was otherwise overpaying. It straightens the
+  route but **never moves it onto worse ground than the route was already on**: a shortcut test
+  that asks only "is this passable?" throws away every contour a weighted search was run to
+  find, and hands back exactly the straight line the weights existed to avoid.
 - **`684` becoming `600` with no bookkeeping.** Nobody holds a route. The walkers hold an arc
   length along one, and the road is what changed.
 - **`world px`, not tiles.** One grid unit along `+gx` is 35.8 world pixels and one along the
   `(1,1)` diagonal is 22.6, so a walker advanced at a constant rate in *grid* units speeds up
   by 58% every time the road turns. It looks exactly like a frame-rate problem and is not one.
+
+---
+
+## Three edges that cost the first exhibit real time
+
+**Framing is not a gesture, and `zoomAt` is a gesture.** `zoomAt` takes a *factor* and a
+required anchor, which is exactly right for a wheel notch and exactly wrong for "show me the
+world I just generated". Written against it, framing comes out as
+`zoomAt(want / camera.zoom, viewW / 2, viewH / 2)` — and that division is `fitBounds`'s absence,
+not anyone's style. Use `fitBounds(worldRect, marginPx)`; its margin is in **CSS pixels**, so
+the gutter is the same at every fitted zoom. Content height reaches it through the rectangle and
+nowhere else: pass your map's tallest elevation as `tileBounds`'s `heightPx` — which extends
+`minY` upward — or a tall world frames as though it were flat and the summit is off the top of
+the first frame.
+
+**An empty `Path` throws, and it throws a long way from the cause.** `PathFinder.find` returns
+`false` and clears its out path, so a seed that puts a river across the gate produces a white
+screen at boot, from `pathSample`, in the render loop, about arc length. Check the boolean where
+you searched — or, if the search and the sampling are in different modules as they usually are,
+check `road.searchFailure` where the path arrives. Either way the message now names the two
+tiles that have no route between them.
+
+**A wall along the near-far diagonal has zero screen width, and nothing says so.** World x is
+`(gx − gy) · HALF_W`, so a segment whose `gx` and `gy` change by the same amount projects to a
+vertical line: the art is simply not there, no error, no warning. `isEdgeOn(gx0, gy0, gx1, gy1)`
+is that fact as a predicate — test the two endpoints before drawing a fence, a hedge or a run of
+flags, and say which two tiles were asked for.
 
 ---
 
@@ -139,14 +175,14 @@ field-only shapes, so write the literal once at setup and reuse it. `Vec2` comes
 
 | module | what |
 |---|---|
-| `projection` | `TILE_W`/`TILE_H`, grid ↔ world both ways and both axes, `worldToTile`, `depthOf`, `tileDiamond`, `footprintBounds`, and the kit's `Rect` |
-| `camera` | pan, pointer-anchored zoom, a clamp that does not invert, `visibleTileBounds`, `visibleWorldBounds`, `normalizedX` for stereo pan |
+| `projection` | `TILE_W`/`TILE_H`, grid ↔ world both ways and both axes, `worldToTile`, `depthOf`, `isEdgeOn`, `tileDiamond`, `footprintBounds`, and the kit's `Rect` |
+| `camera` | pan, pointer-anchored zoom, `fitBounds` for framing, a clamp that does not invert, `visibleTileBounds`, `visibleWorldBounds`, `normalizedX` for stereo pan |
 | `depth` | `DepthSorter` — fed footprints, hands back a permutation — and `pickSorted`, which walks the same instance backwards |
 | `tilemap` | `TileGrid` (the island), `ChunkGrid` (the infinite world), `tileSourceOf` (procedural), all behind one two-method interface |
-| `height` | one value per grid **vertex**, sampled bilinearly; `slopeAt` for movement cost |
+| `height` | one value per grid **vertex**, sampled bilinearly; `slopeAt` for movement cost; `unitsToPx`/`pxToUnits`, the one conversion between the game's height units and this package's world pixels |
 | `footprint` | occupancy, overlap, flatness, base height, and the anchor a label hangs from |
 | `hittest` | `screenToTile`, `screenToTileOnHeights` (terrain-aware), `boxSilhouette`, `pointInPolygon`, `pointInTile` |
-| `path` | `Path` as a curve, `pathSample`/`pathProject`/`pathDirAt`/`pathSimplify`, `PathFinder` (A\*) and `FlowField` (Dijkstra) |
+| `path` | `Path` as a curve, `pathSample`/`pathProject`/`pathDirAt`/`pathSimplify` (cost-aware), `PathFinder` (A\*) and `FlowField` (Dijkstra) |
 | `anchor` | a durable grid position for an overlay, plus its screen point, its visibility and its stereo pan |
 
 ---
@@ -223,7 +259,7 @@ Node 24 on an M-series laptop, `npm run bench -- packages/iso`. The frame budget
 | 50 `pathSample` on an 8-node road — the crowd, one frame | 0.006 ms |
 | 50 `pathSample` on a 512-node road | 0.010 ms |
 | `PathFinder.find` across a 48×48 valley with 300 obstacles | 0.091 ms |
-| the same, then `pathSimplify` with a line-of-sight pull | 0.109 ms |
+| the same, then `pathSimplify` with a cost-aware pull | 0.113 ms |
 | `FlowField.build` — one sweep over a 48×48 valley | 0.115 ms |
 
 Two of those numbers are the argument for a design decision rather than a boast. The **crowd**
@@ -281,6 +317,15 @@ side is individually correct and jointly broken:
   west-base, west-top — and `draw`'s stroke must trace the same six points in the same order.
   Break it and hit-testing and pixels diverge with no test in either package noticing, because
   each is correct against its own idea of the shape.
+- **Elevation is world pixels on both sides of the seam, and it shifts screen `y` alone.**
+  `heightAt`, `slopeAt`, `footprintBase`, `Volume.zPx` and `gridToScreen`'s `zPx` are all world
+  pixels; the shift is `-zPx · zoom` and never touches `x`. There are two *other* height units
+  and neither crosses: a **storey** is `draw`'s `LEVEL_H`, converted at the boundary by
+  `levelsToPx`/`pxToLevels`, and a **unit** is whatever the game put in its `HeightField`,
+  converted by `unitsToPx`/`pxToUnits`. Mix the two conversions and a building stands a fraction
+  of the way up its own hill, which looks like a shading bug rather than a unit mismatch.
+- **A grid segment with equal `gx` and `gy` deltas has no screen width** — `isEdgeOn` is that
+  fact, and a wall primitive should refuse or report it rather than drawing nothing.
 
 ---
 

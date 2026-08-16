@@ -43,8 +43,14 @@ describe('the README example', () => {
 
     // ── the camera ────────────────────────────────────────────────────────────
     const worldRect: Rect = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
-    const camera = createCamera(960, 540, { bounds: tileBounds(0, 0, 48, 48, 0, worldRect) });
-    camera.centerOnTile(8, 8);
+    const camera = createCamera(960, 540, {
+      bounds: tileBounds(0, 0, 48, 48, 0, worldRect),
+      minZoom: 0.25, //          a finite island should always pass its own limits
+    });
+    // frame the island on the first frame, whatever the viewport, with a 24 px gutter.
+    // 96 is the tallest thing on the map: content height reaches a framing decision
+    // through the rectangle and nowhere else, and a 0 there frames it as though it were flat.
+    camera.fitBounds(tileBounds(0, 0, 48, 48, 96, worldRect), 24);
 
     // ── one frame ─────────────────────────────────────────────────────────────
     const buildings = [
@@ -103,13 +109,13 @@ describe('the README example', () => {
     expect(out).toEqual([
       'paint order: 0, 1, 2',
       'tapped building 1',
-      'tile under the middle of the screen: 8, 8',
+      'tile under the middle of the screen: 22, 22',
       'road: 59 nodes, 1976.9 world px',
-      'simplified: 3 nodes, 1701.0 world px',
-      '50 walkers, mean ground height 3.04 px',
+      'simplified: 3 nodes, 1706.1 world px',
+      '50 walkers, mean ground height 2.55 px',
       'blocked:  cost from (2,2) is 684',
       'cleared:  cost from (2,2) is 600',
-      'label at 496, 118 CSS px',
+      'label at 485, 87 CSS px',
     ]);
   });
 });
