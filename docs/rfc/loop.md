@@ -326,10 +326,23 @@ export interface Loop {
   readonly time: Seconds;
   /** Real seconds since `start()`. Never pauses, never scales, never clamped. */
   readonly realTime: Seconds;
-  /** Fixed steps run since `start()`. The replay cursor. */
+  /** Fixed steps run since `start()`. The replay cursor. Integer, monotone, never skips. */
   readonly tick: number;
-  /** `1 / hz`, precomputed, exact. What `update` is always handed. */
+  /** The `dt` every `update` is handed, forever. Computed once; see {@link Loop.stepMs}. */
   readonly stepSeconds: Seconds;
+
+  /**
+   * The same step in milliseconds — `stepSeconds * 1000`, computed once and stable for the
+   * life of the loop.
+   *
+   * **This number is a compatibility constant, not a detail.** `@lattice/persist` writes it
+   * into a recorded input log and refuses to migrate a log whose `stepMs` differs from the
+   * running loop's, because a log keyed by tick index means nothing if a tick is a different
+   * length than it was when the log was made. Changing `hz` in a shipped game is therefore a
+   * **breaking change to every recorded session**, exactly as changing a save schema is, and
+   * it belongs in a migration note rather than in a tuning pass.
+   */
+  readonly stepMs: Millis;
 
   /**
    * Timers on **sim time**: they pause when the game pauses, scale with `speed`, are clamped
@@ -347,6 +360,31 @@ export interface Loop {
 
   /** Live figures. The **same object every read** — snapshot it if you keep it. See §3.6. */
   readonly stats: FrameStats;
+
+  /**
+   * Attach state work to the fixed step. Runs on `'tick'` pumps too — this is the callback
+   * that keeps running when nobody is looking.
+   *
+   * Subscribers run in registration order, and `LoopOptions.update` is registered first, so
+   * an overlay attached later always sees a world that has already moved this step. The
+   * returned disposer removes exactly this subscription.
+   */
+  onUpdate(fn: (dt: Seconds, tick: number) => void): Disposer;
+
+  /**
+   * Attach painting to the paint pump. Every subscriber gets the same `alpha`, `time` and
+   * `nowMs`, computed once for the pump.
+   *
+   * Same prohibitions as `LoopOptions.render`: a render subscriber may not mutate simulation
+   * state. This is the crossing that `@lattice/ui`'s `drive` exists to make un-mistakable.
+   */
+  onRender(fn: (alpha: number, time: Seconds, nowMs: Millis) => void): Disposer;
+
+  /**
+   * Create a coalescing job: work that must happen soon, at most once per pump, and off the
+   * paint path. See §3.3b for the shape of problem this solves.
+   */
+  coalesce(fn: () => void): Job;
 
   /** Begin pumping. Records the clock now, so a loop built before a 4 s asset wait owes nothing. */
   start(): void;
@@ -369,20 +407,86 @@ export function createLoop(options: LoopOptions): Loop;
 refers to it.
 
 ```
-1  elapsed = clamp(clock.now() - last, 0, ∞); last = clock.now()
+1  nowMs = clock.now(); elapsed = clamp(nowMs - last, 0, ∞); last = nowMs   ← one read, cached
 2  realTime += elapsed;            real.advance(elapsed)      ← unclamped, unpaused
-3  accumulator += elapsed * speed
-4  if accumulator > maxCatchUp: dropped += excess; accumulator = maxCatchUp; onStall(excess)
-5  while accumulator >= step:
+3  run queued jobs, in creation order, each at most once      ← off the paint path
+4  accumulator += elapsed * speed
+5  if accumulator > maxCatchUp: dropped += excess; accumulator = maxCatchUp; onStall(excess)
+6  while accumulator >= step:
        sim.advance(step)                                      ← timers fire before the step
-       update(step, tick++); accumulator -= step
-6  if kind === 'paint': render(paused ? 1 : accumulator / step, time + alpha * step)
-7  stats
+       for each update subscriber, in order: fn(stepSeconds, tick)
+       tick++; accumulator -= step
+7  if kind === 'paint':
+       alpha = paused ? 1 : accumulator / step
+       for each render subscriber, in order: fn(alpha, time + alpha * stepSeconds, nowMs)
+8  stats
 ```
 
 Control calls take effect at the **next** pump boundary — `pause()` from inside `update`
 does not truncate the pump it was called from — except `stop()`, which takes effect
 immediately, because a game stopping itself on a fatal error must not be updated again.
+
+#### 3.3a The subscription shape, confirmed for `@lattice/ui`
+
+**Yes: `onUpdate` and `onRender` exist, each returns a disposer, and `drive(ui, loop)` can be
+written against them. Keep it.** That is the whole answer; the rest is the detail `ui` needs
+to declare the shape structurally, since layer 3 cannot import this package.
+
+This is the exact interface `ui` should declare. `Loop` satisfies it, and it is the narrowest
+thing `drive` needs — no `start`, no `stats`, nothing `ui` has any business calling:
+
+```ts
+// declared in @lattice/ui, satisfied by @lattice/loop's `Loop`
+export interface Driveable {
+  onUpdate(fn: (dt: number, tick: number) => void): () => void;
+  onRender(fn: (alpha: number, time: number, nowMs: number) => void): () => void;
+}
+```
+
+The constructor pair in `LoopOptions` is not a second mechanism competing with this: `update`
+and `render` are **defined as** subscriptions registered before `start()`, which is why they
+are optional and why they are always first in order. The five-line example in §2 is unchanged
+and remains the canonical form; `drive` is what a *second* consumer uses.
+
+Three consequences worth having in writing, because `drive` depends on all three:
+
+- **Order is registration order, and the game is first.** An overlay wired by `drive` after
+  the game was constructed always sees a world that has already taken this step. An overlay
+  wired *before* the game would see last step's world, one step stale, forever.
+- **A disposer removes exactly one subscription**, and one disposed from inside a firing pass
+  does not run in that pass; one added inside a firing pass does not run until the next
+  (invariant I-11 extended to subscribers, I-22). `drive` returning a disposer that tears down
+  both subscriptions at once is the intended use.
+- **An overlay that owns no clock is now the only reachable design**, which was the point.
+  `ui`'s first draft installed its own `setInterval` beside `update` — the exact second clock
+  §6.3 is about — and removing it is worth more than any API here. §6.13 records why.
+
+#### 3.3b Coalesced off-frame work, confirmed for `@lattice/iso`
+
+**Yes: `loop.coalesce(fn)` covers "schedule work that must not run twice per pump", and the
+navigation-field rebuild is the case it is named for.**
+
+`iso`'s flow field is a full sweep gated on a version counter: cheap enough for a valley-sized
+map, far too expensive to run twice in one frame, and needed *soon* rather than *now*. Nothing
+in the timer API served that. `after(0, fn)` is the trap that looks like it does — ten calls to
+`after(0)` in one pump queue ten one-shots and run the sweep ten times, which is the bug with
+extra steps. `every` coalesces, but a rebuild is not periodic; polling for dirt is §6.3 again.
+
+```ts
+const rebuild = loop.coalesce(() => field.recompute(map));
+map.onChange(() => rebuild.request());   // called fifty times while a road is dragged
+```
+
+The guarantee is per **pump**, not per step: fifteen catch-up steps that each dirty the field
+still produce exactly one sweep (I-21). Jobs run before the step loop, so the rebuild is
+always visible to the updates that follow it, and they run on `'tick'` pumps and while paused
+— a hidden tab still rebuilds, because pathfinding is a rule and rules do not stop when the
+painting does. Requests made *during* a step or a render are serviced next pump, which is the
+one-pump latency the word "soon" is buying.
+
+This also happens to be independent evidence for the coalescing decision that §5's I-9 makes
+about timers: two packages arrived at "at most once per pump, carrying a count" from opposite
+directions — an hour of missed repeats, and fifty dirty flags in one drag.
 
 ### 3.4 `scheduler` — one timer model, two timelines
 
@@ -558,7 +662,111 @@ export interface FrameStats {
 }
 ```
 
-### 3.7 Saying "this must keep running when nobody is looking"
+### 3.7 `replay` — **yes, the driver is mine** (a sixth module, `src/replay.ts`)
+
+`@lattice/persist` asked whether this package will own the thing that steps a recorded
+session forward, feeds buffered inputs at their recorded tick indices, and compares
+checkpoints. **Yes.** Their least-certain decision — that refusing would leave them "a module
+that records into a void" — is correct, and the refusal would leave constitution rule 1
+unowned across three packages: `input` produces a log keyed by tick, `persist` stores and
+verifies it, and nothing in the kit could press play.
+
+It belongs here because every part of it already is here. A replay *is* this loop with
+`manualClock` and `manualFrames` driven as fast as the CPU allows: the fixed step is what
+makes a tick index meaningful, `stepMs` is what makes a log comparable, and `tick` is the
+join. The module is small — that is the argument, not an apology for it.
+
+**How it stays inside the DAG.** `loop` is layer 1 and cannot import `persist`, so the driver
+never sees a `ReplayLog`. It is defined against a structural source that `persist`'s cursor
+satisfies, exactly as `ui` declares `Driveable` structurally in the other direction. Nobody
+imports upward and nobody duplicates a format.
+
+```ts
+/**
+ * A recorded session, seen from here: a length, inputs addressable by tick, and optional
+ * checkpoints. `@lattice/persist`'s zero-allocation cursor satisfies this; so does an array
+ * in a test. This package never learns what a log looks like on disk.
+ */
+export interface ReplaySource {
+  /** Total ticks recorded. The replay ends here, and ending is the point. */
+  readonly ticks: number;
+
+  /**
+   * Apply everything recorded for `tick` to the live input state. Called exactly once per
+   * tick, in ascending order, **before** that tick's update subscribers.
+   *
+   * Must allocate nothing and must not skip: a driver that applied inputs one tick late
+   * would produce a divergence report that blames the game for the driver's bug.
+   */
+  applyAt(tick: number): void;
+
+  /**
+   * The checkpoint hash recorded at `tick`, or `undefined` if that tick carries none.
+   * Checked after that tick's update.
+   */
+  checkpointAt(tick: number): number | undefined;
+}
+
+export interface ReplayOptions {
+  readonly source: ReplaySource;
+  /** The same `update` the live game runs. If it is not the same function, nothing is proven. */
+  readonly update: (dt: Seconds, tick: number) => void;
+  /**
+   * The state hash the recording used. Must be **Tier A** arithmetic (§3.5): a hash built on
+   * `Math.exp` or a smoothed camera value reports divergence between two correct engines.
+   */
+  readonly hash: () => number;
+  /** Steps per second. Must equal the log's — mismatch throws rather than quietly diverging. */
+  readonly hz?: number;
+  /** Stop at the first mismatch. Default `true`; `false` reports how far the drift spreads. */
+  readonly stopOnDivergence?: boolean;
+  /** Called every `n` ticks, for a progress bar on a long log. Never called with a partial tick. */
+  readonly onProgress?: (tick: number) => void;
+}
+
+export interface ReplayResult {
+  /** Ticks actually run — less than `source.ticks` only if it stopped at a divergence. */
+  readonly ticks: number;
+  readonly checkpoints: number;
+  /** `-1` when the replay matched the recording all the way through. */
+  readonly divergedAt: number;
+  /** The recorded and recomputed hashes at `divergedAt`. Both `0` when nothing diverged. */
+  readonly expected: number;
+  readonly actual: number;
+}
+
+/**
+ * Replay a recorded session and report the first tick at which this build stopped agreeing
+ * with the recording.
+ *
+ * Synchronous, allocation-free per tick, and as fast as the machine — there is no clock to
+ * wait for, because there is no clock: it builds its own `manualClock` and `manualFrames`,
+ * advances by exactly one step per pump (so the catch-up clamp is never in play, and the
+ * arithmetic is identical to a live session), and pumps `'tick'` only. **Nothing is
+ * painted.** A replay that rendered would be measuring the renderer.
+ */
+export function replay(options: ReplayOptions): ReplayResult;
+```
+
+**What a green replay proves, and what it does not.** It proves that §3.3's prohibitions
+were obeyed: a game that reads a clock inside `update`, derives from a frame delta, or lets a
+render pass mutate state cannot pass, because none of those inputs exist here. That is what
+makes the constitution's first rule falsifiable instead of aspirational, and it is the one
+test in the kit that fails when someone adds `Math.random()` to a system months from now.
+
+It does not prove the picture matched. Two caveats, both carried openly rather than hidden:
+
+- **The camera is outside the contract, deliberately.** `@lattice/input` runs two clocks:
+  gestures deliver on ticks, the camera integrates on frames, which is what keeps a drag
+  under the finger when a step is long. So a log reproduces the same world and the same
+  tiles, not the same glide. That trade is right — a camera that stuttered to prove a point
+  would be a worse game — and the rule that keeps it safe is the Tier B rule from §3.5: a
+  frame-integrated camera may reach pixels and must never reach a hash. Hashing one would
+  make every replay fail for a reason that is not a bug.
+- **A replay is not a save.** It reconstructs a session from its start; it does not resume
+  one. `persist` owns resuming.
+
+### 3.8 Saying "this must keep running when nobody is looking"
 
 The demo's night falls whether or not the tab is in front, and every idle game has something
 like it. "Keep accruing while hidden" is a first-class concept here, and it is expressed by
@@ -594,15 +802,17 @@ Note what is *not* there: no accumulation of `dt` into anything that has to be r
 sampled in `update` and drawn in `render`. Accumulating it would make the night shorter for
 the player who looked away, which is the same bug as the economy one wearing a nicer hat.
 
-### 3.8 The whole export list
+### 3.9 The whole export list
 
 `Millis`, `Seconds`, `Clock`, `ManualClock`, `manualClock`, `PumpKind`, `Pump`, `FrameSource`,
 `FrameHost`, `BrowserFramesOptions`, `browserFrames`, `ManualFrames`, `manualFrames`,
-`LoopOptions`, `Loop`, `createLoop`, `TimerId`, `Scheduler`, `Timeline`, `createTimeline`,
-`TweenId`, `TweenOptions`, `Tweens`, `createTweens`, `FrameStats`, `DEFAULT_HZ`,
+`Disposer`, `LoopPhase`, `Job`, `LoopOptions`, `Loop`, `createLoop`, `TimerId`, `Scheduler`,
+`Timeline`, `createTimeline`, `TweenId`, `TweenOptions`, `Tweens`, `createTweens`,
+`FrameStats`, `ReplaySource`, `ReplayOptions`, `ReplayResult`, `replay`, `DEFAULT_HZ`,
 `DEFAULT_MAX_CATCH_UP_MS`, `DEFAULT_IDLE_PUMP_MS`, `DEFAULT_BUDGET_MS`, `VERSION`.
 
-Six functions. Everything else is a type or a constant.
+Seven functions. Everything else is a type or a constant. Seven modules: the five in
+`kit.json`, plus `frames` (§3.2) and `replay` (§3.7), both argued for where they appear.
 
 ---
 
@@ -727,12 +937,19 @@ line of its own.
 The host owns the paint cadence. A `maxFps: 30` option is a `FrameSource` — write one in
 fifteen lines and inject it — not a fourth clamp interacting with the other three.
 
-### 4.8 A headless runner, and workers
+### 4.8 A general headless runner, and workers
 
 No `loop.runFor(60)`. `manualClock` + `manualFrames` is three lines and keeps exactly one
-model of how time advances in this package. No worker support: a fixed-step loop across a
-thread boundary is a message-ordering problem, and it belongs in a game that has measured a
-need, not in the primitive.
+model of how time advances in this package.
+
+`replay()` (§3.7) is not the exception it looks like. A runner is an open-ended request to
+advance time faster than it passes, which is a loop with extra steps and a new way to be
+wrong about `speed`. A replay has a **defined end and a defined verdict**: it runs a recorded
+number of ticks against recorded checkpoints and returns whether this build still agrees with
+that recording. It earns its module by answering a question, not by saving three lines.
+
+No worker support: a fixed-step loop across a thread boundary is a message-ordering problem,
+and it belongs in a game that has measured a need, not in the primitive.
 
 ### 4.9 A global loop, and autostart
 
@@ -852,15 +1069,26 @@ growing `realTime - time` are the tells.
 
 ### 6.6 Float drift in the accumulator
 
-`accumulator -= 1/60` ten thousand times does not land where the arithmetic says it should.
-Keep the accumulator and the step in **integer milliseconds** internally, and convert to the
-seconds handed to `update` exactly once, from a precomputed constant, so that every `dt` is
-bit-identical (I-1). A game that seeds an RNG per tick will otherwise diverge on replay for
-reasons no one will find.
+`accumulator -= 1/60` ten thousand times does not land where the arithmetic says it should,
+and at 60 Hz there is no whole number of milliseconds in a step to hide behind.
+
+**Keep the accumulator in integer microseconds.** `stepUs = Math.round(1_000_000 / hz)` —
+16,667 at 60 Hz, 20,000 at 50 — and elapsed enters as `Math.round((now - last) * 1000)`, so
+every add and subtract is integer arithmetic that cannot drift. `stepSeconds` and `stepMs`
+are then `stepUs / 1e6` and `stepUs / 1e3`, each computed **once**, which is what makes every
+`dt` bit-identical (I-1) and both numbers stable enough to compare against a recorded log.
+
+Two things follow that a builder should not discover on their own. `hz` must be a positive
+integer, because it divides that constant. And 60 Hz is really 59.9988 Hz — a step of 16,667
+µs rather than 16,666.67 — which is 0.002% and matters to nobody, but it *is* why `stepMs`
+reads 16.667 rather than 16.666666666666668, and a reviewer who expects the second number
+should read this paragraph rather than file a bug. A game that seeds an RNG per tick would
+otherwise diverge on replay for reasons no one will find.
 
 ### 6.7 Reading the clock more than once per pump
 
-Steps 1 and 7 must read the same value. A pump that reads the clock again for its stats
+Steps 1 and 8 must read the same value, and it is the same value handed to `render` as
+`nowMs`. A pump that reads the clock again for its stats
 attributes the time between the two reads to nothing at all, and worse, a re-read after
 `update` can produce a *shorter* elapsed than the one already accumulated. One read, cached
 for the pump.

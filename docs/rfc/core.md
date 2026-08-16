@@ -65,12 +65,20 @@ format, assert`. Two changes are proposed.
 | **split `hash` out of `rng`** | `persist` needs a checksum for its integrity check, `draw` needs a stable key for its sprite cache, and `iso` needs a stable per-tile scramble. All three will otherwise write their own 32-bit hash, and we will end up with three. The mixing functions are already inside `rng`; exporting them as their own module costs nothing and pre-empts three duplicates. `rng` then imports `hash`. |
 | **rename `assert` → `guard`** | a module called `assert` invites `assert(cond, 'message')`. That form cannot name the offending value (it only sees a boolean), which violates non-negotiable #9, and it is the exact shape that build tools strip in production — so the check exists only where it is least needed. `guard` exports *validators that return the value*, so the check is load-bearing and cannot be stripped. See §4.4. |
 
-A third change arrived after the first draft was accepted: **`time`**, a module of types
-only, added because `loop`, `persist` and `sim` are siblings who all name the calendar and
-have no shared home below core. It is argued in full at [§3.12](#312-time--the-calendar-type-and-only-the-type),
-and it spends the charter's module budget — see [§4.0](#40-the-charter--what-core-will-never-grow-into).
+Two more modules arrived after the first draft was accepted, both requested by packages
+designed against it, and both **vocabulary rather than machinery** — which is the only
+category that clears the charter once core exists:
 
-The resulting eleven modules:
+- **`time`** (§3.12) — `loop`, `persist` and `sim` all name the calendar and are siblings,
+  so there is no home for it below core. Types and two validators; core still reads no clock.
+- **`dispose`** (§3.13) — five packages had each invented a teardown vocabulary. This one
+  *removes* an export (`events`' own `Unsubscribe`) as it lands.
+
+A third request, `iso`'s priority queue, was **refused** and routed back — §4.9 gives the
+reasoning at length. Both limits in [§4.0](#40-the-charter--what-core-will-never-grow-into)
+have been accounted for there.
+
+The resulting twelve modules:
 
 | module | tier (§3.1) | one line |
 |---|---|---|
@@ -85,6 +93,7 @@ The resulting eleven modules:
 | `format` | A | numbers a player can read at a glance, with no `Intl` |
 | `guard` | A | argument validators that throw the error non-negotiable #9 demands |
 | `time` | A | the calendar *type* — `EpochMillis` vs `MonotonicMillis`. No clock, no reading |
+| `dispose` | A | `Disposer` and `Scope` — one teardown tree per scene, for all nine packages |
 
 ### 3.1 Two determinism tiers, stated once
 
@@ -707,11 +716,11 @@ export declare function v2FromAngle(out: Vec2, radians: number, length?: number)
 ### 3.8 `events`
 
 ```ts
-/** Call to stop listening. Returned by `on`/`once` because the alternative — matching a
- *  function reference in `off` — silently fails for `this.handler.bind(this)`, which
- *  creates a new function on every call and therefore never matches. That leak has a name
- *  in every codebase that has shipped an emitter. */
-export type Unsubscribe = () => void;
+// `on` and `once` return a `Disposer` from §3.13 — the kit has one teardown vocabulary,
+// not one per package. They return it rather than relying on `off` because matching a
+// function reference silently fails for `this.handler.bind(this)`, which creates a new
+// function on every call and therefore never matches. That leak has a name in every
+// codebase that has shipped an emitter.
 
 /**
  * A typed synchronous emitter.
@@ -725,18 +734,19 @@ export type Unsubscribe = () => void;
  * which is how a replay diverges from a live session.
  */
 export declare class Emitter<TEvents extends Record<string, unknown>> {
-  /** @returns an unsubscribe function. Idempotent — calling it twice is not an error. */
+  /** @returns a `Disposer` that unsubscribes. Idempotent, per that type's contract — so it
+   *  can be handed straight to `Scope.add` and disposed again with the scene. */
   on<K extends keyof TEvents & string>(
     event: K, listener: (payload: TEvents[K]) => void,
-  ): Unsubscribe;
+  ): Disposer;
 
   /** Fires at most once, then unsubscribes itself before the listener body runs — so a
    *  listener that re-emits its own event does not recurse. */
   once<K extends keyof TEvents & string>(
     event: K, listener: (payload: TEvents[K]) => void,
-  ): Unsubscribe;
+  ): Disposer;
 
-  /** Remove by reference. Prefer the `Unsubscribe` from `on`; this is here for the
+  /** Remove by reference. Prefer the `Disposer` from `on`; this is here for the
    *  case where the reference is genuinely stable. */
   off<K extends keyof TEvents & string>(
     event: K, listener: (payload: TEvents[K]) => void,
@@ -1067,7 +1077,91 @@ durations, and a second identical alias in core would be the exact drift this mo
 to prevent, with core as the culprit. Durations elsewhere in the kit stay plain `number`
 with the unit in the parameter name.
 
-### 3.13 Package metadata
+### 3.13 `dispose` — one teardown tree per scene
+
+`input` calls this the biggest gap in the kit, while looking at its own package, and the
+count is the argument: `input` returns disposers from a scope, `ui` from `interactive`,
+`loop` from subscriptions, `persist` from store handles, `audio` from buses. **Five
+vocabularies for one idea.** A game tearing down a scene has to remember all five, and the
+one it forgets is a listener that stays live — invisible for an hour, then the tab is using
+two gigabytes.
+
+Charter check: five consumers spanning layers 1, 2 and 3, with no common ancestor below core
+— the most decisive question-1 pass in this document. Deterministic (no clock, no platform).
+One reasonable implementation, once the ordering rule is fixed. It is a **vocabulary type
+plus fifteen lines that make it enforceable**, which is the same category as `time` and the
+opposite of the container refused in §4.9.
+
+This also **removes** an export. `events` previously declared its own `Unsubscribe`, which
+was vocabulary number six being invented inside core itself. There is now one name.
+
+```ts
+/**
+ * Undo one thing.
+ *
+ * **Idempotent by contract.** Calling a disposer twice must be safe and must not undo
+ * something else — a handle that was released and whose slot was reused is the bug this
+ * rule prevents. Every disposer the kit returns satisfies it, and every disposer a game
+ * writes is expected to.
+ */
+export type Disposer = () => void;
+
+/**
+ * A teardown tree. One per scene, screen, or anything with a lifetime.
+ *
+ * The shape `input` proved and the kit adopts: a package ships **no free-function binder**,
+ * so a listener can only be created through a scope and an unowned listener is
+ * unconstructable. That turns "remember to unsubscribe" from documentation into something
+ * the type system enforces, which is the difference between a guarantee and a hope.
+ */
+export interface Scope {
+  /**
+   * Register a disposer. Returns it unchanged, so a caller can also hold it directly for
+   * early disposal without losing the scope's ownership.
+   *
+   * **Registering on a disposed scope runs the disposer immediately** rather than storing
+   * it. A subscription created during teardown — by a disposer that emits, say — would
+   * otherwise outlive the scope that was supposed to own it, and it is unreachable by
+   * definition, so nothing could ever clean it up.
+   */
+  add(disposer: Disposer): Disposer;
+
+  /**
+   * A nested scope, disposed with this one.
+   *
+   * There is only one ordering rule, because `child()` registers the child's `dispose`
+   * into this scope's own list: **everything disposes in reverse registration order.**
+   * A child created after a resource is torn down before that resource, exactly as if it
+   * were one. Two rules — "children first, then own disposers" — would have to be
+   * remembered; this one falls out.
+   */
+  child(): Scope;
+
+  /**
+   * Tear down everything, in reverse registration order, then mark this scope disposed.
+   *
+   * **Idempotent**: the second call does nothing. A throwing disposer does not stop the
+   * rest — every remaining disposer still runs, and the failures are collected and thrown
+   * together as an `AggregateError` afterwards. One bad teardown must not leak the other
+   * fourteen.
+   */
+  dispose(): void;
+
+  /** True once disposed. */
+  readonly disposed: boolean;
+
+  /** Registered disposers not yet run. A closed screen asserts zero in tests. */
+  readonly size: number;
+}
+
+export declare function createScope(): Scope;
+```
+
+`Scope` is an interface with a factory, not a class, deliberately: `input` has already built
+one, and a structural type lets it conform without inheriting. Five packages agreeing on a
+shape is the goal; five packages extending a base class is a different and worse thing.
+
+### 3.14 Package metadata
 
 ```ts
 /** The kit version this package was built as part of. */
@@ -1109,16 +1203,27 @@ Three questions. An addition needs **all three**, and the burden is on the propo
    different curve, layout, policy or algorithm, core would be picking a winner for
    everybody. That is a decision for the layer that renders, simulates, or saves.
 
-And two hard limits, checkable by a script: **eleven modules** and **6 KB gzipped** (half the
+And two hard limits, checkable by a script: **twelve modules** and **6 KB gzipped** (half the
 kit's 12 KB per-package budget — core is the floor everyone pays, not a place to spend).
 Crossing either is an RFC amendment with a name on it, not a commit.
 
-> **The module limit has been raised once, from ten to eleven, and this is that amendment.**
-> It bought `time` (§3.12), which is types only and therefore costs zero of the size budget.
-> Recording it here rather than quietly editing the number is the point of the rule. The
-> twelfth module gets the same three questions and a harder time, and a module of types is
-> the only kind that can plausibly clear them — anything with an implementation is competing
-> for 6 KB that nine packages already spend.
+> **The module limit has been raised twice during the design phase, from ten to twelve, and
+> this is the accounting.** Ten → eleven bought `time` (§3.12); eleven → twelve bought
+> `dispose` (§3.13). Two raises in one phase is one more than is comfortable, so here is why
+> it is not a slope:
+>
+> - Both are **vocabulary, not machinery** — types and, between them, about twenty lines.
+>   Neither meaningfully spends the 6 KB, which is the budget that actually protects
+>   consumers, and that number has not moved.
+> - Both **collapse existing duplication** rather than adding capability. `time` replaced
+>   three packages' `Millis` aliases; `dispose` replaced five teardown vocabularies and
+>   deleted one of core's own exports doing it. Core got *more precisely drawn*, not wider.
+> - In the same phase, `iso`'s priority queue was **refused** (§4.9) — a well-argued request
+>   from a package that genuinely needs one. A limit that only ever moves outward is not a
+>   limit; the refusal is what makes this one real.
+>
+> **The count is now closed for the build phase.** A thirteenth module requires deleting one,
+> and anything with an implementation is competing for 6 KB that nine packages already spend.
 
 The requests below will be made. Here is the answer in advance.
 
@@ -1220,10 +1325,97 @@ the same shape and two of them are siblings.
 | schema validation / parsing | `persist` owns save shape and migrations; validating at the storage boundary is the whole point of a migration chain. |
 | logging, debug channels | a logger in layer 0 is a global mutable sink, and non-negotiable #4 keeps I/O in packages that name it. |
 | a `Result`/`Either` type | non-negotiable #9 says throw, with a message that names the mistake. Two error conventions is worse than either one. |
-| collections (LinkedList, Deque, PriorityQueue) | the only one anyone needs is a binary heap for A*, and A* lives in `iso/path`. |
+| collections (LinkedList, Deque, PriorityQueue) | the only one anyone needs is a binary heap for A*, and A* lives in `iso/path`. Asked for, and ruled on at length, in §4.9 — core takes the ordering *contract* and not the container. |
 | a stable sort / comparator kit | `Array.prototype.sort` has been stable since ES2019. `iso` owns depth sort because depth sort is a spatial algorithm, not a general one. |
 | SoA / typed-array containers | real, and premature. Revisit when a benchmark in `docs/PERFORMANCE.md` shows `Vec2` object churn as the frame's top cost — with the number, not the intuition. |
 | crypto, UUIDs, content addressing | 32-bit hashes for cache keys and corruption checks are all this kit needs; anything stronger needs `crypto`, which is a platform dependency. Entity ids belong to whoever owns entities. |
+
+### 4.8 A bignum, and a canonical number encoding — with the ruling `persist` asked for
+
+Three packages each assumed someone else had thought about this. The ruling, because silence
+is the option that ships the bug.
+
+**First, separate three hazards that get discussed as one.**
+
+| hazard | what actually happens | whose problem |
+|---|---|---|
+| `Infinity` / `NaN` in a save | `JSON.stringify` writes `null`. Bytes intact, checksum valid, schema correct, value gone. **Silent, and undetectable downstream.** | core names the rule, `persist` enforces it at the boundary |
+| a value above 2^53 | round-trips through JSON **exactly** — `JSON.stringify` emits enough digits to recover any finite double. What breaks is *arithmetic*: `n + 1 === n`, and two different logical values compare equal | `sim`, at the point it counts rather than measures |
+| `-0` | serialises as `"0"`, so a round trip changes the value and an integrity comparison fails for a reason nobody finds | core normalises it in `expectSerializable` |
+
+The second row is the one most often stated wrongly. **2^53 is not a serialisation limit.**
+An idle economy's stocks are *measured* quantities produced by a closed-form exponential, and
+`1e40` is a perfectly good double that saves and loads exactly; it simply cannot be counted
+in ones. So core does not cap magnitude. It caps it only where a value is a *count* —
+`expectSafeInteger`, for building counts, tick indices and ids.
+
+**Ruled in:** `expectSerializable` (save path, throws), `isSerializable` (load path,
+predicate — `persist` may not throw on boot), `expectSafeInteger` (counts). Three functions
+in `guard`, no new module, no new type.
+
+**Ruled out — a canonical encode/decode pair** (`Infinity` ⇄ `{"$inf":1}` or `"Infinity"`).
+It would make core the owner of a wire format, which is `persist`'s job and `persist`'s
+migration chain; every save file in the kit would carry core's encoding forever. Worse, it
+makes the encoded type `number | object`, which poisons every signature downstream of it. An
+infinite stock is a bug in whatever produced it — `Math.exp` overflowing in the integrator, a
+division by a zero rate — and the fix is to clamp at the source, not to teach the file format
+to carry infinity.
+
+**Ruled out — any bignum.** Correct, and wrong for a 6 KB layer-0 package: it would be
+larger than the rest of core combined, it would make every arithmetic call site a method
+call, and `sim`'s closed-form integrator is built on `Math.exp`, which has no bignum form
+anyway.
+
+**The connection to §3.1, which a reader will otherwise assume.** Tier A promises
+**bit-identical arithmetic**. It promises nothing about a value's **round trip through
+JSON**. Those are two different guarantees about the same number, and the second does not
+follow from the first: `Infinity` is a perfectly Tier A result — every conforming engine
+produces it from the same overflow — and it is exactly the value that does not survive being
+written down. A number is replay-safe and persistence-safe independently, and a value
+crossing the storage boundary needs both checks.
+
+### 4.9 A priority queue — and the ordering rule that goes in its place
+
+`iso` asked for a deterministic binary heap with an insertion tie-break, for A\* and
+Dijkstra, on the grounds that `sim` may want one too and two heaps would break ties
+differently. **The reasoning about ties is exactly right. The placement is not, on the
+evidence available: `iso` owns the heap.**
+
+Question 1 asks who the consumers are and says *point at the RFCs, not at a guess about who
+might want it later*. Applying it: `iso` needs one, definitely. `loop` explicitly refuses
+priority queues for its scheduler in its own §4.7. `sim` does not ask for one — its RFC is
+closed-form by construction, and its own headline invariant is "closed form, never a loop".
+That is **one confirmed consumer**, and one consumer means the consumer owns it — the same
+answer `Rect` and entity ids got, and it would be incoherent to give this one a different
+one because the request arrived with a better argument attached.
+
+The second reason is the shape. `Scope` and `EpochMillis` are vocabulary that makes other
+packages' guarantees enforceable; a priority queue is a **generic container**, and core has
+none — `Pool` is an allocator, not a collection. Admitting the first container admits the
+argument for `Deque`, `RingBuffer` and `SortedSet`, each with an identical "two packages
+might both need it" case. That is the accretion pathway §4.7 names, and this is the request
+that tests whether the charter is real.
+
+**What core takes instead is the part that must not be duplicated — the contract, which
+costs nothing:**
+
+> **The Lattice ordering rule.** Any structure in this kit that orders by a numeric key
+> breaks ties by **insertion sequence**, and exposes **no comparator parameter**. A
+> comparator that may return 0 reintroduces the ambiguity the rule exists to remove, and a
+> caller cannot supply a total order it does not know the insertion sequence for. This is a
+> determinism rule of the same standing as the tier rule in §3.1, and it applies to `iso`'s
+> path heap, `iso`'s depth sort, and anything added later.
+
+Without it, two grid routes of equal cost resolve by whatever the heap's sift order happens
+to be, A\* returns a different path on a different engine, and the kit's replay guarantee
+becomes a coin flip in the case that is *most* common on a square grid. `iso` has already
+written this as its invariant I13; core's job is to make it kit-wide rather than one
+package's habit.
+
+**The trigger for revisiting, named so nobody has to relitigate it from scratch:** the day a
+second package needs a priority queue, it **moves** to core — it does not get a second
+implementation. The move is cheap precisely because the contract above is already fixed, so
+what moves is code, not a decision.
 
 ---
 
@@ -1282,46 +1474,85 @@ coverage floor is 100%.
     0.1 to 0.9, every output is within [-1, 1] and the min/max at each octave count are
     within 5% of each other. Un-normalised fBm fails the second half.
 
+17. **`hashStep` folds to the unrolled forms.** `hash2(s, x, y)` equals
+    `hashStep(hashStep(s, x), y)` and `hash3(s, x, y, z)` equals that plus one more step,
+    for a thousand random triples. If they ever diverge, the "there is no `hash4`" promise
+    is false and a four-axis caller is on a different algorithm from a three-axis one.
+18. **Every hash axis avalanches independently.** For `hash2` and `hash3`, changing any one
+    argument by 1 flips 12–20 of the 32 output bits on average over 10,000 trials. A linear
+    fold (`31x + 17y`) passes a naive uniformity test and fails this one, which is why this
+    is the test that ships.
+19. **`hashBytes` is length-sensitive and order-sensitive.** `[1, 2]`, `[2, 1]` and
+    `[1, 2, 0]` produce three different digests. The third is the one a naive implementation
+    fails, and it is how a truncated save passes a checksum.
+
 ### 5.3 Numeric contracts
 
-17. **`lerp(a, b, 1) === b` exactly**, for a hundred random `(a, b)` pairs including ones
+20. **`lerp(a, b, 1) === b` exactly**, for a hundred random `(a, b)` pairs including ones
     many orders of magnitude apart. `lerp(a, b, 0) === a` likewise.
-18. **`mod(v, d)` has the sign of `d`** and lands in `[0, d)` for positive `d`, for `v` from
+21. **`mod(v, d)` has the sign of `d`** and lands in `[0, d)` for positive `d`, for `v` from
     -1000 to 1000. `mod(-1, 8) === 7`.
-19. **Every `Easing` satisfies `e(0) === 0` and `e(1) === 1` exactly**, and is finite across
+22. **Every `Easing` satisfies `e(0) === 0` and `e(1) === 1` exactly**, and is finite across
     101 samples of [0, 1]. `backOut` and `bounceOut` are allowed outside [0, 1] in between;
     the rest are not.
-20. **`damp` is frame-rate independent.** Integrating from 0 toward 1 for one second at
+23. **`damp` is frame-rate independent.** Integrating from 0 toward 1 for one second at
     dt=1/30 and at dt=1/240 lands within 1e-6. The naive `x += (t-x)*k` fails by ~2x.
 
 ### 5.4 Aliasing and allocation
 
-21. **Every `vec2` function is alias-safe.** `v2Add(a, a, b)`, `v2Normalize(a, a)`,
+24. **Every `vec2` function is alias-safe.** `v2Add(a, a, b)`, `v2Normalize(a, a)`,
     `v2Lerp(a, a, b, 0.5)` produce the same result as the non-aliased call. The test that
     catches a write-before-read.
-22. **The hot path allocates nothing.** A benchmark that runs 100,000 `v2Add`/`v2Lerp`/
+25. **The hot path allocates nothing.** A benchmark that runs 100,000 `v2Add`/`v2Lerp`/
     `noise2`/`fbm2`/`Pool.acquire`+`release` calls shows zero growth in
     `process.memoryUsage().heapUsed` after a forced GC — and no function in `vec2`, `noise`,
     `math`, or `easing` contains an object, array, or closure literal.
 
 ### 5.5 Behavioural
 
-23. **Emitter dispatch order is registration order**, and unsubscribing listener #2 from
+26. **Emitter dispatch order is registration order**, and unsubscribing listener #2 from
     inside listener #1 still calls #3.
-24. **A listener subscribed during dispatch is not called during that dispatch.**
-25. **`once` unsubscribes before it invokes**, so a listener that re-emits its own event
+27. **A listener subscribed during dispatch is not called during that dispatch.**
+28. **`once` unsubscribes before it invokes**, so a listener that re-emits its own event
     terminates.
-26. **`Unsubscribe` is idempotent** — calling it twice does not remove a later listener that
+29. **A listener `Disposer` is idempotent** — calling it twice does not remove a later listener that
     reused the slot.
-27. **`Pool.acquire` after `release` returns the same object**, reset. With `checked: true`,
+30. **`Pool.acquire` after `release` returns the same object**, reset. With `checked: true`,
     a double release throws.
-28. **`fmtCompact` is monotonic and width-bounded.** Over 10,000 log-spaced values, the
+31. **`fmtCompact` is monotonic and width-bounded.** Over 10,000 log-spaced values, the
     formatted output never exceeds six characters, and no larger input formats to a
     lexically-smaller tier. Specifically: `fmtCompact(999_950)` must not be `'1000.0K'`.
-29. **Every `guard` message contains the label and the received value.** A regex over the
+32. **Every `guard` message contains the label and the received value.** A regex over the
     thrown message for the label string and `String(value)`.
-30. **Errors are the right subclass.** `RangeError` for out-of-domain numbers, `TypeError`
+33. **Errors are the right subclass.** `RangeError` for out-of-domain numbers, `TypeError`
     for wrong types. Never a bare `Error`.
+
+### 5.6 Lifetime and the storage boundary
+
+34. **`Scope.dispose` runs in reverse registration order**, and a child scope registered
+    third disposes third-from-last — one list, one rule. Assert against a recorded sequence
+    of labels, not a count.
+35. **`Scope.dispose` is idempotent.** Calling it twice runs each disposer exactly once. The
+    test that catches a scene torn down by both its owner and its parent — which is every
+    scene, eventually.
+36. **`Scope.add` on a disposed scope runs the disposer immediately** and does not retain it.
+    `size` stays 0. Without this, a subscription created during teardown is unreachable and
+    permanent.
+37. **A throwing disposer does not strand the rest.** With five disposers where the middle
+    throws, all five run, and an `AggregateError` carrying the one failure is thrown after.
+38. **`expectSerializable` rejects exactly what JSON destroys.** `Infinity`, `-Infinity` and
+    `NaN` throw; `-0` returns `0`; every finite double, including `1e308` and `2 ** 60`,
+    passes and satisfies `JSON.parse(JSON.stringify(v)) === v`. The last clause is the one
+    that proves 2^53 is not a serialisation limit — see §4.8.
+39. **`isSerializable` agrees with `expectSerializable` on every input**, throwing where the
+    other throws and only there. Two spellings of one rule that disagree is worse than
+    either alone.
+40. **A branded type cannot be assigned from a bare `number`.** A `.ts` fixture compiled with
+    `expect-error` assertions: `const t: EpochMillis = 5` fails, `asEpochMillis(5)` succeeds,
+    and `asMonotonicMillis(5)` is not assignable to `EpochMillis`. Type-level behaviour needs
+    a type-level test; a runtime suite cannot see any of this.
+41. **`Vec2` is assignable to `ReadonlyVec2` and not the reverse.** Same fixture. If this
+    ever inverts, every out-parameter signature in the kit silently stops protecting anyone.
 
 ---
 
@@ -1380,7 +1611,7 @@ shape invites.
 11. **`lerp` written as `a + (b - a) * t`.** One operation cheaper, and it does not land
     exactly on `b` at `t === 1`. A camera that ends its tween at 0.9999999 of its target
     leaves every sprite a sub-pixel off, permanently, and only shows up as text that looks
-    slightly blurry. Invariant 17.
+    slightly blurry. Invariant 20.
 
 12. **`%` on a value that can be negative.** `-1 % 8` is `-1`. This is `PLAYBOOK.md` trap 5's
     sibling: tile lookups west of the origin, hue wrapping below zero, ring buffers on a
@@ -1395,7 +1626,7 @@ shape invites.
 
 14. **Writing an output parameter before reading its inputs.** `out.x = a.x + b.x; out.y =
     a.y + b.y` is fine; `out.x = a.y; out.y = -a.x` (a perp) silently corrupts the result
-    when `out === a`. Read every needed component into locals first. Invariant 21.
+    when `out === a`. Read every needed component into locals first. Invariant 24.
 
 15. **Returning `out` and then reusing it.** `const mid = v2Lerp(scratch, a, b, 0.5)` gives
     the caller a reference to `scratch`, and the next call overwrites it. Documented on
@@ -1404,11 +1635,11 @@ shape invites.
 
 16. **Mutating the listener array during dispatch.** Splicing at index `i` inside a
     `for (i…)` loop skips listener `i + 1`, so "unsubscribe when the panel closes" silently
-    stops one unrelated system. Snapshot before dispatching. Invariants 23–24.
+    stops one unrelated system. Snapshot before dispatching. Invariants 26–27.
 
 17. **`off(event, this.handler.bind(this))`.** `bind` returns a new function every call, so
     the reference never matches and the listener is never removed. Every closed screen leaks
-    its whole state. This is why `on` returns an `Unsubscribe` and why `off` is documented as
+    its whole state. This is why `on` returns a `Disposer` and why `off` is documented as
     the second choice.
 
 18. **A `reset` that clears numbers but not references.** A pooled particle keeping
@@ -1421,7 +1652,7 @@ shape invites.
 
 20. **A compact formatter that rounds across its own tier boundary.** `999_950` with one
     decimal rounds to `1000.0K`, which is seven characters and wrong. Re-check the tier
-    *after* rounding, then re-divide. Invariant 28.
+    *after* rounding, then re-divide. Invariant 31.
 
 21. **`Intl.NumberFormat` for "just the grouping".** Different output across engines and ICU
     versions, and constructing one inside a frame is one of the most expensive things in the

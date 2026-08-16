@@ -1071,11 +1071,11 @@ export declare function drawFootprint(
 ): void;
 
 /**
- * Screen-space bounds of a sprite as `[minX, minY, maxX, maxY]` in `out`.
+ * Screen-space bounds of a sprite, into `iso`'s `Rect`.
  *
- * Replays the massing through a measuring writer. This is how `input` hit-tests a building
- * rather than a tile, and how a thumbnail frames a subject it has never seen — without it,
- * every game re-derives a bounding box from constants it copied out of the sprite.
+ * Replays the massing through a measuring writer. This is how a thumbnail frames a subject it
+ * has never seen, and how the sprite cache sizes a render target — without it, every game
+ * re-derives a bounding box from constants it copied out of the sprite.
  */
 export declare function spriteBounds(
   def: SpriteDef,
@@ -1083,8 +1083,18 @@ export declare function spriteBounds(
   camera: Camera,
   gx: number,
   gy: number,
-  out: Float64Array,
-): void;
+  out: Rect,
+): Rect;
+
+/**
+ * The sprite's massing as an `iso.Volume`, in world pixels — the picking half of the seam.
+ *
+ * `iso` picks with `Scene.pick(camera, sx, sy, test)` and a `test` built from
+ * `boxSilhouette` + `pointInPolygon`; this is the function that produces the `Volume` that
+ * test needs, so a game hit-tests the shape it can actually see rather than a footprint
+ * rectangle it cannot. Performs the storey → `zPx` conversion, so a caller never does.
+ */
+export declare function spriteVolume(def: SpriteDef, v: Variant, out: Volume): Volume;
 ```
 
 #### Heights, and who owns the storey — a disagreement, stated
@@ -1154,6 +1164,14 @@ export declare function isoTile(
  * Draws left face, right face, top, then **one** stroke around the silhouette — not around
  * each face. Per-face strokes are the tell of a naive iso renderer: they cross-hatch the
  * interior and destroy the chunky read that makes this art style work at thumbnail size.
+ *
+ * **The six stroke points are, in order: north-top, east-top, east-base, south-base,
+ * west-base, west-top — the order `iso.boxSilhouette` returns, and this is load-bearing.**
+ * It is the only genuine coupling between the two packages, and the failure mode is the worst
+ * kind: `iso` hit-tests one polygon, `draw` paints another, both are internally consistent,
+ * every test in both packages passes, and a player taps a building and opens its neighbour.
+ * Nothing in either package can notice this alone, which is why invariant 21 lives across
+ * both of them and asserts the two point sequences are equal.
  */
 export declare function isoBox(
   pen: Pen, gx: number, gy: number, w: number, d: number, opts: BoxOpts,
@@ -1350,7 +1368,19 @@ export interface LightField {
   begin(pen: Pen, darkness: number, tint: Ink): void;
 
   /**
-   * Add a pool of light at a grid position, `radiusTiles` across.
+   * A pool of light **lying in the ground plane** at a grid position, `radiusTiles` across.
+   *
+   * **The pool is an ellipse, not a circle, and the field does the squashing.** A circle of
+   * light on the ground projects 2:1 like every other flat thing in a dimetric world; draw it
+   * round and it stops being a pool on the road and becomes a sphere hovering above it —
+   * which is precisely the illusion the whole package exists to protect. The radius is given
+   * in *tiles*, the field projects it (`rx = radiusTiles · HALF_W · zoom`, `ry = rx / 2`), and
+   * no caller ever pre-squashes anything. A kit that made every caller remember the aspect
+   * would have a round pool in it inside a week.
+   *
+   * `zPx` is the **ground elevation** under the light, not the height of the lamp head, so a
+   * lamp on a hillside lights its own terrace rather than the valley floor. The glow on the
+   * fixture itself is a `glowDot` in the Solids pass; this is the light it throws.
    *
    * The mask knows a position, a radius, an intensity and a colour, and deliberately nothing
    * else. It does not know what a lamp is, it holds no list of emitters, and it retains
@@ -1360,18 +1390,26 @@ export interface LightField {
   add(
     gx: number,
     gy: number,
-    z: number,
+    zPx: number,
     radiusTiles: number,
     intensity: number,
     color: Ink,
     falloff?: number,
   ): void;
 
-  /** The same, in screen pixels — a flash, a cursor glow, a UI-anchored highlight. */
+  /**
+   * A pool in screen pixels — a flash, a cursor glow, a UI-anchored highlight.
+   *
+   * `aspect` is height over width and is **required**, with no default, because the choice
+   * between 1 (a genuine screen-space circle: a flash, a vignette) and 0.5 (something lying on
+   * the ground that the caller already has in screen coordinates) is exactly the mistake
+   * {@link LightField.add} exists to prevent, and a default would pick one silently.
+   */
   addScreen(
     sx: number,
     sy: number,
     radiusPx: number,
+    aspect: number,
     intensity: number,
     color: Ink,
     falloff?: number,
@@ -1400,6 +1438,27 @@ accumulator, and the second implementation would have the seam bug. `light` depe
 nothing that `draw` does not already own.
 
 ### 3.10 `cache` — what is cached, keyed on what, invalidated when
+
+> **This module is provisional, and deleting it is a clean outcome.** The orchestrator is
+> putting a benchmark ahead of the builder, and it should decide the question, because I have
+> not measured it and neither has anyone else. At two to four hundred sprites of a few dozen
+> polygons each, direct drawing may already fit the 8 ms budget — in which case everything
+> below is complexity bought for nothing, and `cache` should not be built.
+>
+> **It is designed so that removing it leaves no hole.** The `cache` argument to `drawSprite`
+> is optional and the no-cache path is the *reference* path, not the fallback (invariant 6
+> asserts the two are identical, which means the cached path is the one that has to prove
+> itself). Nothing else in the package imports `cache`; `SpriteDef`, `Variant` and the
+> massing/animate split all exist for reasons that survive it — the split is what makes a
+> sprite's static art declarative and its motion explicit, whether or not anything is ever
+> stored. Delete the module, drop one optional parameter, drop invariants 6, 14 and traps 9,
+> 10, 13, and the rest of this RFC is unchanged.
+>
+> **The number that decides it** is not the hit rate, it is the frame time of the direct path
+> at the demo's real sprite count and the phone's real pixel ratio. If direct drawing fits with
+> headroom, the cache is a liability: it adds zoom buckets, palette revisions, pixel snapping
+> and a don't-fill-while-moving rule, and every one of those is a way to render something
+> stale. Build it only if the measurement says the frame needs it.
 
 The brief's third question, answered as three rules.
 
@@ -1476,7 +1535,22 @@ export declare function spriteKey(
 export declare function zoomBucketOf(zoom: number, steps: number): number;
 ```
 
-### 3.11 `layers` — the seven passes, and the sort
+### 3.11 `layers` — the seven passes. And **not** the sort.
+
+> **The boundary, settled.** `iso` owns depth values, the footprint comparator and the sorted
+> bucket — its `Scene`. `draw` owns which pass that `Scene` is walked in, and nothing else
+> about ordering. **`DrawList`, which was in my first draft, is deleted.** There is one sorted
+> list in a frame and there is now one sorted list in the kit.
+>
+> Deleting it was not a concession, it was a correction, and the argument is worth keeping:
+> look at the seven passes and count how many are depth-sorted. Backdrop is one quad. Terrain
+> iterates a `TileRange` in grid order, which is already back-to-front. Placement is a handful
+> of items. Light is a composite. Overlay and Effects are screen space and deliberately
+> unsorted. **Exactly one pass sorts, and it is Solids, and `iso.Scene` is that sort** —
+> including the part I had underspecified, since a scalar depth key cannot express "beside"
+> and `Scene` resolves footprint overlap topologically. A `DrawList` that carried a layer
+> ordinal alongside a depth was solving a problem only one of seven passes has, and solving it
+> worse.
 
 The pass order is fixed, and it is fixed because **the order is the product**:
 
@@ -1514,26 +1588,44 @@ export declare const Layer: {
 };
 export type Layer = (typeof Layer)[keyof typeof Layer];
 
+/** Pass names in order. For a profiler's labels, a debug overlay, and error messages. */
+export declare const PASS_NAMES: readonly [
+  'backdrop', 'terrain', 'solids', 'placement', 'light', 'overlay', 'effects',
+];
+
 /**
- * A per-frame draw order. Holds `(layer, depth, id)` triples in parallel typed arrays and
- * sorts an index — not objects, and not closures.
+ * The game's painting, one callback per pass. Hoisted to module scope and reused — these are
+ * allocated once at setup, never per frame.
  *
- * `id` is the game's own index into its own arrays; this package never learns what a
- * building is. A `push(layer, depth, () => draw(b))` API would be prettier and would
- * allocate one closure per drawable per frame, which is the exact thing rule 7 forbids.
+ * Every pass is optional. A game with no night supplies no `light` field anywhere and pays
+ * for nothing; a game with no placement mode omits `placement`.
  */
-export interface DrawList {
-  readonly length: number;
-  push(layer: Layer, depth: number, id: number): void;
-  /** Layer major, depth minor, `id` as the final tiebreak — so ties are deterministic. */
-  sort(): void;
-  layerAt(i: number): Layer;
-  idAt(i: number): number;
-  clear(): void;
+export interface Passes {
+  readonly backdrop?: (pen: Pen) => void;
+  /** `visible` is `camera.visibleTiles()`, already computed, already margined. */
+  readonly terrain?: (pen: Pen, visible: Readonly<TileRange>) => void;
+  /** `scene` is sorted and culled before this is called. Walk it forwards: `idAt(0…count)`. */
+  readonly solids?: (pen: Pen, scene: Scene) => void;
+  readonly placement?: (pen: Pen) => void;
+  readonly overlay?: (pen: Pen) => void;
+  readonly effects?: (pen: Pen) => void;
 }
 
-/** Grows by doubling; `capacity` is a hint that avoids the first few regrowths. */
-export declare function createDrawList(capacity: number): DrawList;
+/**
+ * Run one frame's passes in the fixed order.
+ *
+ * Fifteen lines that exist to make the ordering unforgeable rather than remembered. It calls
+ * `camera.visibleTiles` before Terrain, `scene.sort(camera)` before Solids, and
+ * `pen.light.composite()` between Placement and Overlay — **and the light composite is not a
+ * callback**, so there is no way for a game to put the night mask over its own HUD. The three
+ * ordering mistakes this package can make are all made impossible by a function this small.
+ *
+ * There is no `Layer` parameter and no way to insert a pass. Seven, and closed: an eighth is
+ * how somebody puts the HUD under the darkness, and a second Solids pass is how trees start
+ * poking through walls. The seventh was found by the demo RFC before a line was written, and
+ * the next one, if there is one, gets found the same way.
+ */
+export declare function renderFrame(pen: Pen, passes: Passes, scene?: Scene): void;
 ```
 
 ---
@@ -1556,10 +1648,12 @@ the reason is what stops the next agent adding it back.
 | **Images, textures, `drawImage` of anything the kit did not render** | Rule 8. The `Bitmap` type has no public constructor from a URL, so zero-assets is enforced by the type system rather than by a lint people disable. |
 | **Perceptual colour interpolation (OKLab/OKLCH)** | It is more correct and it is not this look. The three-tone face derivation is a byte-space lerp toward two fixed tints, and its slight non-linearity is *why* the faces read as painted rather than as computed. A "correct" `mix` would change every screenshot in the kit and improve none of them. |
 | **A software rasteriser in the test backend** | Golden tests here protect the shape of the draw, not the antialiasing. A command log diffs into a sentence; a pixel diff into a number. If someone later wants real pixels, they can run the Canvas2D backend in a browser test — the seam already allows it. |
-| **A retained scene graph** | At a few hundred drawables, rebuilding the list every frame costs less than maintaining one, and it removes the entire class of "the renderer and the state disagree" bug that a retained graph invites. `DrawList` is a sorted array that is cleared every frame, on purpose. |
+| **A retained scene graph** | At a few hundred drawables, rebuilding the list every frame costs less than maintaining one, and it removes the entire class of "the renderer and the state disagree" bug that a retained graph invites. |
+| **A sorted draw list, a depth key, a comparator, or a `Rect`** | All four are `iso`'s, and my first draft had two of them. One sorted list in the kit or we have failed; `draw` walks `iso.Scene` in the Solids pass and contributes nothing to how it got sorted. |
 | **Per-face colour overrides** | `topColor` is the one exception, for roofs and glass. A `leftColor` would let a caller break the three-tone rule, and a kit whose look can be broken by a single call is a kit whose look will be broken. |
 | **Tweening, easing, particle systems** | `loop` owns time. This package takes `t` and reads no clock. |
-| **Hit-testing** | `iso` owns picking. `draw` contributes `spriteBounds` and stops there — and specifically never records what it drew for picking to read back, because a frame the renderer skipped would then leave the controls somewhere the building is not. |
+| **Hit-testing** | `iso` owns picking, through `Scene.pick`. `draw` contributes `spriteBounds` and `spriteVolume` — the *geometry* a pick test needs — and stops there. In particular it never records what it drew for picking to read back, because a frame the renderer skipped would then leave the controls somewhere the building is not. |
+| **A save format for colour** | `persist`'s, and the rule is one sentence: store the hue, never the derived tokens. `draw` has no serialisation and should never grow any — the moment it can write a colour to a save, someone writes a presentation-tier value into a document that travels between engines. |
 | **DOM anything beyond a canvas** | `ui` owns the overlay. `canvas2d.ts` writes `canvas.width` and hands back a `<canvas>` and a data URL, and that is the entire DOM footprint of this package. In particular `draw` never writes a CSS custom property — it produces the bag of strings and `ui` applies it, because the moment `draw` touches `document` it stops being testable in Node. |
 | **A second colour model** | There is one, it is packed sRGB in a uint32, and `hexOf` / `cssOf` / `hueToHex` are renderings of it rather than alternatives to it. `core` has no colour at all, deliberately, so that this stays true. |
 | **The WebGL backend itself** | Not in 0.1. The point of the `Surface` seam is that it can land later without touching a line of sprite code, and the point of section 3.3 is that when it does, it will not have to lie. |
@@ -1588,6 +1682,11 @@ the reason is what stops the next agent adding it back.
 18. **A six-second dusk bumps `rev` at most `PALETTE_STEPS` times.** Call `palette.lerp` 360 times with `t` sweeping 0 → 1 and assert `rev` advanced by no more than 32. *Fails when:* the day/night transition invalidates the entire sprite cache on every frame, and the prettiest moment in the game is also its slowest.
 19. **A stop-set mismatch throws by name.** `palette.lerp(DAY, { sky: 0 }, 0.5)` throws a `RangeError` naming the first slot present in one set and not the other. *Fails when:* a half-defined night palette leaves one thing gold at midnight and nothing reports it.
 20. **An offscreen surface is the same surface.** The op log from drawing a sprite into `createOffscreenSurface(240, 140)` equals the one from drawing it into a recording surface of the same size. *Fails when:* thumbnails become a second rendering path and the shop card stops looking like the building.
+21. **Pixels and hit-testing agree — the cross-package one.** For 100 random `(camera, gx, gy, volume)`, the six points `isoBox` strokes equal `iso.boxSilhouette`'s six points, in order, to within a float epsilon. **This test must live in one place and cover both packages**, because each package is individually correct when it fails. *Fails when:* a player taps a building and its neighbour opens, and no suite in either repo has anything to say about it.
+22. **Storeys never leak into `iso`.** Every call `draw` makes into `iso` that takes a `zPx` or an `hPx` passes a value that went through `levelsToPx`; a lint rule or a grep over `packages/draw/src` finds no `gridToScreen(` whose height argument is a bare `opts.h`. *Fails when:* a building is 26× too tall or 26× too short, which at least is obvious — the subtle version is a `zPx` used as a level and a roof that sits a millimetre into its own walls.
+23. **The camera translate lands on whole device pixels.** With `snap` on, project the camera origin: its device-pixel coordinates are integers, for 50 random camera positions and both pixel ratios. And with `snap` off, they generally are not. *Fails when:* strokes shimmer between one and two pixels across a pan and everyone blames the browser.
+24. **A light pool is 2:1.** The `softEllipse` op a ground-plane `add()` records has `ry === rx / 2`, at every zoom. *Fails when:* the pool reads as a sphere hovering over the road, which is the one illusion the package exists to protect.
+25. **There is one sorted list.** `grep -rn 'sort(' packages/draw/src` finds nothing that orders drawables. *Fails when:* the kit grows a second ordering and the two disagree about which building is in front.
 
 ---
 
@@ -1615,7 +1714,12 @@ the reason is what stops the next agent adding it back.
 20. **Interpolating the palette in two places.** The world lerps in `draw` and the HUD lerps in `ui`, both "obviously" a linear blend, and they disagree by a shade because one of them quantised. One function, two renderings, invariant 17.
 21. **Pushing the light composite into the Overlay pass.** The HUD goes dark with the world, and the player cannot read their own coin at midnight. Light is pass 5; the overlay is pass 6, and the gap between them is deliberate.
 22. **Registering lights with the field and forgetting to unregister.** There is no registration: pools are re-added every frame and the field retains nothing between them. A lamp that stops being drawn stops lighting, with no lifecycle to get wrong — and a builder who adds a `removeLight` has reintroduced the bug the design removed.
-23. **`OffscreenCanvas` for a thumbnail.** It has no `toDataURL`, only an async `convertToBlob`, so the shop card pops in a frame late every time it opens. `createOffscreenSurface` uses a detached element on purpose; internal targets may use whatever they like, because nothing asks them for a URL.
+24. **Two height units, one codebase.** `draw` authors in storeys (`BoxOpts.h`), `iso` takes world pixels (`zPx`, `hPx`, `heightAt`, `Volume`). Pass one where the other is expected and the building is 26× wrong — which is at least visible. The dangerous version is subtler: a `Volume` built with storeys makes `boxSilhouette` return an outline that is *nearly* right, so picking works everywhere except near the roof and nobody can characterise the bug. `levelsToPx` at the boundary, and never a raw multiply at a call site.
+25. **Stroking a box in a different order from `iso.boxSilhouette`.** Six points, north-top, east-top, east-base, south-base, west-base, west-top. Reverse the winding or start at a different corner and the painted outline still looks perfect — it is the same hexagon — while the *hit polygon* is a different hexagon, and taps land on the wrong building near the edges. Nothing in either package can see this from the inside; invariant 21 is the only thing standing between the kit and it.
+26. **Assuming the camera translate is already rounded.** It is not: `iso` computes continuously and says so. If `draw` does not snap, a 1px stroke straddles two device pixels at some pan offsets and not others, cached blits resample, and terrain seams open and close as the player scrolls. It looks like a browser bug and it is a missing `Math.round`.
+27. **A round pool of light.** A circle on the ground is a sphere in the air, in a projection where everything else on the ground is 2:1. If the mask primitive does not squash, every caller must remember to, and one of them will not.
+28. **Persisting a derived colour.** The save renders a shade differently on the player's phone than on their laptop, and there is nothing in the save, the log or the code to explain why. Store the hue.
+29. **`OffscreenCanvas` for a thumbnail.** It has no `toDataURL`, only an async `convertToBlob`, so the shop card pops in a frame late every time it opens. `createOffscreenSurface` uses a detached element on purpose; internal targets may use whatever they like, because nothing asks them for a URL.
 
 ---
 
@@ -1623,8 +1727,9 @@ the reason is what stops the next agent adding it back.
 
 Routed rather than fixed, per `docs/LOOP.md` rule 5.
 
-- **`iso` (A2), blocking:** `Camera.toScreen` and a `gridToScreen(cam, gx, gy, z, out)` must take an **output parameter**. If they return `{ x, y }`, `draw` cannot honour constitution rule 7 and invariant 9 is unachievable. `draw` also needs `LEVEL_H` and the half-tile constants, and a `visibleTileBounds(cam, out)` for invariant 10 — culling belongs with the projection, not with the painter.
-- **`iso` (A2), boundary:** depth *values* (`depthOf(gx, gy, z)`) belong in `iso/depth`; the pass *ordering* and the sorted bucket belong here in `draw/layers`. If A2's RFC also defines a sorted draw list, one of us should drop it — I would drop mine only if theirs sorts by an integer layer as the major key.
+- **`iso` (A2), settled — everything I asked for was granted and it cost me code.** Out-parameters, `visibleTiles`, elevation, `Rect`. The draw-list boundary resolved their way and correctly: **`DrawList` is deleted**, `iso.Scene` is the kit's only sorted list, and `renderFrame` walks it in the Solids pass (3.11). I have taken all three of their requirements back: the six-point stroke order is `boxSilhouette`'s and is now invariant 21 — **it needs to be one shared assertion living in one package, and I would put it in `iso`'s suite since `boxSilhouette` is the definition and `draw` is the conformer**; device-pixel rounding of the camera translate is mine (`Pen.snapX`, 3.3); and the light pool is a ground-plane ellipse the field squashes, not a circle the caller pre-squashes (3.9).
+- **`iso` (A2) / orchestrator — `LEVEL_H`, respectfully disputed.** The ruling put it in `iso`; 3.7 puts it in `draw` and gives the reason: `iso`'s entire height vocabulary is world pixels, so there is no signature there a storey could enter through, and `footprintBounds` — the case the ruling rests on — already takes `heightPx` converted. `iso` would export a number it never reads. It is also an art proportion tuned beside `FACE_LEFT`, not a projection fact like `TILE_W`. **The requirement behind the ruling is met either way** — one owner, one definition, never copy-pasted — and if the ruling stands it is a one-line move plus one import, with invariant 22 and trap 24 unchanged. The builder should not wait on it.
+- **`persist` (A7), folded:** store the hue, never the derived tokens. Stated as a rule in 3.2 and repeated on `hsl`, `hueToHex` and `shade`, plus trap 28. The corollary is in section 4: `draw` has no serialisation and must never grow any.
 - **`core` (A1):** `draw` needs a `hash32(string)` for cache keys and stable digests, and an `Rng` that can be re-seeded cheaply per sprite per cache miss (`rngFrom(seed)` returning a fresh stream, not a shared one). A fixed-capacity LRU would also be shared with `persist` if one exists there.
 - **`ui` (A9), settled:** all three asks are in. `createOffscreenSurface` now returns an `OffscreenSurface` carrying `element` and `toDataUrl` (3.4); `hueToHex` and `hexOf` are in `color` (3.2); `lerpPalette` returns the flat `Vars` bag `ui` specified, and `paletteVars` gives the same shape from a live palette (3.6). `paletteCss`, the string form from my first draft, is gone — a bag is change-guardable per key and a `cssText` blob is not. **`ui` owns the prefix**; `draw` emits bare slot names, because a package that does not touch the DOM has no business naming a custom property. The one constraint back: the *world* must call `Palette.lerp` with the same `(from, to, t)` that `ui` passes to `lerpPalette`. Invariant 17 only proves the two functions agree — it cannot save you from asking them different questions.
 - **`loop` (A4):** the day/night `darkness` value is the game's, but it must come from the wall clock and survive a hidden tab, or night does not fall while the player is in another window — which the demo's premise depends on. `draw` takes it as a number and asks nothing else.

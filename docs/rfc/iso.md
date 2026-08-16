@@ -56,7 +56,7 @@ no per-walker state, nothing allocated, fully deterministic, replayable from `t`
 ```ts
 for (let i = 0; i < n; i++) {
   pathSample(road, (t * speed + (i / n) * road.arcLength) % road.arcLength, here);
-  order.addPoint(here.x, here.y, heightAt(valley, here.x, here.y));
+  order.addPoint(here.gx, here.gy, heightAt(valley, here.gx, here.gy));
 }
 ```
 
@@ -292,7 +292,7 @@ export declare function worldToTile(wx: number, wy: number, out: Tile): Tile;
  * Taken at the footprint's **far** corner, so a 2×2 building sorts as if it stood on the
  * tile nearest the camera; without the extent terms a large building draws behind the small
  * one beside it. This key is a tie-break only — a scalar cannot express "beside", which is
- * why {@link Scene} sorts on footprints and falls back to this. See trap T2.
+ * why {@link DepthSorter} sorts on footprints and falls back to this. See trap T2.
  */
 export declare function depthOf(gx: number, gy: number, w?: number, d?: number): number;
 
@@ -420,11 +420,33 @@ export interface CameraOptions {
  * canvas, which is what lets the whole of `iso` run in Node and be tested without a shim.
  */
 export interface Camera {
-  /** World-space point at the centre of the viewport. Read freely; write via the methods. */
+  /**
+   * World-space point at the centre of the viewport, and the scale. **Read-only, and not
+   * merely by convention.**
+   *
+   * *(Routed from `@lattice/input`, and they are right.)* Every one of these is a getter over
+   * private state on the object `createCamera` returns; there is no setter and no public
+   * field to assign. That is why this package exports a `Camera` **interface** and a factory
+   * rather than a class — a class with public fields documents the rule, and an interface
+   * over private state removes the mistake.
+   *
+   * The argument is about testability, not tidiness. `zoomAt` exists to keep the world point
+   * under the pointer pinned (I4); if any code path can write `camera.zoom = 2` it skips the
+   * anchoring, and **no test can catch what it cannot observe** — the invariant holds in the
+   * suite and breaks in the game. Making the assignment unavailable turns a documented rule
+   * into an unrepresentable state.
+   */
   readonly x: number;
   readonly y: number;
   readonly zoom: number;
-  /** Viewport size in CSS pixels. Device pixel ratio is `@lattice/draw`'s problem, not this one. */
+  /**
+   * Viewport size in **CSS pixels** — never device pixels, never a canvas.
+   *
+   * Requested by `@lattice/input` and `@lattice/draw` both. A pointer event arrives in CSS
+   * pixels, so a camera that worked in device pixels would make every input path multiply by
+   * a ratio this package must not name; `devicePixelRatio` is `draw`'s business at the point
+   * it sets a transform, and nowhere else.
+   */
   readonly viewW: number;
   readonly viewH: number;
   readonly bounds: Readonly<Rect>;
@@ -858,7 +880,29 @@ export declare function slopeAt(field: HeightField, gx: number, gy: number): num
 > inverse split is unbuildable: a `screenToTile` in `input` would drag the projection, the camera
 > and the heightfield up a layer, and `iso` cannot own the event because it may not name a DOM
 > global. If a builder finds themselves writing a `pointerToTile(ev, ...)` here, they have the
-> seam the wrong way round.
+> seam the wrong way round. **Settled — `input` has taken it, and this is the confirmation.**
+>
+> **On `hitTest(state, camera, sx, sy)`, which `input` asks to exist here: the capability does,
+> the signature cannot, and the difference matters.** `iso` cannot take a `state` parameter,
+> because it would have to name the type of a thing it is forbidden to know about — the whole
+> reason `DepthSorter` holds rectangles and not entities (§3.4). What `input` is entitled to
+> rely on is that it never has to know either, and that holds. The three functions are:
+>
+> | the question | call | returns |
+> |---|---|---|
+> | which cell is under the pointer? | `screenToTile(camera, sx, sy, out)` | a tile, always |
+> | …on terrain with height? | `screenToTileOnHeights(camera, sx, sy, field, maxHeightPx, out)` | a tile, or `false` off-map |
+> | which *object* is under the pointer? | `pickSorted(order, test)` | the caller's insertion index, or `-1` |
+>
+> The third is the one that replaces `hitTest`, and the state lives in the closure the caller
+> already has: `pickSorted(order, (i) => hitsSilhouette(state.buildings[i], sx, sy))`. `input`
+> supplies `sx, sy`; the game supplies `state`; `iso` supplies the order and the walk. Nobody
+> holds a registry, nobody sets a `pickable` flag, and `input`'s §4 refusal stands intact.
+>
+> *(`input` cutting `gamepad` simplifies this side too: picking now has exactly one caller
+> shape — a screen position — so there is no focus ring, no reticle, and no "next selectable
+> object in direction d" traversal to design. Recorded in §4.11 so it is a decision, not an
+> omission.)*
 
 ```ts
 /**
@@ -1065,10 +1109,11 @@ export declare class Path {
  * most-needed gap. Fifty walkers are fifty calls, no per-walker state, nothing allocated,
  * identical on every replay.
  *
- * Takes a **world-pixel** arc length and returns **grid** coordinates, which is not a
+ * Takes a **world-pixel** arc length and writes a **{@link GridPoint}**, which is not a
  * mismatch but the point: parameterising by world length is what makes the motion look
- * uniform, and returning grid coordinates is what lets the result go straight into
- * {@link Scene.addPoint}, {@link heightAt} and {@link gridToScreen} without a conversion.
+ * uniform, and producing a grid position is what lets the result go straight into
+ * {@link DepthSorter.addPoint}, {@link heightAt} and {@link gridToScreen} without a
+ * conversion — and, because {@link Anchor} *is* a `GridPoint`, straight into an anchor.
  *
  * Clamps `sPx` to `[0, arcLength]` rather than wrapping. A caller who wants a loop writes the
  * modulo themselves and can therefore also write a ping-pong, a pause at the end, or a queue
@@ -1076,7 +1121,7 @@ export declare class Path {
  *
  * `O(log nodeCount)` — a binary search over the cumulative lengths, then one lerp.
  */
-export declare function pathSample(path: Path, sPx: number, out: Vec2): Vec2;
+export declare function pathSample(path: Path, sPx: number, out: GridPoint): GridPoint;
 
 /**
  * Which of the eight compass directions the path is heading in at arc length `sPx`, as a
@@ -1210,12 +1255,12 @@ dividend of §3.8's central claim, and it is why there is no incremental replann
  * next time anyone pans, and caching screen positions is the same mistake as caching hit
  * boxes during the draw pass (trap T5), one frame later.
  *
- * A moving anchor is two field writes: `pathSample(road, s, a)` fills `gx`/`gy`, and the
- * caller sets `zPx` from {@link heightAt}. A static one is written once at placement time.
+ * **It extends {@link GridPoint}**, which is what makes the unification with path sampling
+ * literal rather than rhetorical: `pathSample(road, s, anchor)` writes a walker's position
+ * directly into its anchor, no conversion and no intermediate. The caller then sets `zPx`
+ * from {@link heightAt}. A static anchor is written once at placement time and never again.
  */
-export interface Anchor {
-  gx: number;
-  gy: number;
+export interface Anchor extends GridPoint {
   zPx: number;
 }
 
@@ -1319,7 +1364,7 @@ and are not:
 The reason for the line is that everything in the left column keeps the projection linear and
 the sort two-dimensional, and everything in the right column replaces the depth sort with a
 different algorithm over a different data structure. A game that wants floors draws one
-`Scene` per floor, in order, which is what every shipped 2:1 game with floors actually does
+`DepthSorter` per floor, in order, which is what every shipped 2:1 game with floors actually does
 and which this API already supports at no extra cost.
 
 ### 4.3 Anything that draws
@@ -1337,13 +1382,6 @@ Owning two thirds of a proportion and disowning the third is not a principle, it
 inconsistency with a justification attached. All three are the *units of the lattice*, and the
 lattice is this package. The line that still holds is the one about behaviour: `iso` exports
 the number and never uses it — every function here takes `heightPx`.
-
-### 4.10 A draw list
-
-Settled with `draw` and set out in full at §3.4. `DepthSorter` hands back a permutation of
-integers; it has no items, no passes, no layers, no z-order groups, and no notion that anything
-is drawn at all. If a builder finds themselves adding an `idAt`, a `pass` argument or a draw
-callback, they are rebuilding `draw`'s bucket inside `iso`, and the two will diverge.
 
 ### 4.4 Camera feel
 
@@ -1367,9 +1405,11 @@ see §7.
 
 ### 4.6 Entities, components, or any scene graph
 
-`Scene` stores integers. It has no `update`, no parent/child, no transform hierarchy, and it is
-rebuilt from scratch each frame — which at a few hundred drawables costs less than maintaining
-a retained graph and removes the entire class of "the renderer and the state disagree" bug.
+`DepthSorter` stores rectangles. It has no `update`, no parent/child, no transform hierarchy,
+and it is rebuilt from scratch each frame — which at a few hundred drawables costs less than
+maintaining a retained graph and removes the entire class of "the renderer and the state
+disagree" bug. Nothing in this package can name an entity, which is what makes the boundary
+with `draw` (§4.10) enforceable rather than merely agreed.
 
 ### 4.7 Serialisation
 
@@ -1396,6 +1436,22 @@ of bug — a stale key in the priority queue — that reproduces once an hour an
 If a game appears whose maps are large enough for this to matter, it will also be a game that
 wants chunked flow fields, and that is a different design conversation with real numbers in it.
 
+### 4.10 A draw list
+
+Settled with `draw` and set out in full at §3.4. `DepthSorter` hands back a permutation of
+integers; it has no items, no passes, no layers, no z-order groups, and no notion that anything
+is drawn at all. If a builder finds themselves adding an `idAt`, a `pass` argument or a draw
+callback, they are rebuilding `draw`'s bucket inside `iso`, and the two will diverge.
+
+### 4.11 Directional selection, focus rings and reticles
+
+`@lattice/input` has cut its `gamepad` module, on the argument that a pad cannot answer *where*
+without a reticle the kit never designed. The consequence lands here: picking has exactly one
+caller shape — a screen position — so there is no `nextSelectableFrom(index, direction)`, no
+focus order over a `DepthSorter`, and no notion of a selected item at all. Worth recording
+rather than leaving implicit, because "find the nearest object north-east of this one" is a
+plausible-sounding request that would drag selection state into a package that has none.
+
 ---
 
 ## 5. Invariants a reviewer can test
@@ -1407,18 +1463,20 @@ wants chunked flow fields, and that is a different design conversation with real
 | I3 | `toWorld(toScreen(w))` round-trips within `1e-9` at any pan and any zoom in `[minZoom, maxZoom]`. | Fails only at non-unit zoom — the viewport half-offset was applied before the scale in one direction and after it in the other. |
 | I4 | With `bounds` far larger than the viewport, after `zoomAt(f, sx, sy)` the world point that was under `(sx, sy)` is still under it, within `1e-9`, for `f` in `{0.5, 1.1, 2}`. | The point drifts towards the screen centre: origin-anchored zoom (trap T6). |
 | I5 | With `bounds` **smaller** than the viewport in either axis, the camera centre equals the bounds centre in that axis, and `clamp(); clamp()` changes nothing. | The centre oscillates between two values across repeated pans, because `min > max` was fed to a clamp (trap T7). |
-| I6 | `scene.sort()` output is a permutation of the surviving inputs: every id appears exactly once, and `count` equals the number of items whose box passed `isVisible`. | An item vanishes, or is painted twice — the topological pass emitted from a stale ready set. |
-| I7 | If footprint `a` ends before `b` begins on either axis, then `a` precedes `b` in the sorted output — for every pair in the scene, checked exhaustively on a random-but-seeded layout. | A tree is painted after the wall it stands behind. |
+| I6 | `sorter.sort()` output is a permutation of the surviving inputs: every insertion index in `0..count` appears exactly once, and `count` equals the number of items whose bounds passed `isVisible`. | An item vanishes, or is painted twice — the topological pass emitted from a stale ready set. |
+| I7 | If footprint `a` ends before `b` begins on either axis, then `a` precedes `b` in the sorted output — for every pair in the sorter, checked exhaustively on a random-but-seeded layout. | A tree is painted after the wall it stands behind. |
 | I8 | `sort()` is deterministic and terminating: the same adds in the same order give the same output, on any engine, and a deliberately constructed cyclic layout terminates in bounded time rather than hanging. | The suite passes on Node and fails on Safari: a non-transitive comparator was handed to `Array.sort`. |
-| I9 | For two items at equal depth whose silhouettes overlap, `pick` returns the one that `idAt(count-1 … 0)` reaches first — i.e. the one painted last. | The tap opens the building behind (trap T3). |
+| I9 | For two items at equal depth whose silhouettes overlap, `pickSorted` returns the one that `indexAt(count-1 … 0)` reaches first — i.e. the one painted last. **Stated as a cross-package contract with `draw`:** the sorter passed to `pickSorted` is the one that produced the paint order, and `draw` does not reorder after `sort()`. | The tap opens the building behind (trap T3), or `draw` reshuffles a pass and picking silently drifts out of step. |
 | I10 | `TileGrid.get` outside the grid returns `outOfBounds` and never throws; `TileGrid.set` outside the grid throws a `RangeError` naming the coordinate and the bounds. | A pathfinder scanning a border tile throws mid-frame. |
 | I11 | `PathFinder.find` on a uniform-cost open grid returns a path whose summed cost equals the octile distance `STEP_DIAG·min(dx,dy) + STEP_ORTHO·abs(dx−dy)`. | The path is optimal-looking but longer: the heuristic overestimates, or diagonals cost 10. |
 | I12 | Every consecutive pair in a returned `Path` differs by at most 1 on each axis, and with `cutCorners: false` no diagonal step has both shared orthogonal neighbours impassable. | An agent walks through the corner where two walls meet. |
 | I13 | The same `find` call with the same cost function returns a byte-identical `Path` across runs and engines. | Two replays of one seed diverge after the first junction — float costs, or a heap with an unspecified tie-break. |
 | I14 | Following `FlowField.step` from any tile with `costAt ≥ 0` reaches a goal in at most `costAt / STEP_ORTHO` steps and never revisits a tile. | Two adjacent tiles point at each other and an agent vibrates in place for ever. |
-| I15 | A warm frame — `clear`, 400 `add`s, `sort`, 400 `idAt`s, 50 `pathSample`s, one `pick`, one `find` — allocates zero bytes, asserted in `*.bench.ts` against a heap-delta measurement. | The number climbs the day someone returns `{x, y}` from a conversion. |
+| I15 | A warm frame — `clear`, 400 `add`s, `sort`, 400 `indexAt`s, 3,200 `toScreenX`/`Y` calls, 50 `pathSample`s, one `pickSorted`, one `find` — allocates zero bytes, asserted in `*.bench.ts` against a heap-delta measurement. | The number climbs the day someone returns `{x, y}` from a conversion, which is the failure `@lattice/draw` cannot survive. |
 | I16 | No file in `src/` references `window`, `document`, `Canvas`, `Math.random`, `Date.now` or `performance.now`. Enforced by `npm run lint`. | The camera grew a `resizeToCanvas` helper. |
-| I17 | No file in `src/` references `Math.sin`, `cos`, `tan`, `atan2`, `pow`, `exp` or `log`. `sqrt` and `hypot`-free arithmetic are permitted. Enforced by `npm run lint` alongside I16. | A facing angle reaches a save file and two engines disagree in the last bit (§3.9). |
+| I17 | No file in `src/` references `Math.sin`, `cos`, `tan`, `atan2`, `pow`, `exp` or `log`. `sqrt` and `hypot`-free arithmetic are permitted. Enforced by `npm run lint` alongside I16. | A facing angle reaches a save file and two engines disagree in the last bit (§3.10). |
+| I26 | No public function returns a freshly constructed object. Every one returns a primitive, `void`, `boolean`, or an out-parameter it was given. Checkable by reading the `.d.ts`: no return type is a bare interface the caller did not pass in. | `draw` cannot meet constitution rule 7, and its own allocation invariant becomes unachievable. |
+| I27 | `camera.zoom = 2` does not compile, and does not change the camera at runtime through any cast that keeps the public shape. Only `zoomAt` moves the zoom. | The pointer-anchored-zoom invariant (I4) holds in the suite and breaks in the game, because a code path assigned the field directly. |
 | I18 | `pathSample(p, 0)` is node 0, `pathSample(p, p.arcLength)` is the last node, and `pathSample` is monotone: for `s₁ < s₂` the sampled points advance along the path, never back. | A walker stutters backwards at a node boundary — the binary search returned the wrong segment on an exact hit. |
 | I19 | For a path built by `push`, `pathProject(p, p.gxAt(i), p.gyAt(i))` equals `p.sAt(i)` within `1e-6`, and `pathSample(p, pathProject(p, g))` returns `g` for any `g` on the path. | `reach` jumps when a lamp sits exactly on a node. |
 | I20 | Sampling a path at 1,000 evenly spaced arc lengths gives 999 consecutive world-space gaps that are equal within `1e-9`. | The walkers hitch on the diagonals: the parameterisation is in grid units, not world pixels (a 58% speed difference — see `Path.arcLength`). |
@@ -1443,7 +1501,7 @@ corner while pedestrians sorted on `x + y`; the two numbers are not comparable, 
 standing well down the map but far to the left of the headquarters got a larger key than the
 building and was drawn straight through its wall at second-storey height. Player pass 3
 reproduced it twice. The relation that is actually true is *a ends before b begins on either
-axis*, and it is a partial order — which is why `Scene.sort` is a topological sort with depth as
+axis*, and it is a partial order — which is why `DepthSorter.sort` is a topological sort with depth as
 a tie-break and not a comparator. Handing a non-transitive comparator to `Array.sort` gives an
 implementation-defined result that differs between engines and can flicker between frames.
 
@@ -1451,7 +1509,7 @@ implementation-defined result that differs between engines and can flicker betwe
 ascending with a stable sort, so on equal depth the item added *earlier* is painted first and
 ends up underneath. A picker that walks descending by depth but forgets to also walk descending
 by insertion index resolves a tap on a rack to the headquarters beside it — both at depth 14,
-found in player pass 4. This is why `pick` is a method on the sorted `Scene`: it walks the same
+found in player pass 4. This is why `pickSorted` consumes the `DepthSorter` itself: it walks the same
 array backwards and cannot disagree.
 
 **T4 — Hit-test the silhouette, not the ground tile.** A building is drawn standing *up* from
@@ -1465,7 +1523,7 @@ and someone aiming at one is really aiming at the ground it covers).
 **T5 — Never cache hit boxes during the draw pass.** An earlier version recorded tap targets
 while painting, so any frame the renderer did not run — a backgrounded tab, a throttled
 `requestAnimationFrame`, a paused loop — left the game visibly showing bubbles that could not be
-tapped. Input must never be a side effect of painting: `pick`, `pickTile` and `footprintAnchor`
+tapped. Input must never be a side effect of painting: `pickSorted`, `screenToTile` and `anchorToScreen`
 all recompute from state and camera, every time. *(This is the kit.json invariant "hit-testing is
 computed from state and camera, never cached during a draw pass".)*
 
@@ -1501,7 +1559,7 @@ someone into a `!`. Bounds-check and throw a named error instead; the type was t
 **T11 — Elevation is not a third projection axis, and the projection is not invertible.** `zPx`
 shifts screen y by `-zPx * zoom` and does nothing else, which means "a point raised 32 pixels"
 and "a point one tile further north on the ground" are *the same screen pixel*. Screen → (grid,
-z) is one equation short of solvable. That is why picking walks the scene testing silhouettes
+z) is one equation short of solvable. That is why picking walks the sorted order testing silhouettes
 rather than inverting the camera, and it is the same confusion that makes a ground-plane
 primitive used for a window paint a horizontal sliver hovering in mid-air. *(PLAYBOOK trap 4 is
 the drawing half of this; the geometry half lives here.)*
@@ -1520,15 +1578,16 @@ device pixel ratio lives — this package deliberately hands out unrounded float
 choice is available.
 
 **T14 — Sort scenery and buildings in one list.** Two separately sorted lists make trees pop
-through walls, no matter how correct each list is on its own. `Scene` takes everything —
-buildings, scenery, walkers, ghosts — and that is why it takes an opaque `id` rather than a
-typed entity. *(PLAYBOOK trap 6.)*
+through walls, no matter how correct each list is on its own. One `DepthSorter` takes everything —
+buildings, scenery, walkers, ghosts — and that is the deeper reason it holds rectangles rather
+than typed items: a sorter that knew what a building was would invite a second one for trees.
+*(PLAYBOOK trap 6.)*
 
 **T15 — Elevation must not enter the depth key.** The first instinct on adding a heightfield is
 to sort by `gx + gy + z`, and it draws a lamp on the ridge in front of the gate that is plainly
 standing between it and the camera. In a 2:1 projection what occludes what is decided entirely
 on the ground plane: height moves a sprite up the screen, it does not move it towards the
-viewer. `Scene.add` takes `heightPx` for culling only, and the sort never reads it.
+viewer. `DepthSorter.add` takes `heightPx` for culling only, and the sort never reads it.
 
 **T16 — A raw A* path is a staircase, and a sampled staircase wobbles.** Octile A* returns unit
 steps, so a road across open ground comes back as alternating east and south-east moves. Walk a
@@ -1561,11 +1620,20 @@ and whatever destroys the entity destroys the overlay in the same statement.
 
 ### 7.1 What I have taken ownership of
 
-Four routings landed while this RFC was being written. All four are answered in the surface
-above; this is the index, so that no builder has to re-derive a decision.
+Routings from five packages landed while this RFC was being written. Every one is answered in
+the surface above; this is the index, so that no builder has to re-derive a decision.
 
 | routed from | the question | answer | where |
 |---|---|---|---|
+| **draw (A3)** | projection must not return `{ x, y }` | **already true, now unmissable.** Three shapes only — scalar, out-parameter, buffer — set out before the first signature, with a testable invariant (I26). `toScreenX(wx)`/`toScreenY(wy)` *is* the write-into-a-`Float64Array` form | §3 preamble, I26 |
+| **draw (A3)** | `visibleTileBounds` for culling | **taken and renamed** to the name `draw` asked for, plus `visibleWorldBounds` for the things that are not on the lattice — backdrops, light pools, cached chunks | §3.3 |
+| **draw (A3)** | export `LEVEL_H` rather than re-derive it | **taken, reversing my earlier position.** I already own `TILE_W` and `TILE_H`, which are exactly as much art constants; disowning the third was an inconsistency, not a principle | §3.1, §4.3 |
+| **draw (A3)** | who owns the sorted draw list | **`draw` does; I dropped `Scene`.** `iso` keeps the comparator, the order and the backwards walk — `DepthSorter` hands back a permutation of integers and never learns what a drawable is | §3.4, §4.10 |
+| **input (A5)** | `screenToTile` that floors | **taken, and it fixed my naming**: `pickTile` was the odd one out among `gridToWorld` / `worldToGrid` / `worldToTile` / `gridToScreen`. Floors, never rounds | §3.7, T1 |
+| **input (A5)** | camera in CSS pixels, out-param `toWorld`/`toScreen` | **confirmed**, and now stated as the reason the camera takes a viewport rather than a canvas. `devicePixelRatio` is `draw`'s, at the point it sets a transform | §3.3 |
+| **input (A5)** | `zoom` must not be publicly assignable | **taken — the only real change of the five.** `Camera` is an interface over private state, so the field is unavailable rather than discouraged. Their testability argument is the right one and it is now I27 | §3.3, I27 |
+| **input (A5)** | exported mutable `Vec2` and `GridPoint` | **`GridPoint` taken**, and it improved the package: `worldToGrid` and `pathSample` now write `{ gx, gy }` instead of `{ x, y }`, so a grid position can no longer be handed to a world-space function. `Tile` is an alias for the integer case. `Vec2` still wants settling in `core` | §3.0 |
+| **input (A5)** | `hitTest(state, camera, sx, sy)` must exist here | **capability yes, signature no.** `iso` cannot name a `state` type. `pickSorted(order, test)` is the function; the state lives in the caller's closure, and `input`'s refusal to know about the world stands intact | §3.7 |
 | demo (A10) | sample a position at arc length along a path | **taken**, and it is the module's organising idea, not a helper: `pathSample` / `pathProject` / `pathDirAt` / `Path.arcLength`, plus `pathSimplify` because a sampled staircase wobbles | §3.8, T16, T17 |
 | demo (A10) | elevation | **taken**, as a new `height` module: a value per grid **vertex**, bilinear sampling, slope, flatness, and terrain-aware picking. Not a third grid axis | §3.6, §4.2, T15, T18 |
 | demo (A10) | weighted terrain cost, cheap recompute on a tile change | **taken**: `TileCost` is a weight, not a boolean, and recompute is full recompute gated on `MutableTileSource.version`. No incremental replanner, with the arithmetic for why | §3.8, §4.9 |
@@ -1610,7 +1678,7 @@ whole-device-pixel rounding of the camera translate (T13).
 **`@lattice/input` (A5) — the camera controller.** Drag, inertia, pinch, edge-scroll and keyboard
 pan belong there and must drive this camera only through `panByScreen`, `zoomAt` and
 `centerOn` — never by assigning `zoom`, which would skip the clamp and the pointer anchor.
-Input's tap/drag discrimination is what decides whether `Scene.pick` is called at all.
+Input's tap/drag discrimination is what decides whether `pickSorted` is called at all.
 
 **`@lattice/draw` (A3) — the light layer is the demo's premise and it is not mine.** The demo
 ranks "an emissive glow and a night mask" second only to path sampling, and `iso` contributes

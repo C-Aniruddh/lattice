@@ -581,109 +581,124 @@ export declare function elapsedSince(opened: OpenResult<unknown>, now: EpochMill
 
 The kit's headline claim, made falsifiable. `AGENTS.md` #1 promises that a session replays from
 a seed and an input log and lands on the same pixel; §4.9 argues why the envelope, the recorder
-and the divergence check live here, and — just as importantly — which half of the job does not.
+and the divergence check live here, which half of the job does not, and — the sharpest rule in
+this package — why a replay is the **one thing here that is never migrated**.
 
 ```ts
 /** From `@lattice/core`. Reproduced so this block stands alone; the implementation imports it. */
 interface RngSnapshot { readonly seed: number; readonly state: number }
 
-/** One recorded input, exactly as the game handed it over. `persist` never interprets `E`. */
-export interface RecordedInput<E> {
-  /** The tick this arrived on. A replay is indexed by tick, never by wall time — wall time is
-   *  the thing that is different on the machine replaying it. */
-  readonly tick: number;
-  readonly event: E;
+/**
+ * The only three fields this package reads out of a recorded input log.
+ *
+ * `@lattice/input` owns the log's shape and `persist` may not import it — input is layer 2 and
+ * this is layer 1, so the edge does not exist. This structural constraint is therefore the
+ * entire coupling between them: three fields, compared for exact equality, never interpreted.
+ * Everything else about a log is opaque here and is stored verbatim (§4.9).
+ */
+export interface ReplayCompat {
+  /** The input log's own format version. */
+  readonly version: number;
+  /** The fixed step the session was recorded at. A replay driven at a different step is a
+   *  different simulation, however similar it looks. */
+  readonly stepMs: number;
+  /** The gesture/binding profile in force. A tap threshold that moved turns one recorded
+   *  pointer stream into a different sequence of actions. */
+  readonly profile: string;
 }
 
 /**
  * "The same pixel", reduced to a uint32.
  *
  * The game supplies it because only the game knows what is canonical: the wallet and the
- * building list, probably; a camera position and a tween phase, definitely not, or every
- * replay diverges the first time somebody scrolls. Build it from `core`'s `hashParts`.
+ * building list, probably; a camera position and a tween phase, definitely not, or every replay
+ * diverges the first time somebody scrolls. Build it from `core`'s `hashParts`.
  */
 export type Digest<T> = (state: T) => number;
 
-/** Eight bytes. The interval between them trades log size against how tightly a divergence
- *  can be bracketed — a checkpoint every ten seconds means "somewhere in these 600 ticks". */
+/** Eight bytes. The interval between them trades log size against how tightly a divergence can
+ *  be bracketed — a checkpoint every ten seconds means "somewhere in these 600 ticks". */
 export interface Checkpoint {
   readonly tick: number;
   readonly digest: number;
 }
 
 /**
- * A recorded session. **This is a save with a different payload**, which is the argument for
- * it living here: it is versioned, migrated and checksummed by exactly the machinery above.
- * Store one with `createStore` on its own key and its own chain.
+ * A recorded session: a starting stream, an input log, and the digests that make the claim
+ * checkable.
+ *
+ * Stored in the same envelope as everything else — it wants `v`, `t` and `c` for identity and
+ * integrity — but under the **opposite version policy**. See §4.9: a replay store's chain has
+ * no rungs, so an old replay is `orphaned` rather than migrated, and that is correct.
  */
-export interface ReplayLog<E> {
-  /** The kit build this was recorded under. A replay is only meaningful against the code that
-   *  produced it; without this a divergence is unattributable and the check is theatre. */
+export interface ReplayLog<L extends ReplayCompat> {
+  /** The kit build this was recorded under. A divergence against an unknown build is
+   *  unattributable, and an unattributable divergence report is theatre. */
   readonly kit: string;
   /** The game's own build identity, however the game versions itself. */
   readonly game: string;
-  /** The stream the session started from, cursor included — not just the seed. A replay that
-   *  restores a seed but not the cursor re-rolls every draw the session had already spent. */
+  /** The stream the session started from, **cursor included** — not just the seed. A log that
+   *  restores a seed but not the cursor re-rolls every draw the session had already spent, and
+   *  it looks correct for the first few draws, which is what makes it expensive. */
   readonly rng: RngSnapshot;
-  /** The fixed step, in ms. A replay recorded at 16.667 and driven at 20 is not a replay, and
-   *  the verifier refuses rather than reporting a divergence that is really a mismatch. */
-  readonly stepMs: number;
   readonly startTick: number;
   readonly endTick: number;
-  /** Sorted by tick, ascending, stable within a tick. */
-  readonly inputs: readonly RecordedInput<E>[];
+  /**
+   * The input log, **verbatim**. Never rewritten, never normalised, never migrated.
+   *
+   * `stepMs` and `profile` live in here rather than being copied up to this level, deliberately:
+   * a duplicated field is a field that can disagree with itself, and the copy that disagrees is
+   * always the one the check reads.
+   */
+  readonly inputs: L;
+  /** Ascending by tick. */
   readonly checkpoints: readonly Checkpoint[];
 }
 
-export interface RecorderOptions<T, E> {
+export interface RecorderOptions<T> {
   readonly kit: string;
   readonly game: string;
   readonly rng: RngSnapshot;
-  readonly stepMs: number;
   readonly startTick: number;
   readonly digest: Digest<T>;
   /** Ticks between checkpoints. Default 600 — ten seconds at 60 Hz. */
   readonly checkpointEvery?: number;
-  /** Hard cap on recorded inputs. Default 250_000, after which `record` drops and counts.
-   *  A recorder that grows without limit is a memory leak with a feature name. */
-  readonly maxInputs?: number;
 }
 
-export interface Recorder<T, E> {
-  /** Append an input. `tick` must not go backwards; it throws `RangeError` if it does, because
-   *  an out-of-order log produces a replay that diverges for a reason nobody can find. */
-  record(tick: number, event: E): void;
+/**
+ * Records checkpoints, and nothing else.
+ *
+ * It does not record inputs: `@lattice/input` already keeps a per-tick bucketed log keyed by an
+ * integer tick index, and a second recorder here would be a second copy of the same data with
+ * its own ordering bugs. The game hands that log over once, at `stop`.
+ */
+export interface Recorder<T> {
   /**
    * Advance to `tick`, taking a checkpoint if one is due. Returns whether it took one.
    *
    * **A boolean, not a result object** (house rule 7): this is called every tick for the whole
-   * session, and `digest` is only invoked on the ticks that actually checkpoint.
+   * session, and `digest` runs only on the ticks that actually checkpoint.
    */
   mark(tick: number, state: T): boolean;
-  readonly inputCount: number;
-  /** Inputs refused after `maxInputs`. Non-zero means the log is incomplete and the verdict
-   *  from replaying it is worthless — surface it, do not swallow it. */
-  readonly dropped: number;
-  /** Freeze and hand back the log, taking a final checkpoint. Idempotent. */
-  stop(tick: number, state: T): ReplayLog<E>;
+  readonly checkpointCount: number;
+  /** Take a final checkpoint and seal the log around the input log you pass in. Idempotent. */
+  stop<L extends ReplayCompat>(tick: number, state: T, inputs: L): ReplayLog<L>;
 }
 
-export declare function createRecorder<T, E>(options: RecorderOptions<T, E>): Recorder<T, E>;
+export declare function createRecorder<T>(options: RecorderOptions<T>): Recorder<T>;
 
 /**
- * Feed a recorded log back, without allocating.
- *
- * `advance` applies every event at exactly `tick` in record order. Ticks must be requested in
- * increasing order; the cursor is a single index, so this costs nothing per tick and is safe
- * inside the fixed-step loop. Returning an array per tick would allocate sixty times a second
- * for the length of the session.
+ * Why a replay was not run. **A refusal is never a pass**, and the field that differed is named
+ * because "incompatible" sends someone reading five things to find out which one.
  */
-export interface ReplayCursor<E> {
-  advance(tick: number, apply: (event: E) => void): void;
-  readonly done: boolean;
-}
-
-export declare function replayCursor<E>(log: ReplayLog<E>): ReplayCursor<E>;
+export type Refusal =
+  | {
+      readonly kind: 'mismatch';
+      readonly field: 'kit' | 'game' | 'log-version' | 'stepMs' | 'profile';
+      readonly recorded: string | number;
+      readonly current: string | number;
+    }
+  | { readonly kind: 'no-checkpoints' };
 
 export interface Divergence {
   /** The checkpoint tick where the digests first disagreed. */
@@ -699,27 +714,38 @@ export interface Divergence {
 export interface ReplayVerdict {
   readonly matched: boolean;
   readonly checkpointsChecked: number;
-  /** The **first** divergence only. Every later one is a consequence of this one, and
-   *  reporting them is noise that buries the line that matters. */
+  /** The **first** divergence only. Every later one is a consequence of this one, and reporting
+   *  them is noise that buries the line that matters. */
   readonly divergence: Divergence | null;
-  /** Set when the replay could not honestly be attempted. A refusal is not a pass, and a
-   *  verifier that returned `matched: true` here would make the kit's central claim a lie
-   *  that reports green. */
-  readonly refused: 'kit-mismatch' | 'game-mismatch' | 'step-mismatch' | 'no-checkpoints' | null;
+  /** Non-null means the replay was declined before it started. `matched` is then `false`, never
+   *  `true` — a verifier that reported green because it had refused to check is exactly how a
+   *  determinism claim rots into a slogan. */
+  readonly refused: Refusal | null;
 }
 
 export interface ReplayVerifier<T> {
-  /** Compare at `tick` if a checkpoint is due there. Returns `false` once it has diverged, so
-   *  a driver can stop immediately rather than run an hour of ticks past the answer. */
+  /** Compare at `tick` if a checkpoint is due there. Returns `false` once it has diverged or
+   *  refused, so a driver can stop immediately rather than run an hour of ticks past the answer. */
   mark(tick: number, state: T): boolean;
   finish(): ReplayVerdict;
 }
 
-/** Build the verifier for a log. `kit`, `game` and `stepMs` are the *current* build's values;
- *  mismatches become `refused`, never a divergence. */
-export declare function createVerifier<T, E>(
-  log: ReplayLog<E>,
-  current: { readonly kit: string; readonly game: string; readonly stepMs: number; readonly digest: Digest<T> },
+/**
+ * Build the verifier for a log, against **this** build's identity and input configuration.
+ *
+ * The compatibility check is exact equality on five values and runs before the first tick. It is
+ * not a migration and there is no coercion: see §4.9.
+ */
+export declare function createVerifier<T, L extends ReplayCompat>(
+  log: ReplayLog<L>,
+  current: {
+    readonly kit: string;
+    readonly game: string;
+    /** The current build's log format, step and profile — usually read off a freshly created
+     *  input log rather than typed out, so the two cannot drift. */
+    readonly inputs: ReplayCompat;
+    readonly digest: Digest<T>;
+  },
 ): ReplayVerifier<T>;
 ```
 
@@ -953,23 +979,67 @@ The boundary matters as much as the acceptance, and the dependency graph draws i
 layer 1 and depends only on `core`; it may not import `input` (layer 2) or `loop` (its sibling).
 So:
 
-**This package owns** the `ReplayLog` envelope, the recorder as a *sink* that has no idea what an
-event is, the zero-allocation cursor that plays a log back, and the verifier that compares
-checkpoint digests and reports the first divergence with a bracket around it. Every one of those
-is a pure function of data and needs nothing but `core`.
+Three packages converged on this seam without coordinating — `core` proposed the owner, `input`
+built a per-tick bucketed log keyed by an integer tick index, and `loop` already has a manual
+clock driven flat out, which *is* a replay. That is the strongest available evidence that the
+seam is real rather than invented here.
 
-**This package does not own the driver** — the thing that constructs a game, restores the rng
-snapshot, runs the fixed step, and pumps the cursor into it. That requires the loop, the tick
-index and the game's own construction, and it belongs to **`loop`**: `persist` hands it a log and
-a verifier, `loop` turns the crank. That is routed in §8, and without it the recorder records
-sessions nobody replays.
+**This package owns** the `ReplayLog` envelope, the checkpoint recorder, and the verifier that
+compares digests and reports the first divergence with a bracket around it. All three are pure
+functions of data and need nothing but `core`.
 
-Two further deliberate limits. **Checkpoints are digests, not states** — storing states would
-make a replay a save-scumming format and a hundred times larger, and the question a replay
-answers is "did it diverge", not "what did it look like". And **a refusal is not a pass**: a log
-recorded under a different kit build, game build or step returns `refused`, never
-`matched: true`. A verifier that reports green because it declined to check is precisely how a
-determinism claim rots.
+**This package does not own the input log.** `input` does, and `persist` stores it **verbatim** —
+which necessarily means opaquely. `ReplayLog<L extends ReplayCompat>` reads exactly three fields
+out of it and interprets none of them. The consequence, taken deliberately rather than
+reluctantly: **the cursor that plays a log back cannot live here either**, because a package that
+cannot see inside a structure cannot iterate it. It belongs to whoever owns the shape, which is
+`input`, and it is routed in §8. This costs two exports and buys a boundary that is checked by
+the compiler instead of by discipline.
+
+**This package does not own the driver** — constructing a game, restoring the rng snapshot,
+turning the fixed-step crank. That needs `loop`, which `persist` may not import. `persist` hands
+over a log and a verifier; `loop` turns the crank. Routed in §8.
+
+#### A replay is evidence. Evidence is never migrated.
+
+Everything above this section argues that a save must survive at almost any cost: an explicit
+chain, a rung per version, a floor you lower only on purpose. **A replay takes the opposite
+policy, and a reader arriving from §4.3 will assume otherwise, so it is stated here as a
+contrast rather than left to be inferred.**
+
+A save is a player's progress, and progress that cannot be read is a loss the player feels. A
+replay is *evidence*, and evidence that has been migrated is no longer evidence. A session
+recorded at a 16.667 ms step and replayed at 20 ms will not land on the same pixel; a session
+recorded under a tap threshold of 8 px and replayed at 12 px turns one pointer stream into a
+different sequence of actions. "Migrating" either would produce a **confident wrong answer**, and
+a divergence report that cannot be trusted puts the determinism claim back where it started —
+unfalsifiable — while looking like it has been tested. A refusal is strictly more useful than a
+plausible lie.
+
+So the policy inverts on all three axes:
+
+| | **save** | **replay** |
+|---|---|---|
+| old format | migrated, rung by rung | **refused** — `orphaned` |
+| mechanism | a chain with rungs from floor to head | a chain with **no rungs**: `migrations(N, isLog).seal()`, floor === head |
+| near-miss | tolerated; a recogniser may normalise as it validates | **refused**, exactly: `version`, `stepMs` and `profile` are compared for equality and the differing field is named |
+| failure costs | a player's campus | a test result nobody should have trusted |
+
+The mechanism is worth noticing: **"never migrate" is expressible in the machinery already
+specified, as a chain with zero rungs.** A replay store is a normal store whose chain has floor
+equal to head, so a replay in an older format reads as `orphaned` — an existing failure reason,
+already meaning "older than anything this build will read", already degrading without a throw.
+No second code path, no exception to the read pipeline, and invariant §6.17 pins it.
+
+The compatibility triple is checked in a second, separate place — `createVerifier`, before the
+first tick — because the two refusals answer different questions. `orphaned` means *this build
+cannot read the file*. A `Refusal` means *the file is readable and was recorded under conditions
+this build does not reproduce*. Collapsing them would lose the distinction that tells you whether
+to go and find an older build or go and fix the step.
+
+One further deliberate limit: **checkpoints are digests, not states.** Storing states would make
+a replay a save-scumming format and a hundred times larger, and would answer a question nothing
+asked ("what did it look like") in place of the one that matters ("did it diverge").
 
 ### 4.10 Three lifetimes, one envelope
 
@@ -993,6 +1063,7 @@ What was genuinely missing is the doctrine, so here it is, stated hard enough to
 | key | `game:save` | `game:settings` | `game:replay:<id>` |
 | payload | the run | device preferences: volume, mute, reduced motion, colour-blind palette | a `ReplayLog` |
 | written | coalesced, every 4 s, by an `Autosave` | immediately on change, via `save(state)` | once, at `stop()` |
+| version policy | migrated, rung by rung | migrated, rung by rung | **never migrated** — a chain with no rungs, so an old one is `orphaned`. §4.9 |
 | survives **START OVER** | no — that is what START OVER means | **yes** | yes |
 | in an export | yes | **never** | separately, on purpose |
 | `fresh()` returns | a new game | the **defaults**, which is a real answer and not a failure | n/a |
@@ -1046,25 +1117,30 @@ This section is the one that stops the next agent adding it back.
    slot concept means growing a slot *index*, which means a second thing to migrate and a second
    thing to corrupt.
 9. **Undo, rewind, and a ring buffer of snapshots.** This package took replay (§4.9) and
-   deliberately took only half of it: a replay is a seed, a cursor and an input log, and its
-   checkpoints are 8-byte digests. Storing states instead would make it a save-scumming format,
-   a hundred times larger, and would answer a question ("what did it look like") that nothing
-   asked, in place of the one that matters ("did it diverge").
-10. **The replay driver.** Also §4.9, and the sharpest of these boundaries: constructing a game,
-    restoring the snapshot and turning the fixed-step crank needs `loop`, which this package may
-    not import. It is routed in §8, and if `loop` does not take it the recorder records sessions
-    nobody replays.
-11. **Timers, and a clock.** §4.6 and §4.8. Both are injected, both are required, and neither has
+   deliberately took only part of it: its checkpoints are 8-byte digests. Storing states instead
+   would make it a save-scumming format, a hundred times larger, and would answer a question
+   ("what did it look like") that nothing asked, in place of the one that matters ("did it
+   diverge").
+10. **A migration chain for replays, and any coercion of a near-miss.** §4.9. A replay store's
+    chain has no rungs by rule, and `version`/`stepMs`/`profile` are compared for exact equality.
+    This is the one place in the package where refusing to read something is the *correct*
+    behaviour, and a future agent tempted to "just migrate the old replays" should read the
+    contrast table before touching it.
+11. **The replay cursor, and the driver.** Also §4.9. `input` owns the log's shape so it owns
+    iterating it; `loop` owns the crank. This package stores the log verbatim and can therefore
+    see neither. Both are routed in §8, and if `loop` does not take the driver the recorder
+    records sessions nobody replays.
+12. **Timers, and a clock.** §4.6 and §4.8. Both are injected, both are required, and neither has
     a default — a defaulted clock is the single worst bug in this package's reach.
-12. **Automatic or inferred migration** — "spread the new defaults over the old object". Every
+13. **Automatic or inferred migration** — "spread the new defaults over the old object". Every
     rung is a named function with a `why` a reviewer can read. See trap §7.6 for what the
     alternative actually costs.
-13. **Version skipping.** No 3→7 rung. §4.3.
-14. **A `resetEverything()` that clears the origin.** §4.10. It would be four lines and it would
+14. **Version skipping.** No 3→7 rung. §4.3.
+15. **A `resetEverything()` that clears the origin.** §4.10. It would be four lines and it would
     be wrong: it is the API shape of `localStorage.clear()`, which is trap §7.2, and the one
     thing a player resetting their game does *not* expect is their volume back at full at one in
     the morning. Reset the stores you mean, by name.
-15. **A settings-store convenience wrapper.** Same reason as save slots: it would be
+16. **A settings-store convenience wrapper.** Same reason as save slots: it would be
     `createStore` with three arguments pre-filled and a second name for one concept.
 
 ---
@@ -1118,9 +1194,11 @@ Each is phrased so the failing case is obvious. All run in Node against `memoryS
 13. **Coalescing is driven, not timed.** With an injected `schedule` that records its callbacks
     instead of running them, no write happens until the test runs one — proving no real timer
     exists anywhere in the package.
-14. **A replay verdict is never a false green.** A `ReplayLog` recorded under a different `kit`,
-    `game` or `stepMs` returns `matched: false` with `refused` set, never `matched: true`. A log
-    whose `dropped` count is non-zero is reported, not silently verified.
+14. **A replay verdict is never a false green.** For each of the five compatibility values in
+    turn — `kit`, `game`, `inputs.version`, `inputs.stepMs`, `inputs.profile` — a log differing
+    only in that one returns `matched: false` with `refused.field` naming exactly it, and
+    `divergence` null. Five cases, five distinct names. *Fails when:* a verifier reports green
+    because it declined to check, or reports "incompatible" without saying which field.
 15. **Divergence is bracketed and first-only.** Given a driver that perturbs state at tick 900
     with checkpoints every 600: `divergence.tick` is 1200, `lastAgreedTick` is 600, and
     `divergence` describes that one comparison and no later one.
@@ -1128,6 +1206,12 @@ Each is phrased so the failing case is obvious. All run in Node against `memoryS
     restoring that snapshot and driving the same inputs, produces identical digests at every
     checkpoint. *Fails when:* the log stored a seed but not the cursor — the failure this
     invariant exists to catch, because it looks correct for the first few draws.
+17. **An input log survives storage unchanged.** Round-trip a `ReplayLog` through a replay store
+    and assert the stored `inputs` is deep-equal to what went in, field order included where it
+    is observable. And a replay written at format `N` read by a build at format `N + 1` returns
+    `reason: 'orphaned'` — **not** a migrated log. *Fails when:* someone gives the replay store a
+    chain with rungs in it, which is the single most likely way this package's doctrine gets
+    quietly inverted.
 
 ---
 
@@ -1212,12 +1296,18 @@ settings lifetime (§4.10), and the injected scheduler (§4.6). What follows is 
 
 **Settled here, needing the other side to agree**
 
-- **`loop` — the replay driver.** §4.9 takes the envelope, the recorder, the cursor and the
+- **`loop` — the replay driver.** §4.9 takes the envelope, the checkpoint recorder and the
   verifier, and explicitly does not take the driver: constructing the game, restoring the rng
-  snapshot, running the fixed step and pumping the cursor needs the loop and the tick index,
-  and `persist` may not import a sibling. `loop` should expose it, taking a `ReplayCursor` and a
-  `ReplayVerifier`. **Without this the recorder records sessions nobody replays and the kit's
-  headline claim is still unfalsifiable** — it is the largest open item in this document.
+  snapshot, running the fixed step and pumping inputs in needs the loop and the tick index, and
+  `persist` may not import a sibling. It should take a `ReplayVerifier` from here and a cursor
+  from `input`. **Without it the recorder records sessions nobody replays** — the largest open
+  item in this document. A `manualClock` driven flat out is most of it already.
+- **`input` — the cursor over its own log, and the three compatibility fields.** Storing the log
+  verbatim means storing it opaquely, so iteration belongs to whoever owns the shape (§4.9).
+  `InputLog` also needs to expose `version`, `stepMs` and `profile` as `ReplayCompat` requires —
+  three fields compared for equality and never interpreted, which is the whole of the coupling
+  between these two packages. Ideally the current build's triple is read off a freshly created
+  log rather than typed out at the call site, so the recorded and current values cannot drift.
 - **`loop` — `real.after` must keep firing in a hidden tab.** §4.6 injects `Schedule` and the
   demo game will pass `loop.real.after`. If that is implemented on `requestAnimationFrame` it is
   0 Hz in a background tab and the autosave silently stops in the one situation that most often

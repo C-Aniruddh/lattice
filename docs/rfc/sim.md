@@ -348,7 +348,77 @@ export function advance<N extends string, G extends string>(
   creditedSeconds: number,
   atMs: EpochMillis,
 ): Ledger<N>;
+
+/**
+ * Move the anchor **without crediting anything**, in either direction.
+ *
+ * The clock-correction tool, and the only function here that may move an anchor backwards.
+ * `advance` deliberately refuses to: an anchor that can be walked back is an interval that can
+ * be credited twice.
+ *
+ * It exists because of the forward clock jump. A phone whose date is a year ahead hands the game
+ * a gap of 31.5 million seconds; the credit for that is capped (§3.4), but the *anchor* is not —
+ * it lands a year in the future, and when the clock is corrected every subsequent read sees time
+ * running backwards and credits zero. **The economy then freezes for a year.** That is a far
+ * worse outcome than over-crediting and no cap on the credit prevents it.
+ *
+ * So: a game that detects `atMs < ledger.atMs` by more than a plausible drift (a few seconds of
+ * NTP correction) calls this, keeps its stocks, forfeits nothing it had earned, and is running
+ * again on the next frame.
+ */
+export function reanchor<N extends string>(ledger: Ledger<N>, atMs: EpochMillis): Ledger<N>;
 ```
+
+#### What a ledger may contain
+
+Raised by `persist`: **`Infinity` serialises to `null` in JSON, with a perfectly valid
+checksum** — the worst possible failure, because every layer reports success and the state comes
+back with a hole in it. A closed-form integrator is exactly the thing that can produce one.
+
+```ts
+/**
+ * Validate a stock vector, returning it. `guard`-shaped, for the same reason `core`'s validators
+ * are: a boolean has already thrown away the node that was wrong.
+ *
+ * Call it on anything that came out of `JSON.parse`. A `null` where a number should be (an
+ * `Infinity` that made a round trip) and a `NaN` (which `JSON.stringify` also writes as `null`)
+ * are both caught here, at the one boundary where the value can still be blamed on the save
+ * rather than on the arithmetic.
+ *
+ * @throws RangeError naming the first offending node: `sim.load: stocks.oil is not finite (null)`.
+ */
+export function expectFiniteStocks<N extends string, G extends string>(
+  eco: Economy<N, G>,
+  stocks: Stocks<N>,
+  label: string,
+): Stocks<N>;
+```
+
+**Is a non-finite stock reachable?** Yes, but only through a balance error, and the shape of the
+graph is why. Growth here is **polynomial** in elapsed time — degree `eco.depth` — not
+exponential, so no single absence can carry a sane balance to 1.8e308. What can is compounding
+across sessions: a graph with no sink multiplies its stocks by a polynomial factor every
+catch-up, which is exponential in *session count*, and a runaway balance will find `Infinity`
+eventually. A stock at `Infinity` therefore means *the economy has no answer*, not that it has a
+very large one — it cannot be rendered, compared or spent, and one `Infinity` becomes a `NaN`
+downstream on the first `0 × ∞`, which poisons every comparison in the game.
+
+**Where it is refused:** at the boundary between a number and a *durable* number.
+
+| call | checks the result? | why |
+|---|---|---|
+| `integrate`, `project`, `ratesOf` | **no** | per-frame. A non-finite `view` is garbage on screen for one frame, which is visible and harmless |
+| `advance`, `advanceOver` | **yes** — throws, naming the node | these produce the value that reaches a save. One pass over the nodes at a boundary call is free |
+| `defineEconomy` | non-finite `per` only | it cannot know a stock it has never seen |
+
+That throw is not a dead end: it is the input to `persist`'s "corrupt save → fresh, with a
+reported reason" path. The alternative — writing the vector and letting `Infinity` become `null`
+— produces a bug filed against `persist` and caused by `sim`, which is exactly the outcome this
+paragraph exists to prevent.
+
+One consequence for the rest of this surface: **`capacityLoad` deliberately returns `Infinity`**
+for zero supply. It is a derived read for a meter. It is not a stock, and a game that stores it
+has just written a `null` into its own save.
 
 #### The contract with `@lattice/loop` — ratified
 
@@ -477,6 +547,35 @@ and now.** A player who genuinely opened the tab at hour twelve was away for two
 correctly paid more, because they did in fact come back. Splitting is generous, which is the
 safe direction: nobody is punished for a visit the game failed to record.
 
+#### The upper clamp on the gap — mine, and it is the flat branch
+
+`persist` clamps the elapsed gap at zero from below and deliberately leaves the ceiling to me, on
+the grounds that it is a balance decision. Agreed, and here it is explicitly.
+
+**The cap is `maxOfflineCredit(curve)` — `U · (F/U)^e`, about 37.6 ks (10.4 h) at the shipping
+numbers — and it applies to the *credit*, never to the gap.** `offlineCredit` clamps its own
+**input** at `flatAfterSeconds` before the power, so 24 h, 48 h and a device whose clock jumped a
+year all return the identical number. There is no second cap to add and no configuration for one:
+the flat branch of the softcap **is** the ceiling, which is why the curve has three parameters
+rather than two.
+
+So a phone that wakes up a year ahead credits 10.4 hours, not a year, and cannot finish the game.
+Three things that follow, because the cap alone is not enough:
+
+1. **A gap is capped; an anchor is not.** The credit is bounded, but `advance` still stamps the
+   ledger at the bogus instant, and when the clock is corrected the economy freezes until real
+   time catches up. That is the more damaging half of a forward jump and {@link reanchor} is the
+   answer to it (§3.3).
+2. **The cap only exists if you pass the curve.** `CatchUp.curve` is therefore *required and
+   explicitly nullable* (§3.5) — you must write `curve: null` to opt out, which is a deliberate,
+   greppable act rather than a forgotten optional field. At a hydrate seam, `null` is always
+   wrong.
+3. **Reporting the gap and crediting it are different questions.** `sim` never rewrites the raw
+   elapsed time; a game showing "you were away for a year" from a bad device clock is a copy
+   problem, and a game that wants to say something sceptical instead compares the gap against its
+   own plausibility threshold. Only the game knows its session cadence, so only the game can set
+   that number.
+
 `curve.flatAfterSeconds` is also a **horizon**. Nothing after it credits anything, which is what
 makes §3.5 finite.
 
@@ -526,8 +625,15 @@ export interface CatchUp<G extends string> {
    * absence**.
    */
   readonly phases: readonly Phase<G>[];
-  /** Omit for live time (identity warp). Present means: one contiguous absence. */
-  readonly curve?: OfflineCurve;
+  /**
+   * The warp, or an explicit `null` for live time.
+   *
+   * **Required and nullable rather than optional**, because this field is the upper clamp on the
+   * offline gap (§3.4) and a forgotten optional is how a device clock jump becomes a finished
+   * game. `null` says "I know this interval is short" — a live frame, an action boundary — and
+   * at a hydrate seam it is always wrong. A reviewer can grep for it.
+   */
+  readonly curve: OfflineCurve | null;
 }
 
 /**
@@ -541,10 +647,14 @@ export interface CatchUp<G extends string> {
  * one, and the error grows with how long they were away.
  *
  * Cost is O(phases × edges × depth) — semantic boundaries, not fixed steps. Doubling the length
- * of the absence past the horizon does not change it at all.
+ * of the absence past the horizon does not change it at all: with a curve, the walk **stops at
+ * the first phase beginning at or after `curve.flatAfterSeconds`**, because every later one
+ * credits exactly zero. That makes the horizon a hard bound on work as well as on reward, so a
+ * phase array generated from a bad device clock cannot cost anything either.
  *
  * @throws RangeError if the phases are not ascending, do not start at 0, or name a gate the
  *   economy did not declare.
+ * @throws RangeError if the resulting vector is not finite, naming the node — see §3.3.
  */
 export function advanceOver<N extends string, G extends string>(
   eco: Economy<N, G>,
@@ -938,11 +1048,12 @@ What the kit therefore promises, precisely:
 
 ### 3.11 The export list for `.lattice/kit.json`
 
-Values (28): `VERSION`, `defineEconomy`, `zeroStocks`, `degreeOf`, `createFlow`, `buildFlow`,
+Values (31): `VERSION`, `defineEconomy`, `zeroStocks`, `degreeOf`, `createFlow`, `buildFlow`,
 `NO_GATES`, `integrate`, `ratesOf`, `elapsedSeconds`, `project`, `advance`, `advanceOver`,
-`solveCrossing`, `solveCrossingOver`, `offlineCredit`, `offlineElapsed`, `maxOfflineCredit`,
-`offlineCreditRate`, `capacityWall`, `capacityShare`, `capacityLoad`, `costOfNext`, `bulkCost`,
-`maxBuyable`, `milestoneMultiplier`, `createIdSource`, `mintId`, `asEntityId`.
+`reanchor`, `expectFiniteStocks`, `solveCrossing`, `solveCrossingOver`, `offlineCredit`,
+`offlineElapsed`, `maxOfflineCredit`, `offlineCreditRate`, `capacityWall`, `capacityShare`,
+`capacityLoad`, `costOfNext`, `bulkCost`, `maxBuyable`, `milestoneMultiplier`, `createIdSource`,
+`mintId`, `asEntityId`.
 
 Types (17): `Stocks`, `StockVec`, `EdgeScale`, `EdgeSpec`, `EconomySpec`, `Edge`, `Economy`,
 `Flow`, `GateRatios`, `Ledger`, `Phase`, `CatchUp`, `Crossing`, `OfflineCurve`, `CapacityCurve`,
@@ -1098,18 +1209,27 @@ exponent, the result is within 2 ulps of `U * (T/U) ** e`.
 with no repeats; `asEntityId(source.next, source, …)` throws; a round trip through
 `JSON.parse(JSON.stringify(...))` of the source and its entities re-narrows every id.
 
-**I19 — time never runs backwards into resources.** `project`, `advance` and `advanceOver` with an
-`atMs` earlier than the anchor credit exactly zero and destroy nothing.
+**I19 — time never runs backwards into resources, and never runs away with them.** `project`,
+`advance` and `advanceOver` with an `atMs` earlier than the anchor credit exactly zero, destroy
+nothing, and **do not move the anchor**; only `reanchor` moves it backwards. A gap of one year
+credits exactly `maxOfflineCredit(curve)` — identical to the credit for a gap of 24 h, to the bit
+— and `advanceOver` with a curve visits no phase beginning at or after `flatAfterSeconds`
+(assert by counting visits with an instrumented phase list of 100,000 entries).
 
-**I20 — the hot path allocates nothing.** 100,000 `project` calls show no heap growth and no GC
+**I20 — a save can hold every number this package produces.** `advance` and `advanceOver` throw a
+`RangeError` naming the node when any resulting stock is not finite; `expectFiniteStocks` rejects
+a vector containing `null`, `NaN` or `Infinity` from a round trip through
+`JSON.parse(JSON.stringify(...))`. *Fails as:* a stock that saved cleanly and loaded as `null`.
+
+**I21 — the hot path allocates nothing.** 100,000 `project` calls show no heap growth and no GC
 pause above the frame budget; `project`, `integrate`, `ratesOf` and `buildFlow` each return the
 `out` object they were handed.
 
-**I21 — no delta anywhere.** No exported function takes a duration as its notion of "now"; every
+**I22 — no delta anywhere.** No exported function takes a duration as its notion of "now"; every
 one that moves the anchor takes a required `atMs`. *Fails as:* the first `advanceBy(seconds)`
 convenience someone adds.
 
-**I22 — floating point, stated as a boundary rather than a defence.**
+**I23 — floating point, stated as a boundary rather than a defence.**
 
 A `double` holds every integer exactly up to `2^53` (9,007,199,254,740,992;
 `Number.MAX_SAFE_INTEGER` is one below). Past that the spacing is 2, then 4, then 128 by `2^60`,
@@ -1234,7 +1354,23 @@ it**, so "the second night" must fall inside the credited window for the demo's 
 writable. At 45 s days and `15 + 9d` nights it does, comfortably — but the toast's copy should be
 derived from the crossing, never assumed.
 
-**T22 — polynomial conditioning at degree ≥ 3.** Root-finding from coefficients is
+**T22 — the forward clock jump, and the freeze that follows it.** The obvious failure is
+over-crediting, and the curve already prevents it. The one that actually ships is the *second*
+half: the anchor lands a year ahead, the user fixes their date, and from then on every read sees
+time running backwards and credits zero — a game that has silently stopped, with no error and a
+save that looks fine. Detect a backwards gap larger than a plausible NTP correction and
+`reanchor`. A test for this is two lines and nobody writes it.
+
+**T23 — `curve: null` at a hydrate seam.** The upper clamp only exists if the curve is passed.
+The field is required-and-nullable precisely so this is a visible decision, and `null` on the
+load path means a device clock jump finishes the game.
+
+**T24 — `Infinity` in a save.** It serialises to `null`, checksums cleanly, and loads as a hole.
+Never persist a derived read that can be infinite (`capacityLoad` is the one in this surface), and
+run `expectFiniteStocks` on anything that came out of `JSON.parse`. The upstream cause is nearly
+always a balance with no sink, compounding across sessions rather than within one.
+
+**T25 — polynomial conditioning at degree ≥ 3.** Root-finding from coefficients is
 ill-conditioned for high degree and closely-spaced roots. Evaluate by Horner, bisect on sign, and
 do not "improve" it with a Newton step from an arbitrary start — Newton is what turns a
 deterministic 60 iterations into a platform-dependent answer.
@@ -1268,6 +1404,14 @@ deterministic 60 iterations into a platform-dependent answer.
 5. **A migration that mints ids needs the counter in the same version bump.** The demo's
    v1 `lampsLit: number` → v2 `lamps: EntityId[]` migration must write `IdSource.next` too, or the
    next mint collides with a lamp it just created.
+6. **The upper clamp is accepted and it is `maxOfflineCredit(curve)`** — see §3.4. Leaving
+   `elapsedSince` unclamped from above is the right call: a raw gap is what a game needs to *say*
+   something about a bad device clock, and capping it in `persist` would have hidden the
+   information from the only layer that can judge it. The clamp lands on the credit, not the gap.
+7. **`sim` will throw on a non-finite vector at a boundary call**, which is designed to arrive at
+   `persist`'s "corrupt save → fresh, with a reported reason" path rather than at a player. If
+   that path only catches parse and checksum failures today, it should also catch a `RangeError`
+   from state validation, or the two of us have built half a pipeline each.
 
 **To `@lattice/loop`:** ratified as written, with one nit — `persist`'s §4.8 says "`loop` owns the
 clock", which predates `loop`'s refusal of the epoch. Both agree the *caller* passes the number;

@@ -744,7 +744,7 @@ them; nothing in this package ever reads them back.
 
 And the complete list of CSS properties this package ever writes to an element's inline style:
 `position`, `inset`, `left`, `top`, `z-index`, `pointer-events`, `display`. Nothing decorative
-— no colour, no font, no radius, no shadow. That list is testable (§5, invariant 7) and it is
+— no colour, no font, no radius, no shadow. That list is testable (§5, invariant 11) and it is
 the boundary between "primitives" and "a look you have to fight".
 
 ---
@@ -764,6 +764,8 @@ that is fifteen lines and a mature version that is a framework.
 | **A stylesheet, a theme preset, or a dark mode** | Non-negotiable 8 is zero assets, and a CSS file is an asset. `setBrand` is a bridge from `@lattice/draw`'s colour model into three custom properties; that is the entire opinion this package holds about how anything looks. |
 | **Input handling** — gestures, pointer normalisation, drag, long-press, keyboard maps | `@lattice/input` (layer 2). This package sets `pointer-events` and attaches `click`; if you find yourself computing a drag threshold in here, you are writing the wrong package. |
 | **Colour interpolation, palette blending, contrast checking** | `@lattice/draw` owns the colour model, including interpolating two palettes by a `t` for day and night. `applyPalette` takes the *result* — a bag of name-to-CSS-string — so the overlay darkens with the world without this package learning what "dusk" is, or holding a second opinion about how a colour is derived. |
+| **A dialog system** — `confirm` / `prompt` / `alert` families, severity levels, icon sets, a notification queue with a priority policy, "don't show me this again" checkboxes | `acknowledge` is one function with one button and one guarantee (it cannot be dismissed), and that is where the line is drawn. The moment a second button appears it is a *choice*, and a choice needs a return type, then a default, then a destructive-action convention, then an icon to mark which kind it is — and now the package has a severity taxonomy and an opinion about what red means. Two actions is `panel`, which exists, and which the game styles. |
+| **Persistence of any kind** — a `once` that survives a reload, a "seen" set, a dismissal log | `once(key, …)` latches for **this session**, in memory, and that is the whole scope. "Tell the player once ever" is a boolean in the game's saved state, and `@lattice/persist` owns saved state; a UI package that writes `localStorage` behind the save layer's back is a second owner of the same truth, which is the storage-shaped version of the two-clocks bug this RFC has already fixed once. `if (!save.warnedAboutStorage) { save.warnedAboutStorage = toasts.once(…) }` is the composition, and it is one line. |
 | **A clock, a scheduler, a `setInterval`, a `requestAnimationFrame` loop** | `@lattice/loop` owns time, and a HUD that brings its own clock is a HUD that polls while the simulation settles. The overlay is *driven*: `tick` from `update`, `repaint` from `render`. `driver: 'standalone'` exists only for a page with no game behind it, and it refuses to coexist with a host that also calls `tick()`. |
 | **Tweening and easing curves** | `@lattice/loop` has tweens and `@lattice/core` has easing. The roll uses `easeOutCubic` from core; floats and toast bars use Web Animations, which is the platform's own tween and runs off the main thread. |
 | **Number formatting, pluralisation, i18n** | `@lattice/core`'s `format` module. The source game put `fmt` in its DOM helpers and that is exactly the accretion this table exists to prevent: formatting is a pure function of a number and belongs where pure functions live. `RollOptions.format` is how it gets here. |
@@ -803,35 +805,45 @@ implementation.
    next frame — not counted up from an hour ago and not dismissed one at a time.
 6. **`openOnce` opens at most once**, across any number of calls, including calls made while
    the panel is open, after it has been closed, and interleaved with `open()`. The property to
-   test is a loop of 1,000 `openOnce()` calls producing exactly one `true`.
-7. **`spawn` allocates nothing after warm-up.** Spawn `capacity` floats, then spawn 1,000 more:
+   test is a loop of 1,000 `openOnce()` calls producing exactly one `true`. The same property
+   holds for `toasts.once(key, …)` per key: 1,000 calls, one `true`, one node — and a *different*
+   key in the same host still shows.
+7. **An acknowledgement cannot be escaped, and cannot be missed.** With an `acknowledge` open:
+   Escape does nothing, a click on the scrim does nothing, there is no close control, and
+   `ui.modalOpen` is true. The promise resolves exactly once no matter how many times the button
+   is clicked, and it does **not** resolve when the overlay is destroyed unacknowledged.
+8. **A dialog raised before the first tick is fully functional.** Create an overlay, raise an
+   `acknowledge` immediately, never call `tick()` or `repaint()`, and clicking the button
+   resolves the promise. The failing case is the one that matters most: a message about a
+   session that is not running, which cannot itself depend on the session running.
+9. **`spawn` allocates nothing after warm-up.** Spawn `capacity` floats, then spawn 1,000 more:
    the layer's child count never exceeds `capacity`, and no new element is created. Measurable
    with a `MutationObserver` counting `addedNodes`.
-8. **Everything is disposable.** After `ui.destroy()`, `document.body` contains no node this
+10. **Everything is disposable.** After `ui.destroy()`, `document.body` contains no node this
    package created, any standalone-driver handles are cancelled, the loop subscriptions taken by
    `drive` are released, and no listener remains on `window` or `document`. A game that hot-reloads twice must not accumulate two overlays —
    the source game had two live instances driving one canvas and could not tell.
-9. **The package writes only structural CSS.** Grep the built output for `.style.` assignments
+11. **The package writes only structural CSS.** Grep the built output for `.style.` assignments
    and `setProperty`: the property set is exactly `position`, `inset`, `left`, `top`, `z-index`,
    `pointer-events`, `display`, plus custom properties written by
    `setTokens`/`setBrand`/`applyPalette`. A `color` or a `font-family` in that list means the
    package started having opinions.
 
-10. **Pushing an unchanged palette costs one string comparison per key and no DOM write.**
+12. **Pushing an unchanged palette costs one string comparison per key and no DOM write.**
    `applyPalette(ui, p)` twice with the same object returns `true` then `false`, and a spy on
    `root.style.setProperty` records writes only for keys whose value actually differs. The
    failing case is a dusk that reflows the HUD sixty times a second and a profile that blames
    the game.
-11. **`setText` writes only on change.** Spy on the text node: setting the same string twice
+13. **`setText` writes only on change.** Spy on the text node: setting the same string twice
    performs one write and returns `false` the second time.
-12. **`hide` beats a stylesheet.** With `.thing { display: flex !important }` in the document,
+14. **`hide` beats a stylesheet.** With `.thing { display: flex !important }` in the document,
    `hide(node)` still results in a zero-size box. (Inline `!important` is the fallback if the
    plain inline value loses; the test is written against the observable, not the mechanism.)
-13. **Thumbnails are keyed and bounded, and a palette push does not disturb them.** The same
+15. **Thumbnails are keyed and bounded, and a palette push does not disturb them.** The same
     key twice paints once and returns an identical string; `setBrand` makes the next call paint
     again; a thousand `applyPalette` calls make it paint *zero* more times; adding
     `capacity + 1` distinct keys leaves `capacity` entries.
-14. **No banned clocks.** `npm run lint` finds no `Date.now`, `performance.now` or
+16. **No banned clocks.** `npm run lint` finds no `Date.now`, `performance.now` or
     `Math.random` in `src/`. Time enters through `OverlayOptions.now` and nowhere else — the
     `requestAnimationFrame` timestamp argument is deliberately *ignored*, because two clocks
     in one widget is how a roll ends up ahead of the toast that announced it.
@@ -901,6 +913,27 @@ What a naive implementation gets wrong. Numbers in brackets are traps from
    duration scaling with length, holding while hovered, a tap to dismiss early, and a visible
    life bar — the bar is what makes a timed message feel deliberate rather than stolen. And a
    hard cap: a wall of toasts hides the game they are about.
+
+6b. **The severity of a message is not a property of the message — it is a property of what the
+   player loses by missing it.** Two notices from `@lattice/persist` look alike on paper and
+   need opposite mechanisms, and getting them the wrong way round is the whole trap.
+
+   | notice | the player's exposure | mechanism |
+   |---|---|---|
+   | storage is not persistent (private browsing, blocked site data, quota) | they may lose progress *later*, and there is nothing they can do about it now | `toasts.once('storage-not-persistent', …)` — say it, once, and let them play |
+   | the save is from a newer deploy, so writing has stopped | **everything they do from this moment is not being recorded**, and they cannot tell from the screen | `acknowledge(…)` — blocking, non-dismissible, answered |
+
+   The failure in each direction is specific. Put the first in a dialog and you have blocked a
+   first-time player behind a modal about a hypothetical, ten seconds into a game — the source
+   game's first non-negotiable is that a player is *doing something* within ten seconds. Put the
+   second in a toast and it is dismissed, or it expires unread, or it is the fourth toast in a
+   burst and never appears at all; the player then plays a session that will not survive the tab
+   closing, having been told, in a way that did not work. **A dismissible notice about a session
+   that has silently stopped working is a notice designed to be missed.**
+
+   And the repeat is the third failure. Anything rediscovered by a poll — an autosave checking
+   storage every thirty seconds — must latch, or it teaches the player that toasts are furniture
+   and takes the *next* one down with it.
 
 7. **A thumbnail cache key that omits the brand serves stale art after a recolour**, and one
    that includes it grows without bound as the player plays with the colour picker. Both halves
@@ -974,6 +1007,23 @@ orchestrator, not a change I can make from here.
   (`createLoop({ update, render })`), `drive` should be dropped from this package and the demo
   wires `ui.tick` and `ui.repaint` by hand; both are one line, and the RFC's requirement is only
   that `tick` never lands on `render`. **This is the one open question in the document.**
+- **`@lattice/persist` should expose its two notices as *conditions*, not as rendered
+  messages.** `ui` now has a home for both — `toasts.once(key, …)` for "storage will not keep
+  this save", `acknowledge(…)` for "this save is from a newer version, writing has stopped" —
+  and neither is `persist`'s to call, because `persist` is isomorphic and correctly declines to
+  own any DOM. What it owns is the truth: a stable status a game can read on every update
+  (`'ok' | 'not-persistent' | 'refusing-newer'` or whatever survives its own RFC), stable across
+  repeated discovery. Two requirements fall out of §3.5. The status must be a **stable enum, not
+  a message string** — a string carrying a timestamp or an attempt count changes on every check
+  and defeats the caller's latch in exactly the case the latch was written for. And the refusal
+  case must be readable **at boot, before the loop starts**, because the dialog announcing it
+  cannot depend on the session it is announcing the failure of. The wiring is then three lines
+  in the demo game, and they are the demo's job to write and to show.
+- **Once-ever-across-reloads is a flag in the game's save, and `persist` owns saves.** `ui`
+  latches per session and never touches storage (§4). If the demo decides a notice should be
+  shown once per *save* rather than once per session, that boolean lives in the saved state and
+  the game gates the call — not a "seen" set inside the UI package, which would be a second
+  owner of the same truth alongside the save layer.
 - **`.lattice/kit.json`'s third `ui` invariant needs the reword in §3.0** — "on the loop's
   `update` callback, never inside `render`", not "on an interval, not inside the frame loop".
   The current wording instructs the builder to create the second clock this RFC forbids.
