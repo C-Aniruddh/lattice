@@ -13,9 +13,22 @@ import { HALF_W } from '@lattice/iso';
 import { describe, expect, it } from 'vitest';
 import { rgba, withAlpha } from '../src/color.js';
 import { createLightField } from '../src/light.js';
+import type { LightField } from '../src/light.js';
 import type { RecordingSurface, RecordingTarget } from '../src/record.js';
 import { createRecordingSurface } from '../src/record.js';
+import type { Pen, Surface } from '../src/surface.js';
 import { opsOf, scene } from './harness.js';
+
+/**
+ * A pen this field is entitled to be begun with.
+ *
+ * `begin` refuses a pen whose `light` is not the field itself, because leaving `light` out of the
+ * `beginFrame` literal used to disable the whole night in silence — and every call below would
+ * otherwise be written the way the bug is.
+ */
+function penFor(field: LightField, pen: Pen, surface?: Surface): Pen {
+  return surface === undefined ? { ...pen, light: field } : { ...pen, surface, light: field };
+}
 
 /**
  * A surface that hands back every target it is asked for, so a test can look inside the light
@@ -66,9 +79,9 @@ describe('createLightField', () => {
     const field = createLightField(counted);
     expect(targets).toBe(0);
     const { pen } = scene();
-    field.begin({ ...pen, surface: counted }, 0, 'night');
+    field.begin(penFor(field, pen, counted), 0, 'night');
     expect(targets).toBe(0);
-    field.begin({ ...pen, surface: counted }, 0.5, 'night');
+    field.begin(penFor(field, pen, counted), 0.5, 'night');
     expect(targets).toBe(2);
   });
 });
@@ -78,7 +91,7 @@ describe('full day costs nothing', () => {
     const { surface, pen } = scene();
     const field = createLightField(surface);
     expect(field.active).toBe(false);
-    field.begin(pen, 0, 'night');
+    field.begin(penFor(field, pen), 0, 'night');
     expect(field.active).toBe(false);
     field.add(1, 1, 0, 3, 1, 'warn');
     field.addScreen(10, 10, 20, 1, 1, 'warn');
@@ -97,9 +110,9 @@ describe('full day costs nothing', () => {
   it('treats a NaN darkness as day rather than as a transparent mask', () => {
     const { pen, surface } = scene();
     const field = createLightField(surface);
-    field.begin(pen, Number.NaN, 'night');
+    field.begin(penFor(field, pen), Number.NaN, 'night');
     expect(field.active).toBe(false);
-    field.begin(pen, -3, 'night');
+    field.begin(penFor(field, pen), -3, 'night');
     expect(field.active).toBe(false);
   });
 
@@ -107,7 +120,7 @@ describe('full day costs nothing', () => {
     const { pen, surface, palette } = scene();
     const spy = spyOn(surface);
     const field = createLightField(spy.surface);
-    field.begin({ ...pen, surface: spy.surface }, 9, 'night');
+    field.begin(penFor(field, pen, spy.surface), 9, 'night');
     field.composite();
     const quad = opsOf(spy.targets[1] ?? surface, 'poly')[0];
     expect(quad?.colors[0]).toBe(withAlpha(palette.get('night'), 1));
@@ -119,7 +132,7 @@ describe('a pool', () => {
     for (const zoom of [0.5, 1, 3]) {
       const { surface, pen } = scene({ zoom });
       const field = createLightField(surface, { scale: 1, falloff: 1 });
-      field.begin(pen, 0.8, 'night');
+      field.begin(penFor(field, pen), 0.8, 'night');
       field.add(2, 2, 0, 4, 1, 'warn');
       // The pool lands in the accumulator, not on the surface: the surface sees only the
       // composite, and that is the whole design.
@@ -132,7 +145,7 @@ describe('a pool', () => {
     const { surface, pen } = scene({ zoom: 2 });
     const spy = spyOn(surface);
     const field = createLightField(spy.surface, { scale: 1, falloff: 1 });
-    field.begin({ ...pen, surface: spy.surface }, 0.8, 'night');
+    field.begin(penFor(field, pen, spy.surface), 0.8, 'night');
     field.add(2, 2, 0, 4, 1, 'warn');
     const light = spy.targets[0];
     expect(light?.mode).toBe('light');
@@ -146,7 +159,7 @@ describe('a pool', () => {
     const { surface, pen } = scene({ zoom: 1 });
     const spy = spyOn(surface);
     const field = createLightField(spy.surface, { falloff: 1 });
-    field.begin({ ...pen, surface: spy.surface }, 1, 'night');
+    field.begin(penFor(field, pen, spy.surface), 1, 'night');
     field.add(0, 0, 0, 2, 1, 'warn');
     const light = spy.targets[0];
     expect(light?.width).toBe(200);
@@ -159,7 +172,7 @@ describe('a pool', () => {
       const { surface, pen } = scene();
       const spy = spyOn(surface);
       const field = createLightField(spy.surface, { falloff });
-      field.begin({ ...pen, surface: spy.surface }, 1, 'night');
+      field.begin(penFor(field, pen, spy.surface), 1, 'night');
       field.add(0, 0, 0, 2, 1, 'warn');
       return opsOf(spy.targets[0] ?? surface, 'ellipse').length;
     };
@@ -170,7 +183,7 @@ describe('a pool', () => {
   it('ignores a pool with no light in it', () => {
     const { surface, pen } = scene();
     const field = createLightField(surface);
-    field.begin(pen, 1, 'night');
+    field.begin(penFor(field, pen), 1, 'night');
     field.add(0, 0, 0, 2, 0, 'warn');
     field.add(0, 0, 0, 0, 1, 'warn');
     field.add(0, 0, 0, -3, 1, 'warn');
@@ -181,7 +194,7 @@ describe('a pool', () => {
     const { surface, pen } = scene();
     const spy = spyOn(surface);
     const field = createLightField(spy.surface, { scale: 1, falloff: 1 });
-    field.begin({ ...pen, surface: spy.surface }, 1, 'night');
+    field.begin(penFor(field, pen, spy.surface), 1, 'night');
     field.addScreen(100, 60, 40, 1, 1, 'warn');
     field.addScreen(100, 60, 40, 0.5, 1, 'warn');
     const pools = opsOf(spy.targets[0] ?? surface, 'softEllipse');
@@ -194,7 +207,7 @@ describe('the composite', () => {
   it('is one cut and one add for the frame, however many pools there are', () => {
     const { surface, pen } = scene();
     const field = createLightField(surface, { bloom: 0.35 });
-    field.begin(pen, 0.7, 'night');
+    field.begin(penFor(field, pen), 0.7, 'night');
     field.add(0, 0, 0, 4, 1, 'warn');
     field.add(1, 1, 0, 4, 1, 'warn');
     field.add(2, 0, 0, 4, 1, 'warn');
@@ -211,7 +224,7 @@ describe('the composite', () => {
     const { surface, pen, palette } = scene();
     const spy = spyOn(surface);
     const field = createLightField(spy.surface);
-    field.begin({ ...pen, surface: spy.surface }, 0.5, 'night');
+    field.begin(penFor(field, pen, spy.surface), 0.5, 'night');
     field.add(0, 0, 0, 4, 1, 'warn');
     field.composite();
     const mask = spy.targets[1];
@@ -227,7 +240,7 @@ describe('the composite', () => {
   it('skips the bloom entirely at bloom 0', () => {
     const { surface, pen } = scene();
     const field = createLightField(surface, { bloom: 0 });
-    field.begin(pen, 1, 'night');
+    field.begin(penFor(field, pen), 1, 'night');
     field.composite();
     expect(opsOf(surface, 'blit')).toHaveLength(1);
     expect(opsOf(surface, 'alpha')).toHaveLength(0);
@@ -236,9 +249,103 @@ describe('the composite', () => {
   it('takes a packed color for the tint as readily as a slot', () => {
     const { surface, pen } = scene();
     const field = createLightField(surface);
-    field.begin(pen, 1, rgba(9, 9, 9));
+    field.begin(penFor(field, pen), 1, rgba(9, 9, 9));
     field.composite();
     expect(opsOf(surface, 'blit')).toHaveLength(2);
+  });
+});
+
+describe('the pen has to be the frame’s pen', () => {
+  it('refuses a pen that was not opened with this field, rather than lighting nothing', () => {
+    // Dropping `light` from the `beginFrame` literal used to disable the entire night in
+    // silence: `renderFrame`'s `pen.light?.composite()` is a no-op, `drawSprite` skips every
+    // `emit` hook, and every pool accumulates into a buffer nobody reads. Worse, the field still
+    // reported `active: true` with a live `count`, so the one thing an author would check to
+    // diagnose it said everything was fine.
+    const { surface, pen } = scene();
+    const field = createLightField(surface);
+    expect(() => field.begin(pen, 1, 'night')).toThrow(RangeError);
+    expect(() => field.begin(pen, 1, 'night')).toThrow(/beginFrame\(\{ …, light \}\)/);
+    // Including at darkness 0, where nothing would have happened anyway: a game that is in
+    // daylight on the frame it wires the field up must not be told it is fine.
+    expect(() => field.begin(pen, 0, 'night')).toThrow(RangeError);
+    expect(field.active).toBe(false);
+  });
+
+  it('refuses a pen carrying a different field, which is the same bug wearing a disguise', () => {
+    const { surface, pen } = scene();
+    const mine = createLightField(surface);
+    const theirs = createLightField(surface);
+    expect(() => mine.begin({ ...pen, light: theirs }, 1, 'night')).toThrow(RangeError);
+    mine.begin({ ...pen, light: mine }, 1, 'night');
+    expect(mine.active).toBe(true);
+  });
+});
+
+describe('configure — every option is live', () => {
+  it('moves the bloom on a running field', () => {
+    const { surface, pen } = scene();
+    const field = createLightField(surface, { bloom: 0.35 });
+    field.configure({ bloom: 0.6 });
+    field.begin(penFor(field, pen), 1, 'night');
+    field.composite();
+    expect(opsOf(surface, 'alpha').map((op) => op.value)).toEqual([0.6, 1]);
+    // …including down to zero, which skips the second blit entirely.
+    surface.reset();
+    field.configure({ bloom: 0 });
+    field.begin(penFor(field, pen), 1, 'night');
+    field.composite();
+    expect(opsOf(surface, 'blit')).toHaveLength(1);
+  });
+
+  it('moves the buffer resolution, taking effect on the next frame that has a night in it', () => {
+    // Pinning `scale` to 1 for a screenshot is the case this exists for. The buffers are not
+    // rebuilt inside `configure`: this field allocates only for a frame that is actually dark,
+    // and that stays true of a field whose resolution just changed.
+    const seen: number[] = [];
+    const { surface, pen } = scene();
+    const spy = {
+      ...surface,
+      createTarget: (w: number, h: number, m?: 'image' | 'light') => {
+        seen.push(w);
+        return surface.createTarget(w, h, m);
+      },
+    };
+    const field = createLightField(spy);
+    field.begin(penFor(field, pen, spy), 1, 'night');
+    expect(seen).toEqual([200, 200]);
+    field.configure({ scale: 1 });
+    expect(seen).toEqual([200, 200]);
+    field.begin(penFor(field, pen, spy), 1, 'night');
+    expect(seen).toEqual([200, 200, 400, 400]);
+  });
+
+  it('moves the falloff every pool defaults to', () => {
+    const { surface, pen } = scene();
+    const spy = spyOn(surface);
+    const field = createLightField(spy.surface, { falloff: 1 });
+    field.begin(penFor(field, pen, spy.surface), 1, 'night');
+    field.add(0, 0, 0, 2, 1, 'warn');
+    expect(opsOf(spy.targets[0] ?? surface, 'ellipse')).toHaveLength(0);
+    field.configure({ falloff: 2 });
+    field.begin(penFor(field, pen, spy.surface), 1, 'night');
+    field.add(0, 0, 0, 2, 1, 'warn');
+    // The hard core the plateau adds, which a pool at falloff 1 does not have.
+    expect(opsOf(spy.targets[0] ?? surface, 'ellipse')).toHaveLength(1);
+  });
+
+  it('keeps what it is not given, and refuses a bad value in the words construction uses', () => {
+    const { surface, pen } = scene();
+    const field = createLightField(surface, { bloom: 0.5, scale: 0.25 });
+    field.configure({});
+    expect(() => field.configure({ scale: 0 })).toThrow(/lightField.configure: expected scale in \(0, 1\]/);
+    expect(() => field.configure({ falloff: 0.5 })).toThrow(/falloff/);
+    expect(() => field.configure({ bloom: 2 })).toThrow(/bloom/);
+    // Nothing was written: a rejected configure leaves the field exactly as it was rather than
+    // half-moved, so the bloom below is still the one it was built with.
+    field.begin(penFor(field, pen), 1, 'night');
+    field.composite();
+    expect(opsOf(surface, 'alpha').map((op) => op.value)).toEqual([0.5, 1]);
   });
 });
 
@@ -248,10 +355,10 @@ describe('lifetime', () => {
     // adds a `removeLight` has reintroduced the bug the design removed.
     const { surface, pen } = scene();
     const field = createLightField(surface);
-    field.begin(pen, 1, 'night');
+    field.begin(penFor(field, pen), 1, 'night');
     field.add(0, 0, 0, 4, 1, 'warn');
     expect(field.count).toBe(1);
-    field.begin(pen, 1, 'night');
+    field.begin(penFor(field, pen), 1, 'night');
     expect(field.count).toBe(0);
   });
 
@@ -266,11 +373,34 @@ describe('lifetime', () => {
       },
     };
     const field = createLightField(spy);
-    field.begin({ ...pen, surface: spy }, 1, 'night');
+    field.begin(penFor(field, pen, spy), 1, 'night');
     expect(seen).toEqual([200, 200]);
     field.resize(400, 300);
     expect(seen).toEqual([200, 200]);
     field.resize(800, 600);
+    expect(seen).toEqual([200, 200, 400, 400]);
+  });
+
+  it('resizes itself on the next frame, so forgetting resize costs a reallocation and no bug', () => {
+    // `resize` was documented as a step an author must remember, which sends people hunting a
+    // bug that does not exist. `begin` sizes the buffers to `pen.surface` on every active frame,
+    // and this asserts that the self-heal is real rather than merely likely.
+    const seen: number[] = [];
+    const { pen } = scene();
+    const small = createRecordingSurface(400, 300);
+    const large = createRecordingSurface(800, 600);
+    const watch = (s: RecordingSurface): RecordingSurface => ({
+      ...s,
+      createTarget: (w: number, h: number, m?: 'image' | 'light') => {
+        seen.push(w);
+        return s.createTarget(w, h, m);
+      },
+    });
+    const field = createLightField(watch(small));
+    field.begin(penFor(field, pen, watch(small)), 1, 'night');
+    expect(seen).toEqual([200, 200]);
+    // No `resize` call anywhere between these two frames.
+    field.begin(penFor(field, pen, watch(large)), 1, 'night');
     expect(seen).toEqual([200, 200, 400, 400]);
   });
 
@@ -293,14 +423,14 @@ describe('lifetime', () => {
       },
     };
     const field = createLightField(spy, { scale: 0.1 });
-    field.begin({ ...pen, surface: spy }, 1, 'night');
+    field.begin(penFor(field, pen, spy), 1, 'night');
     expect(seen).toEqual([1, 1, 1, 1]);
   });
 
   it('disposes both buffers and goes inactive', () => {
     const { surface, pen } = scene();
     const field = createLightField(surface);
-    field.begin(pen, 1, 'night');
+    field.begin(penFor(field, pen), 1, 'night');
     field.dispose();
     expect(field.active).toBe(false);
     surface.reset();

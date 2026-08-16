@@ -95,6 +95,7 @@ export {
   NIGHT,
   PALETTE_STEPS,
   createPalette,
+  extendStops,
   lerpPalette,
   paletteVars,
 } from './palette.js';
@@ -147,8 +148,16 @@ export {
   isoTile,
   isoWall,
   levelsToPx,
+  pxToLevels,
 } from './solids.js';
 export type { BoxOpts } from './solids.js';
+
+// The heightfield primitive. `iso` ships terrain with four corner heights per tile and the rest
+// of the solid kit draws flat things at one `z`; `isoTerrain` is the whole of what sits between
+// those two facts, and it is here rather than in a game because the relief term's *sign* is
+// invisible when it is wrong.
+
+export { isoTerrain } from './terrain.js';
 
 export { contactShadow, wash } from './shadow.js';
 

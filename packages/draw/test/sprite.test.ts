@@ -11,7 +11,8 @@
  * a sprite grows a mast at level 3.
  */
 
-import { boxSilhouette, pointInPolygon } from '@lattice/iso';
+import type { Vec2 } from '@lattice/core';
+import { boxSilhouette, gridToScreen, pointInPolygon } from '@lattice/iso';
 import type { Rect, Volume } from '@lattice/iso';
 import { describe, expect, it } from 'vitest';
 import { rgba } from '../src/color.js';
@@ -162,8 +163,9 @@ describe('drawSprite', () => {
     });
     const { surface, pen } = scene();
     const light = createLightField(surface);
-    light.begin(pen, 1, 'night');
-    drawSprite({ ...pen, light }, def, 0, 0, variant({ seed: 5 }));
+    const framePen = { ...pen, light };
+    light.begin(framePen, 1, 'night');
+    drawSprite(framePen, def, 0, 0, variant({ seed: 5 }));
     expect(seen).toHaveLength(3);
     expect(new Set(seen).size).toBe(3);
   });
@@ -186,12 +188,13 @@ describe('drawSprite', () => {
     expect(emitted).toBe(0);
 
     const field = createLightField(surface);
-    field.begin(pen, 0, 'night');
-    drawSprite({ ...pen, light: field }, lamp, 0, 0, VARIANT_ZERO);
+    const framePen = { ...pen, light: field };
+    field.begin(framePen, 0, 'night');
+    drawSprite(framePen, lamp, 0, 0, VARIANT_ZERO);
     expect(emitted).toBe(0);
 
-    field.begin(pen, 0.9, 'night');
-    drawSprite({ ...pen, light: field }, lamp, 0, 0, VARIANT_ZERO);
+    field.begin(framePen, 0.9, 'night');
+    drawSprite(framePen, lamp, 0, 0, VARIANT_ZERO);
     expect(emitted).toBe(1);
     expect(field.count).toBe(1);
   });
@@ -293,8 +296,9 @@ describe('drawGhost', () => {
     });
     const { surface, pen } = scene();
     const field = createLightField(surface);
-    field.begin(pen, 1, 'night');
-    drawGhost({ ...pen, light: field }, def, 0, 0, VARIANT_ZERO, true);
+    const framePen = { ...pen, light: field };
+    field.begin(framePen, 1, 'night');
+    drawGhost(framePen, def, 0, 0, VARIANT_ZERO, true);
     expect(live).toBe(0);
   });
 
@@ -483,5 +487,252 @@ describe('the measuring replay', () => {
     spriteVolume(def, VARIANT_ZERO, volume);
     expect(volume.zPx).toBe(-LEVEL_H);
     expect(volume.hPx).toBe(LEVEL_H * 2);
+  });
+});
+
+/**
+ * The ground under a sprite — this package's half of the elevation contract with `iso`.
+ *
+ * `iso` produces elevations in world pixels and `draw` draws in storeys, and until `drawSprite`
+ * took a `zPx` there was no honest way for the two to meet: every sprite on a heightfield floated
+ * or sank by its own terrain height, and the exhibit that found it smuggled the number through
+ * `Variant.level` and documented the abuse in its own source.
+ *
+ * Both packages had full coverage and no shared test, which is exactly how that shipped. So the
+ * assertions below are written against `iso`'s own projection — where does `gridToScreen` put a
+ * point at this elevation — rather than against the arithmetic in `sprite.ts`, and they hold
+ * whatever that arithmetic becomes.
+ */
+describe('the ground under a sprite', () => {
+  /** The same rounding the recording backend applies, so an expectation and an op compare
+   *  exactly rather than nearly. */
+  function r3(value: number): number {
+    const scaled = Math.round(value * 1000) / 1000;
+    return scaled === 0 ? 0 : scaled;
+  }
+
+  const at: Vec2 = { x: 0, y: 0 };
+
+  /** A footprint with nothing but its contact shadow — the primitive that had no elevation at
+   *  all, and the one whose whole job is to say *the object is here*. */
+  const PAD: SpriteDef = defineSprite({
+    id: 'pad',
+    w: 2,
+    d: 2,
+    massing: (s) => s.shadow(0, 0, 2, 2),
+  });
+
+  it('stands the massing on the ground iso reports, at every height', () => {
+    // The south-base corner of a one-tile box is the grid point (gx+1, gy+1) at the ground
+    // elevation. Where `gridToScreen` puts that point is where the sprite's base has to be, and
+    // the stroke's fourth point is where it actually is. Below sea level too: a jetty on a shelf
+    // and a pit are the same case with the sign flipped.
+    for (const groundPx of [0, 8, 26, 123.5, 481, -40]) {
+      const { surface, pen, camera } = scene();
+      drawSprite(pen, SHED, 2, 3, VARIANT_ZERO, groundPx);
+      const xy = firstOp(surface, 'stroke').xy;
+      gridToScreen(camera, 3, 4, groundPx, at);
+      expect(xy[6], `x at ground ${String(groundPx)}`).toBe(r3(at.x));
+      expect(xy[7], `y at ground ${String(groundPx)}`).toBe(r3(at.y));
+    }
+  });
+
+  it('is a whole-sprite offset: the shape is unchanged, only its place', () => {
+    // Every point moves by exactly `-zPx · zoom` in screen y and by nothing in x, because
+    // elevation is a screen-y shift in this projection and not a third axis.
+    const flat = scene({ zoom: 2 });
+    drawSprite(flat.pen, TOWER, 1, 1, VARIANT_ZERO);
+    const raised = scene({ zoom: 2 });
+    drawSprite(raised.pen, TOWER, 1, 1, VARIANT_ZERO, 100);
+    expect(raised.surface.ops).toHaveLength(flat.surface.ops.length);
+    let compared = 0;
+    flat.surface.ops.forEach((op, i) => {
+      const lifted = raised.surface.ops[i];
+      expect(lifted?.op).toBe(op.op);
+      expect(lifted?.colors).toEqual(op.colors);
+      // `poly` and `stroke` alone, because they are the two ops whose `xy` is nothing but a
+      // vertex list: an ellipse's third and fourth slots are radii, and a radius that moved
+      // with the ground would be a different bug entirely.
+      if (op.op !== 'poly' && op.op !== 'stroke') return;
+      for (let k = 0; k < op.xy.length; k += 2) {
+        expect(lifted?.xy[k]).toBe(op.xy[k]);
+        // Rounded, because both sides are already three-decimal values and their difference in
+        // binary is 199.99999999999997 as often as it is 200.
+        expect(r3((lifted?.xy[k + 1] ?? 0) - (op.xy[k + 1] ?? 0))).toBe(-100 * 2);
+        compared += 1;
+      }
+    });
+    expect(compared).toBeGreaterThan(20);
+  });
+
+  it('crosses into storeys once, so a whole number of them is exactly a lifted massing', () => {
+    // `LEVEL_H` world pixels of ground and one extra storey on every solid are the same picture,
+    // op for op — which is the statement that the ground enters the massing as an offset and not
+    // as a second coordinate system.
+    const HUT_UP: SpriteDef = defineSprite({
+      id: 'hut-up',
+      w: 1,
+      d: 1,
+      massing: (s) => s.box(0, 0, 1, 1, { color: 'brand', h: 1, z: 2 }),
+    });
+    const ground = scene();
+    drawSprite(ground.pen, SHED, 5, 2, VARIANT_ZERO, levelsToPx(2));
+    const storeys = scene();
+    drawSprite(storeys.pen, HUT_UP, 5, 2, VARIANT_ZERO);
+    expect(ground.surface.ops).toEqual(storeys.surface.ops);
+  });
+
+  it('lands the contact shadow on the hill rather than in the valley', () => {
+    // The gap that detached every shadow in the kit from the building above it: `contactShadow`
+    // had no elevation, so a building climbed the hill and its shadow stayed at sea level.
+    const { surface, pen, camera } = scene();
+    drawSprite(pen, PAD, 4, 4, VARIANT_ZERO, 96);
+    const op = firstOp(surface, 'softEllipse');
+    gridToScreen(camera, 5, 5, 96, at);
+    expect(op.xy[0]).toBe(r3(at.x));
+    expect(op.xy[1]).toBe(r3(at.y));
+  });
+
+  it('lets a massing raise a shadow above its own ground, and defaults to the ground', () => {
+    // A shadow under a terrace the sprite itself built. Default 0 is the ground, wherever
+    // `drawSprite` was told that is, so no massing names its elevation to be grounded.
+    const TERRACE: SpriteDef = defineSprite({
+      id: 'terrace',
+      w: 1,
+      d: 1,
+      massing: (s) => s.shadow(0, 0, 1, 1, 1, 3),
+    });
+    const { surface, pen, camera } = scene();
+    drawSprite(pen, TERRACE, 0, 0, VARIANT_ZERO, 50);
+    gridToScreen(camera, 0.5, 0.5, 50 + levelsToPx(3), at);
+    expect(firstOp(surface, 'softEllipse').xy[1]).toBe(r3(at.y));
+  });
+
+  it('hands animate and emit the pixels iso produced, unconverted', () => {
+    // `animate` draws through the free primitives, which nothing can stand on the ground for it,
+    // and `emit` feeds `LightField.add`, whose third argument is already world pixels. Both get
+    // the number `drawSprite` was given, and it is the last parameter of each so that inserting
+    // it could not silently rebind `v` in every animator ever written.
+    const seen: number[] = [];
+    const WATCH: SpriteDef = defineSprite({
+      id: 'watch',
+      w: 1,
+      d: 1,
+      massing: () => undefined,
+      animate: (_pen, _gx, _gy, _v, _rng, zPx) => seen.push(zPx),
+      emit: (field, gx, gy, _v, _rng, zPx) => {
+        seen.push(zPx);
+        field.add(gx, gy, zPx, 2, 1, 'warn');
+      },
+    });
+    const { surface, pen } = scene();
+    const light = createLightField(surface);
+    const framePen = { ...pen, light };
+    light.begin(framePen, 0.5, 'night');
+    drawSprite(framePen, WATCH, 0, 0, VARIANT_ZERO, 137.5);
+    expect(seen).toEqual([137.5, 137.5]);
+  });
+
+  it('leaves a flat game paying nothing: the default is sea level', () => {
+    const flat = scene();
+    drawSprite(flat.pen, TOWER, 2, 2, VARIANT_ZERO);
+    const explicit = scene();
+    drawSprite(explicit.pen, TOWER, 2, 2, VARIANT_ZERO, 0);
+    expect(flat.surface.ops).toEqual(explicit.surface.ops);
+  });
+
+  it('grounds a placement ghost too, above the tile it is testing rather than above the sea', () => {
+    // A ghost that ignored the ground would let a player judge the fit of a building against
+    // ground it will not stand on.
+    const sea = scene();
+    drawGhost(sea.pen, SHED, 0, 0, VARIANT_ZERO, true);
+    const hill = scene();
+    drawGhost(hill.pen, SHED, 0, 0, VARIANT_ZERO, true, 60);
+    const low = firstOp(sea.surface, 'stroke').xy[1] as number;
+    const high = firstOp(hill.surface, 'stroke').xy[1] as number;
+    // Up the screen by the ground, and the ghost's own clearance above it is untouched.
+    expect(r3(low - high)).toBe(60);
+  });
+
+  it('grounds a selection rim, keeping the z-fight ladder separate from the terrain', () => {
+    // Two facts in two units: `SELECT_LIFT` is this package's anti-flicker constant and the
+    // ground is `iso`'s terrain. Adding them at the call site is how the constant ends up
+    // multiplied by a height.
+    const { surface, pen, camera } = scene();
+    drawFootprint(pen, 0, 0, 1, 1, 'ok', SELECT_LIFT, 78);
+    gridToScreen(camera, 0, 0, 78 + levelsToPx(SELECT_LIFT), at);
+    expect(firstOp(surface, 'stroke').xy[1]).toBe(r3(at.y));
+  });
+
+  it('adds the ground to a volume in pixels, exactly, because picking compares numbers', () => {
+    // The one path that must not go through storeys and back: `boxSilhouette` is handed this
+    // number, and a `Volume` whose base is a storey count multiplied out is an outline that is
+    // *nearly* right. 123.5 is deliberately not a multiple of `LEVEL_H`.
+    const volume: Volume = { ox: 0, oy: 0, w: 0, d: 0, zPx: 0, hPx: 0 };
+    spriteVolume(SHED, VARIANT_ZERO, volume, 123.5);
+    expect(volume.zPx).toBe(123.5);
+    expect(volume.hPx).toBe(LEVEL_H);
+    const basement = defineSprite({
+      id: 'sunk',
+      w: 1,
+      d: 1,
+      massing: (s) => s.box(0, 0, 1, 1, { color: 'brand', h: 2, z: -1 }),
+    });
+    spriteVolume(basement, VARIANT_ZERO, volume, 100);
+    expect(volume.zPx).toBe(100 - LEVEL_H);
+  });
+
+  it('so a tap on a building up a hill hits the building and not the air above it', () => {
+    // End to end, and the failure it closes: the picture is right, the taps land in mid-air, and
+    // both packages' suites stay green because neither can see the other's half.
+    const { pen, camera } = scene();
+    const volume: Volume = { ox: 0, oy: 0, w: 0, d: 0, zPx: 0, hPx: 0 };
+    const sil = new Float64Array(12);
+    const groundPx = 130;
+    drawSprite(pen, SHED, 3, 3, VARIANT_ZERO, groundPx);
+    spriteVolume(SHED, VARIANT_ZERO, volume, groundPx);
+    boxSilhouette(camera, 3, 3, volume, sil);
+    // The middle of the box: half a storey up from the ground, at the center of the footprint.
+    gridToScreen(camera, 3.5, 3.5, groundPx + LEVEL_H / 2, at);
+    expect(pointInPolygon(at.x, at.y, sil, 6)).toBe(true);
+    // And the volume computed at sea level does not contain it, which is the bug.
+    spriteVolume(SHED, VARIANT_ZERO, volume);
+    boxSilhouette(camera, 3, 3, volume, sil);
+    expect(pointInPolygon(at.x, at.y, sil, 6)).toBe(false);
+  });
+
+  it('shifts screen bounds by the ground and leaves the measured height alone', () => {
+    // `spriteBounds` is a position and moves; `spriteHeightPx` is a height and does not. The
+    // caller adds the ground to the second itself, which is the same sum in the same unit.
+    const flat: Rect = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+    const raised: Rect = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+    const { pen, camera } = scene({ zoom: 2 });
+    spriteBounds(TOWER, VARIANT_ZERO, camera, 0, 0, flat);
+    spriteBounds(TOWER, VARIANT_ZERO, camera, 0, 0, raised, 50);
+    void pen;
+    expect(raised.minX).toBe(flat.minX);
+    expect(raised.maxX).toBe(flat.maxX);
+    expect(flat.minY - raised.minY).toBe(50 * 2);
+    expect(flat.maxY - raised.maxY).toBe(50 * 2);
+    expect(spriteHeightPx(TOWER, VARIANT_ZERO)).toBe(spriteHeightPx(TOWER, VARIANT_ZERO));
+  });
+
+  it('refuses a ground that would make a sprite silently absent', () => {
+    // A NaN elevation propagates into every coordinate and paints nothing, on one tile, on one
+    // seed — reported as "the save did not load", with no other symptom. It arrives from a
+    // heightfield sampled at a position the game computed, which is exactly the chain that
+    // produces one.
+    const { pen, camera } = scene();
+    const volume: Volume = { ox: 0, oy: 0, w: 0, d: 0, zPx: 0, hPx: 0 };
+    const rect: Rect = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+    expect(() => drawSprite(pen, SHED, 0, 0, VARIANT_ZERO, Number.NaN)).toThrow(
+      /drawSprite: expected a finite ground elevation in world pixels, got NaN/,
+    );
+    expect(() => drawGhost(pen, SHED, 0, 0, VARIANT_ZERO, true, Infinity)).toThrow(RangeError);
+    expect(() => drawFootprint(pen, 0, 0, 1, 1, 'ok', 0, Number.NaN)).toThrow(RangeError);
+    expect(() => spriteVolume(SHED, VARIANT_ZERO, volume, Number.NaN)).toThrow(RangeError);
+    expect(() => spriteBounds(SHED, VARIANT_ZERO, camera, 0, 0, rect, -Infinity)).toThrow(
+      RangeError,
+    );
   });
 });

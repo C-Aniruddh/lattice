@@ -47,6 +47,7 @@
  * a caller holds a sorted order and is tempted to improve it.
  */
 
+import { TILE_H } from '@lattice/iso';
 import type { Camera, DepthSorter, Rect, TileRange } from '@lattice/iso';
 import type { Pen } from './surface.js';
 
@@ -100,8 +101,36 @@ export const PASS_NAMES: readonly [
 export interface Passes {
   /** `visible` is `camera.visibleWorldBounds()` — a gradient needs the world box, not tiles. */
   readonly backdrop?: ((pen: Pen, visible: Readonly<Rect>) => void) | undefined;
-  /** `visible` is `camera.visibleTileBounds()`, already computed and already margined. */
+  /** `visible` is `camera.visibleTileBounds()`, already computed and margined by
+   *  {@link Passes.maxHeightPx}. */
   readonly terrain?: ((pen: Pen, visible: Readonly<TileRange>) => void) | undefined;
+  /**
+   * The tallest ground on the map, in **world pixels** — the margin the Terrain cull needs.
+   *
+   * `renderFrame` computes the visible tile range for you, and it computes it **on the ground
+   * plane**, because a camera has no idea what a heightfield is. A tile whose corner stands
+   * `zPx` above sea level is painted `zPx` further up the screen, so it is on screen while the
+   * flat tile at its address is already off the bottom — and the range, honestly answering the
+   * question it was asked, leaves it out. The symptom is a summit that vanishes the moment its
+   * base leaves the bottom edge, with nothing missing anywhere else in the frame.
+   *
+   * Taking the cull away from a game and then not exposing its one parameter is the failure this
+   * field exists to close: **the one place this package takes ownership from the game is the one
+   * place the game had the number.** A game reads it off its own generator —
+   * `maxUnits * field.stepPx` — and states it once here, on the `Passes` object it hoists at
+   * setup.
+   *
+   * *The conversion, so an over- or under-margin can be reasoned about rather than tuned:* screen
+   * `y` advances by `HALF_H` per unit of `gx + gy`, so a `zPx` lift is worth `zPx / HALF_H` of
+   * `gx + gy`. Growing a **box** range by one tile on each of its two axes grows `gx + gy` by
+   * two, so the margin is `zPx / (2 · HALF_H)` — that is, `zPx / TILE_H`, rounded up. Which is
+   * exactly what `Camera.visibleTileBounds` documents its `marginTiles` to be.
+   *
+   * Omit it on flat ground and nothing is margined and nothing is wasted. Costs one extra ring
+   * of tiles per unit of height, in a loop that is already generous by roughly 2× — see
+   * `Camera.visibleTileBounds`.
+   */
+  readonly maxHeightPx?: number | undefined;
   /**
    * `order` is sorted and culled before this is called. **Walk it forwards:**
    * `for (i = 0; i < order.count; i++) paint(myItems[order.indexAt(i)])`.
@@ -135,7 +164,8 @@ let frameDepth = 0;
 /**
  * Run one frame's passes in the fixed order.
  *
- * It calls `camera.visibleWorldBounds` before Backdrop, `visibleTileBounds` before Terrain,
+ * It calls `camera.visibleWorldBounds` before Backdrop, `visibleTileBounds` — margined by
+ * {@link Passes.maxHeightPx} — before Terrain,
  * `order.sort(camera)` immediately before Solids, and `pen.light.composite()` between Placement
  * and Overlay — **and the light composite is not a callback**, so there is no way for a game to
  * put the night mask over its own HUD.
@@ -150,10 +180,19 @@ let frameDepth = 0;
  * @throws RangeError if a `solids` pass is supplied without an `order`. Silently skipping the
  *   pass would mean a frame that draws terrain and nothing else, which reads as "the save did
  *   not load" and has no other symptom.
+ * @throws RangeError if `passes.maxHeightPx` is negative or not finite. A negative margin
+ *   *shrinks* the terrain range, which paints a strip of background along two edges of the
+ *   screen and looks like a camera bug.
  */
 export function renderFrame(pen: Pen, passes: Passes, order?: DepthSorter): void {
   if (passes.solids !== undefined && order === undefined) {
     throw new RangeError('renderFrame: a solids pass needs the DepthSorter you filled this frame');
+  }
+  const maxHeightPx = passes.maxHeightPx ?? 0;
+  if (!(Number.isFinite(maxHeightPx) && maxHeightPx >= 0)) {
+    throw new RangeError(
+      `renderFrame: expected passes.maxHeightPx to be a finite number >= 0, got ${String(passes.maxHeightPx)}`,
+    );
   }
   const camera: Camera = pen.camera;
   const level = frameDepth;
@@ -173,7 +212,9 @@ export function renderFrame(pen: Pen, passes: Passes, order?: DepthSorter): void
         range = { gx0: 0, gy0: 0, gx1: 0, gy1: 0 };
         tileScratch[level] = range;
       }
-      passes.terrain(pen, camera.visibleTileBounds(range));
+      // `Math.ceil`, so half a tile of relief still buys a whole tile of margin: the range is
+      // integral and rounding down is the one direction that loses geometry.
+      passes.terrain(pen, camera.visibleTileBounds(range, Math.ceil(maxHeightPx / TILE_H)));
     }
     if (passes.solids !== undefined && order !== undefined) {
       order.sort(camera);

@@ -17,8 +17,10 @@
  */
 
 import { hashStep, hashString } from '@lattice/core';
-import { createCamera } from '@lattice/iso';
+import { TileGrid, createCamera } from '@lattice/iso';
+import type { HeightField } from '@lattice/iso';
 import { bench, describe } from 'vitest';
+import { isoTerrain } from '../src/terrain.js';
 import { BASE_SLOTS, DAY, NIGHT, createPalette } from '../src/palette.js';
 import { beginFrame } from '../src/surface.js';
 import type { Bitmap, Pen } from '../src/surface.js';
@@ -201,8 +203,22 @@ describe('a frame of buildings at night', () => {
 
 describe('terrain', () => {
   const { pen } = stage(1, 3);
+  // A real heightfield rather than an arithmetic one: the Terrain pass reads four vertices per
+  // tile through a `TileSource`, and a closure over a multiply would flatter the number by
+  // measuring everything except the lookup a game actually pays for.
+  const heights = new TileGrid(61, 61, { bits: 8 });
+  heights.fillFrom((gx, gy) => (gx * 7 + gy * 13) % 9);
+  const field: HeightField = { heights, stepPx: 8 };
+
   bench('2,400 tile diamonds', () => {
     for (let i = 0; i < 2400; i++) isoTile(pen, i % 60, Math.floor(i / 60), 'ground');
+  });
+
+  // The same 2,400 tiles with four corner heights each, so the price of relief is a subtraction
+  // against the row above rather than a number on its own. A heightfield game pays it on every
+  // visible tile of every frame, which makes this the widest loop in the package.
+  bench('2,400 heightfield quads', () => {
+    for (let i = 0; i < 2400; i++) isoTerrain(pen, field, i % 60, Math.floor(i / 60), 'ground');
   });
 });
 

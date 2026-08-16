@@ -13,6 +13,7 @@
 import { HALF_H, HALF_W } from '@lattice/iso';
 import type { Ink } from './color.js';
 import { SHADE_TINT, withAlpha } from './color.js';
+import { levelsToPx } from './solids.js';
 import type { Pen } from './surface.js';
 
 /** How far a contact shadow spreads past the footprint it sits under. Just over 1, so the
@@ -32,6 +33,14 @@ const SHADOW_ALPHA = 0.34;
  *
  * The ellipse is 2:1 like everything else lying flat in this world. `strength` at or below 0
  * draws nothing, so a building that is being carried by a crane simply passes 0.
+ *
+ * @param z The ground the shadow lands on, in **storeys** — like every other height in this
+ *   package, and unlike `iso`, whose elevations are all world pixels. Without it every shadow is
+ *   painted at sea level, so on a heightfield the building climbs the hill and its shadow stays
+ *   in the valley: the one part of a sprite whose whole job is to say *the object is here* is
+ *   then the one part pointing somewhere else. A ground elevation read out of `iso` is pixels —
+ *   convert it with `pxToLevels`, or let {@link drawSprite} do it, which is where a sprite's
+ *   ground crosses over exactly once.
  */
 export function contactShadow(
   pen: Pen,
@@ -40,13 +49,14 @@ export function contactShadow(
   w: number,
   d: number,
   strength = 1,
+  z = 0,
 ): void {
   if (!(strength > 0)) return;
   const cam = pen.camera;
   const cgx = gx + w / 2;
   const cgy = gy + d / 2;
   const cx = cam.toScreenX((cgx - cgy) * HALF_W) + pen.snapX;
-  const cy = cam.toScreenY((cgx + cgy) * HALF_H) + pen.snapY;
+  const cy = cam.toScreenY((cgx + cgy) * HALF_H - levelsToPx(z)) + pen.snapY;
   const rx = ((w + d) / 2) * HALF_W * cam.zoom * SHADOW_SPREAD;
   const alpha = strength > 1 ? 1 : strength;
   pen.surface.softEllipse(

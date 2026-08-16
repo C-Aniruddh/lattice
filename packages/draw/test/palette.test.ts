@@ -16,6 +16,7 @@ import {
   NIGHT,
   PALETTE_STEPS,
   createPalette,
+  extendStops,
   lerpPalette,
   paletteVars,
 } from '../src/palette.js';
@@ -193,5 +194,81 @@ describe('the reference stop sets', () => {
         ((c >>> 24) & 255) + ((c >>> 16) & 255) + ((c >>> 8) & 255);
       expect(brightness(night)).toBeGreaterThan(brightness(day) * 0.6);
     }
+  });
+});
+
+describe('extendStops — a game slot that rolls with the rest', () => {
+  it('adds a slot to a frozen stop set without touching it', () => {
+    const extended = extendStops(DAY, { sand: rgba(232, 217, 168) });
+    expect(extended['sand']).toBe(rgba(232, 217, 168));
+    expect(extended['sky']).toBe(DAY['sky']);
+    expect(Object.keys(DAY)).not.toContain('sand');
+    expect(Object.isFrozen(extended)).toBe(true);
+  });
+
+  it('satisfies the same-slots rule, which is the whole point of it', () => {
+    // `Palette.lerp` requires both stop sets to define exactly the same slots, and that rule is
+    // right — a half-defined night palette is how one thing stays gold at midnight, silently.
+    // Before this function there was no way to satisfy it *and* add a slot to the kit's own
+    // frozen sets, so the exhibit's sand lived outside the palette and did not roll at dusk.
+    const day = extendStops(DAY, { sand: rgba(232, 217, 168) });
+    const night = extendStops(NIGHT, { sand: rgba(93, 100, 120) });
+    const p = createPalette(day);
+    expect(() => p.lerp(day, NIGHT, 0.5)).toThrow(/slot 'sand' is in one stop set and not the other/);
+    p.lerp(day, night, 1);
+    expect(p.get('sand')).toBe(rgba(93, 100, 120));
+    p.lerp(day, night, 0);
+    expect(p.get('sand')).toBe(rgba(232, 217, 168));
+  });
+
+  it('brings a slot the palette had never heard of into it, mid-transition', () => {
+    // A game that started from the kit's defaults and adds its own color later: the slot arrives
+    // through the lerp, `keys()` notices, and `get` stops throwing.
+    const p = createPalette(BASE_SLOTS);
+    expect(() => p.get('sand')).toThrow(RangeError);
+    const day = extendStops(DAY, { sand: rgba(200, 180, 120) });
+    const dusk = extendStops(DUSK, { sand: rgba(100, 90, 60) });
+    p.lerp(dusk, day, 1);
+    expect(p.get('sand')).toBe(rgba(200, 180, 120));
+    expect(p.keys()).toContain('sand');
+  });
+
+  it('lets extra replace a base slot, because a biome recolouring ground is legitimate', () => {
+    const extended = extendStops(DAY, { ground: rgba(1, 2, 3) });
+    expect(extended['ground']).toBe(rgba(1, 2, 3));
+    expect(Object.keys(extended)).toHaveLength(Object.keys(DAY).length);
+  });
+
+  it('normalises to an unsigned 32-bit color like every other entry point', () => {
+    const extended = extendStops({ a: 0 }, { b: -1 });
+    expect(extended['b']).toBe(0xffffffff);
+  });
+
+  it('hoisted once, a transition writes nothing and bumps nothing on a frame that repeats it', () => {
+    // The trap worth stating: `Palette.lerp` compares its stop sets by identity, so a set
+    // rebuilt inside the render callback is a new object every frame — every frame then bumps
+    // `rev`, and `rev` is what every cache in the kit keys on. The symptom is not a wrong color;
+    // it is a game that gets slower at dusk and stays slow.
+    const day = extendStops(DAY, { sand: rgba(9, 9, 9) });
+    const night = extendStops(NIGHT, { sand: rgba(1, 1, 1) });
+    const p = createPalette(day);
+    p.lerp(day, night, 0.5);
+    const settled = p.rev;
+    p.lerp(day, night, 0.5);
+    expect(p.rev).toBe(settled);
+    // …and the same colors through a set rebuilt per call do bump it, every time.
+    p.lerp(extendStops(DAY, { sand: rgba(9, 9, 9) }), extendStops(NIGHT, { sand: rgba(1, 1, 1) }), 0.5);
+    p.lerp(extendStops(DAY, { sand: rgba(9, 9, 9) }), extendStops(NIGHT, { sand: rgba(1, 1, 1) }), 0.5);
+    expect(p.rev).toBe(settled + 2);
+  });
+
+  it('reaches the DOM seam too, so the HUD’s sand is the world’s sand', () => {
+    const day = extendStops(DAY, { sand: rgba(232, 217, 168) });
+    const night = extendStops(NIGHT, { sand: rgba(93, 100, 120) });
+    const vars = lerpPalette(day, night, 0);
+    expect(vars['sand']).toBe(hexOf(rgba(232, 217, 168)));
+    const p = createPalette(day);
+    p.lerp(day, night, 0.5);
+    expect(paletteVars(p)['sand']).toBe(lerpPalette(day, night, 0.5)['sand']);
   });
 });

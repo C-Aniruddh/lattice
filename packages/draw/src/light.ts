@@ -43,7 +43,16 @@ import type { Ink, Rgba } from './color.js';
 import { withAlpha } from './color.js';
 import type { Pen, RenderTarget, Surface } from './surface.js';
 
-/** How a light field is configured. Every default is a measured trade, not a preference. */
+/**
+ * How a light field is configured. Every default is a measured trade, not a preference.
+ *
+ * **Every field here is live**: the same bag goes to {@link createLightField} and to
+ * {@link LightField.configure}, so a quality toggle, a screenshot mode or a control panel moves
+ * any of them on a running field. `falloff` was per-call on {@link LightField.add} from the
+ * start; that the other two were frozen at construction was an accident of where they happened
+ * to be read, and an option that cannot move is an option a game has to rebuild the world to
+ * change.
+ */
 export interface LightFieldOpts {
   /**
    * Buffer resolution relative to the surface. Default 0.5.
@@ -88,8 +97,37 @@ export interface LightField {
    *
    * `tint` is the color the dark goes: an {@link Ink}, so a slot name lets the dark itself
    * recolour with the palette.
+   *
+   * @throws RangeError if `pen.light` is not this field — which is what happens when `light` is
+   *   left out of the `beginFrame` literal. **That omission used to disable the entire night in
+   *   silence**: `renderFrame`'s `pen.light?.composite()` becomes a no-op, `drawSprite` skips
+   *   every `emit` hook, and every `add` accumulates into a buffer nobody ever reads. There is no
+   *   error, no warning and no night — and the field still reports `active: true` with a live
+   *   `count`, so the one thing an author would check to diagnose it says everything is fine.
+   *   The check costs one reference comparison per frame and turns all of that into a sentence
+   *   on the first frame. It is also the reason a `subPen` may not be begun: a sub-pen carries no
+   *   light on purpose, so that a sprite drawn into a thumbnail cannot post a pool into the
+   *   valley's night mask.
    */
   begin(pen: Pen, darkness: number, tint: Ink): void;
+
+  /**
+   * Move any of the field's options on a running field. Omitted fields keep their current value.
+   *
+   * A quality slider, a screenshot mode that pins `scale` to 1, a `bloom` a player can turn
+   * down. Validated in exactly the same words as construction, so a bad number is refused
+   * identically wherever it arrives from.
+   *
+   * **Between frames, not inside one.** `scale` is baked into every pool coordinate as it
+   * accumulates, so changing it after {@link LightField.begin} and before
+   * {@link LightField.composite} puts half a frame's pools at one resolution and half at
+   * another. A new `scale` resizes the buffers on the next `begin` rather than here, because
+   * this field allocates only for a frame that has a night in it — and that stays true of a
+   * field whose resolution has just changed.
+   *
+   * @throws RangeError on the same three bad values {@link createLightField} refuses.
+   */
+  configure(opts: LightFieldOpts): void;
 
   /**
    * A pool of light **lying in the ground plane** at a grid position, `radiusTiles` across.
@@ -143,8 +181,21 @@ export interface LightField {
    */
   composite(): void;
 
-  /** Rebuild the buffers for a new surface size. Cheap to call every frame; it only acts when
-   *  the size actually changed. */
+  /**
+   * Rebuild the buffers for a new surface size — **optional, and safe to forget.**
+   *
+   * {@link LightField.begin} already sizes the buffers to `pen.surface` on every active frame,
+   * so a field whose surface changed self-heals on the next frame that has a night in it, and
+   * forgetting this call costs one reallocation on that frame and nothing else. It was once
+   * documented as a step an author must remember, which is worse than useless: it sends people
+   * hunting a bug that does not exist, and the real symptom of skipping it — none — is
+   * indistinguishable from success.
+   *
+   * It is kept for the one case where it earns its line: a game that resizes far more often
+   * than it renders, a window drag, can pay for the reallocation at the moment it knows about
+   * rather than inside the next frame. It only acts when the size actually changed, and it does
+   * nothing at all before the field has buffers.
+   */
   resize(width: number, height: number): void;
   /** Dispose both buffers. A field that outlives its surface leaks GPU memory. */
   dispose(): void;
@@ -164,9 +215,10 @@ function unit(value: number): number {
 }
 
 /** Reject one option by name. Each of these silently produces either a blank mask or a white
- *  screen, and neither reports itself, so the checks all happen at construction. */
-function reject(name: string, want: string, value: number): never {
-  throw new RangeError(`createLightField: expected ${name} ${want}, got ${String(value)}`);
+ *  screen, and neither reports itself, so every value is checked wherever it arrives — at
+ *  construction and at `configure` alike, in the same words. */
+function reject(fn: string, name: string, want: string, value: number): never {
+  throw new RangeError(`${fn}: expected ${name} ${want}, got ${String(value)}`);
 }
 
 /**
@@ -180,14 +232,9 @@ function reject(name: string, want: string, value: number): never {
  *   and neither reports itself.
  */
 export function createLightField(surface: Surface, opts?: LightFieldOpts): LightField {
-  const scale = opts?.scale ?? DEFAULT_SCALE;
-  const falloffDefault = opts?.falloff ?? DEFAULT_FALLOFF;
-  const bloom = opts?.bloom ?? DEFAULT_BLOOM;
-  if (!(Number.isFinite(scale) && scale > 0 && scale <= 1)) reject('scale', 'in (0, 1]', scale);
-  if (!(Number.isFinite(falloffDefault) && falloffDefault >= 1)) {
-    reject('falloff', '>= 1', falloffDefault);
-  }
-  if (!(Number.isFinite(bloom) && bloom >= 0 && bloom <= 1)) reject('bloom', 'in [0, 1]', bloom);
+  let scale = DEFAULT_SCALE;
+  let falloffDefault = DEFAULT_FALLOFF;
+  let bloom = DEFAULT_BLOOM;
 
   /** The full-buffer quad the darkness is painted with. One per field, allocated at setup. */
   const quad = new Float64Array(8);
@@ -201,6 +248,30 @@ export function createLightField(surface: Surface, opts?: LightFieldOpts): Light
   let tint: Rgba = 0;
   let active = false;
   let count = 0;
+
+  /**
+   * Validate a partial option bag and adopt it. Nothing is written until every field has passed,
+   * so a rejected `configure` leaves the field exactly as it was rather than half-moved.
+   */
+  function adopt(next: LightFieldOpts | undefined, fn: string): void {
+    const nextScale = next?.scale ?? scale;
+    const nextFalloff = next?.falloff ?? falloffDefault;
+    const nextBloom = next?.bloom ?? bloom;
+    if (!(Number.isFinite(nextScale) && nextScale > 0 && nextScale <= 1)) {
+      reject(fn, 'scale', 'in (0, 1]', nextScale);
+    }
+    if (!(Number.isFinite(nextFalloff) && nextFalloff >= 1)) {
+      reject(fn, 'falloff', '>= 1', nextFalloff);
+    }
+    if (!(Number.isFinite(nextBloom) && nextBloom >= 0 && nextBloom <= 1)) {
+      reject(fn, 'bloom', 'in [0, 1]', nextBloom);
+    }
+    scale = nextScale;
+    falloffDefault = nextFalloff;
+    bloom = nextBloom;
+  }
+
+  adopt(opts, 'createLightField');
 
   /** Buffer dimension for a surface dimension. At least one pixel: a zero-sized target is a
    *  backend error on some paths and a silent no-op on others. */
@@ -266,6 +337,15 @@ export function createLightField(surface: Surface, opts?: LightFieldOpts): Light
     },
 
     begin(nextPen: Pen, nextDarkness: number, nextTint: Ink): void {
+      // One reference comparison, and it is the difference between a night that does not happen
+      // and a sentence. Everything downstream of a pen with no light on it is an optional call
+      // that quietly does nothing: the composite, every `emit` hook, and every pool this field
+      // then accumulates into a buffer nobody reads.
+      if (nextPen.light !== field) {
+        throw new RangeError(
+          'lightField.begin: this pen was not opened with this field — pass it as beginFrame({ …, light }), or the frame composites no darkness, runs no emit hook, and reports nothing',
+        );
+      }
       pen = nextPen;
       darkness = unit(nextDarkness);
       count = 0;
@@ -338,6 +418,10 @@ export function createLightField(surface: Surface, opts?: LightFieldOpts): Light
         target.blit(light.bitmap, 0, 0, target.width, target.height, 'add');
         target.alpha(previous);
       }
+    },
+
+    configure(next: LightFieldOpts): void {
+      adopt(next, 'lightField.configure');
     },
 
     resize(width: number, height: number): void {

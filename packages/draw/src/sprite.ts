@@ -58,6 +58,7 @@ import {
   isoWall,
   levelsToPx,
   put,
+  pxToLevels,
 } from './solids.js';
 import type { Pen } from './surface.js';
 import { wallText } from './text.js';
@@ -168,8 +169,15 @@ export interface SolidWriter {
     value: string,
     color: Ink,
   ): void;
-  /** The contact shadow that grounds the sprite. See `contactShadow`. */
-  shadow(gx: number, gy: number, w: number, d: number, strength?: number): void;
+  /**
+   * The contact shadow that grounds the sprite. See `contactShadow`.
+   *
+   * `z` is a storey height **above the sprite's own ground**, like every other height here, and
+   * defaults to 0 — which is the ground itself, wherever `drawSprite` was told that is. A massing
+   * therefore never names its elevation to get its shadow in the right place, and a sprite drawn
+   * on a hillside cannot cast into the valley by omission.
+   */
+  shadow(gx: number, gy: number, w: number, d: number, strength?: number, z?: number): void;
 }
 
 /**
@@ -177,21 +185,57 @@ export interface SolidWriter {
  *
  * `rng` is freshly seeded from `v.seed` by the kit on every call, and is its **own** stream —
  * adding a draw here cannot reshuffle what {@link Animator} sees.
+ *
+ * **A massing is not told its ground elevation, and that is deliberate.** The writer already
+ * stands on it — every `z` here is measured from wherever {@link drawSprite} put the sprite — so
+ * a massing has nothing to do with the number. Handing it over would let one branch on it, and a
+ * massing that branched on its elevation would measure differently in {@link spriteBounds}, which
+ * replays it with no frame and therefore no ground: the same failure, for the same reason, as
+ * branching on a color.
  */
 export type Massing = (w: SolidWriter, v: Variant, rng: Rng) => void;
 
-/** Live art over the static image, every frame. A handful of primitives, no more; `pen.t` is
- *  the only clock, and it arrived as a parameter. */
-export type Animator = (pen: Pen, gx: number, gy: number, v: Variant, rng: Rng) => void;
+/**
+ * Live art over the static image, every frame. A handful of primitives, no more; `pen.t` is the
+ * only clock, and it arrived as a parameter.
+ *
+ * `zPx` is the sprite's **ground elevation in world pixels** — the number {@link drawSprite} was
+ * given, passed straight through. An animator draws through the free primitives rather than
+ * through a writer, so nothing can stand it on the ground for it: convert once with `pxToLevels`
+ * and add the result to the storey heights, exactly as the massing's are already offset. Skip it
+ * and the flame burns at sea level while the lamp it belongs to is up the hill.
+ *
+ * It is the **last** parameter rather than beside `gx` and `gy`, where it belongs, because the
+ * shape of this callback is a shipped contract: inserting it would silently rebind `v` in every
+ * animator ever written and every one of them would have to be edited on the same commit.
+ */
+export type Animator = (
+  pen: Pen,
+  gx: number,
+  gy: number,
+  v: Variant,
+  rng: Rng,
+  zPx: number,
+) => void;
 
-/** Emissive contribution. Runs only when an *active* `LightField` is attached to the frame, so
- *  a game in daylight pays nothing for the lamps it is drawing. */
+/**
+ * Emissive contribution. Runs only when an *active* `LightField` is attached to the frame, so a
+ * game in daylight pays nothing for the lamps it is drawing.
+ *
+ * `zPx` is the sprite's ground elevation in world pixels, which is exactly what `LightField.add`
+ * wants for its own third argument — the field pools light **on the ground under the fixture**,
+ * so a lamp on a terrace lights the terrace. No conversion happens on this path in either
+ * direction: `iso` produced the pixels and `iso`'s unit is what the light field speaks.
+ *
+ * Last, for the reason {@link Animator} gives.
+ */
 export type Emitter = (
   field: LightField,
   gx: number,
   gy: number,
   v: Variant,
   rng: Rng,
+  zPx: number,
 ) => void;
 
 /** A sprite: a footprint, static art, and two optional live hooks. */
@@ -317,7 +361,14 @@ class PenWriter implements SolidWriter {
   oy = 0;
   /** When set, every fill becomes this color — the placement ghost's legality tint. */
   tint: Rgba | undefined = undefined;
-  /** Storeys added to every height, so a ghost floats clear of the ground it is testing. */
+  /**
+   * Storeys added to every height: the **third component of the sprite's origin**, alongside
+   * {@link PenWriter.ox} and `oy`.
+   *
+   * It carries two things at once, and they add rather than compete — the ground the sprite
+   * stands on, converted once from `iso`'s pixels by {@link drawSprite}, and the ghost's clearance
+   * above whatever it is being tested against.
+   */
   lift = 0;
   /** Multiplied into every solid's own alpha. See `Surface.alpha`, which sets rather than
    *  composes, so the composition has to happen here. */
@@ -481,11 +532,11 @@ class PenWriter implements SolidWriter {
     );
   }
 
-  shadow(gx: number, gy: number, w: number, d: number, strength?: number): void {
+  shadow(gx: number, gy: number, w: number, d: number, strength?: number, z = 0): void {
     // A ghost casts no shadow: it is not there yet, and a shadow under a preview is the one
     // part of it that reads as real.
     if (this.tint !== undefined) return;
-    contactShadow(this.pen, this.ox + gx, this.oy + gy, w, d, strength);
+    contactShadow(this.pen, this.ox + gx, this.oy + gy, w, d, strength, z + this.lift);
   }
 }
 
@@ -595,8 +646,8 @@ class MeasureWriter implements SolidWriter {
     this.wall(ax, ay, bx, by, ztop - heightLevels, ztop);
   }
 
-  shadow(gx: number, gy: number, w: number, d: number): void {
-    this.patch(gx, gy, w, d, 0);
+  shadow(gx: number, gy: number, w: number, d: number, _strength?: number, z = 0): void {
+    this.patch(gx, gy, w, d, z);
   }
 }
 
@@ -642,6 +693,20 @@ function acquire(pen: Pen, gx: number, gy: number, tint: Rgba | undefined, lift:
   return writer;
 }
 
+/**
+ * Reject a ground elevation that would make a sprite silently absent.
+ *
+ * A `NaN` here propagates into every coordinate the sprite produces, and `NaN` paints nothing and
+ * reports nothing: the building is simply not on the map, on one tile, on one seed, and the bug
+ * report says the save did not load. The number arrives from a heightfield sampled at a position
+ * a game computed, which is exactly the sort of chain that produces one.
+ */
+function expectFiniteGround(fn: string, zPx: number): void {
+  if (!Number.isFinite(zPx)) {
+    throw new RangeError(`${fn}: expected a finite ground elevation in world pixels, got ${String(zPx)}`);
+  }
+}
+
 /** Replay a sprite's massing through the measuring writer. */
 function measure(def: SpriteDef, v: Variant): MeasureWriter {
   measurer.reset(def.w, def.d);
@@ -658,18 +723,37 @@ function measure(def: SpriteDef, v: Variant): MeasureWriter {
  * Each hook is handed its own freshly-rewound stream, derived from `v.seed`. Adding a draw to
  * one therefore cannot change what another sees, which is the difference between a sprite whose
  * art is stable across a refactor and one that has to be re-blessed after every edit.
+ *
+ * @param zPx The **ground elevation under the footprint**, in world pixels — `iso`'s unit, and
+ *   usually `footprintBase(field, footprint)` or `heightAt(field, gx, gy)` straight from a
+ *   heightfield. Default 0, which is a flat world and costs a game with one nothing.
+ *
+ *   This is the one place a sprite's ground crosses from pixels into storeys, and it is the whole
+ *   of the crossing: the massing is drawn from it, the contact shadow lands on it, and `animate`
+ *   and `emit` are handed the original pixels. Leave it out on a heightfield and every sprite
+ *   floats or sinks by its own terrain height — which reads as *the art is wrong*, sprite by
+ *   sprite, rather than as one missing argument.
+ * @throws RangeError if `zPx` is not finite.
  */
-export function drawSprite(pen: Pen, def: SpriteDef, gx: number, gy: number, v: Variant): void {
-  const writer = acquire(pen, gx, gy, undefined, 0, 1);
+export function drawSprite(
+  pen: Pen,
+  def: SpriteDef,
+  gx: number,
+  gy: number,
+  v: Variant,
+  zPx = 0,
+): void {
+  expectFiniteGround('drawSprite', zPx);
+  const writer = acquire(pen, gx, gy, undefined, pxToLevels(zPx), 1);
   try {
     def.massing(writer, v, streamFor(v.seed, SALT_MASSING));
   } finally {
     depth -= 1;
   }
-  if (def.animate !== undefined) def.animate(pen, gx, gy, v, streamFor(v.seed, SALT_ANIMATE));
+  if (def.animate !== undefined) def.animate(pen, gx, gy, v, streamFor(v.seed, SALT_ANIMATE), zPx);
   const light = pen.light;
   if (def.emit !== undefined && light !== undefined && light.active) {
-    def.emit(light, gx, gy, v, streamFor(v.seed, SALT_EMIT));
+    def.emit(light, gx, gy, v, streamFor(v.seed, SALT_EMIT), zPx);
   }
 }
 
@@ -683,6 +767,11 @@ export function drawSprite(pen: Pen, def: SpriteDef, gx: number, gy: number, v: 
  * It runs `massing` alone. A ghost that blinked would be indistinguishable from a building that
  * is already there, and a ghost that lit the valley would let a player survey the map by
  * dragging a lamp around it.
+ *
+ * @param zPx The ground under the tile being tested, in world pixels. See {@link drawSprite}.
+ *   A ghost that ignored it would sit at sea level while the tile it is testing is up a hill,
+ *   and the player would judge the fit of a building against ground it will not stand on.
+ * @throws RangeError if `zPx` is not finite.
  */
 export function drawGhost(
   pen: Pen,
@@ -691,9 +780,11 @@ export function drawGhost(
   gy: number,
   v: Variant,
   legal: boolean,
+  zPx = 0,
 ): void {
+  expectFiniteGround('drawGhost', zPx);
   const tint = pen.palette.get(legal ? 'ok' : 'bad');
-  const writer = acquire(pen, gx, gy, tint, GHOST_LIFT, GHOST_ALPHA);
+  const writer = acquire(pen, gx, gy, tint, GHOST_LIFT + pxToLevels(zPx), GHOST_ALPHA);
   const previous = pen.surface.alpha(GHOST_ALPHA);
   try {
     def.massing(writer, v, streamFor(v.seed, SALT_MASSING));
@@ -711,6 +802,13 @@ export function drawGhost(
  *
  * `z` defaults to `SELECT_LIFT` rather than 0: a rim drawn at ground level z-fights the tile
  * beneath it at some zooms and not others, which looks like a hardware fault.
+ *
+ * @param z Clearance above the ground, in storeys. The z-fight ladder, not an elevation.
+ * @param groundPx The ground the rim lies on, in world pixels. The two are separate because they
+ *   are separate facts in separate units: one is `iso`'s terrain and one is this package's
+ *   anti-flicker constant, and adding them at the call site is how `SELECT_LIFT` ends up
+ *   multiplied by a height.
+ * @throws RangeError if `groundPx` is not finite.
  */
 export function drawFootprint(
   pen: Pen,
@@ -720,8 +818,10 @@ export function drawFootprint(
   d: number,
   color: Ink,
   z = SELECT_LIFT,
+  groundPx = 0,
 ): void {
-  const zPx = levelsToPx(z);
+  expectFiniteGround('drawFootprint', groundPx);
+  const zPx = levelsToPx(z) + groundPx;
   let at = put(pen, 0, gx, gy, zPx);
   at = put(pen, at, gx + w, gy, zPx);
   at = put(pen, at, gx + w, gy + d, zPx);
@@ -758,8 +858,17 @@ export function drawFootprint(
  * }
  * const hit = pickSorted(order, hitsSilhouette);
  * ```
+ *
+ * @param zPx The ground under the footprint, in world pixels — the same number
+ *   {@link drawSprite} was given. It is **added in pixels and never converted**, so the volume
+ *   handed to `boxSilhouette` is exactly the elevation `iso` produced rather than a storey count
+ *   multiplied back out. Omit it on a heightfield and the silhouette is computed at sea level
+ *   while the building is painted up the hill: the picture is right, the taps land in mid-air,
+ *   and both packages' suites stay green.
+ * @throws RangeError if `zPx` is not finite.
  */
-export function spriteVolume(def: SpriteDef, v: Variant, out: Volume): Volume {
+export function spriteVolume(def: SpriteDef, v: Variant, out: Volume, zPx = 0): Volume {
+  expectFiniteGround('spriteVolume', zPx);
   const m = measure(def, v);
   // `Volume`'s fields are `readonly` because `iso` never writes one; this function does, and
   // TypeScript ignores `readonly` in assignability, so the cast is sound rather than clever.
@@ -768,7 +877,7 @@ export function spriteVolume(def: SpriteDef, v: Variant, out: Volume): Volume {
   w.oy = m.gy0;
   w.w = m.gx1 - m.gx0;
   w.d = m.gy1 - m.gy0;
-  w.zPx = m.z0;
+  w.zPx = m.z0 + zPx;
   w.hPx = m.z1 - m.z0;
   return out;
 }
@@ -779,6 +888,11 @@ export function spriteVolume(def: SpriteDef, v: Variant, out: Volume): Volume {
  * Under-declare it and roofs pop in along the top edge of the screen; over-declare it and a few
  * off-screen items are drawn for nothing. Derived from the massing rather than guessed, which is
  * the only way it stays right when a sprite grows a mast at level 3.
+ *
+ * **Measured from the sprite's own base, and it takes no ground**, because it is a height and not
+ * a position: on a heightfield the caller adds the terrain under the footprint —
+ * `order.add(gx, gy, w, d, groundPx + spriteHeightPx(def, v))` — which is the same sum
+ * {@link spriteVolume} makes internally, in the same unit, from the same two numbers.
  */
 export function spriteHeightPx(def: SpriteDef, v: Variant): number {
   return measure(def, v).z1;
@@ -795,6 +909,11 @@ export function spriteHeightPx(def: SpriteDef, v: Variant): number {
  * the whole massing, so it never clips and may be a little generous around an L-shaped building.
  * Generous is the correct direction — a tight bound that is occasionally wrong crops a thumbnail
  * and nobody can say which sprite will do it.
+ *
+ * @param zPx The ground under the footprint, in world pixels. Added in pixels, for the reason
+ *   {@link spriteVolume} gives. A label or a bubble anchored to a bound computed at sea level
+ *   drifts further from its building the higher the building stands.
+ * @throws RangeError if `zPx` is not finite.
  */
 export function spriteBounds(
   def: SpriteDef,
@@ -803,7 +922,9 @@ export function spriteBounds(
   gx: number,
   gy: number,
   out: Rect,
+  zPx = 0,
 ): Rect {
+  expectFiniteGround('spriteBounds', zPx);
   const m = measure(def, v);
   const nx = gx + m.gx0;
   const ny = gy + m.gy0;
@@ -814,8 +935,8 @@ export function spriteBounds(
   const xWest = camera.toScreenX((nx - fy) * HALF_W);
   // North and south are between east and west on the x axis for any rectangle, so the extremes
   // in x are exactly these two and the other two corners need no projection at all.
-  const yTop = camera.toScreenY((nx + ny) * HALF_H - m.z1);
-  const yBottom = camera.toScreenY((fx + fy) * HALF_H - m.z0);
+  const yTop = camera.toScreenY((nx + ny) * HALF_H - m.z1 - zPx);
+  const yBottom = camera.toScreenY((fx + fy) * HALF_H - m.z0 - zPx);
 
   out.minX = xWest;
   out.maxX = xEast;

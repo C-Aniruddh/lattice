@@ -12,7 +12,7 @@
  * about what the player tapped.
  */
 
-import { DepthSorter, pickSorted } from '@lattice/iso';
+import { DepthSorter, TILE_H, pickSorted } from '@lattice/iso';
 import type { Camera, Rect, TileRange } from '@lattice/iso';
 import { describe, expect, it } from 'vitest';
 import { createLightField } from '../src/light.js';
@@ -160,6 +160,58 @@ describe('renderFrame', () => {
     });
     expect(box?.maxX).toBe(200);
     expect(range?.gx1).toBeGreaterThan(range?.gx0 ?? 0);
+  });
+
+  it('margins the terrain cull by the map’s own relief, in tiles', () => {
+    // The cull is computed on the ground plane, because a camera has no idea what a heightfield
+    // is — so a summit vanishes the moment its base leaves the bottom edge, and nothing else in
+    // the frame is missing. Taking the cull away from the game and then not exposing its one
+    // parameter is the gap; this is the parameter.
+    //
+    // Screen y advances by HALF_H per unit of gx + gy, so a zPx lift is worth zPx / HALF_H of
+    // gx + gy; a box range grows gx + gy by two for every tile on each axis, so the margin is
+    // zPx / (2 · HALF_H) = zPx / TILE_H, rounded up. 440 px of relief over a 32 px tile is 13.75
+    // tiles, and a range that rounded down would lose the top of the mountain it was margined for.
+    const { pen } = scene();
+    let flat: Readonly<TileRange> | undefined;
+    let margined: Readonly<TileRange> | undefined;
+    renderFrame(pen, { terrain: (_p, visible): void => void (flat = { ...visible }) });
+    renderFrame(pen, {
+      maxHeightPx: 440,
+      terrain: (_p, visible): void => void (margined = { ...visible }),
+    });
+    const grow = Math.ceil(440 / TILE_H);
+    expect(grow).toBe(14);
+    expect(margined?.gx0).toBe((flat?.gx0 ?? 0) - grow);
+    expect(margined?.gy0).toBe((flat?.gy0 ?? 0) - grow);
+    expect(margined?.gx1).toBe((flat?.gx1 ?? 0) + grow);
+    expect(margined?.gy1).toBe((flat?.gy1 ?? 0) + grow);
+  });
+
+  it('margins nothing on flat ground, so a game without relief pays nothing', () => {
+    const { pen } = scene();
+    let omitted: Readonly<TileRange> | undefined;
+    let zero: Readonly<TileRange> | undefined;
+    renderFrame(pen, { terrain: (_p, visible): void => void (omitted = { ...visible }) });
+    renderFrame(pen, {
+      maxHeightPx: 0,
+      terrain: (_p, visible): void => void (zero = { ...visible }),
+    });
+    expect(zero).toEqual(omitted);
+  });
+
+  it('refuses a margin that would shrink the range instead of growing it', () => {
+    // A negative margin paints a strip of background along two edges of the screen, which reads
+    // as a camera bug rather than as a bad number.
+    const { pen } = scene();
+    const terrain = (): void => undefined;
+    expect(() => renderFrame(pen, { maxHeightPx: -1, terrain })).toThrow(
+      /renderFrame: expected passes.maxHeightPx to be a finite number >= 0, got -1/,
+    );
+    expect(() => renderFrame(pen, { maxHeightPx: Number.NaN, terrain })).toThrow(RangeError);
+    // …and it is checked whether or not there is a terrain pass to margin, so a game learns
+    // about it on the frame it wrote the number rather than on the one it added the pass.
+    expect(() => renderFrame(pen, { maxHeightPx: Infinity })).toThrow(RangeError);
   });
 
   it('nests, so a minimap rendered inside an overlay does not corrupt the outer frame', () => {

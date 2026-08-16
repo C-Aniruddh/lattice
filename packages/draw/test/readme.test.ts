@@ -10,8 +10,16 @@
  * the reason this example can be a test at all.
  */
 
-import { DepthSorter, boxSilhouette, createCamera, pickSorted, pointInPolygon } from '@lattice/iso';
-import type { Rect, TileRange, Volume } from '@lattice/iso';
+import {
+  DepthSorter,
+  boxSilhouette,
+  createCamera,
+  footprintBase,
+  pickSorted,
+  pointInPolygon,
+  tileSourceOf,
+} from '@lattice/iso';
+import type { HeightField, Rect, TileRange, Volume } from '@lattice/iso';
 import { describe, expect, it } from 'vitest';
 import {
   BASE_SLOTS,
@@ -28,7 +36,7 @@ import {
   hexOf,
   hsl,
   glowDot,
-  isoTile,
+  isoTerrain,
   renderFrame,
   spriteBounds,
   spriteHeightPx,
@@ -58,9 +66,10 @@ describe('the README example', () => {
         const lit = (pen.t * 1.4 + rng.next()) % 1 < 0.5 ? 1 : 0.2;
         glowDot(pen, gx + 1, gy + 1, 4.6, 'warn', 0.14, lit * (v.level > 2 ? 1 : 0.6));
       },
-      // The light it throws. Runs only when the frame has a night.
-      emit(field, gx, gy) {
-        field.add(gx + 1, gy + 1, 0, 4, 0.9, 'warn');
+      // The light it throws. Runs only when the frame has a night, and pools it on the ground
+      // the tower stands on — `zPx` is the elevation `drawSprite` was given, passed through.
+      emit(lights, gx, gy, _v, _rng, zPx) {
+        lights.add(gx + 1, gy + 1, zPx, 4, 0.9, 'warn');
       },
     });
 
@@ -68,6 +77,12 @@ describe('the README example', () => {
     const palette = createPalette(BASE_SLOTS);
     palette.set('brand', hsl(28, 0.62, 0.54)); //   one number in the save, not a token
     out.push(`brand: ${hexOf(palette.get('brand'))}, palette rev ${String(palette.rev)}`);
+
+    // ── the ground: one height per grid *vertex*, so tiles share corners exactly ─
+    const ground: HeightField = {
+      heights: tileSourceOf((_gx, gy) => Math.max(0, 5 - gy)),
+      stepPx: 8, //   world pixels per height unit: a ridge 40 px above the shore
+    };
 
     // ── the frame ──────────────────────────────────────────────────────────────
     const surface = createRecordingSurface(480, 300); //   no canvas: this runs in Node
@@ -79,11 +94,14 @@ describe('the README example', () => {
 
     // Deliberately not in depth order: the sorter decides that, and it is the only thing that
     // does. The array is the caller's; `DepthSorter` hands back a permutation of its indices.
+    // `base` is the ground under each footprint, in world pixels: the *maximum* vertex height
+    // under it, because a building resting on the mean of a slope has one corner buried and one
+    // floating, and a floating corner reads as a bug.
     const buildings = [
       { gx: 1, gy: 5, v: { ...VARIANT_ZERO, seed: 3 } },
       { gx: 0, gy: 0, v: { ...VARIANT_ZERO, seed: 1 } },
       { gx: 4, gy: 1, v: { ...VARIANT_ZERO, seed: 2, level: 3 } },
-    ] as const;
+    ].map((b) => ({ ...b, base: footprintBase(ground, { gx: b.gx, gy: b.gy, w: 2, d: 2 }) }));
 
     const order = new DepthSorter(64); //          allocated once, reused for ever
     const pen = beginFrame({ surface, camera, palette, t: 2.5, clear: 'sky', light });
@@ -91,15 +109,20 @@ describe('the README example', () => {
 
     order.clear();
     for (const b of buildings) {
-      order.add(b.gx, b.gy, 2, 2, spriteHeightPx(WATER_TOWER, b.v));
+      order.add(b.gx, b.gy, 2, 2, b.base + spriteHeightPx(WATER_TOWER, b.v));
     }
 
     renderFrame(
       pen,
       {
+        // The tallest ground on the map. `renderFrame` culls the terrain on the *ground plane* —
+        // a camera has no idea what a heightfield is — so without this the ridge disappears the
+        // moment its base leaves the bottom of the screen.
+        maxHeightPx: 5 * ground.stepPx,
         terrain(p: Pen, visible: Readonly<TileRange>) {
           for (let gy = visible.gy0; gy < visible.gy1; gy++) {
-            for (let gx = visible.gx0; gx < visible.gx1; gx++) isoTile(p, gx, gy, 'ground');
+            // One diamond per tile, on its own four corner heights, shaded by its cross-slope.
+            for (let gx = visible.gx0; gx < visible.gx1; gx++) isoTerrain(p, ground, gx, gy, 'ground');
           }
         },
         // Walk it forwards. Never sort it, never partition it — `pickSorted` walks this same
@@ -107,7 +130,7 @@ describe('the README example', () => {
         solids(p: Pen, sorted: DepthSorter) {
           for (let i = 0; i < sorted.count; i++) {
             const b = buildings[sorted.indexAt(i)];
-            if (b !== undefined) drawSprite(p, WATER_TOWER, b.gx, b.gy, b.v);
+            if (b !== undefined) drawSprite(p, WATER_TOWER, b.gx, b.gy, b.v, b.base);
           }
         },
       },
@@ -130,7 +153,7 @@ describe('the README example', () => {
     function hitsSilhouette(index: number): boolean {
       const b = buildings[index];
       if (b === undefined) return false;
-      spriteVolume(WATER_TOWER, b.v, volume);
+      spriteVolume(WATER_TOWER, b.v, volume, b.base); //  the ground, in pixels, never converted
       boxSilhouette(camera, b.gx, b.gy, volume, outline);
       return pointInPolygon(tapX, tapY, outline, 6);
     }
@@ -144,15 +167,16 @@ describe('the README example', () => {
 
     // ── the same sprite, framed for a shop card ────────────────────────────────
     const card: Rect = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
-    spriteBounds(WATER_TOWER, buildings[2].v, camera, 0, 0, card);
+    const tall = buildings[2]?.v ?? VARIANT_ZERO;
+    spriteBounds(WATER_TOWER, tall, camera, 0, 0, card);
     out.push(
-      `level 3 is ${String(spriteHeightPx(WATER_TOWER, buildings[2].v))} world px tall, ` +
+      `level 3 is ${String(spriteHeightPx(WATER_TOWER, tall))} world px tall, ` +
         `and frames into ${String(Math.round(card.maxX - card.minX))}×${String(Math.round(card.maxY - card.minY))} css px`,
     );
 
     expect(out).toEqual([
       'brand: #d28541, palette rev 2',
-      '367 draw calls, digest c70db030',
+      '527 draw calls, digest a1e37056',
       '3 light pools, composited once',
       'paint order: 1, 2, 0',
       'tap at (112, 125) hit building 0',

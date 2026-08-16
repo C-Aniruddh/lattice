@@ -170,6 +170,46 @@ export function createPalette(slots: Stops): Palette {
 }
 
 /**
+ * A stop set plus a game's own slots. **The sanctioned way to add a color to the day/night lerp.**
+ *
+ * `Palette.lerp` requires both stop sets to define exactly the same slots, and that rule is
+ * right — a half-defined night palette is how one thing stays gold at midnight, silently. But the
+ * consequence was that a game with one color of its own, sand or foam or faction red, could not
+ * add it to a transition without redefining every stop set in the transition, and could not add
+ * it to the kit's `DAY`/`DUSK`/`NIGHT` at all, because those are frozen constants. So the color
+ * lived outside the palette, was blended by hand, and was the one thing in the frame that did not
+ * roll at dusk with everything else.
+ *
+ * ```ts
+ * const SAND = { day: 0xe8d9a8ff, dusk: 0xcfa87dff, night: 0x5d6478ff };
+ * const DAY_X = extendStops(DAY, { sand: SAND.day });      // hoisted, at module scope
+ * const DUSK_X = extendStops(DUSK, { sand: SAND.dusk });
+ * palette.lerp(DUSK_X, DAY_X, t);
+ * pen.palette.get('sand');
+ * ```
+ *
+ * **Hoist the results.** `Palette.lerp` compares its stop sets by *identity* to decide whether a
+ * frame changed anything, so a set rebuilt inside the render callback is a new object every frame:
+ * every frame then bumps `rev`, and `rev` is what every cache in the kit keys on. The symptom is
+ * not a wrong color — it is a game that gets slower at dusk and stays slow.
+ *
+ * Extending each set of a family separately is deliberate, and it is the same discipline the
+ * same-slots rule enforces: there is no shape here in which a slot can be given a daytime color
+ * and forgotten at night. `extra` may also *replace* a slot the base defines — a biome recolouring
+ * `ground` — which is why it is applied second.
+ *
+ * The result is frozen, and the base is never touched: both may already be shared constants.
+ */
+export function extendStops(base: Stops, extra: Stops): Stops {
+  const out: Record<string, Rgba> = {};
+  // `entries` rather than `keys`, because a key read back out of its own object still types as
+  // possibly absent and the `?? 0` that satisfies that is a branch no test can ever reach.
+  for (const [slot, color] of Object.entries(base)) out[slot] = color >>> 0;
+  for (const [slot, color] of Object.entries(extra)) out[slot] = color >>> 0;
+  return Object.freeze(out);
+}
+
+/**
  * A flat slot → CSS color bag. The only shape color crosses into the DOM in.
  *
  * `draw` emits bare slot names; **`ui` owns the prefix**, because a package that does not touch

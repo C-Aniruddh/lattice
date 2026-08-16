@@ -29,6 +29,7 @@ import {
   isoTile,
   isoWall,
   levelsToPx,
+  pxToLevels,
 } from '../src/solids.js';
 import { firstOp, opsOf, scene } from './harness.js';
 
@@ -46,6 +47,37 @@ describe('heights', () => {
     expect(levelsToPx(3)).toBe(78);
     expect(levelsToPx(0)).toBe(0);
     expect(levelsToPx(-1)).toBe(-26);
+  });
+
+  it('pxToLevels is the other direction, for everything iso hands back', () => {
+    // Every elevation `iso` produces is world pixels and every height a sprite author writes is
+    // storeys, so without this the divisor appears at every boundary in game code — spelled
+    // `/ 26` on the day somebody forgets the constant exists.
+    expect(pxToLevels(78)).toBe(3);
+    expect(pxToLevels(0)).toBe(0);
+    expect(pxToLevels(-26)).toBe(-1);
+    expect(pxToLevels(levelsToPx(4.5))).toBe(4.5);
+  });
+
+  it('and the round trip is deterministic, within a part in 10^15 rather than exact', () => {
+    // Stated rather than assumed. `/` and `*` are Tier A — specified exactly, bit-identical on
+    // every engine — so two replays land on the same pixel; they simply do not land on the same
+    // *number*, which is why anything that must compare equal to an `iso` elevation carries the
+    // pixels through instead of converting. `spriteVolume` does.
+    let worst = 0;
+    let exact = 0;
+    for (let px = -600; px <= 600; px += 8) {
+      const back = levelsToPx(pxToLevels(px));
+      if (back === px) exact += 1;
+      const drift = Math.abs(back - px);
+      if (drift > worst) worst = drift;
+    }
+    expect(exact).toBeGreaterThan(0);
+    // A double carries 52 bits of mantissa, so two roundings of a value under 1024 cannot move
+    // it by more than 1024 · 2^-51 — about half a nanopixel, nine orders below one device pixel
+    // and three below the thousandth the recording backend rounds to.
+    expect(worst).toBeLessThan(1024 * 2 ** -51);
+    expect(worst).toBeGreaterThan(0);
   });
 
   it('the z-fight ladder is ordered and non-zero', () => {

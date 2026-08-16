@@ -7,11 +7,22 @@
  * blurred copy of a silhouette.
  */
 
-import { HALF_W } from '@lattice/iso';
+import type { Vec2 } from '@lattice/core';
+import { HALF_W, gridToScreen } from '@lattice/iso';
 import { describe, expect, it } from 'vitest';
 import { SHADE_TINT, rgba, withAlpha } from '../src/color.js';
 import { contactShadow, wash } from '../src/shadow.js';
+import { levelsToPx } from '../src/solids.js';
 import { firstOp, scene } from './harness.js';
+
+/** The same rounding the recording backend applies, so an expectation and an op compare exactly
+ *  rather than nearly. */
+function r3(value: number): number {
+  const scaled = Math.round(value * 1000) / 1000;
+  return scaled === 0 ? 0 : scaled;
+}
+
+const at: Vec2 = { x: 0, y: 0 };
 
 describe('contactShadow', () => {
   it('is one soft ellipse, 2:1, centered on the footprint', () => {
@@ -57,6 +68,34 @@ describe('contactShadow', () => {
     contactShadow(pen, 0, 0, 1, 1, 0);
     contactShadow(pen, 0, 0, 1, 1, -1);
     expect(surface.ops).toHaveLength(0);
+  });
+
+  it('lands on the ground it is given rather than always at sea level', () => {
+    // The gap that detached every shadow in the kit from the thing above it. `z` is storeys,
+    // like every other height in this package — a ground elevation out of `iso` is world pixels
+    // and crosses over through `pxToLevels`, or through `drawSprite`, which does it once.
+    const { surface, pen, camera } = scene();
+    contactShadow(pen, 0, 0, 2, 2, 1, 3);
+    const raised = firstOp(surface, 'softEllipse');
+    gridToScreen(camera, 1, 1, levelsToPx(3), at);
+    expect(raised.xy[0]).toBe(r3(at.x));
+    expect(raised.xy[1]).toBe(r3(at.y));
+    // The ellipse itself is unchanged: a shadow does not grow because the ground did.
+    surface.reset();
+    contactShadow(pen, 0, 0, 2, 2, 1, 0);
+    const flat = firstOp(surface, 'softEllipse');
+    expect(raised.xy[2]).toBe(flat.xy[2]);
+    expect(raised.xy[3]).toBe(flat.xy[3]);
+    expect(raised.xy[0]).toBe(flat.xy[0]);
+    expect(r3((flat.xy[1] ?? 0) - (raised.xy[1] ?? 0))).toBe(levelsToPx(3));
+  });
+
+  it('defaults to the ground plane, so a flat game passes nothing', () => {
+    const a = scene();
+    contactShadow(a.pen, 1, 2, 1, 1, 0.5);
+    const b = scene();
+    contactShadow(b.pen, 1, 2, 1, 1, 0.5, 0);
+    expect(a.surface.ops).toEqual(b.surface.ops);
   });
 
   it('scales with the zoom, like everything else lying on the ground', () => {

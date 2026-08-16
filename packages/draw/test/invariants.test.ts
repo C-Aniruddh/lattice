@@ -215,6 +215,7 @@ describe('I9: the frame path allocates nothing', () => {
     'color.ts': ['byteOf', 'redOf', 'greenOf', 'blueOf', 'alphaOf', 'rgba', 'shade', 'outlineOf', 'withAlpha', 'mix'],
     'solids.ts': [
       'levelsToPx',
+      'pxToLevels',
       'expectFiniteBox',
       'pushAlpha',
       'popAlpha',
@@ -230,6 +231,8 @@ describe('I9: the frame path allocates nothing', () => {
       'glowDot',
     ],
     'shadow.ts': ['contactShadow', 'wash'],
+    // The widest loop in the package: every visible tile of every frame on a heightfield.
+    'terrain.ts': ['isoTerrain'],
     'text.ts': ['wallText', 'screenText'],
     'light.ts': [
       'const field: LightField = {::begin',
@@ -242,6 +245,7 @@ describe('I9: the frame path allocates nothing', () => {
     ],
     'sprite.ts': [
       'streamFor',
+      'expectFiniteGround',
       'drawSprite',
       'drawGhost',
       'drawFootprint',
@@ -272,7 +276,7 @@ describe('I9: the frame path allocates nothing', () => {
         checked += 1;
       }
     }
-    expect(checked).toBe(51);
+    expect(checked).toBe(54);
     // …and the bodies found are the right ones, not a neighboring block the matcher wandered
     // into. `isoBox` computes four x projections; `PenWriter.box` calls `isoBox`.
     expect(bodyOf(sources.get('solids.ts') ?? '', 'isoBox')).toContain('toScreenX');

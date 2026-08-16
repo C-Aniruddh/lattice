@@ -52,6 +52,25 @@ export function levelsToPx(levels: number): number {
 }
 
 /**
+ * World pixels → storeys. The direction every *reading* of `iso` needs.
+ *
+ * Everything `iso` hands back is world pixels — `heightAt`, `footprintBase`, `Volume.zPx` — and
+ * every height a sprite author writes is storeys. Without this the divisor appears at every
+ * boundary in game code, spelled `/ 26` on the day somebody forgets the constant exists, and a
+ * kit whose art proportion is copied into a game is a kit that cannot change it.
+ *
+ * **The round trip is not bit-identical and does not need to be.** `levelsToPx(pxToLevels(px))`
+ * differs from `px` by at most a part in 10¹⁵ — four femtopixels at the tallest elevation this
+ * kit can draw, nine orders below one device pixel, and *deterministic*, because `/` and `*` are
+ * Tier A and specified exactly. It is still a different number, so anything that must compare
+ * equal to an `iso` elevation rather than merely land on the same pixel — a `Volume` handed to
+ * `boxSilhouette` — carries the pixels through untouched instead. {@link spriteVolume} does.
+ */
+export function pxToLevels(px: number): number {
+  return px / LEVEL_H;
+}
+
+/**
  * The z-fight ladder, in storeys. Anything drawn *on* the ground must be lifted off it by one
  * of these, in this order, or it flickers against the tile beneath at some zooms and not others
  * — which looks like a hardware bug rather than a missing constant.
