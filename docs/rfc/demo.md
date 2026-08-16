@@ -1,113 +1,255 @@
-# LAMP ROAD — the demo game the kit must be able to build
+# LAMP ROAD — retired, and the coverage debt the scope cut left behind
 
-> **Status:** design, revised at `D2`. Nothing is implemented.
-> **This document is the acceptance test for the other nine RFCs.** Every beat below names
-> the capability it needs and the package that owes it. A package RFC that cannot serve its
-> column here is not finished, however internally coherent it is.
+> **Status: RETIRED at `K8`.** Superseded by `docs/GALLERY.md`, which is now the plan.
 >
-> **`D2` decides `sim`'s T21** — the standing-charge exploit — in *The night you cannot skip*,
-> below. It changes one rule of the game and adds one requirement to `@lattice/sim`.
+> This document specified a ten-minute game with offline accrual, oil presses, guttering lamps, a
+> rockfall re-route and a shrine ending. **None of that exists and none of it is going to.** What
+> shipped from it is `examples/demo` — *Lamplighter*, a ninety-second exhibit — and one row in the
+> gallery table.
+>
+> **The document is kept, rather than deleted, for two reasons and only two.**
+>
+> 1. **The orphan ledger below**, which is the point of retiring it. The scope cut left a large
+>    part of the kit with no consumer anywhere in the repo, and that list has to live somewhere a
+>    person will find it.
+> 2. **Appendix A**, the `D2` argument. It is the sole record of why `CatchUp.fromSeconds` and
+>    `OfflineCurve.uncappedSeconds` are shaped the way they are. Delete it and the next auditor
+>    finds an uncalled field and removes it, correctly, on the evidence available to them.
+>
+> Everything else the document said — the beat sheet, the capability matrix, the line budget, the
+> ending, the ranked gaps — was answered, superseded or cut, and is gone. The line budget in
+> particular was met and then made irrelevant: `examples/demo/src` is about 1,700 lines across
+> nine files against a 345-line budget for a much larger game, because the exhibit spends its
+> lines on art, which is what `GALLERY.md` says it should.
 
 ---
 
-## The pitch, in one screen
+## What actually happened
 
-A valley at dusk. A road climbs from the town gate, past the river, up to a shrine on the
-ridge that is dark and will stay dark until you do something about it. You are the
-lamplighter. You tap a lamp post; it lights; the pool of warm light spills onto the road;
-and the pilgrims — who will not walk into the dark — go one lamp further than they did
-before, and come back with coin.
+`A10` designed a game. `B1`–`B8` built nine packages against its capability matrix. Then
+`GALLERY.md` replaced one flagship game with ten to fifteen small exhibits, for reasons that were
+right — *a kit is judged by range, not by depth*, and the first attempt had already reached 1,450
+lines and a near-black opening frame.
 
-That is the whole game. **The lit road is the economy.** Its length is the only number that
-really matters, and it is a *place*, not a stat: the player can see exactly how far they have
-got by looking at where the gold stops and the blue begins.
+The cut was correct. It also had a consequence nobody wrote down: **the capability matrix was the
+only thing pulling on about a third of the kit, and when it went, that third stopped having a
+caller.**
 
-And every night is longer than the one before, because the year is turning. The road that was
-long enough yesterday is not long enough tonight.
-
-Nothing to read, nothing to sign, nothing to dismiss. The world renders, one lamp post
-pulses, and one line of text says **Light the first lamp.**
-
-## The loop
-
-```
-   light a lamp ─▶ the lit road runs further ─▶ pilgrims walk further ─▶ coin
-        ▲                                                                  │
-        │                                                                  ▼
-    more wicks ◀── build an oil press ◀───────────── spend ◀───────────────┘
-        │
-        └── but every lamp burns oil, and every night is longer than the last,
-            so a road you can afford to light in autumn guts out in winter.
-```
-
-Twenty seconds is a complete session. The valley accrues while you are gone — and so does the
-dark.
-
-## The joke, which is also the curriculum
-
-**The light costs more than the journey.**
-
-Reaching further is always worth it — a pilgrim's offering scales with how far they walked.
-But the road you reached with has to be *held* every night, forever, and the nights are
-getting longer. Growth is one payment; light is a standing charge. Every player overextends
-exactly once: they light four lamps in a happy afternoon, night falls, oil goes negative, and
-the far lamps gutter out one by one from the top of the road down while the pilgrim line
-visibly shortens in front of them.
-
-**And they do not come back on at dawn.** The post is still yours; the flame is not. Relighting
-is free and takes one tap, but somebody has to be there to take it — which is why an absence
-cannot be used to duck a night, and is the whole of `D2` below.
-
-Nobody explains this. The player causes it by doing the obviously correct thing, and then the
-card says **The far lamps went out** and the fix is *spatial*, not financial: there is a
-shorter way over the ridge, behind a rockfall, and the same lamps light a shorter road better.
-Clearing it re-routes the pilgrims in front of the player's eyes — one call into the
-pathfinder, visible as a crowd changing its mind.
-
-That is why this demo is not another base-builder. A base-builder proves the economy package.
-**This proves the economy package and the pathfinder in the same mechanic**, which is the seam
-nine parallel RFCs are most likely to get wrong.
-
-## Resources
-
-| | is | comes from | spent on |
-|---|---|---|---|
-| **COIN** | a stock | pilgrims returning | lamps, presses, the rockfall, the shrine |
-| **OIL** | a stock with a *negative* rate at night | oil presses | burned by every lit lamp, every night |
-| **WICKS** | a **capacity, not a stock** | presses | how many lamps can burn before oil drains |
-
-Two pills in the wallet. Neither appears until the player has earned some — a HUD of zeroes
-on the first frame is two things to ignore.
-
-## The numbers, enough for a builder to start
-
-| thing | rule |
-|---|---|
-| lamp *n* | `25 · 1.35ⁿ` coin |
-| press *n* | `120 · 1.60ⁿ` coin, placed on a flat riverside 2×2 |
-| rockfall | 400 coin, once |
-| shrine brazier | 2500 coin, and burns as much as six lamps |
-| reach | arc length along the best path from the gate to the furthest lit lamp |
-| pilgrims | `min(⌊reach / spacing⌋, 1 + lampsLit)` — the road holds only so many |
-| coin rate | `pilgrims · k · reach^0.5` (offering scales `reach^1.5`, trip time scales `reach`) |
-| oil | `+4/s per press`, always; `−1/s per lit lamp`, only while dark |
-| day | 45 s, always |
-| night *d* | `15 + 9d` seconds. Night 0 is 15 s. Night 5 is a minute. |
-| longest night | night 6, beginning at about 9:00. **69 s.** No night in this game exceeds 80 s |
-| a lamp whose oil ran out | **goes out and stays out.** The post is still built; the flame is not. Relighting is free, manual, and one tap |
-| the offline curve | `{ uncappedSeconds: 10800, exponent: 0.625, flatAfterSeconds: 86400 }` — 3 h, 5⁄8, 24 h |
-
-`reach` is the master variable and everything is closed form in it. There is no tick.
-
-The last two rows are the whole of `D2` and the reasoning is the next section. The exponent is
-`0.625` rather than `sim`'s shipping `0.6` because 5⁄8 is dyadic with denominator ≤ 64, so
-`sim` computes it as `sqrt(x)·sqrt(sqrt(sqrt(x)))` and credited time becomes **Tier A** — a demo
-whose headline claim is *same seed, same pixel* should not have a `**` in the one function that
-decides how much of the player's night was real.
+`examples/demo` imports seven of the nine packages. It uses no save, no offline accrual, no
+schedule, no pathfinder beyond `pathSample`, one gesture, and one audio bed.
 
 ---
 
-## The night you cannot skip
+## The orphan ledger
+
+This is the useful half of this document.
+
+Nine packages reached their coverage floor against tests written by the same agents that wrote the
+code. That is a real quality signal about *internal* consistency and it is worth nothing at all as
+a signal about whether an API can be used by someone who did not design it. The list below is
+what has **never been picked up by anyone with a different goal.**
+
+### How to read it
+
+Four grades, because they are not equivalent and lumping them together is how this gets hand-waved:
+
+| grade | means | worth |
+|---|---|---|
+| **shipped** | a built exhibit calls it | the real thing |
+| **contract** | `test/contracts/*` calls it — written above the packages, against a seam, by someone holding two packages at once | nearly the real thing |
+| **doc** | it appears in a ```ts fence in `README.md` or `docs/GUIDE.md`, which `tools/check-docs.mjs` type-checks | proves the signature compiles. Proves nothing about behavior, ordering, or whether the shape is usable |
+| **self** | its own `src/` and its own `test/` and nothing else. **The orphan.** | the coverage number, and only that |
+
+Census taken across `examples/**`, `test/**`, `tools/**`, every `packages/*/src`, `README.md` and
+`docs/**`, at cycle 2.
+
+### `@lattice/persist` — the whole package, minus a seam and a doc
+
+| surface | grade | which exhibit will exercise it |
+|---|---|---|
+| `createStore`, `Envelope`, `OpenResult`, `defaultChecksum`, `webStorage` / `browserStorage` | **doc** | **Migration** (`G12`) |
+| `migrations`, `Recognize`, `MigrationStep`, `MigrationChain`, `ChainBuilder`, `Increment` — the v1→v2 chain | **doc** | **Migration** (`G12`). Its whole row is *"a v1 save opened by a v5 build, stepping the chain in front of you"* |
+| `createRecorder`, `ReplayCompat` | **contract** — `test/contracts/replay-step.test.ts` | **Replay** (`G11`) |
+| `createVerifier`, `ReplayVerdict`, `Divergence`, `Refusal`, `Digest`, `Checkpoint`, `ReplayLog` | **doc** / **self** | **Replay** (`G11`) |
+| **quarantine** — `Rejected`, `FailureReason`, `ReadFailure`, `inspect` | **self** | ⚠️ **nothing.** `G12`'s row is the *happy* path: an old save that migrates. A save that is refused is a different demonstration and no row asks for it |
+| **autosave** — `Autosave`, `AutosaveOptions`, `Schedule`, `scheduleFrom`, `SecondsTimeline`, `WriteSkip`, `WriteResult`, `Cancel` | **self** (`Schedule` is **doc**) | ❌ **nothing, structurally.** `GALLERY.md`: *"no endings, no meta progression"*. An exhibit a visitor spends ninety seconds in has nothing to autosave |
+| **flush triggers** — `installFlushTriggers`, `FlushTargets`, `ListenerTarget` | **self** | ❌ **nothing.** Same reason: nothing to flush on `pagehide` |
+| `elapsedSince` | **self** | ⚠️ **Idle** (`G10`) *should*, but its row says *"fourteen hours of offline in one frame"*, which a fabricated timestamp satisfies without going near a store |
+| `StorageAdapter`, `StorageLike`, `Checksum`, `StoreOptions`, `StoreStatus`, `Store`, `Recorder`, `RecorderOptions`, `ReplayVerifier`, `VERSION` | **self** | follow their functions above |
+
+**Sharpest single finding in the census:** `scheduleFrom` is argued for at length in
+`packages/persist/src/index.ts`'s header, and `docs/GUIDE.md` **hand-rolls the conversion instead
+of calling it.** The package's own showcase did not reach for the function the package's own
+header says exists. That is not an orphan; that is a discoverability failure with a witness.
+
+### `@lattice/sim` — `offline` and `schedule`, entire
+
+| surface | grade | which exhibit will exercise it |
+|---|---|---|
+| `offlineCredit`, `offlineElapsed`, `maxOfflineCredit`, `offlineCreditRate`, `OfflineCurve` | **self** | **Idle** (`G10`) — its row names it explicitly, and `GALLERY.md`'s control-panel section names *"drag the offline exponent to 1.0 and watch a fourteen-hour absence pay out uncapped"*, which is the softcap branch. Covered, and covered well |
+| `advanceOver`, `solveCrossingOver`, `Phase`, `Crossing` | **self** | ⚠️ **nothing as written.** `G10` is *"fourteen hours of offline in one frame"* — one span, one warp. `schedule` exists for an absence *partitioned into phases* (fourteen hours containing fourteen nights). No row asks for that |
+| **`CatchUp.fromSeconds`** | **self** | ❌ **nothing.** See below |
+
+**`CatchUp.fromSeconds` is the worst entry in this ledger** and deserves its own paragraph.
+
+First, a correction the census turned up: it is **a required interface field, not a method** —
+`packages/sim/src/schedule.ts:90`, `readonly fromSeconds: number`. It is exercised at roughly forty
+sites inside `packages/sim/test/schedule.test.ts` and twice in `flow.bench.ts`, and constructed
+**nowhere else in the repository**.
+
+It was added days ago to close a specific exploit: a crossing discovered *inside* a warped
+absence, where calling `advanceOver` again with a fresh `spanSeconds` restarts `W` at that instant
+and the player is credited for K absences instead of one — and each restart is *cheaper*, so the
+exploit climbs back in through the function written to close it. The mechanic that produced the
+crossing was **a lamp guttering out mid-absence**, and the scope cut deleted oil, deleted lamps
+going out, and deleted absence. The field survived; the reason for it did not.
+
+It is therefore a correct, well-tested, well-argued answer to a question this repository no longer
+asks. Appendix A is the question, kept so that whoever finds this field can decide with the
+evidence rather than without it.
+
+### `@lattice/loop` + `@lattice/input` + `@lattice/persist` — the replay story
+
+The seam is deliberately structural: the three packages declare each other's shapes and import
+nothing, which is right and which also means nothing links them but a caller.
+
+| surface | grade | which exhibit |
+|---|---|---|
+| `loop.replay`, `ReplaySource` | **contract** — `test/contracts/replay-step.test.ts` | **Replay** (`G11`) |
+| `ReplayOptions`, `ReplayResult` | **self** | **Replay** (`G11`) |
+| `input.record`, `replayCursor` | **doc** | **Replay** (`G11`) |
+| `createLog`, `input.replay`, `InputLog`, `LOG_VERSION`, `RawSample`, `InputRecording`, `ReplayCursor` | **self** | **Replay** (`G11`) |
+| `Diagnostic`, `DiagnosticCode`, `DiagnosticSink` | **self** | ⚠️ **Replay** (`G11`) only if it shows a *refused* replay. A verifier that has never returned a refusal in anger is a verifier nobody has tested |
+
+Covered on paper, and `G11` is carrying more weight than any other row in the gallery. It is the
+sole planned consumer of three packages' worth of replay surface plus most of `persist`.
+
+### `@lattice/iso`
+
+| surface | grade | which exhibit |
+|---|---|---|
+| `FlowField` | **self** | **Wayfinding** (`G8`) — *"a flow field re-routing a moving crowd the instant the map changes"*. Exactly this, and it is the only row that needs it |
+| `ChunkGrid`, `ChunkGridOptions` | **self** | ❌ **nothing.** Chunked storage exists for maps too large to hold densely. Every exhibit is a world framed to fill one viewport; `examples/demo` uses `TileGrid`. No planned exhibit has any reason to want chunks |
+| `anchor` — `Anchor`, `anchorToScreen`, `anchorVisible`, `anchorPan` | **self** | ⚠️ **Builder** (`G9`) is the only plausible home, and it is not in `G9`'s row |
+
+**`anchor` is worse than orphaned — it was needed and not found.** `examples/demo/src/main.ts`
+hand-rolls a world-anchored screen marker for the lamp bubble's tap target:
+
+```ts
+gridToScreen(camera, t.gx + 0.34, t.gy + 0.66, t.base + 2.2 * 26, tap);
+const dx = px - tap.x;
+```
+
+That is `anchorToScreen` with the offsets inlined, written by an author who had the module
+available and did not know it existed. An unused export is a maybe. An export whose first user
+reimplemented it is a naming or a documentation defect, and it is the same failure as
+`scheduleFrom` above.
+
+### `@lattice/draw`
+
+| surface | grade | which exhibit |
+|---|---|---|
+| `createOffscreenSurface` | **shipped-ish** — `packages/ui/src/thumb.ts` imports it | ⚠️ no *exhibit*, but it has a real cross-package consumer. **Correction to the brief:** this one is not orphaned |
+| `OffscreenSurface`, `OffscreenOpts`, `Canvas2dOpts` | **self** | follows the above |
+| `createRecordingSurface`, `RecordingSurface`, `RecordingTarget`, `Op`, `OpName`, `ESTIMATED_ADVANCE_RATIO` | **doc** / **self** | ⚠️ **Replay** (`G11`) is its natural home — *"prove it: the same seed and log land on the same pixel"* is an op-stream comparison — but `G11`'s row does not say so |
+| `drawGhost` | **self**, and **not mentioned in `packages/draw/README.md` either** | **Builder** (`G9`) — *"placement: footprints, a ghost, validity"*. Covered exactly, and `drawGhost` is currently the most invisible export in the kit |
+| `spriteBounds` | **self** (prose only) | ⚠️ **Builder** (`G9`) or **Instrument** (`G13`), neither of which asks for it. `examples/demo` again hand-rolled its tap target rather than measuring one |
+| `blit` | **not an orphan.** **Correction to the brief:** it is a method on `Surface`, not a package export, and `packages/draw/src/light.ts` calls it three times per composite — so *Lamplighter* runs it sixty times a second | — |
+
+`packages/draw/src/index.ts` justifies keeping `record.ts` in `src/` rather than `test/` on the
+grounds that **"`ui` wants it for layout measurement without a canvas."** That is not true today:
+`packages/ui/src/thumb.ts` uses `createOffscreenSurface`, and nothing in `ui` references the
+recording surface at all. A comment asserting a consumer that does not exist is how an orphan
+survives an audit.
+
+### `@lattice/input` — the gestures
+
+The whole gesture *type* surface is `self`, which is structural rather than damning: exhibits
+reach gestures through string literals (`actions: { touch: ['tap'] }`), not through the types. The
+question that matters is which gestures anything actually asks for.
+
+| gesture / knob | grade | which exhibit |
+|---|---|---|
+| `tap` | **shipped** — `examples/demo` | many |
+| `drag`, `zoom` (wheel + pinch), `CameraController` | **self** | **the landing page** (`G99`) — *"drag to pan, scroll to zoom"* is in its brief. Also every large-world exhibit that wants a camera |
+| `GestureProfile`, `ProfileOverrides`, `ProfileScalar`, `DEFAULT_PROFILE`, `PointerKind` | **self** | **the control panel** (`G0`) — `GALLERY.md` names *"the tap-versus-drag thresholds"* and *"set the tap slop to 1 px and discover you can no longer tap anything"*. Covered, and by design |
+| `longpress` | **doc** only (`GUIDE.md`) | ❌ **nothing** |
+| gamepad | **self** | ❌ **nothing.** The original RFC already flagged this: *"`input.gamepad` is the one module this design never touches"*. It is still true, one design later |
+
+### `@lattice/audio`
+
+| surface | grade | which exhibit |
+|---|---|---|
+| `createAudio`, `createBed`, `SoundDef`, `BedLayer` | **shipped** — `examples/demo/src/sound.ts` | — |
+| **music deck** — `createDeck`, `validateSong`, `Song`, `Track`, `TrackVoice`, `Note`, `SongProblem`, `LOOKAHEAD_SEC`, `PUMP_INTERVAL_MS` | **self** | ❌ **nothing as written.** **Instrument** (`G13`) shows *synthesis*; **Resonance** (`G14`) is chords, a bed, and ducking. A drone is `createBed`. Nothing in the gallery currently needs a *scheduled sequence with lookahead*, which is what the deck is |
+| **mixer** — `Mixer`, `MixerState`, `snapshot()`, `restore()`, `effectiveGain` | **self** | ⚠️ partial. **Resonance** (`G14`) exercises bus gains and ducking. `snapshot()`/`restore()` exist, per `packages/audio/src/index.ts`, so a game can hand mixer state to `@lattice/persist` — which needs one artifact holding *audio and a save at once*, and there is no such row |
+
+### And the one nobody listed: `@lattice/ui`
+
+`examples/demo` declared `@lattice/ui` and never imported it; that dependency is removed as part of
+`K8`. Look at what replaces it and the position is worse than orphaned:
+
+- Not one of the fifteen exhibit rows names `ui`.
+- The control panel — the one obviously UI-shaped thing in the plan — **lives in
+  `examples/_shared/` on purpose**, and `GALLERY.md` says so in as many words: *"`@lattice/ui` is
+  deliberately not a controls library."*
+- *Lamplighter* drew its HUD into the canvas with `draw`, in `hud.ts`.
+
+**`@lattice/ui` is a package the gallery has no planned consumer for at all.** It is `B9`, still
+in flight, and this is worth putting in front of whoever finishes it before they finish it.
+
+---
+
+## The uncovered list, ranked
+
+Everything above with a ❌ or a ⚠️ that no planned exhibit currently reaches. Ranked by what the
+kit loses if it stays uncovered.
+
+1. **`sim.schedule` entire, and `CatchUp.fromSeconds` above all.** A phased absence with a
+   crossing inside it is the hardest thing `sim` does and the only part with a live exploit in its
+   history. Nothing exercises it.
+2. **`persist` autosave and flush triggers.** The write path. Everything the gallery plans to do
+   with `persist` is *reading* — open a v1 save, verify a replay. Nothing writes one on a schedule,
+   and nothing flushes one on `pagehide`, which is where saves are actually lost.
+3. **`persist` quarantine.** A save store's behavior on a *bad* save is the half that matters, and
+   `G12` as written only shows the good one.
+4. **`audio` music deck.** A whole module, ~9 exports, with no artifact that needs a sequence.
+5. **`iso.anchor`.** Not merely unused — reimplemented by its first would-be user.
+6. **`audio` mixer `snapshot`/`restore`.** Needs one exhibit holding audio and a save at once.
+7. **`iso.ChunkGrid`.** Genuinely may not belong in a kit whose exhibits all fit one viewport.
+8. **`draw.createRecordingSurface` and `spriteBounds`.** Both have obvious homes that no row names.
+9. **`input` `longpress` and gamepad.** Two designs in a row have not needed them.
+
+---
+
+## What this asks of `docs/GALLERY.md` and the `G` tasks
+
+`K8` owns none of these paths. They are the actionable output of the ledger and each is one clause
+in an existing row.
+
+| # | change | why |
+|---|---|---|
+| 1 | **`G10` Idle**: widen from *"fourteen hours of offline in one frame"* to *"fourteen hours **that contained fourteen nights**"*, and require it to open a real store so `elapsedSince` supplies the gap | picks up `sim.schedule`, `Phase`, `advanceOver`, `elapsedSince` in one sentence |
+| 2 | **`G12` Migration**: add *"and one save it refuses"* | picks up quarantine, `Rejected`, `ReadFailure`, `inspect` |
+| 3 | **`G11` Replay**: require the proof to be an **op-stream** comparison, and require it to show one *refused* replay | picks up `createRecordingSurface`, `Divergence`, `Refusal`, `DiagnosticSink` |
+| 4 | **`G9` Builder**: name `drawGhost`, `spriteBounds` and `anchor` in the row | `drawGhost` is already implied; the other two are the exhibit's real needs and *Lamplighter* hand-rolled both |
+| 5 | **`G13` Instrument**: require a sequenced pattern, not only struck tones — **or cut `audio.music`** | it is a whole module with no reason to exist otherwise, and cutting it is a legitimate answer |
+| 6 | **A sixteenth row, or a clause on `G14` Resonance**: one artifact that saves — mixer snapshot, autosave, flush on hide | items 2, 6 and half of the `persist` write path have no other home. `GALLERY.md` forbids meta progression, and *"close the tab mid-chord and reopen it"* is not progression, it is the exhibit |
+| 7 | **`B9` `ui`**: before it is finished, decide what in the gallery will ever import it | no row names it, and the one UI-shaped artifact in the plan is explicitly not it |
+| 8 | **`C1`–`C9` audits**: hand each auditor their package's rows from this ledger as the starting point | *"never called by anyone with a different goal"* is a far better audit lead than a coverage percentage |
+| 9 | **`iso.ChunkGrid`**: put it to the `iso` audit as a **delete** candidate, not a coverage gap | an export with no consumer and no plausible one is a promise the kit should stop making |
+
+The three items with no owner at all after that — `input` gamepad, `longpress`, and `ChunkGrid` —
+should be **deleted or documented as deferred**, not left as exports. `AGENTS.md`: *every export is
+a promise.*
+
+---
+
+# Appendix A — `D2`: the night you cannot skip
+
+*Preserved verbatim from the retired design. This is the only record of why
+`CatchUp.fromSeconds` and `OfflineCurve.uncappedSeconds` are shaped as they are. The game it
+argues about does not exist; the arguments are still correct and the field is still in the API.*
 
 > **`sim` T21.** A warp on *time* discounts the lamps' oil by exactly the factor it discounts
 > the pilgrims' coin, so LAMP ROAD as written at `D1` rewards closing the tab at dusk: the
@@ -116,11 +258,16 @@ decides how much of the player's night was real.
 > one. Here is the answer.
 
 **Decision: the burn stays inside the warp — one economy, one clock — and the night's teeth
-move from *flow* to *state*.** Nothing about §3.4 changes. What changes is that a lamp whose oil
-ran out **stays out until the player taps it again**, and that single rule inverts the exploit
-into a penalty without adding a number to the HUD or a sentence to the tutorial.
+move from *flow* to *state*.** What changes is that a lamp whose oil ran out **stays out until
+the player taps it again**, and that single rule inverts the exploit into a penalty without
+adding a number to the HUD or a sentence to the tutorial.
 
-Three parts, in the order they matter.
+The relevant numbers: lamp *n* costs `25 · 1.35ⁿ`; oil is `+4/s per press` always and `−1/s per
+lit lamp` only while dark; day is 45 s and night *d* is `15 + 9d` seconds, so night 6 — the
+longest in the game — is 69 s and no night exceeds 80 s; the offline curve is
+`{ uncappedSeconds: 10800, exponent: 0.625, flatAfterSeconds: 86400 }`. The exponent is `0.625`
+rather than `sim`'s shipping `0.6` because 5⁄8 is dyadic with denominator ≤ 64, so `sim` computes
+it as `sqrt(x)·sqrt(sqrt(sqrt(x)))` and credited time becomes **Tier A**.
 
 ### 1. Oil is not exempt, and an exemption would be two economies
 
@@ -158,9 +305,6 @@ it declined to pay you for.
 
 ### 2. The exploit needs an absence 135 times longer than the thing it skips
 
-This is the part `D1` missed, and it is the reason the fix is a curve parameter rather than a
-mechanic.
-
 `W(T) = T` for `T ≤ uncappedSeconds`. **Below the knot there is no warp at all.** At `U = 3 h`
 against this design's 80-second ceiling on a night, the ratio is 135:1 — and the entire game,
 gate to shrine, is about ten minutes, which is an *eighteenth* of the uncapped window. A player
@@ -175,10 +319,6 @@ this, and it belongs beside `OfflineCurve.uncappedSeconds`:**
 > If a game's standing charge accrues on a cycle, `uncappedSeconds` must exceed the period of
 > that cycle by a wide margin, or the cycle is skippable. A player can aim an absence at a
 > minute. Nobody can aim one at three hours.
-
-The demo therefore keeps `U = 3 h` — not inherited from the source game, but *chosen* against a
-69-second longest night, and written down here so a later balance pass that shortens `U` knows
-exactly what it is spending.
 
 ### 3. What the warp cannot discount is the dark road it leaves behind
 
@@ -206,27 +346,17 @@ absence long enough for the warp to bite, the second number is larger than the f
 larger the longer they are gone. **Closing the tab is never a win, and the mechanism that makes
 it a loss is the same one that produces the middle game's best beat.**
 
-Relighting is free and manual. Free, because `sim`'s own generator exemption argument applies —
-a fail state you cannot dig out of is a dead save, not a stake. Manual, because the thing the
-game legitimately charges an absent player is *attention*: the road is dark until somebody
-notices, and noticing is the game.
-
-### What this asks of `@lattice/sim`
-
-One requirement that changes a signature, and one that changes a doc comment. Both are free,
-because nobody has started building.
+### What this asked of `@lattice/sim` — and got
 
 **`advanceOver` and `solveCrossingOver` must be able to resume a partially-consumed absence
-without restarting the warp.** The guttering loop in `sim` §3.6 is written against live time —
-`advance` plus a plain horizon — and it cannot be run under a schedule as the surface stands.
-Each extinguishment is a commit partway through the absence, and calling `advanceOver` again with
-a fresh `spanSeconds` restarts `W` at that instant, which is precisely the "pays for K absences
-instead of one" error §3.5 exists to prevent. Here it is worse than usual, because each restart
-is *cheaper* for the player: the exploit would climb back in through the function that closes it.
+without restarting the warp.** Each extinguishment is a commit partway through the absence, and
+calling `advanceOver` again with a fresh `spanSeconds` restarts `W` at that instant, which is
+precisely the "pays for K absences instead of one" error the schedule module exists to prevent.
+Here it is worse than usual, because each restart is *cheaper* for the player: the exploit would
+climb back in through the function that closes it.
 
-The fix is one field, and §3.5's own argument already licenses it — **a crossing is a phase
-boundary, one discovered rather than scheduled**, and `W` distributes across a partition by
-evaluation at absolute offsets:
+The fix was one field — a crossing is a phase boundary, one discovered rather than scheduled, and
+`W` distributes across a partition by evaluation at absolute offsets:
 
 ```ts
 export interface CatchUp<G extends string> {
@@ -246,335 +376,48 @@ export interface CatchUp<G extends string> {
 }
 ```
 
-The two APIs already interlock: `Crossing.atSeconds` is documented as *real* seconds from the
-anchor, which is exactly the number that goes into `fromSeconds` on the next iteration. `sim` has
-the machinery; what it lacks is the entry point that lets a caller re-enter mid-absence. The game
-side is the §3.6 loop with `plan` threaded through it, bounded by the number of lit lamps, and it
-is the eight lines `rules.ts` already budgeted for a cycle clock plus about six more.
+`Crossing.atSeconds` is documented as *real* seconds from the anchor, which is exactly the number
+that goes into `fromSeconds` on the next iteration.
 
-Also requested, and cheap: **say beside `OfflineCurve.uncappedSeconds` what part 2 says.** T21 is
-a trap for the *designer*, and the place a designer meets it is the field they are choosing a
-number for.
+**It shipped. It has no caller. That is the ledger's first entry.**
 
 ### The alternatives, and why not
 
 | option | why not |
 |---|---|
 | **Exempt the standing charge from the warp** | Two economies, two anchors, and `solveCrossingOver` no longer applicable — see part 1. It also replaces a reward for leaving with a hidden, absence-length-dependent punishment for it |
-| **Lamps do not burn while you are away** | Then night is not a standing charge, `reach` is free to hold, and the game's one hard decision evaporates in the other direction. It also makes the offline path a different simulation from the live one, which is the thing `sim` §4.3 refuses on the grounds that the two will diverge silently |
+| **Lamps do not burn while you are away** | Then night is not a standing charge, `reach` is free to hold, and the game's one hard decision evaporates in the other direction. It also makes the offline path a different simulation from the live one, which is the thing `sim` refuses on the grounds that the two will diverge silently |
 | **Resume from where you left, credit nothing** | This is a game with no offline progress. It discards `offline`, `advanceOver` and `Crossing` — three of the four capabilities this demo exists to exercise — and makes *"Two days and two nights passed"* unwritable |
-| **Accept it** | A generous idle game is a real position, and part 2 shows the demo is already accepting it for every absence under three hours, which is every absence a player can aim. What I will not accept is the long absence being *free*, because winter is the game. Part 3 is what makes that acceptance safe rather than a shrug |
-
-## The first five minutes, beat by beat
-
-| time | what happens | which package must provide it |
-|---|---|---|
-| 0:00 | The valley renders in dusk gold: gate at the bottom, road climbing past the river, shrine dark on the ridge. One unlit lamp post pulses. One line: *Light the first lamp.* No splash, no modal. | `iso` projection+camera+tilemap **with elevation**; `draw` solids+palette+layers; `core` noise (the heightfield); `loop` |
-| 0:04 | Tap. The flame swells over 400 ms, a warm pool spills across three road tiles, and the audio context unlocks on that same gesture with the strike. | `input` pointer tap; `loop` tween; `draw` **light/glow**; `audio` engine unlock + synth |
-| 0:09 | A pilgrim walks out of the gate, to the lamp, and back. `+3` floats off them. The COIN pill appears and rolls. | `iso` **path + sample-along-path**; `sim` flow; `ui` roll; `core` pool (the float) |
-| 0:20 | Lamp two is affordable. Card: *Light the road further.* Pilgrims now walk visibly further and there are visibly more of them. | `sim` cost curve; `ui` panel |
-| 0:45 | **First nightfall.** The palette rolls from gold to blue over six seconds, everything outside a lamp pool goes dark, and the pilgrims turn around at the last lit lamp. The OIL pill appears with a burn rate under it. | `loop` scheduler; `draw` **palette interpolation + night mask**; `sim` capacity |
-| 1:00 | Dawn, 15 seconds later. That was easy. It will not stay easy. | `loop` |
-| 1:05 | Card: *Build an oil press.* A ghost footprint follows the pointer and refuses to sit anywhere but flat riverside ground. | `input` drag; `iso` **footprint fit against a heightfield**; `draw` |
-| 1:40 | Four lamps. Word has spread — more pilgrims than the road holds. Buying reach stops paying. Card: *The road is full, not the valley.* | `sim` **capacity clamp**; `iso` path |
-| 2:09 | **Second night, 24 s.** Oil hits zero partway through. The top lamp gutters with a puff of smoke, then the next, and the pilgrim line shortens in front of the player. | `sim` **solve for depletion time**, then re-solve one lamp lighter — a loop bounded by lamps, not by time; `draw`; `audio` |
-| 2:33 | **Third dawn, and the two lamps are still dark.** They did not come back on. The posts are there, drawn cold; the pilgrims still turn around below them. Card: *Two lamps went out. Relight them.* Tap, tap — free, and the road is whole again. This is the entire teaching of `D2` and it costs one card and two taps | `draw` **a built-but-unlit lamp state**; `ui` panel; `input` tap |
-| 2:54 | The camera pans up the ridge to a rockfall and holds. Card: *There is a shorter way.* 400 coin. | `loop` tween (camera); `ui`; `iso` camera |
-| 3:10 | Rockfall cleared. **Every pilgrim on the map re-routes over the ridge**, same lamps, shorter road, and the coin rate jumps without a single purchase. | `iso` **weighted-cost path + recompute on tile change** |
-| 3:27 | **Third night, 33 s.** Now longer than the run to the shrine takes. Presses matter more than lamps. Buy-max on presses is one call, not a loop. | `sim` cost closed form |
-| 4:12 | Ridge lamps. The shrine's silhouette is finally inside the last lamp pool, still unlit. The card names it for the first time: *Light the shrine before the longest night.* | `ui`; `draw` text |
-| 4:54 | **Fourth night, 42 s.** Longer than day. The player is now playing the actual game the first four minutes were teaching. | everything above |
-
-Something new every 45–90 seconds, and the gap never more than doubles. The five-minute mark
-is where the tutorial stops being invisible and starts being scenery.
-
-### Session two, at 0:00
-
-Close the tab. Come back. Before anything is tappable, one toast — and **the copy is derived
-from the crossing, never assumed**, because how long the player was away decides which sentence
-they get.
-
-**Away four minutes** (unwarped, `T < uncappedSeconds`, so every second was paid for in full):
-
-> **Two days and two nights passed.** 1,240 coin. The four highest lamps went out at 3:41 into
-> the second night, and are still out.
-
-**Away eight hours.** `W(28,800 s)` at the demo's curve is 19,937 s — **five and a half hours
-credited, sixty days and sixty nights**:
-
-> **Sixty days and sixty nights passed.** 9,100 coin. The road went dark on the fourth night.
-> The pilgrims have been turning back at the third lamp ever since.
-
-That second sentence is `D2` doing its job in one line. The player is not told a rule; they are
-told what happened, and what happened is that the road collapsed to the length their presses
-could hold and then earned at that length for fifty-six nights. Nothing was skipped.
-
-Past 24 hours the curve is flat: `maxOfflineCredit` is about 11 hours, roughly **87 days and 87
-nights**, and a device whose clock jumped a year reports the same 87. The toast can therefore
-never claim more than the physics did.
-
-Those sentences are a load-bearing test of three packages at once: `persist` for the stamped
-save, `loop` for the injected clock, and `sim` for accruing across an **alternating** day/night
-rate, *solving* for the moment the oil ran out rather than discovering it by ticking, and
-**resuming the same absence after each lamp gutters without restarting the warp** (`D2`). If any
-of the three RFCs owns none of the timestamp, that toast cannot be written; if `sim` has no
-`fromSeconds`, the second one is written and wrong.
+| **Accept it** | A generous idle game is a real position, and part 2 shows the demo is already accepting it for every absence under three hours, which is every absence a player can aim. What I will not accept is the long absence being *free*, because winter is the game |
 
 ---
 
-## The ending
+# Appendix B — what the retired design got right, and what it got wrong
 
-**The Longest Night**, at roughly nine to eleven minutes.
+Worth one screen, because the next design document in this repo will be written by someone who
+should read it.
 
-The shrine has been visible and dark since frame one. To light it the player needs two things
-they have spent the whole game acquiring: an **unbroken lit path from gate to shrine**, and
-enough **wicks** to hold it plus the brazier, which burns as much as six lamps.
+**Right, and it held:**
 
-*Unbroken* is doing real work after `D2`: a lamp that guttered on the sixth night is still out
-on the seventh, so the last minutes of the game are a walk up the road relighting the gaps
-before the final tap — the player retracing, by hand, exactly the road the economy took from
-them. That is the best possible use of the rule, and it was free.
+- *The lit road is the economy — a place, not a stat.* This survived every cut and is the whole
+  reason *Lamplighter* works at ninety seconds.
+- **The line budget.** Publishing per-file budgets and alarms *before* a line was typed, with an
+  explicit statement of what each alarm would mean about the kit, produced better findings than
+  the code did. Every gallery exhibit should do this.
+- **The ranked gap list.** Items 1, 2, 3 and 6 — `pathSample`, the light primitive, elevation, and
+  `Palette.lerp` — were all delivered and are all named in `examples/demo/README.md` as the seams
+  that fit best. Ranking gaps by *how badly this game needs them* worked.
+- **The last open question**, which asked whether `uncappedSeconds = 3 h` meant the demo never
+  exercised the softcap branch of `sim`'s own curve, and said *"the most interesting third of
+  `offline` is covered by nothing."* It was right, it was written a fortnight early, it was about
+  the wrong third, and nobody acted on it. **The orphan ledger above is that question, generalized
+  and finally answered.**
 
-Tap the brazier on the longest night and:
+**Wrong:**
 
-1. The ignition runs *up the road*, lamp by lamp, staggered by each lamp's arc-length along
-   the path — the same sampling function that walks the pilgrims, reused.
-2. The night palette warms from blue toward gold; for the first time the valley is lit at
-   night and looks like the first frame of the game, which it has not looked like since 0:45.
-3. Every pilgrim on the map turns and walks up together, no longer stopping anywhere.
-4. A chord builds out of the same oscillators the lamp strikes came from.
-5. One line, and then nothing further to buy:
-
-   > *The road is lit. They will find their way now, with or without you.*
-
-The save is stamped `finishedAt`. The HUD retires to a single line. The game keeps running —
-you can watch the valley you lit — but the loop is closed and it says so.
-
-**No prestige layer.** It is the direct enemy of having an ending, and an idle game with no
-terminal beat has no reason to be finished. This one has a reason: the dark thing at the top
-of the screen that has been there since the first second, and the player is the only one who
-can do anything about it.
-
----
-
-## The capability matrix
-
-This is the real deliverable. **Claim** is what `.lattice/kit.json` currently promises:
-✓ named in the module list, ~ implied but not named (the risk column), ✗ nothing claims it.
-
-### `@lattice/core`
-
-| capability | module | claim | what breaks without it |
-|---|---|---|---|
-| seeded RNG, bit-identical | `rng` | ✓ | everything |
-| **named sub-streams** (`rng.stream('lamp:14')`) | `rng` | ~ | per-lamp flicker and per-pilgrim gait must be stable regardless of *creation order*, or the valley reshuffles itself when a lamp is bought out of sequence |
-| **`hash2(x, y) → 0..1`**, white, not smooth | `noise` | ✗ | per-tile grass tufts and stone speckle with zero stored state. Value noise is smooth and cannot do this |
-| 2D value noise for the heightfield | `noise` | ✓ | the valley is a flat mat |
-| easing for flame swell and palette rolls | `easing` | ✓ | the ignition reads as a toggle |
-| typed events, game → HUD | `events` | ✓ | HUD polls, which couples it to the frame loop |
-| pooled float-text and smoke puffs | `pool` | ✓ | GC pauses under a full road |
-| `1.2k` formatting | `format` | ✓ | wallet is unreadable by minute six |
-
-### `@lattice/iso`
-
-| capability | module | claim | what breaks without it |
-|---|---|---|---|
-| grid ↔ world ↔ screen | `projection` | ✓ | — |
-| **elevation: a per-tile height that the projection honours** | `projection`/`tilemap` | ✗ | there is no ridge, no river bank and no valley. This is the single largest visual assumption in the design and nothing in the module list mentions z |
-| camera with pointer-anchored zoom, clamped to valley bounds | `camera` | ~ | the clamp is not named; without it the player pans into the void in the first ten seconds |
-| depth sort ~200 sprites | `depth` | ✓ | pilgrims walk through lamp posts |
-| tile map with terrain type + height | `tilemap` | ~ | see elevation |
-| **footprint fit tested against terrain flatness**, not just occupancy | `footprint` | ~ | the press can be placed on a cliff |
-| tap → tile, computed from state and camera | `hittest` | ✓ | — |
-| **weighted-cost pathfinding** (terrain cost, not just passable/blocked) | `path` | ~ | the ridge-versus-river decision *is* the mid-game. Binary walkability cannot express "shorter but rougher" |
-| **path recompute on a tile change**, cheap enough to run on a tap | `path` | ~ | the rockfall beat |
-| **sample a point at arc length `s` along a path, into an out-param** | `path` | ✗ | **no walkers.** The entire crowd is `pathPointAt(path, frac(t·v + i/n)·len, out)` — closed form, no per-walker state, deterministic, zero allocation. Without this the demo needs a walker simulation and the line budget triples |
-| total arc length of a path | `path` | ~ | `reach` is the game's master variable |
-
-### `@lattice/draw`
-
-| capability | module | claim | what breaks without it |
-|---|---|---|---|
-| Surface + Canvas2D backend | `surface`/`canvas2d` | ✓ | — |
-| iso box, post, cylinder, roof for lamp/gate/press/shrine | `solids` | ✓ | — |
-| face colors derived from one color | `color` | ✓ | — |
-| **interpolate two named palettes by `t`** (dawn → day → dusk → night) | `palette` | ✗ | the day/night cycle is the spine of the game. Recolouring the whole world should be one call and one number, which is the strongest argument the zero-asset rule has |
-| **an emissive light: additive radial glow with a falloff** | — | ✗ | a lamp that does not glow is a stick |
-| **a night mask: a darkness layer that lamp lights punch through** | `layers` | ✗ | **the premise.** The player must be able to see, at a glance, where the light stops. Without this there is no game, only a recolour |
-| **a built-but-unlit lamp that reads as *different from* an unbuilt site** | `solids`/`color` | ~ | **`D2`.** Lamps now stay out after guttering, so "dark post you own" and "dark post you could buy" are two states on the same silhouette and the player must tell them apart at a glance to know what to tap. One derived color and no glow, but the design did not have this state before this revision |
-| contact shadows under posts and pilgrims | `shadow` | ✓ | everything floats |
-| static geometry cached (trees, ground chunks) | `cache` | ✓ | frame budget |
-| world-space text for the shrine name | `text` | ✓ | minor |
-| layer order: ground, shadow, sprites, **light**, overlay | `layers` | ~ | the light layer needs to composite additively above sprites and below UI |
-
-### `@lattice/loop`
-
-| capability | module | claim | what breaks without it |
-|---|---|---|---|
-| fixed-step sim, interpolated render | `loop` | ✓ | — |
-| **wall-clock, so night falls in a hidden tab** | `clock` | ✓ | the whole day/night premise |
-| clamped catch-up | `clock` | ✓ | returning after an hour runs an hour of dusk transitions in one frame |
-| scheduled dawn/dusk transitions | `scheduler` | ✓ | — |
-| tweens: flame swell, palette roll, camera pan to the rockfall | `tween` | ✓ | every beat reads as a jump cut |
-| **a cycle clock: position 0..1 through a period whose length changes each cycle** | — | ✗ | ~8 lines of game code. *Acceptable as game code* — noted so nobody counts it as a kit failure |
-
-### `@lattice/input`
-
-| capability | module | claim | what breaks without it |
-|---|---|---|---|
-| tap vs drag discrimination | `pointer`/`gestures` | ✓ | every pan lights a lamp |
-| drag-pan and pinch-zoom camera controller | `cameracontrol` | ✓ | — |
-| **tap → grid cell**, as one composed thing | seam with `iso.hittest` | ~ | **the seam most likely to fall between two RFCs.** Both packages can plausibly disown it. Somebody must own it, and the demo needs it in the first four seconds |
-| drag a ghost footprint, with a validity read per move | `pointer` | ~ | press placement |
-| hover preview on desktop, tap-to-preview on touch | `pointer` | ✗ | small, but the press placement is unreadable without it |
-| every listener returns a disposer | all | ✓ | — |
-| gamepad | `gamepad` | ✓ | **the demo never touches it.** A module no game needs is a module worth questioning |
-
-### `@lattice/audio`
-
-| capability | module | claim | what breaks without it |
-|---|---|---|---|
-| unlock on the first gesture — which is the first lamp tap, conveniently | `engine` | ✓ | — |
-| synthesised strike, gutter-out puff, coin, chord | `sounds` | ✓ | — |
-| **hard voice ceiling** under forty pilgrims' footsteps | `voice` | ✓ | the design deliberately generates more voices than any ceiling should allow; that is the test |
-| sfx / ambience buses | `bus` | ✓ | — |
-| **a parameterised ambience drone that crossfades day ↔ night** | `music` | ~ | `music` reads as a sequencer. A drone following a 0..1 parameter is a different shape, and it is what the day/night cycle actually needs |
-| silent, not throwing, with no WebAudio | `engine` | ✓ | tests |
-
-### `@lattice/persist`
-
-| capability | module | claim | what breaks without it |
-|---|---|---|---|
-| versioned save + explicit migration chain | `store`/`migrate` | ✓ | — |
-| **a real v1 → v2 migration shipped in the demo**: v1 held `lampsLit: number`, v2 holds `lamps: LampId[]` because lamps became individually addressable when they started guttering out from the top | `migrate` | ✓ | the demo ships a v1 fixture and boots it. A migration chain with only one link has never been tested. **`D2` makes this load-bearing rather than illustrative**: a guttered lamp stays out across a save, so *which* lamps are lit is now durable state and a count cannot express it |
-| debounced writes, flushed on `visibilitychange` | `store` | ✓ | mobile Safari eats the last minute |
-| corrupt save → fresh, with a reported reason | `integrity` | ✓ | — |
-| **the saved-at timestamp** that offline accrual reads | seam: `persist` ↔ `loop` ↔ `sim` | ✗ | **three packages, one number, and each can reasonably assume another owns it.** If all three RFCs are silent, the offline toast cannot be written and nobody finds out until `D1` |
-
-### `@lattice/sim`
-
-| capability | module | claim | what breaks without it |
-|---|---|---|---|
-| cost curve, and buy-max in closed form | `cost` | ✓ | — |
-| stocks and rates integrated on read, no tick | `flow` | ✓ | — |
-| production graph: presses → oil, pilgrims → coin | `graph` | ✓ | — |
-| **capacity clamp** (`min(roadCapacity, pilgrims)`; wicks vs lit lamps) | `capacity` | ✓ | the "road is full" beat and the whole oil gate |
-| **offline accrual across an alternating piecewise rate** (day rate, night rate, boundaries that move because nights lengthen) | `offline` | ✓ | returning after two days is simply wrong. Served by `advanceOver` + `Phase[]`; the generator is the game's eight lines |
-| **solve for the time a stock hits zero**, in closed form | `flow`/`capacity` | ✓ | "the far lamps went out at 3:41 into the second night" — both live and offline. Served by `solveCrossing`/`solveCrossingOver`; oil is degree 1, so exact and Tier A |
-| offline warps time, never yield | `offline` | ✓ | — |
-| **resume a partially-consumed absence without restarting the warp** (`CatchUp.fromSeconds`) | `offline` | ✗ | **`D2`, and the only new demand this revision makes.** Every guttered lamp is a commit partway through an absence. Without it the guttering loop must re-enter `advanceOver` with a fresh span, which restarts `W`, pays for K absences instead of one, and lets the standing-charge exploit back in through the function that closes it. One required field; see *The night you cannot skip* |
-| **`Crossing` carrying both clocks** (real seconds and credited seconds) | `offline`/`flow` | ✓ | the toast says *"3:41 into the second night"*, which is real time; the solve happens in credited time. `Crossing.atSeconds` is also the value `fromSeconds` takes on the next iteration, so the two APIs interlock |
-| a **dyadic `exponent`** computed as a `sqrt` chain, not `**` | `offline` | ✓ | the demo picks `0.625` so credited time is Tier A. A determinism proof with a fractional `**` in the offline path is not a proof |
-| **`OfflineCurve.uncappedSeconds` documented as a design constraint**, not just a number | `offline` | ~ | T21 is a trap for the designer, and the designer meets it at the field they are choosing a number for. *If your standing charge accrues on a cycle, `U` must exceed the cycle's period by a wide margin, or the cycle is skippable* |
-
-### `@lattice/ui`
-
-| capability | module | claim | what breaks without it |
-|---|---|---|---|
-| wallet pills that appear on first earn, with number rolls | `roll`/`el` | ✓ | — |
-| the objective card — one line, always naming the next action | `panel` | ✓ | the ten-second promise |
-| toasts, including the multi-line offline report | `toast` | ✓ | — |
-| buy buttons with an affordable / unaffordable state | `el` | ~ | not named; every idle game needs it |
-| lamp and press thumbnails rendered through `draw` into an offscreen surface | `thumb` | ✓ | — |
-| **the day/night palette reaching the DOM as CSS custom properties** | seam: `draw.palette` → `ui` | ✗ | at nightfall the world goes blue and the HUD stays gold, and the whole illusion collapses at the one moment the game is showing off |
-| overlay updates on an interval, not in the frame loop | all | ✓ | hidden-tab freeze |
-
----
-
-## The gaps, ranked
-
-Ordered by how badly *this game* needs them, which is the only ranking this document is
-entitled to.
-
-1. **`iso.path` — sample a position at arc length along a path** (out-param). No walkers
-   without it, and the walkers are the game. Also unblocks the ending's ignition wave.
-2. **`draw` — a light primitive and a night mask.** The premise is "you can see where the
-   light stops". Without these, night is a recolour and the game has no subject.
-3. **`iso` — elevation.** A valley with no z is a rug with a road painted on it.
-4. **`sim.offline` — resuming an absence without restarting the warp** (`CatchUp.fromSeconds`).
-   The `D1` entries here were piecewise alternating rates and solve-for-depletion-time; `sim`
-   now serves both. What is left is the seam between them — a crossing *inside* a warped
-   absence — and it is the only thing on this list that is a live exploit rather than a missing
-   feature. Invisible until a player closes the tab, and profitable when they do.
-5. **`iso.path` — weighted terrain cost and cheap recompute.** The mid-game decision.
-6. **`draw.palette` — interpolate two palettes by `t`, and expose it to `ui` as CSS vars.**
-   The day/night spine, and the strongest single argument for the zero-asset rule.
-7. **The saved-at timestamp seam** (`persist` ↔ `loop` ↔ `sim`). Three owners, therefore
-   none.
-8. **`core.rng` named sub-streams and `hash2`.** Cheap to add, and their absence shows up as
-   a valley that quietly reshuffles itself.
-9. **The tap → grid cell seam** (`input` ↔ `iso`). Needed at 0:04 of the first session.
-10. **`audio` — a parameterised drone.** The cycle is silent otherwise, which is survivable.
-
-Two smaller notes for the architects: **`input.gamepad` is the one module this design never
-touches**, and `audio.music` is only touched if it can be a drone rather than a sequence.
-
----
-
-## The line budget
-
-Real TypeScript, `examples/demo/src/`, excluding comments and blank lines. If a file comes in
-at more than its **alarm**, the kit is missing something and the number tells us where.
-
-| file | what it holds | budget | alarm | what the alarm means |
-|---|---|---|---|---|
-| `main.ts` | boot, wiring, mode machine, the frame callback | 60 | 100 | the seams between `loop`, `input`, `draw` and `ui` need a harness nobody wrote |
-| `valley.ts` | seed → heightfield, river, road spline, lamp sites, rockfall | 50 | 85 | `core.noise` or `iso.tilemap` is not enough to describe terrain |
-| `sprites.ts` | lamp, pilgrim, gate, press, shrine, tree, ground tile | 90 | 130 | `draw.solids` is missing a primitive — probably lights, probably curves |
-| `rules.ts` | costs, rates, capacity, day/night `Phase[]`, the guttering loop, objective spine | 70 | 100 | `sim` is missing capacity, cycles, the depletion solve, or `fromSeconds` — if the guttering loop alone is more than fifteen lines, it is the last of those |
-| `hud.ts` | wallet, objective card, buy buttons, toasts | 40 | 65 | `ui` is a set of parts, not a set of primitives |
-| `save.ts` | v1 and v2 schemas, the migration, the offline report | 20 | 35 | `persist` needs the timestamp seam resolved |
-| `sound.ts` | six sound definitions and the ambience parameter | 15 | 25 | `audio.sounds` is not declarative enough |
-| **total** | | **345** | **≈500** | past 500, the kit failed, not the design |
-
-The budget is a claim about the kit, not about the game. **A design this small coming in at
-three times its budget is the most useful failure this project can produce**, which is why the
-numbers are written down before a line is typed.
-
----
-
-## What is deliberately absent
-
-- **Free placement of lamps.** They sit at generated sites along the road. Build-anywhere is
-  an entire second game's worth of UI, and it would let the player build a road that the
-  pathfinder cannot make interesting.
-- **A third currency.** Two pills and one capacity. The source game shipped four and its own
-  design notes ask whether that was one too many.
-- **Prestige.** It is the direct enemy of an ending. Settled.
-- **Walker AI.** The crowd is closed form: pilgrim *i* is at `frac(t·v + i/n)` along the path.
-  Deterministic, allocation-free, replayable, and about twelve lines. Any beat that needs a
-  walker to have a *state* is a beat this design will change rather than fund.
-- **A tutorial, a modal, a splash, a loading bar, a settings menu, a minimap, achievements.**
-  The objective card is the entire tutorial and it is one line long.
-- **Any network call, account or server.** The storage adapter is the whole backend.
-- **Sound before the first tap.** The first tap both lights the lamp and unlocks the audio
-  context; nothing is more insulting than a permission prompt at second zero.
-
-## Determinism, and how it is proved
-
-`?seed=…` in the URL hash chooses the valley; absent, the seed is a constant. The seed drives
-the heightfield, the river, the road spline, the lamp sites, the tree scatter, and the
-per-pilgrim jitter — everything. The demo therefore doubles as the kit's determinism proof:
-**same seed, same valley, same pixel, and a session replayable from the seed and an input
-log.** Anything in the game reaching for wall-clock time does so through the injected clock,
-which is what makes that replay possible.
-
-## Open questions
-
-- Whether the rockfall re-route lands as a *revelation* or as a chore. It is the design's
-  biggest bet and the one I would cut first if a player pass says the pilgrims changing route
-  is not legible at a glance.
-- Whether nine to eleven minutes is the right length for the ending. Too short and the
-  economy never gets to be an economy; too long and no reviewer reaches the shrine.
-- Whether the guttering-out sequence is *readable* — lamps going out from the top of the road
-  down is the emotional core of the middle game and it happens in about eight seconds.
-- **Whether relighting should be free** (`D2`). Free keeps the charge on the player's attention
-  rather than their wallet, and avoids a dig-out-of hole; but it also means a player who checks
-  in every few minutes never really pays for overextending. The alternative — relighting costs
-  a fraction of the lamp — is one number and I would try it in a player pass before defending
-  free on principle.
-- **Whether `uncappedSeconds = 3 h` is generous for a ten-minute game.** It is deliberately far
-  above the longest night, which is the point, but it also means the demo never once exercises
-  the softcap branch of `sim`'s own curve during normal play. The demo should ship a test that
-  drives an eight-hour absence, because otherwise the most interesting third of `offline` is
-  covered by nothing.
+- It sized a game at 345 lines and got a game that needed 1,450. The kit was not the reason.
+- It treated the capability matrix as a *specification of the kit*, when it was in fact the kit's
+  only load. When the game was cut, nobody re-derived the matrix against what replaced it, and a
+  third of the kit quietly stopped having a caller. **A design document that is the sole consumer
+  of nine packages must say so, so that retiring it triggers a review rather than a deletion.**
+  This retirement is that review, run about three weeks late.

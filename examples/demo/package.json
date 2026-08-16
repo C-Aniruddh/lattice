@@ -2,13 +2,14 @@
   "name": "@lattice/demo",
   "version": "0.1.0",
   "private": true,
-  "description": "A complete small game built from nothing but the kit. The proof that the seams fit.",
+  "description": "LAMP ROAD — the first gallery exhibit. A valley at dusk, and the proof that the seams fit.",
   "type": "module",
   "scripts": {
     "dev": "vite --port 5173 --strictPort",
     "build": "vite build",
     "preview": "vite preview --port 5174 --strictPort"
   },
+  "$comment": "Seven of nine, and the two that are missing are a finding rather than an oversight. This exhibit has no save, so it needs no @lattice/persist, and it draws its one line of HUD into the canvas, so it needs no @lattice/ui. Both were declared here while the demo was still the game in docs/rfc/demo.md; see that document's orphan ledger for what depends on them now.",
   "dependencies": {
     "@lattice/audio": "^0.1.0",
     "@lattice/core": "^0.1.0",
@@ -16,8 +17,6 @@
     "@lattice/input": "^0.1.0",
     "@lattice/iso": "^0.1.0",
     "@lattice/loop": "^0.1.0",
-    "@lattice/persist": "^0.1.0",
-    "@lattice/sim": "^0.1.0",
-    "@lattice/ui": "^0.1.0"
+    "@lattice/sim": "^0.1.0"
   }
 }
