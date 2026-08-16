@@ -1733,6 +1733,68 @@
       "status": "in_progress",
       "owner": "lattice-scribe",
       "notes": "The unused-feature list is the more important half: those are shipped features with zero real usage."
+    },
+    {
+      "id": "K9",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "sim needs a source edge",
+      "package": "sim",
+      "paths": [
+        "packages/sim/**"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "EdgeSpec.from becomes optional — there is currently no way to say \"this rate multiplies nothing\"",
+        "the exhibit added a node to its economy purely to be a multiplicand it then divided back out, and EconomySpec.nodes IS the save field order, so a save file carries a field because of a missing optional",
+        "with from? the demo economy drops to a single node — verify that against examples/demo",
+        "document that EdgeScale is evaluated once per buildFlow, so the real constraint is piecewise-constant IN TIME rather than linear: square-root and threshold rates were never excluded and the docs implied they were"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "From docs/rfc/sim-rates.md. The division in the exhibit was a tell for this, not for non-linear rates."
+    },
+    {
+      "id": "K10",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "Retrofit the exhibit HUD onto @lattice/ui",
+      "package": "demo",
+      "paths": [
+        "examples/demo/src/hud.ts",
+        "examples/demo/src/main.ts",
+        "examples/demo/package.json"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "the exhibit drew its HUD into the canvas because ui had not landed yet; ui is now built and has NO consumer anywhere in the gallery plan",
+        "number rolls instead of jumping values, a button with an affordable state, a toast — the things ui owed and canvas text cannot do well",
+        "exercise the paletteVars to CSS custom-property bridge: the overlay must darken with the world at dusk. This is the one cross-package promise nothing has ever executed",
+        "hud.ts already keeps a Hud interface as the seam — swap the body, keep the call",
+        "report honestly if ui made this harder than canvas text did; that is a finding about ui, not a reason to revert"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "A whole package reached 100% coverage with no consumer in the entire plan. This is the fix."
+    },
+    {
+      "id": "K11",
+      "phase": "gaps",
+      "role": "lattice-architect",
+      "title": "Decide whether iso.ChunkGrid ships at all",
+      "package": "iso",
+      "paths": [
+        "docs/rfc/chunkgrid.md"
+      ],
+      "dependsOn": [],
+      "acceptance": [
+        "flagged as a DELETE candidate rather than a coverage gap: no plausible consumer, and every planned exhibit fits one viewport",
+        "the alternative to deleting is naming the game shape that needs it and adding an exhibit that is that shape",
+        "a feature with no consumer and no planned consumer is surface we maintain forever for nobody — decide, and write the reason down either way"
+      ],
+      "status": "todo",
+      "owner": null,
+      "notes": "Also fix draw/src/index.ts, whose comment justifies keeping record.ts on the grounds that ui wants it for layout measurement. Nothing in ui references the recording surface."
     }
   ]
 }

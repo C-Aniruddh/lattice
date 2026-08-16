@@ -33,7 +33,18 @@ not belong in an exhibit.
    art code growing means the kit is working, logic code growing means it is not.
 5. **Deterministic.** Same seed, same world. Every exhibit takes its seed from the URL so a
    visitor can share exactly what they saw.
-6. **Zero assets, like everything else here.** Drawn and synthesised, no exceptions.
+6. **Zero assets, like everything else here.** Drawn and synthesized, no exceptions.
+7. **The overlay is `@lattice/ui`, not canvas text.** This is a rule rather than a preference,
+   and it exists because an audit found that **not one of the fifteen rows below named `ui` at
+   all**. A whole package reached 100% coverage with no consumer in the entire plan — and the
+   one UI-shaped artifact in the gallery, the control panel, lives in `examples/_shared`
+   precisely because `ui` is deliberately not a controls library. So the HUD is where `ui`
+   gets exercised, and if an exhibit finds it easier to draw its readouts into the canvas,
+   that is a finding about `ui` and it gets reported rather than worked around.
+
+   It also carries the one cross-package promise **nothing has ever executed**: `draw`'s
+   `paletteVars` reaching the DOM as CSS custom properties, so the overlay darkens with the
+   world instead of glowing in daylight colors over a night scene.
 
 ---
 
