@@ -352,6 +352,27 @@ It is not `Terraces` at a different scale. Terraces is about **picking on elevat
 tap→tile conversion that assumes flat ground. Canyon is about **elevation as a function of
 time**, and if the two start converging, one of them is finished.
 
+#### A mile deep has to *feel* a mile deep
+
+The first build of this exhibit was reviewed with one sentence — *"Grand Canyon is 6000+ feet
+deep, the demo didn't make that impact"* — and it is the note this exhibit will keep getting,
+because depth is the only thing it is selling and depth is the hardest quantity to convey in an
+isometric projection. Almost none of the fix is in the height field. Raising the number makes a
+deeper groove, not a bigger impression. What actually produces the impression:
+
+| cue | why it works |
+|---|---|
+| **the drop takes up the frame** | verticality is judged relative to width. A gorge wider on screen than it is deep reads as a dip no matter what the model says |
+| **something in shot to size it against** | trees on the rim as specks, a river as a thread, birds *below* the rim line, a trail switchbacking down a wall. One of these beats a thousand feet of height field |
+| **strata you can count** | distinct bands are how a real canyon announces its depth — the eye counts them. It is also the time axis made visible, so it does two jobs |
+| **haze inside the gorge** | the far wall desaturates toward the sky and the near wall does not. This is the cue that makes a photograph read as miles rather than yards, and it is nearly free |
+| **the depth on screen, in feet** | a number climbing past four, five, six thousand while the visitor watches is the claim stated plainly, and it costs one line |
+
+This generalizes past this exhibit, which is why it is written here rather than in a task: **an
+isometric projection flattens exactly the axis a landform is impressive along.** Any exhibit
+whose subject is vertical — a canyon, a tower, a shaft, a cliff — has to buy that axis back with
+composition and cues, and none of them are the height field.
+
 ---
 
 ## The control panel
