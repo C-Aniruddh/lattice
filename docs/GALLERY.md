@@ -259,6 +259,32 @@ number is a finding about `draw`, not a defeat, and it gets reported.
 > documented threshold and should say so, pointing at the number — which is the whole reason the
 > number is a row in that table instead of a footnote.
 
+#### The one that has caught two exhibits: an animated color is an allocator
+
+**A color that moves continuously, passed to `softEllipse` or anything built on it, allocates a
+canvas every frame — and takes every other call site's cache down with it.**
+
+`draw`'s Canvas2D backend caches each radial ramp against the *exact* color pair it was built
+from. A flame whose core is mixed against a noise value, a ripple whose alpha is a continuous
+function of its age, a light that breathes — each is a guaranteed miss on every frame, and a
+miss allocates a `<canvas>`, a context, a gradient and a fill. Worse, the cache evicts
+*wholesale*, so past ninety-six unique colors the contact shadows, the light pools, the sky and
+every sprite lose their entries too, as collateral. Measured in `Crowd`: **3.74 misses a frame,
+a full cache drop every 26 frames, about 3.7 MB/s of garbage** — from twenty-seven flames and a
+fountain.
+
+It is being fixed in `draw`. Until it lands, and as a habit afterward:
+
+**Snap the color, not the motion.** Quantize an animated color to a handful of levels — nine was
+enough in `Crowd` — and leave position, scale, radius and timing continuous. Nobody can resolve
+nine brightness levels on an eight-pixel flame core, and the frame-time difference is the whole
+of the tail.
+
+This one is filed here rather than only in a task because of *where* it hides: an exhibit calls
+`glowDot`, which calls `softEllipse`, which consults a cache the author has never heard of. It
+is two layers below the line anyone would suspect, and no amount of care at the call site finds
+it. **Two independent exhibits hit it and neither one could have known.**
+
 **Every exhibit's HUD carries its own worst frame.** Not the average: an average of 16 ms with
 every eighth frame at 40 ms is a visible stutter and a healthy-looking number, which is the
 argument `docs/PERFORMANCE.md` makes about the tail. An exhibit that cannot show its worst

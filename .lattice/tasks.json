@@ -2337,6 +2337,111 @@
         "wants either a snap mode or a second primitive; the exhibit kept the roll because GALLERY.md rule 7 requires the HUD to be ui, which is the rule working and the widget not"
       ],
       "notes": "Filed by examples/caverns. Directly caused by the cost row added to GALLERY.md the same day."
+    },
+    {
+      "id": "K39",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "An animated color turns a shared ramp cache into a global allocator",
+      "package": "draw",
+      "paths": [
+        "packages/draw/src/canvas2d.ts"
+      ],
+      "dependsOn": [],
+      "status": "in-progress",
+      "owner": null,
+      "acceptance": [
+        "rampFor keys on the exact (inner, outer) Rgba pair with no quantization, so a color varying continuously with time misses every frame; a miss allocates a canvas element, a context, a gradient and a fill",
+        "eviction is wholesale — if (ramps.size >= RAMP_LIMIT) ramps.clear() — so ONE animated color destroys every other call site’s entries: contact shadows, light pools, sky and sprites all use constant colors and become misses as collateral",
+        "measured live in examples/crowd by wrapping createRadialGradient, which is only reached on a miss: 3.74 misses/frame, 4053 over 1083 frames, a full cache drop every ~26 frames, ~225 canvas elements/sec, ~3.7 MB/s of GC feed",
+        "non-negotiable 7 says the hot path allocates nothing, and it was allocating inside draw at 3.7 MB/s",
+        "the trap sits two layers below the author: an exhibit calls glowDot, which calls softEllipse, which consults a cache the author has never heard of and whose constraint no signature states",
+        "fix: quantize inside rampFor to what a 64px ramp can resolve, evict one entry rather than all, and state the residual constraint in Surface.softEllipse’s doc",
+        "RAMP_LIMIT's comment already anticipated this case and chose the one remedy that punishes the innocent call sites; the new comment should record that, since it is the instructive half"
+      ],
+      "notes": "Found by examples/crowd while hunting its own 23ms tail. Its workaround — snapping only the color to nine levels in an @art module — took misses from 3.74/frame to 0.003 and is removable once the package fix lands."
+    },
+    {
+      "id": "K40",
+      "phase": "gaps",
+      "role": "lattice-perf",
+      "title": "worstFrameMs cannot see a GC pause between pumps, and the gallery is judged on it",
+      "package": "loop",
+      "paths": [
+        "packages/loop/src/loop.ts",
+        "docs/PERFORMANCE.md"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "loop.stats.worstFrameMs measures the pump’s own wall time only (endMs - nowMs), so a pause landing between pumps never appears in it",
+        "GALLERY.md § Scale’s cost row makes this figure the number every exhibit is gated on, and it is blind to precisely the failure K39 turned out to be",
+        "crowd saw 23.1ms on one machine and 13.1ms on another for the same build, which is the symptom: whether the pause lands inside a pump is machine-dependent and the readout is not",
+        "a second figure from requestAnimationFrame deltas would catch it; at minimum PERFORMANCE.md must say that a green worstFrameMs is not proof of no hitch"
+      ],
+      "notes": "Filed by examples/crowd. Directly undermines a gate added to GALLERY.md the same day, which is why it is not merely a docs task."
+    },
+    {
+      "id": "K41",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "Nothing can ask whether a point would be culled without inserting it",
+      "package": "iso",
+      "paths": [
+        "packages/iso/src/depth.ts",
+        "packages/iso/src/camera.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "GALLERY.md § Scale tells every exhibit to cull before the sort; DepthSorter offers no way to ask the question without insert-then-discard",
+        "the alternative is hand-rolling HALF_W / HALF_H and the footprint-to-world-rect projection that depth.ts #cull already inlines, inside exhibit code, which puts projection constants in a game",
+        "crowd declined to cull 560 off-screen walkers for exactly this reason and said so",
+        "an isPointVisible(gx, gy, heightPx, radius) shaped against Camera would make the advice reachable from an exhibit in one line"
+      ],
+      "notes": "Filed by examples/crowd. The advice it blocks is a rule this repo wrote, so the gap is self-inflicted."
+    },
+    {
+      "id": "K42",
+      "phase": "gaps",
+      "role": "lattice-perf",
+      "title": "pathSample and pathDirAt each binary-search the same s",
+      "package": "iso",
+      "paths": [
+        "packages/iso/src/path.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "a walker that needs both a position and a facing pays two searches over one arc-length table for one value of s",
+        "at 900 walkers that is 1800 searches a frame where 900 would do",
+        "wants either a combined call returning both, or a cursor a caller can carry across the pair"
+      ],
+      "notes": "Recorded first in crowd.ts by one agent and seconded by the next, independently. Not urgent at present frame times; cheap and known."
+    },
+    {
+      "id": "K43",
+      "phase": "gallery",
+      "role": "lattice-designer",
+      "title": "Every exhibit's opening worst-frame score is its warm-up cost",
+      "package": "examples/_shared",
+      "paths": [
+        "examples/_shared/src/**"
+      ],
+      "dependsOn": [
+        "K40"
+      ],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "the first ten-second window includes the page-load frame, so crowd reads ~16.3ms on arrival and settles to ~12.0ms from the second window on",
+        "truthful, and it means every exhibit in the gallery displays its worst number at the exact moment a visitor is deciding what they think",
+        "decide deliberately: discard the first N frames, start the window at the first steady frame, or label it — but not silently, because the cost row made this number the score"
+      ],
+      "notes": "Filed by examples/crowd. A consequence of the cost row rather than a pre-existing bug."
     }
   ]
 }
