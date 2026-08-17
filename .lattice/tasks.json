@@ -2201,6 +2201,142 @@
         "the hero is exempt from the CAP, not from being measured. A documented split nothing can verify is the same species as the claim that a duration alias guarded anything"
       ],
       "notes": "Found by tools/gallery.mjs the moment it could measure. The tool says so explicitly rather than printing a large number and moving on."
+    },
+    {
+      "id": "K32",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "LightField falloff's plateau is a hard ring, so every value but 1 seams",
+      "package": "draw",
+      "paths": [
+        "packages/draw/src/light.ts",
+        "packages/draw/src/surface.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "falloff is documented as a plateau — '2 holds full intensity to half the radius' — and Surface.softEllipse has stops only at 0 and r, so pool() cannot ramp FROM the plateau edge; it restarts the ramp at full intensity from the center",
+        "the observable: at falloff 2 alpha steps ~0.95 to ~0.45 at exactly r/2, so every pool wears a hard elliptical rim and adjacent rims cross into the seam the light field exists to avoid",
+        "verified both directions by the caverns exhibit: at ?lightFalloff=4 two braziers show crossing crescents; at 1 the same pair merge into one region with no rim and no ridge",
+        "fix is an inner-stop radius on softEllipse, or documenting 1 as the only seamless value and saying why — the doc must not describe a plateau the code cannot produce"
+      ],
+      "notes": "Found by examples/caverns, the first real consumer of draw.light. The exhibit ships falloff 1 plus a two-call core/halo nest as its workaround."
+    },
+    {
+      "id": "K33",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "SpriteDef.emit receives no clock, so nothing emissive can move",
+      "package": "draw",
+      "paths": [
+        "packages/draw/src/sprite.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "emit's parameters are (field, gx, gy, v, rng, zPx): no pen, no t. A guttering torch, a breathing crystal or a lamp being switched on cannot be written through the sanctioned hook",
+        "two exhibits independently routed around it via pen.light?.add inside animate — caverns and island — which is what makes it a gap rather than a preference",
+        "the kit requires something to move on everything (draw invariant, GALLERY.md rule 3), so a hook for emission that cannot animate is dead API for the common case",
+        "either emit takes the frame time, or the docs name animate as the place emissive motion belongs and emit is documented as static-only"
+      ],
+      "notes": "Filed by examples/caverns; corroborated independently by examples/island."
+    },
+    {
+      "id": "K34",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "LightField.begin(darkness) is write-only, against non-negotiable 11",
+      "package": "draw",
+      "paths": [
+        "packages/draw/src/light.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "scale, falloff and bloom all read back under their own names; darkness — the number deciding whether there is a night at all — does not",
+        "so every exhibit with a day cycle holds the only copy of it, which is exactly the shadow copy non-negotiable 11 exists to remove",
+        "a getter over private state costs three lines, has no policy attached, and cannot break an invariant — the rule’s own words"
+      ],
+      "notes": "Filed by examples/caverns. Non-negotiable 11 was added after light.ts was written, so this is a rule that arrived late rather than one that was ignored."
+    },
+    {
+      "id": "K35",
+      "phase": "gaps",
+      "role": "lattice-designer",
+      "title": "bootstrap exposes no clock, so every exhibit invents one",
+      "package": "examples/_shared",
+      "paths": [
+        "examples/_shared/src/bootstrap.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "ui.createOverlay({ now }) wants milliseconds and performance.now() is banned in exhibit src, so an exhibit needing an overlay has no sanctioned clock",
+        "caverns used () => boot.loop.realTime * 1000; island wrote performance.now() anyway, which is the lint rule catching what the API should have prevented",
+        "Boot.now would be one line, and bootstrap already exists precisely to remove the steps that are silent when wrong"
+      ],
+      "notes": "Filed by examples/caverns. The island case is the evidence that documentation would not have been enough."
+    },
+    {
+      "id": "K36",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "input has no hover gesture, so a cursor-following anything is inexpressible",
+      "package": "input",
+      "paths": [
+        "packages/input/src/**"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "GestureMap carries tap, longpress, three drags and zoom — no pointermove",
+        "caverns wanted a light that follows the cursor, the most obvious interaction for that exhibit, and shipped tap instead; terraces highlights the tile under the cursor and had to reach past the gesture surface for it",
+        "decide it deliberately: either hover joins the map, or the omission is documented with the reason (a hover has no touch equivalent, and an input package that pretends otherwise makes desktop-only games by accident)"
+      ],
+      "notes": "Filed by examples/caverns, corroborated by examples/terraces."
+    },
+    {
+      "id": "K37",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "the placement pass is where near-field world art has to live, and its name says otherwise",
+      "package": "draw",
+      "paths": [
+        "packages/draw/src/layers.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "near-field world material — a ceiling band, motes, a carried lantern — must composite BELOW the light field; overlay is above it, so placement is the only pass left",
+        "placement is documented as the ghost and the selection rim, so every exhibit with foreground art files it under a name that describes a different job",
+        "either the pass is renamed for what it is, or a pass is added below the light composite for world art that is not sorted"
+      ],
+      "notes": "Filed by examples/caverns."
+    },
+    {
+      "id": "K38",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "ui.roll animates toward a target, which makes it wrong for a number under test",
+      "package": "ui",
+      "paths": [
+        "packages/ui/src/**"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "a 200-unit jump took about 10 s to settle, so a diagnostic readout displays a wrong number for the whole interval a viewer is looking at it",
+        "the roll is right for gold and wrong for a count under test, and the gallery now puts a worst-frame and a live count in every HUD — so the diagnostic case is no longer rare",
+        "wants either a snap mode or a second primitive; the exhibit kept the roll because GALLERY.md rule 7 requires the HUD to be ui, which is the rule working and the widget not"
+      ],
+      "notes": "Filed by examples/caverns. Directly caused by the cost row added to GALLERY.md the same day."
     }
   ]
 }
