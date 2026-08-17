@@ -74,8 +74,21 @@
   --lattice-night: #141a38;
 
   --paper: #f1eee7;
-  --dim: #8f8b83;
-  --dimmer: #6b675f;
+  --dim: #a29d94;
+  /*
+   * The lowest ink on the page, and it used to be `#6b675f`.
+   *
+   * That is a contrast ratio of about 3.2:1 against `--lattice-night`, and it was carrying the
+   * colophon, the size footnotes and the plugin-status note — three places where the page says
+   * something a skeptic specifically wants to read. "Genuinely hard to read", said the one who
+   * tried. Mid-grey on near-black is the house style of a page that has confused *quiet* with
+   * *faint*: quiet is small and set apart, faint is unreadable, and only one of them is a
+   * decision. Measured against `#141a38`, the *lightest* ground the day cycle ever reaches and
+   * therefore the worst case: `--dimmer` goes 3.02:1 to 4.70:1 and `--dim` 5.01:1 to 6.31:1, so
+   * both clear WCAG AA where they did not before. The accent already sat at 7.56:1, which is
+   * `packages/draw` keeping its promise that a HUD reads at midnight.
+   */
+  --dimmer: #8b867d;
   --accent: var(--lattice-warn);
   --rule: color-mix(in srgb, var(--paper) 11%, transparent);
   --rule-soft: color-mix(in srgb, var(--paper) 6%, transparent);
@@ -192,6 +205,36 @@ code, kbd, samp, pre { font-family: var(--mono); }
 
 .body > * + * { margin-top: 30px; }
 
+/* A subheading inside a section. Big enough to break a long argument into parts a reader can
+   navigate, small enough that it never competes with the section's own h2. */
+.section h3 {
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  margin-top: 44px;
+}
+.section h3 + p { margin-top: 14px; }
+
+/* A list that is prose rather than an inventory: no bullets, a rule between items. */
+ul.plain { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+ul.plain > li {
+  max-width: 66ch;
+  padding-left: 16px;
+  border-left: 1px solid var(--rule);
+  color: color-mix(in srgb, var(--paper) 84%, transparent);
+}
+
+/* The two verdicts in the readiness table. `ok` and `warn` are the kit's own palette slots, which
+   `packages/draw` guarantees stay legible at midnight — the same promise the rest of the page is
+   taking at its word. */
+b.ok, b.warn {
+  font: 600 10px/1.4 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+b.ok { color: var(--lattice-ok); }
+b.warn { color: var(--accent); }
+
 @media (max-width: 900px) {
   .section { grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .section > .marker { position: static; height: auto; }
@@ -236,10 +279,22 @@ code, kbd, samp, pre { font-family: var(--mono); }
   color: var(--accent);
 }
 
-.topnav { display: flex; gap: 22px; font: 500 11px/1 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; }
-.topnav a { color: var(--dim); text-decoration: none; }
+.topnav { display: flex; gap: clamp(13px, 1.6vw, 22px); font: 500 11px/1 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; }
+.topnav a { color: var(--dim); text-decoration: none; padding-bottom: 4px; border-bottom: 1px solid transparent; }
 .topnav a:hover { color: var(--accent); }
-@media (max-width: 560px) { .topnav a:not(:last-child) { display: none; } }
+/*
+ * The active section, and why it is an attribute rather than a color.
+ *
+ * There was no scroll spy on this page at all. What a reviewer read as "GALLERY is active while
+ * the URL says #reference" was the `:hover` and focus color left behind on the last link that was
+ * clicked — a state with no expiry and no relationship to where the reader is. `page.ts` writes
+ * `aria-current` from the scroll position and writes the hash from the same assignment, so the
+ * rail and the address bar cannot disagree; this rule is what makes that visible, and the rule it
+ * has to beat is the hover one, so it carries a mark hover does not.
+ */
+.topnav a[aria-current] { color: var(--accent); border-bottom-color: var(--accent); }
+@media (max-width: 700px) { .topnav a:not([href^='#gallery']):not([href^='#ready']):not(:last-child) { display: none; } }
+@media (max-width: 460px) { .topnav a:not(:last-child) { display: none; } }
 
 /* ── hero ─────────────────────────────────────────────────────────────────────────────── */
 
@@ -262,15 +317,136 @@ code, kbd, samp, pre { font-family: var(--mono); }
   transform-origin: 0 0;
 }
 
-/* The one thing the page puts over the world, in the one corner every exhibit leaves empty. */
-.hero-chrome {
+/*
+ * The eight words, over the sky.
+ *
+ * ## Why it is here and not below the world
+ *
+ * The page used to put every word under the hero, on the principle — which is in
+ * `docs/GALLERY.md` and is right — that a world should be read before any text is. What that
+ * produced was a hundred vertical percent of valley whose only legible content was a wordmark, a
+ * version number and five nav items, and a reader deciding at second eight whether to scroll. The
+ * heading sat about seven hundred pixels below the fold on a laptop. **It landed above the fold
+ * at 390 px**, which is the tell: the desktop breakpoint was the broken one, and it was broken by
+ * having more room rather than less.
+ *
+ * The world still paints first and still fills the frame. It is now eight words further into the
+ * argument by the time the reader has finished looking at it.
+ *
+ * ## Bottom-left, and not top-left, which is what was asked for
+ *
+ * The suggestion was the top-left corner, "because the sky up there is dark and empty". It is
+ * not: Lamp Road's own dock is there — its brief card and its road-lit gauge — and the *first*
+ * version of this page already learned that lesson the other way round, when the wordmark and a
+ * frame meter were put over the world and landed on the exhibit's instruments. The exhibit was
+ * there first and its HUD is part of it.
+ *
+ * So the words take the corner the exhibit leaves empty. Measured on Lamp Road at 1440x900: the
+ * dock ends about 130 px down, the top-right pair of cards is the exhibit's clock and cost row,
+ * and the only control at the bottom is centered. The bottom-left quarter is world and nothing
+ * else, at every hour of the day cycle. That is where the sentence goes, and it is still the
+ * first text on the page and still inside the first screen — which was the whole complaint.
+ *
+ * ## No plate, no scrim, no card
+ *
+ * A panel behind this text would be the page competing with its own product. What holds it
+ * legible is a text shadow and one soft wash along the bottom edge: a shadow costs no pixels of
+ * the world, degrades to "slightly softer" rather than to "a grey box" if the exhibit ever
+ * changes, and has no edge that has to be aligned with anything.
+ *
+ * The `pointer-events: none` is load-bearing: the whole header is draggable, and a paragraph
+ * floating over it that swallows a drag is a game that appears broken in one corner. Only the
+ * thing that *is* a control takes the pointer back.
+ */
+.hero-lede {
   position: absolute;
+  left: var(--gutter);
+  bottom: clamp(16px, 2.6vh, 30px);
   right: var(--gutter);
-  bottom: 18px;
   z-index: 2;
+  max-width: min(52ch, 46vw);
+  pointer-events: none;
+  text-shadow: 0 1px 20px rgb(0 0 0 / 70%), 0 1px 3px rgb(0 0 0 / 62%);
+}
+.hero-lede > * + * { margin-top: 12px; }
+/* Paper rather than accent, and this is the one place the accent loses an argument. The accent is
+   `--lattice-warn`, which the kit guarantees stays legible at *midnight*; the ground under this
+   corner at noon is a bright green, and an amber on it is the one pairing on this page that fails.
+   White on green with a shadow reads at both ends of the cycle. */
+.hero-lede .eyebrow {
+  color: var(--paper);
+  margin: 0;
+  letter-spacing: 0.3em;
+  /* Small uppercase mono over a moving world needs more shadow than a headline does: there is
+     less ink per glyph to carry the contrast. */
+  text-shadow: 0 1px 10px rgb(0 0 0 / 92%), 0 0 3px rgb(0 0 0 / 80%);
+}
+.hero-lede h1 {
+  font: 500 clamp(21px, 2.35vw, 33px)/1.1 var(--mono);
+  letter-spacing: -0.045em;
+  max-width: 26ch;
+  color: var(--paper);
+}
+/* A flex row rather than a sentence, so a wrap breaks *between* facts and never leaves a
+   separator hanging at the end of a line with nothing after it. */
+.hero-facts {
   display: flex;
-  gap: 10px;
-  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 9px;
+  font: 500 clamp(11px, 1vw, 13px)/1.5 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--paper) 86%, transparent);
+  margin: 0;
+  max-width: none;
+}
+.hero-facts span + span::before { content: '· '; color: var(--accent); }
+
+/* The install line over the world loses its plate and keeps its accent rule. Everywhere else on
+   the page a code block sits on a dark panel; here that panel would be a card in front of the
+   product, which is the one thing this overlay is not allowed to be. */
+.hero-lede .codebox { pointer-events: auto; max-width: 62ch; }
+.hero-lede .shell-cmd {
+  background: none;
+  border: 0;
+  border-left: 2px solid var(--accent);
+  padding: 2px 76px 2px 14px;
+  font-size: clamp(12px, 1.05vw, 14.5px);
+}
+.hero-lede .shell-cmd .arg { color: color-mix(in srgb, var(--paper) 88%, transparent); }
+.hero-lede .codebar { top: 0; right: 0; }
+.hero-lede .codebar button { background: color-mix(in srgb, #000 55%, transparent); }
+.hero-lede .hint { pointer-events: auto; }
+
+/* Lamp Road's ground is bright green under that corner at noon. The wash is the insurance, and it
+   is a wash rather than a plate: no edge, no rectangle, nothing to align, and it is a gradient of
+   the page's own ground color so it reads as the page darkening rather than as a panel. */
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 62%;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(to top, rgb(6 8 20 / 74%), rgb(6 8 20 / 30%) 46%, transparent);
+}
+
+@media (max-width: 900px) {
+  /* One column: the exhibit is scaled down and its dock with it, and there is no second column to
+     stay out of, so the words take the whole width. */
+  .hero-lede { max-width: none; }
+}
+
+@media (max-width: 640px) {
+  /* A phone has no room for the install line beside the world, and it is the one thing here a
+     phone cannot act on anyway — nobody types `npm i` into a phone. It is in the Example section
+     with a Copy button, which is where a phone reader would reach for it. */
+  .hero-lede .codebox { display: none; }
+  .hero-lede > * + * { margin-top: 9px; }
+  /* Lamp Road is scaled to fit at this width, and its one control — the lamp button — comes with
+     it, landing about forty pixels above the bottom edge. Sitting the last line of the overlay on
+     somebody else's button is the mistake this whole overlay was moved to avoid. */
+  .hero-lede { bottom: clamp(46px, 7vh, 62px); }
 }
 
 /* ── the statement ────────────────────────────────────────────────────────────────────── */
@@ -296,17 +472,17 @@ code, kbd, samp, pre { font-family: var(--mono); }
 
 .hero-sub { font-size: clamp(15px, 1.25vw, 18px); line-height: 1.55; color: color-mix(in srgb, var(--paper) 84%, transparent); max-width: 56ch; margin: 0; }
 
-/* The chip that tells you the header is a game. It is the whole discovery, so it sits where the
-   cursor already is and it says what to do rather than what the thing is. */
+/* The line that tells you the header is a game. It is the whole discovery, so it says what to do
+   rather than what the thing is — and it lost its plate when it moved onto the world, because a
+   bordered chip floating over a live scene is a page putting furniture in front of its product. */
 .hint {
-  display: inline-flex; align-items: center; gap: 10px;
-  font: 500 11px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase;
-  color: var(--dim);
-  padding: 9px 13px;
-  background: var(--plate);
-  border: 1px solid var(--rule);
-  backdrop-filter: blur(3px);
-  white-space: nowrap;
+  display: block;
+  margin: 0;
+  font: 500 clamp(10px, 0.9vw, 11.5px)/1.5 var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--paper) 70%, transparent);
+  max-width: none;
 }
 .hint b { color: var(--accent); font-weight: 600; }
 
@@ -357,25 +533,123 @@ code, kbd, samp, pre { font-family: var(--mono); }
 
 /* ── the proof strip ──────────────────────────────────────────────────────────────────── */
 
+/*
+ * ## Two fixes and one addition
+ *
+ * **The labels are one line each.** `GZIPPED, ALL NINE` wrapped to two while its five neighbours
+ * sat on one, and in a strip of identical cells that reads as a rendering fault rather than as a
+ * long word. The label lost a word in the markup; the padding here lost the page gutter, which
+ * was up to 56 px on each side of a 146 px cell and was most of the reason nothing fit.
+ *
+ * **The unit sits on the numeral's baseline.** `small` inside a block with `line-height: 1` is
+ * laid out on its own half-leading, so `kB` floated a pixel or two above the digits it belongs
+ * to. `vertical-align: baseline` with a matched `line-height` puts it back.
+ *
+ * **Each figure reveals the command that produced it.** On hover, and — because a phone has no
+ * hover — on tap, through `aria-expanded` on the figure itself. `docs/GALLERY.md` says the
+ * proof is numbers rather than adjectives; a number whose provenance is one gesture away is a
+ * different kind of claim from one that is merely printed larger.
+ */
 .proof {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(146px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
   border-top: 1px solid var(--rule);
   border-bottom: 1px solid var(--rule);
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
-.proof div {
-  padding: 22px var(--gutter) 20px;
+.proof > li {
+  position: relative;
   border-left: 1px solid var(--rule-soft);
 }
-.proof div:first-child { border-left: 0; }
-.proof dt { font: 500 10px/1 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); margin-bottom: 9px; }
-.proof dd {
-  margin: 0;
-  font: 500 clamp(21px, 2.2vw, 28px)/1 var(--mono);
+.proof > li:first-child { border-left: 0; }
+
+.fig {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 22px clamp(16px, 1.8vw, 26px) 20px;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: help;
+}
+.fig .k {
+  display: block;
+  font: 500 10px/1.4 var(--mono);
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 7px;
+  white-space: nowrap;
+}
+.fig .v {
+  display: block;
+  font: 500 clamp(21px, 2.2vw, 28px)/1.15 var(--mono);
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
+  color: var(--paper);
 }
-.proof dd small { font-size: 0.5em; letter-spacing: 0.02em; color: var(--dim); margin-left: 4px; }
+.fig .v small {
+  font-size: 0.5em;
+  line-height: inherit;
+  vertical-align: baseline;
+  letter-spacing: 0.02em;
+  color: var(--dim);
+  margin-left: 4px;
+}
+/* The one tell that there is something behind the number. A dotted rule under the label rather
+   than an icon: it is the typographic convention for "this is annotated" and it costs no space. */
+.fig .k { text-decoration: underline dotted color-mix(in srgb, var(--paper) 22%, transparent); text-underline-offset: 4px; }
+.fig:hover .k, .fig[aria-expanded='true'] .k { color: var(--accent); text-decoration-color: var(--accent); }
+
+.proof .src {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 4;
+  min-width: max(100%, 34ch);
+  max-width: min(60ch, 92vw);
+  margin: 0;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--lattice-ink) 96%, #000);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  font: 400 12px/1.5 var(--mono);
+  color: color-mix(in srgb, var(--paper) 88%, transparent);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 140ms linear, visibility 140ms;
+}
+.proof .src b {
+  display: block;
+  font: 600 9px/1 var(--mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 7px;
+}
+.proof > li:hover .src,
+.fig:focus-visible + .src,
+.fig[aria-expanded='true'] + .src { opacity: 1; visibility: visible; }
+/* The last two cells would push their note off the right edge of the viewport. */
+.proof > li:nth-last-child(-n+2) .src { left: auto; right: 0; }
+
+.prov-note {
+  max-width: none;
+  padding: 14px var(--gutter) 0;
+  margin: 0;
+}
+
+/* Provenance in the reference tables, where there is room for it to be permanent. */
+.prov {
+  display: block;
+  margin-top: 6px;
+  font: 400 11px/1.5 var(--mono);
+  color: var(--dimmer);
+}
+.prov::before { content: '↳ '; color: var(--accent); }
 
 /* ── gallery ──────────────────────────────────────────────────────────────────────────── */
 
@@ -409,6 +683,11 @@ code, kbd, samp, pre { font-family: var(--mono); }
   aspect-ratio: var(--w) / var(--h);
   overflow: hidden;
   background: var(--lattice-night);
+  /* `background-image` is set by `page.ts` to the tile's own last painted frame when its document
+     is given up. See Scene.capture: it is not a screenshot of Lattice, it is the frame this
+     exhibit drew on this machine a moment ago, kept so that scrolling back is not a downgrade. */
+  background-size: cover;
+  background-position: center;
 }
 .stage iframe {
   position: absolute;
@@ -422,27 +701,48 @@ code, kbd, samp, pre { font-family: var(--mono); }
   pointer-events: none;
 }
 
-.stage::after {
-  content: 'idle';
-  position: absolute; right: 10px; top: 10px;
-  font: 500 9px/1 var(--mono); letter-spacing: 0.18em; text-transform: uppercase;
-  color: var(--dimmer);
-  padding: 5px 7px;
-  background: color-mix(in srgb, #000 55%, transparent);
-  opacity: 0;
-  transition: opacity 240ms linear;
+/*
+ * The state chip, and the figure in it.
+ *
+ * The word is what this tile is doing; the number beside it is that exhibit's own worst gap
+ * between two painted frames, written by the same meter as the panel at the top of the page and
+ * subject to the same four guards.
+ *
+ * **It sits under the world and not on it**, which is the second time this page has had to learn
+ * that lesson. Every exhibit's own HUD claims its frame's corners — Island's clock and cost row
+ * are in the top right, Crowd's scrubber is bottom left — so a page chip anywhere over the stage
+ * lands on somebody's instrument at some viewport. Under the caption it collides with nothing and
+ * is legible at every size, which the version over the top-right corner was not.
+ */
+.chip {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  font: 500 9.5px/1.4 var(--mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--dim);
 }
-.tile[data-state='paused'] .stage::after { opacity: 1; }
-.tile[data-state='live'] .stage::after { content: 'live'; color: var(--lattice-ok); opacity: 1; }
+.chip::before { content: 'idle'; }
+.tile[data-state='held'] .chip::before { content: 'frame held'; }
+.tile[data-state='paused'] .chip::before { content: 'paused'; }
+.tile[data-state='live'] .chip::before { content: '● live'; color: var(--lattice-ok); }
+.chip .cost { color: var(--paper); letter-spacing: 0.06em; text-transform: none; font-variant-numeric: tabular-nums; }
+.chip .cost:empty { display: none; }
+.chip .cost.hot { color: var(--lattice-bad); }
 
 /*
- * What a tile is before it has been paid for.
+ * What a tile is before it has been paid for — and, now, only before its *first* mount.
  *
  * A world that has not been mounted is an empty box, and an empty box on a page selling
  * rendering reads as a broken tile rather than as a deliberate saving. So the placeholder is the
- * one shape this whole kit is about — a 2:1 diamond, drawn in CSS, costing nothing — and it says
- * what is going to happen. It fades out under the world rather than being removed, so a tile
- * that mounts does not flash.
+ * one shape this whole kit is about — a 2:1 diamond, drawn in CSS, costing nothing. It fades out
+ * under the world rather than being removed, so a tile that mounts does not flash.
+ *
+ * A tile the reader has *already seen* never comes back to this. It keeps its own last frame
+ * instead (`[data-held]`), because the second look at this gallery must not be worse than the
+ * first — that is the failure that makes the page's central proof argue against itself.
  */
 .stage::before {
   content: '';
@@ -457,7 +757,8 @@ code, kbd, samp, pre { font-family: var(--mono); }
   opacity: 1;
 }
 .tile[data-state='live'] .stage::before,
-.tile[data-state='paused'] .stage::before { opacity: 0; }
+.tile[data-state='paused'] .stage::before,
+.tile[data-held] .stage::before { opacity: 0; }
 
 .tile-body { padding: 16px 18px 18px; display: grid; gap: 7px; }
 .tile-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
@@ -468,14 +769,39 @@ code, kbd, samp, pre { font-family: var(--mono); }
 .tile-links a { color: var(--dim); text-decoration: none; }
 .tile-links a:hover { color: var(--accent); text-decoration: underline; }
 
+/*
+ * The poster control, and why a phone gets it on every idle tile.
+ *
+ * One column means one running scene — that is the budget that makes ten live worlds affordable
+ * on a phone at all — so at any moment nine of the ten tiles are a held frame or a placeholder.
+ * A page that shows a phone nine motionless rectangles and a diamond has not explained anything;
+ * one that shows nine worlds and a button on each has explained the whole trade in one screen.
+ *
+ * So the button sits *over the stage*, not under the caption where it was, and it names the
+ * exhibit — a control whose label is "Run" beside ten identical controls is a control that says
+ * nothing about which world it is about to start.
+ */
 .tile-run {
   position: absolute; inset: auto 0 0 0;
+  z-index: 3;
   display: none;
-  font: 600 11px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--lattice-ink); background: var(--accent);
-  border: 0; padding: 11px; cursor: pointer; width: 100%;
+  align-items: baseline; gap: 8px;
+  font: 500 11px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--paper);
+  background: linear-gradient(to top, rgb(6 8 20 / 88%), rgb(6 8 20 / 55%));
+  border: 0; border-top: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  padding: 12px 14px; cursor: pointer; width: 100%; text-align: left;
 }
-.tile[data-state='ask'] .tile-run { display: block; }
+.tile-run b { color: var(--accent); font-weight: 600; }
+.tile-run:hover { background: linear-gradient(to top, rgb(6 8 20 / 92%), rgb(6 8 20 / 70%)); }
+.tile-run:hover b { text-decoration: underline; text-underline-offset: 3px; }
+.tile[data-state='ask'] .tile-run { display: flex; }
+
+/* A pointer that can run two scenes at once never needs to choose between them. A screen that
+   can run one does, on every tile that is not the one running. */
+@media (max-width: 900px) {
+  .tile:not([data-state='live']) .tile-run { display: flex; }
+}
 
 /* ── code ─────────────────────────────────────────────────────────────────────────────── */
 
@@ -498,19 +824,66 @@ code, kbd, samp, pre { font-family: var(--mono); }
 
 .shell-cmd {
   display: block;
+  margin: 0;
   max-width: none;            /* it is the section's headline, not a paragraph */
   padding: 18px 22px;
   background: color-mix(in srgb, #000 42%, transparent);
   border: 1px solid var(--rule);
   border-left: 2px solid var(--accent);
-  font: 500 clamp(14px, 1.35vw, 18px)/1.55 var(--mono);
+  font: 500 clamp(13px, 1.15vw, 16px)/1.55 var(--mono);
   /* Wraps rather than scrolls. A command a reader has to drag sideways to finish reading is a
      command they do not read, and this one is the whole pitch of the section. */
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 .shell-cmd .prompt { color: var(--accent); user-select: none; }
-.shell-cmd .arg { color: var(--dim); }
+.shell-cmd .arg { color: color-mix(in srgb, var(--paper) 78%, transparent); }
+
+/*
+ * ## The two controls on a code block
+ *
+ * A 48-line program in a 343-pixel viewport is 822 pixels wide. It scrolls correctly inside its
+ * own container, which is the easy half, and every line that says anything truncates
+ * mid-expression, which is the half that decides whether anybody reads it. Nobody drags sideways
+ * through forty-eight lines on a phone.
+ *
+ * **Wrap** is the readable trade — the alignment goes, the meaning arrives — and it defaults on
+ * under 640 px, because that is where the problem is and a control that has to be found first is
+ * a control that fixes nothing. **Copy** is the honest admission that the real answer on a phone
+ * is to read this on something else. Both are `js-only`: there is nothing here script-free that
+ * could work, and `docs/GALLERY.md` asks for honesty rather than grace about that.
+ */
+.codebox { position: relative; }
+.codebar {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  z-index: 2;
+  display: flex;
+  gap: 6px;
+}
+.codebar button {
+  font: 500 10px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  background: color-mix(in srgb, #000 70%, transparent);
+  border: 1px solid var(--rule);
+  padding: 7px 9px;
+  cursor: pointer;
+  min-width: 5.5ch;
+  text-align: center;
+}
+.codebar button:hover { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+.codebar button[aria-pressed='true'] { color: var(--lattice-ink); background: var(--accent); border-color: var(--accent); }
+/* Room for the buttons, so the first line of the program never sits under them. */
+.codebox .code { padding-top: 34px; }
+.codebox-inline .shell-cmd { padding-right: 84px; }
+.codebox[data-wrap='on'] .code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow-x: hidden;
+}
 
 /* ── the agent flow ───────────────────────────────────────────────────────────────────── */
 
@@ -608,8 +981,8 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; padding-right: 0
  * rectangle labeled "drag it" would be worse than an empty page.
  */
 noscript { display: block; }
-html:not(.js) .hero,
-html:not(.js) .hero-chrome,
+html:not(.js) .hero-stage,
+html:not(.js) .hero::before,
 html:not(.js) .stage,
 html:not(.js) .tile-run,
 html:not(.js) .meter,
@@ -617,6 +990,26 @@ html:not(.js) .play,
 html:not(.js) .js-only,
 html:not(.js) #ground { display: none; }
 html:not(.js) .statement { grid-template-columns: minmax(0, 1fr); }
+/*
+ * The `<h1>` moved onto the world, so the hero can no longer be removed wholesale without taking
+ * the sentence that says what this project is with it. The world goes; the words stay, and the
+ * header collapses to exactly the height of what is left. This is the difference between the
+ * honest fallback `docs/GALLERY.md` asks for and a page that is blank at the top.
+ */
+html:not(.js) .hero {
+  height: auto;
+  min-height: 0;
+  background: none;
+  border-top: 0;
+  overflow: visible;
+}
+html:not(.js) .hero-lede {
+  position: static;
+  max-width: 60ch;
+  padding: clamp(28px, 6vw, 64px) 0 clamp(16px, 3vw, 32px);
+  text-shadow: none;
+  pointer-events: auto;
+}
 
 noscript .banner {
   display: block;

@@ -24,6 +24,17 @@ export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
   base: '/',
   publicDir: 'public',
+  /**
+   * **A missing page must 404.**
+   *
+   * Vite's default is `'spa'`, which rewrites every unmatched path to `index.html` and returns
+   * it with a `200`. So `/x/nope/` served the entire 68 kB landing page and told the client it
+   * had found what it asked for — which is wrong for a crawler, wrong for a link checker, wrong
+   * for anybody who mistypes an exhibit name, and actively misleading on a page whose gallery is
+   * a set of directory URLs a visitor is invited to edit. This site is what `'mpa'` describes: a
+   * set of real HTML documents, one per exhibit, with no client-side router anywhere in it.
+   */
+  appType: 'mpa',
   server: { port: 5170, strictPort: true, fs: { allow: [root] } },
   preview: { port: 5171, strictPort: true },
   build: {

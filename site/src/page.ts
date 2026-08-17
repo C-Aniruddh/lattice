@@ -36,6 +36,8 @@ import { DUSK, NIGHT, beginFrame, createCanvas2dSurface, createPalette, endFrame
 import { createCamera } from '@latticekit/iso';
 import { browserFrames, createLoop } from '@latticekit/loop';
 import { clamp01, hash2 } from '@latticekit/core';
+import { WARMUP_MS, createMeter } from './meter.js';
+import type { LoopLike, Meter } from './meter.js';
 
 /* ────────────────────────────────────────────────────────────────────────────────────────
  * What the visitor has told the browser they want.
@@ -141,7 +143,7 @@ function makeBackdrop(canvas: HTMLCanvasElement): { paint(progress: number): voi
 /** What `examples/_shared/src/bootstrap.ts` parks on its mount element. Only the two members
  *  this page touches are declared; asking for more would couple the page to the exhibit kit. */
 interface ExhibitBoot {
-  readonly loop: { start(): void; stop(): void; readonly running: boolean; readonly stats: { readonly frameMs: number; readonly worstGapMs: number } };
+  readonly loop: LoopLike & { start(): void; stop(): void };
 }
 
 /** Find the running exhibit inside a frame, or `undefined` if it is not reachable — a
@@ -186,6 +188,22 @@ const TILE_DPR = coarse ? 0.6 : 0.85;
  */
 const maxRunning = () => (innerWidth < 900 ? 1 : 2);
 
+/** One column of tiles, one running scene: the layout is the budget. */
+const narrow = () => innerWidth < 900;
+
+/**
+ * The longest edge of a held frame, in pixels, and the quality it is stored at.
+ *
+ * A tile that has been evicted keeps a picture of its own last frame instead of reverting to the
+ * placeholder — see {@link Scene.capture}. That picture is a string in memory for the rest of the
+ * visit, so it is stored at about the size the tile is drawn at rather than at the exhibit's
+ * 1000x625 backing store: 440 px of JPEG is roughly 30 kB per tile, and ten of them is a third of
+ * what one screenshot of this page would have cost — which is the whole reason this page has no
+ * screenshots in it.
+ */
+const POSTER_W = 440;
+const POSTER_Q = 0.7;
+
 /** One live world on the page: the hero, or a gallery tile. */
 class Scene {
   readonly host: HTMLElement;
@@ -199,8 +217,28 @@ class Scene {
   /** How much of this tile is on screen, kept by the observer so both policies below — which
    *  runs, and which is evicted — have the same number to sort on. */
   ratio = 0;
-  /** Set by the visitor pressing Run on a reduced-motion or data-saver page. */
+  /**
+   * Distance from the viewport in CSS pixels, `0` while any part of this scene intersects it.
+   *
+   * **This is the number both policies sort on now, and the reason is the bug it replaces.**
+   * Sorting on `ratio` alone cannot tell an off-screen tile from an on-screen one once the
+   * mounted set is full: a tile one pixel below the fold reports a ratio just over zero, ties
+   * with nothing, and keeps a document that a tile eighty percent visible then cannot have.
+   * Reproduced on this page before the change — two tiles at `top=-91`, fully readable, blank for
+   * as long as the reader looked at them, while `Caverns` at `top=975` held the third slot.
+   */
+  distance = Infinity;
+  /** Set by the visitor pressing Run on a reduced-motion or data-saver page, or tapping a tile's
+   *  poster on a phone, where only one scene may run and the visitor chooses which. */
   armed = false;
+  /** `performance.now()` when this scene's loop last started. The warm-up window is measured from
+   *  here rather than from page load: a scene resumed after a scroll pays its re-entry cost
+   *  again, and quoting the first frame back as its steady cost is the same lie either way. */
+  startedAt: number | undefined;
+  /** The readout on this tile, printed through the same guard as every other figure. */
+  readonly meter: Meter;
+  /** Whether a frame of this world has been kept. Once true the placeholder never returns. */
+  held = false;
   /** No `__latticeBoot` after two seconds: the loop cannot be reached, so pausing means
    *  unmounting. See {@link Scene.adopt}. */
   unreachable = false;
@@ -216,7 +254,7 @@ class Scene {
    */
   desired: 'run' | 'stop' = 'stop';
 
-  constructor(host: HTMLElement, opts: { readonly scaled: boolean }) {
+  constructor(host: HTMLElement, opts: { readonly scaled: boolean; readonly meter?: Element | null }) {
     this.host = host;
     const stage = host.querySelector<HTMLElement>('.stage, .hero-stage');
     this.stage = stage ?? host;
@@ -240,9 +278,61 @@ class Scene {
     this.w = Number(host.dataset['w'] ?? 1000);
     this.h = Number(host.dataset['h'] ?? 625);
     this.scaled = opts.scaled;
+    // A tile's chip has room for `12.3 ms` and nothing else; the statement panel has a whole
+    // line. Same verdict, two widths — which is the point of {@link format} taking the width
+    // rather than each caller deciding what "warming up" means again.
+    this.meter = opts.meter === undefined
+      ? createMeter(host.querySelector('.cost'), { short: true })
+      : createMeter(opts.meter);
   }
 
   get mounted(): boolean { return this.frame !== undefined; }
+
+  /** Re-read where this scene is. One `getBoundingClientRect` per scene per scheduling pass, all
+   *  of them before any write, so the pass costs one layout flush rather than ten. */
+  measure(): void {
+    const r = this.host.getBoundingClientRect();
+    this.distance = r.bottom > 0 && r.top < innerHeight ? 0 : r.top >= innerHeight ? r.top - innerHeight : -r.bottom;
+  }
+
+  /**
+   * Keep this world's last painted frame, so evicting it does not blank it.
+   *
+   * A tile that has been mounted once and scrolled past is a place the reader has already been,
+   * and returning them to an empty box with a diamond in it reads as a page that broke rather
+   * than as a page that saved them a megabyte. The frame is real — it is the exhibit's own
+   * canvas, drawn by the kit, a moment ago — so holding it is not a screenshot in the sense
+   * `docs/GALLERY.md` forbids: nothing here is a picture of Lattice that was not Lattice running
+   * on this machine, in this session, thirty seconds ago.
+   *
+   * Same-origin is what makes it possible at all. The same property that lets this page reach an
+   * exhibit's `loop` lets it read the exhibit's canvas; a cross-origin gallery would taint it and
+   * `toDataURL` would throw, which is what the `catch` is for and why it is silent.
+   */
+  capture(): void {
+    const doc = this.frame?.contentDocument;
+    if (doc === null || doc === undefined) return;
+    let best: HTMLCanvasElement | undefined;
+    for (const c of doc.querySelectorAll('canvas')) {
+      if (best === undefined || c.width * c.height > best.width * best.height) best = c;
+    }
+    if (best === undefined || best.width === 0 || best.height === 0) return;
+    try {
+      const w = Math.min(POSTER_W, best.width);
+      const off = document.createElement('canvas');
+      off.width = w;
+      off.height = Math.max(1, Math.round((best.height / best.width) * w));
+      const ctx = off.getContext('2d');
+      if (ctx === null) return;
+      ctx.drawImage(best, 0, 0, off.width, off.height);
+      this.stage.style.backgroundImage = `url("${off.toDataURL('image/jpeg', POSTER_Q)}")`;
+      this.held = true;
+      this.host.dataset['held'] = 'yes';
+    } catch {
+      // A tainted canvas. The placeholder stands, which is the honest fallback rather than a
+      // blank one, and `unreachable` has already warned that this gallery is not same-origin.
+    }
+  }
 
   mount(): void {
     if (this.frame !== undefined || this.src === '') return;
@@ -259,8 +349,20 @@ class Scene {
     this.stage.append(frame);
     this.frame = frame;
     this.fit();
-    this.host.dataset['state'] = 'live';
-    this.desired = 'run';
+    // Deliberately **not** `desired = 'run'`. A frame is created for two different reasons now —
+    // because this scene is the one that runs, and because it is the next one the reader will
+    // reach — and a mount that assumes the first starts a loop the budget did not authorize, for
+    // the one tick before `adopt` calls `schedule` again. The caller has already said which it
+    // wants; mounting is not the place to guess.
+    this.host.dataset['state'] = 'paused';
+  }
+
+  /** Exist, painted, with the clock stopped: the preload state, and what a tile over the running
+   *  budget but on screen is in. */
+  hold(): void {
+    this.desired = 'stop';
+    if (this.frame === undefined) { requestMount(this); return; }
+    this.pause();
   }
 
   /** Take hold of the exhibit once its module has run. `load` fires after deferred module
@@ -321,38 +423,126 @@ class Scene {
 
   resume(): void {
     this.desired = 'run';
-    if (this.frame === undefined) { this.mount(); return; }
+    if (this.frame === undefined) { requestMount(this); return; }
     const loop = this.boot?.loop;
-    if (loop !== undefined && !loop.running) loop.start();
+    if (loop !== undefined) {
+      if (!loop.running) loop.start();
+      // An exhibit calls `start()` itself at module scope, so a scene adopted while it is already
+      // running has a clock this page never started. Stamp it here either way, or the warm-up
+      // window is measured from `undefined` and the first mount spike is printed as steady state.
+      if (this.startedAt === undefined) {
+        this.startedAt = performance.now();
+        this.meter.started(this.startedAt);
+      }
+    }
     this.host.dataset['state'] = 'live';
   }
 
   pause(): void {
     this.desired = 'stop';
     const loop = this.boot?.loop;
-    if (loop !== undefined) { if (loop.running) loop.stop(); this.host.dataset['state'] = 'paused'; return; }
+    if (loop !== undefined) {
+      if (loop.running) {
+        // Take the frame *before* the clock stops, while the canvas is certainly painted and the
+        // world is at its most recent state. An eviction later reuses it for free.
+        this.capture();
+        loop.stop();
+      }
+      this.startedAt = undefined;
+      this.meter.stopped();
+      this.host.dataset['state'] = 'paused';
+      return;
+    }
     // Mounted but not yet adopted. Doing anything here is a mount/unmount loop across a scroll:
     // the frame is told to stop before it has finished starting, is destroyed, and is created
     // again on the next entry. `adopt` calls `schedule` when the handle arrives, and this
     // decision is made properly then.
     if (this.frame !== undefined) { if (this.unreachable) this.unmount(); return; }
-    this.host.dataset['state'] = askFirst ? 'ask' : 'idle';
+    this.host.dataset['state'] = this.idleState;
   }
 
   unmount(): void {
     this.desired = 'stop';
+    // Last chance: a scene evicted without ever being paused (the budget moved under it) still
+    // has a painted canvas for one more statement.
+    if (!this.held) this.capture();
     this.frame?.remove();
     this.frame = undefined;
     this.boot = undefined;
-    this.host.dataset['state'] = askFirst ? 'ask' : 'idle';
+    this.startedAt = undefined;
+    this.meter.stopped();
+    this.host.dataset['state'] = this.idleState;
+  }
+
+  /**
+   * What this scene looks like when it is not mounted, and why there are three answers.
+   *
+   * `ask` is a visitor who told the browser they want stillness or are paying by the megabyte:
+   * nothing runs until they press the button. `held` is a tile they have already seen, which
+   * keeps its own last frame. `idle` is the placeholder, and it is now the state a tile is only
+   * ever in *before* its first mount — after that there is always a world to show.
+   */
+  get idleState(): string {
+    return askFirst && !this.armed ? 'ask' : this.held ? 'held' : 'idle';
   }
 }
 
-/** How many exhibit documents may exist at once, running or not. A paused one still holds a
- *  canvas and a module graph, and a reader who has been through the whole gallery would
- *  otherwise be holding ten. Three is a row and a half on a laptop. */
-const MAX_MOUNTED = 3;
+/**
+ * How many exhibit documents may exist beyond the ones the reader can see, and the ceiling on
+ * the whole mounted set.
+ *
+ * **The floor is not a constant any more, and that is the fix.** The old policy capped the
+ * mounted set at three whatever was on screen, so a laptop showing four tiles at once starved two
+ * of them permanently: the cap was reached by whichever tiles were mounted first, and an
+ * off-screen one that had got in kept its slot while a tile the reader was looking at could not
+ * get one. Everything intersecting the viewport is mounted now, always, and the budget is spent
+ * *beyond* that on the tiles the reader is about to reach.
+ *
+ * The ceiling is what stops an unusual viewport — a short wide window, a zoomed-out page —
+ * mounting the whole gallery. It can never cut below the on-screen set; it only caps the
+ * preload.
+ */
+const PRELOAD = () => (narrow() ? 1 : 2);
+const MOUNT_CEILING = () => (narrow() ? 3 : 6);
+
+/**
+ * The smallest gap between two iframes being created, in milliseconds.
+ *
+ * Three exhibits booting in the same tick is what produced the tile reading `worst frame / 10s
+ * 405.5 ms` — three module graphs, three first paints and three world builds competing for one
+ * main thread, charged to whichever exhibit happened to have its HUD read. Spacing them costs a
+ * reader nothing (a tile they have not reached yet arrives a fifth of a second later) and it
+ * takes the spike out of the number rather than out of the readout.
+ */
+const MOUNT_GAP_MS = 220;
+
 const tiles: Scene[] = [];
+
+/** The tile a visitor asked for by name, on a screen that can only run one. It outranks distance:
+ *  they pressed a button, which is a stronger signal than where they happen to have scrolled. */
+let pinned: Scene | undefined;
+
+let lastMountAt = -Infinity;
+let mountTimer: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * Create this scene's frame, or come back in a moment and decide again.
+ *
+ * Deliberately *not* a queue. A queue mounts what was wanted when it was enqueued, and by the
+ * time a slot frees the reader has usually scrolled somewhere else; re-running {@link schedule}
+ * mounts what is wanted now.
+ */
+function requestMount(scene: Scene): void {
+  const now = performance.now();
+  const wait = MOUNT_GAP_MS - (now - lastMountAt);
+  if (wait <= 0) {
+    lastMountAt = now;
+    scene.mount();
+    return;
+  }
+  if (mountTimer !== undefined) return;
+  mountTimer = setTimeout(() => { mountTimer = undefined; schedule(); }, wait);
+}
 
 function onAdopted(_scene: Scene): void { schedule(); }
 
@@ -364,29 +554,52 @@ function countLive(): void {
 }
 
 /**
- * Decide what runs and what exists, from one sorted list.
+ * Decide what runs and what exists, from one list sorted by distance from the viewport.
  *
- * Both policies are the same question asked twice — *how much of this is the reader looking
- * at* — so they read the same number and are applied in the same pass. Doing it in two
- * observers is how a tile ends up mounted by one and stopped by the other on the same scroll.
+ * Both policies are the same question asked twice — *how close is this to the reader's eye* — so
+ * they read the same number and are applied in the same pass. Doing it in two observers is how a
+ * tile ends up mounted by one and stopped by the other on the same scroll.
+ *
+ * The three rules, in the order they bind:
+ *
+ * 1. **Nothing intersecting the viewport is ever evicted.** Not for a preload, not for a
+ *    ceiling, not for a tile that got there first. A blank tile the reader is looking at is the
+ *    worst thing this page can do, because the gallery *is* the argument.
+ * 2. **Whatever is left over is spent one screen ahead**, nearest first, so the next row is
+ *    already painted when it arrives.
+ * 3. **Only the closest few run.** Running is expensive; existing is not. A mounted, stopped
+ *    exhibit is a cancelled `requestAnimationFrame` and a canvas holding its last frame.
  */
 function schedule(): void {
-  const byVisibility = [...tiles].sort((a, b) => b.ratio - a.ratio);
-  const running = maxRunning();
-  let started = 0;
+  // Every read first, then every write. Interleaving them is ten forced layouts per pass.
+  for (const scene of tiles) scene.measure();
+
+  const order = [...tiles].sort((a, b) => a.distance - b.distance || b.ratio - a.ratio);
+  // A visitor who asked for stillness gets nothing they did not press for; everyone else gets
+  // the whole policy.
+  const candidates = order.filter((s) => !askFirst || s.armed);
+  const onScreen = candidates.filter((s) => s.distance === 0).length;
+  // Rule 1 is this `Math.max`: the ceiling caps the preload and can never cut into what is
+  // visible.
+  const mountLimit = Math.max(onScreen, Math.min(onScreen + PRELOAD(), MOUNT_CEILING()));
+  const runLimit = maxRunning();
+
+  const runnable = candidates.filter((s) => s.distance === 0);
+  if (pinned !== undefined && runnable.includes(pinned)) {
+    runnable.splice(runnable.indexOf(pinned), 1);
+    runnable.unshift(pinned);
+  }
+  const run = new Set(runnable.slice(0, runLimit));
+
   let mounted = 0;
-  for (const scene of byVisibility) {
-    const wanted = scene.ratio > 0 && (!askFirst || scene.armed);
-    if (wanted && started < running) {
+  for (const scene of order) {
+    if (run.has(scene)) {
       scene.resume();
-      started += 1;
       mounted += 1;
-    } else if (scene.ratio > 0 && mounted < MAX_MOUNTED) {
-      // On screen but over the running budget: keep the document, stop the clock.
-      scene.pause();
-      if (scene.mounted) mounted += 1;
-    } else if (scene.mounted && mounted < MAX_MOUNTED) {
-      scene.pause();
+    } else if (candidates.includes(scene) && mounted < mountLimit) {
+      // Wanted, but over the running budget: hold the document and stop the clock. If it has no
+      // document yet this is where the preload happens.
+      scene.hold();
       mounted += 1;
     } else {
       scene.unmount();
@@ -395,26 +608,41 @@ function schedule(): void {
   countLive();
 }
 
+/**
+ * The observer is now a *trigger*, not the policy.
+ *
+ * It exists to wake {@link schedule} the instant a tile's relationship to the viewport changes,
+ * and its `intersectionRatio` survives only as a tie-break between two tiles in the same row.
+ * Everything that decides anything reads `Scene.distance`, which is measured against the real
+ * viewport rather than against a root inflated by `rootMargin` — the old code sorted on a ratio
+ * that a tile eighty pixels *below the fold* reports as greater than zero, and then treated
+ * "greater than zero" as "the reader can see it".
+ *
+ * `threshold` is a ladder rather than one value: the observer only fires when a ratio crosses a
+ * rung, so a single `0.01` would report a tile as "0.01 visible" for the whole of its trip up the
+ * screen and nothing would ever fire again.
+ */
 const near = new IntersectionObserver((entries) => {
   for (const entry of entries) {
     const scene = tiles.find((s) => s.host === entry.target);
     if (scene !== undefined) scene.ratio = entry.isIntersecting ? entry.intersectionRatio : 0;
   }
   schedule();
-  // `threshold` is a ladder rather than one value: the observer only fires when a ratio crosses
-  // a rung, so a single `0.01` would report a tile as "0.01 visible" for the whole of its trip
-  // up the screen and the sort above would have nothing to order by.
 }, { rootMargin: '80px 0px', threshold: [0, 0.05, 0.25, 0.5, 0.75, 1] });
 
 for (const host of document.querySelectorAll<HTMLElement>('.tile')) {
   const scene = new Scene(host, { scaled: true });
   tiles.push(scene);
-  host.dataset['state'] = askFirst ? 'ask' : 'idle';
+  host.dataset['state'] = scene.idleState;
   new ResizeObserver(() => { scene.fit(); }).observe(scene.stage);
   near.observe(host);
   host.querySelector('.tile-run')?.addEventListener('click', (event) => {
     event.preventDefault();
     scene.armed = true;
+    // On a phone the running budget is genuinely one, so the poster is a control rather than a
+    // decoration: pressing it is the visitor choosing which of ten worlds gets the frame. Without
+    // the pin, distance decides and the tile they pressed loses to the one above it.
+    pinned = scene;
     schedule();
   });
 }
@@ -426,11 +654,11 @@ addEventListener('resize', schedule, { passive: true });
  *  scene nobody stops the day a browser decides to collect it. */
 let heroWatch: IntersectionObserver | undefined;
 const heroHost = document.querySelector<HTMLElement>('.hero');
-const hero = heroHost === null ? undefined : new Scene(heroHost, { scaled: false });
+const hero = heroHost === null ? undefined : new Scene(heroHost, { scaled: false, meter: document.querySelector('#m-hero') });
 
 if (hero !== undefined && heroHost !== null) {
   if (askFirst) heroHost.dataset['state'] = 'ask';
-  else hero.mount();
+  else hero.resume();
 
   // Off-screen the hero stops outright rather than dropping to a lower cadence. A stopped loop
   // is a cancelled `requestAnimationFrame`, which is the only cadence a phone actually rewards.
@@ -496,10 +724,6 @@ function forwardWheel(frame: HTMLIFrameElement): void {
  * 4. The page's own frame cost.
  * ──────────────────────────────────────────────────────────────────────────────────────── */
 
-const meterFrame = document.querySelector('#m-frame');
-const meterWorst = document.querySelector('#m-worst');
-const meterCadence = document.querySelector('#m-cadence');
-
 /**
  * A loop that renders nothing.
  *
@@ -514,36 +738,76 @@ const pageLoop = createLoop({
   windowMs: 10_000,
 });
 
+/**
+ * The page's own three readouts, and the one that changed meaning.
+ *
+ * `hero worst 10s` used to be `hero pump` and printed `heroLoop.stats.frameMs`. That is the
+ * pump's own wall time — an exponential moving average of work that excludes everything happening
+ * *between* two pumps — and it is the number this page's own paragraph, four inches below it,
+ * calls the wrong one. It duly printed `0.1 ms`, `0.4 ms`, `7.7 ms` and `11.3 ms` to four
+ * different readers of the same page. It is `worstGapMs` now, like the other two, so all three
+ * figures are the same kind of number and the paragraph beside them is true of all of them.
+ */
+const pageMeters = [
+  createMeter(document.querySelector('#m-cadence'), { period: true }),
+  createMeter(document.querySelector('#m-worst')),
+];
+
+/**
+ * When the page's own loop began, and the one place a warm-up window is *cleared* rather than
+ * annotated.
+ *
+ * The page owns `pageLoop` outright — nothing else reads its stats — so the honest move here is
+ * to throw the load away instead of qualifying it, which `resetStats` does exactly. That is not
+ * available for an exhibit's loop: its HUD is reading the same object, and `resetStats` zeroes
+ * `fps` for every other reader. Those get {@link judge}'s `mounting` verdict instead.
+ */
+let pageStartedAt = performance.now();
+let pageWarmedUp = false;
+
+function warmPage(): void {
+  pageStartedAt = performance.now();
+  pageWarmedUp = false;
+  for (const m of pageMeters) m.started(pageStartedAt);
+}
+
+/** `cadenceMs` is the *shortest* gap in the window and `worstGapMs` the longest, so the two
+ *  readouts differ only in which field they print — and `#m-cadence` wants the period rather than
+ *  the worst case, which is the one place the shared judgement is asked a different question. */
+const cadenceView: LoopLike = {
+  get running() { return pageLoop.running; },
+  get windowMs() { return pageLoop.windowMs; },
+  get stats() {
+    return { worstGapMs: pageLoop.stats.cadenceMs, cadenceMs: pageLoop.stats.cadenceMs };
+  },
+};
+
 let sampledAt = 0;
 pageLoop.onRender((_alpha, _t, nowMs) => {
   if (nowMs - sampledAt < 250) return;
   sampledAt = nowMs;
-  // A hidden tab has no rAF, so every figure below would freeze at whatever it last was and
-  // read as a very fast page. Say so instead.
-  const visible = document.visibilityState === 'visible';
-  const heroLoop = hero?.boot?.loop;
-  if (meterFrame !== null) {
-    // A stopped loop keeps its last `frameMs` forever, and printing it beside the word "hero"
-    // while the hero is off screen and not running is the same lie as printing 0.0 ms in a
-    // hidden tab. Say which of the three states this is.
-    meterFrame.textContent = !visible ? 'hidden'
-      : heroLoop === undefined ? '—'
-      : !heroLoop.running ? 'paused'
-      : `${heroLoop.stats.frameMs.toFixed(1)} ms`;
+  const now = performance.now();
+  if (!pageWarmedUp && now - pageStartedAt >= WARMUP_MS) {
+    pageWarmedUp = true;
+    pageLoop.resetStats();
   }
-  if (meterWorst !== null) {
-    const worst = pageLoop.stats.worstGapMs;
-    meterWorst.textContent = !visible ? 'hidden' : `${worst.toFixed(1)} ms`;
-    // 24 ms is a frame and a half at 60 Hz — the point at which a gap is something a reader can
-    // see rather than something a profiler can. Not the 8 ms frame budget: that is what a pump
-    // may cost, and a gap is not a pump.
-    meterWorst.classList.toggle('hot', visible && worst > 24);
-  }
-  if (meterCadence !== null) {
-    meterCadence.textContent = !visible ? 'hidden' : `${pageLoop.stats.cadenceMs.toFixed(1)} ms`;
-  }
+  pageMeters[0]?.update(cadenceView, now);
+  pageMeters[1]?.update(pageLoop, now);
+  hero?.meter.update(hero.boot?.loop, now);
+  for (const scene of tiles) scene.meter.update(scene.boot?.loop, now);
 });
 pageLoop.start();
+warmPage();
+// A tab that comes back has been away for an unknown length of time, and every rolling window on
+// the page stopped rolling when its rAF did. Start the warm-up again rather than printing a
+// figure stitched together from two visits.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  warmPage();
+  const now = performance.now();
+  for (const scene of tiles) if (scene.startedAt !== undefined) scene.startedAt = now;
+  if (hero !== undefined && hero.startedAt !== undefined) hero.startedAt = now;
+});
 
 /* ────────────────────────────────────────────────────────────────────────────────────────
  * The scroll, which drives all of the above.
@@ -562,8 +826,133 @@ function onScroll(): void {
     // frame that is replaced gets a fresh `Window` and therefore a fresh bridge.
     const frame = hero?.frame;
     if (frame !== undefined) forwardWheel(frame);
+    // Distance is a scroll position, so the gallery's policy is re-decided on the same rAF that
+    // repaints the sky. The observer alone is not enough: it fires when a *threshold* is crossed,
+    // and two tiles in the same row cross none of them while the row slides up the screen.
+    spy();
+    schedule();
   });
 }
+
+/* ────────────────────────────────────────────────────────────────────────────────────────
+ * The rail, the hash, and the one state that has to be true at the same time.
+ * ──────────────────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Keep the active nav item and the URL in the address bar agreeing with each other.
+ *
+ * A reviewer found the rail claiming `GALLERY` while the address bar said `#reference` and the
+ * page was at the top. The page had **no scroll spy at all** — what looked like an active item
+ * was the `:hover` and focus color left on the last link that was clicked, which is a state with
+ * no expiry and no relationship to where the reader is.
+ *
+ * So the section is derived from the scroll position, once, and drives both: the `aria-current`
+ * on the rail *and* `history.replaceState`. They cannot disagree because they are the same
+ * assignment. `replaceState` rather than `pushState` — the hash follows the reader so the URL
+ * stays copyable at any point, and the Back button keeps meaning "the section I clicked to",
+ * which is what an anchor already pushed.
+ */
+const navLinks = new Map<string, HTMLAnchorElement>();
+for (const a of document.querySelectorAll<HTMLAnchorElement>('.topnav a')) {
+  const href = a.getAttribute('href') ?? '';
+  if (href.startsWith('#')) navLinks.set(href.slice(1), a);
+}
+const spied = [...document.querySelectorAll<HTMLElement>('main .section[id]')];
+let spiedId = ' ';
+
+function spy(): void {
+  // A third of the way down is where a reader is actually reading, not the top edge: a section
+  // whose first pixel has appeared is not the section anybody is in.
+  const line = innerHeight * 0.34;
+  let current = '';
+  for (const section of spied) {
+    const r = section.getBoundingClientRect();
+    if (r.top <= line && r.bottom > line) current = section.id;
+  }
+  if (current === spiedId) return;
+  spiedId = current;
+  for (const [id, a] of navLinks) {
+    if (id === current) a.setAttribute('aria-current', 'true');
+    else a.removeAttribute('aria-current');
+  }
+  const url = current === '' ? `${location.pathname}${location.search}` : `#${current}`;
+  history.replaceState(null, '', url);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────────────────
+ * The two controls on the example, and why a code block on a phone needs them.
+ * ──────────────────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * 822 pixels of program in a 343-pixel box.
+ *
+ * The block scrolls correctly inside its own container, which is the part that is easy, and every
+ * line that says anything truncates mid-expression, which is the part that matters. A reader on a
+ * phone is not going to drag sideways through forty-eight lines. **Wrap** turns the block into
+ * something readable at the cost of the column alignment, and **Copy** is the honest admission
+ * that the real answer on a phone is to read it somewhere else.
+ *
+ * Both are `js-only` in the markup: with script off there is nothing here that could work, and
+ * `docs/GALLERY.md` asks this page to be honest rather than graceful about that.
+ */
+for (const box of document.querySelectorAll<HTMLElement>('.codebox')) {
+  const pre = box.querySelector('pre');
+  const wrap = box.querySelector<HTMLButtonElement>('[data-code-wrap]');
+  const copy = box.querySelector<HTMLButtonElement>('[data-code-copy]');
+  // A phone is where the truncation is, so a phone is where it starts wrapped. A laptop shows the
+  // program as its author aligned it.
+  if (innerWidth < 640) box.dataset['wrap'] = 'on';
+  wrap?.addEventListener('click', () => {
+    const on = box.dataset['wrap'] !== 'on';
+    box.dataset['wrap'] = on ? 'on' : 'off';
+    wrap.setAttribute('aria-pressed', String(on));
+  });
+  wrap?.setAttribute('aria-pressed', String(box.dataset['wrap'] === 'on'));
+  copy?.addEventListener('click', () => {
+    const text = pre?.textContent ?? '';
+    void navigator.clipboard.writeText(text).then(
+      () => { say(copy, 'Copied'); },
+      // `writeText` rejects without a secure context or a user-activation the browser believed
+      // in. Saying so beats a button that silently does nothing.
+      () => { say(copy, 'Press ⌘C'); },
+    );
+  });
+}
+
+/** Flash a word on a button and put its own label back. */
+function say(button: HTMLButtonElement, word: string): void {
+  const was = button.dataset['label'] ?? button.textContent ?? '';
+  button.dataset['label'] = was;
+  button.textContent = word;
+  setTimeout(() => { button.textContent = was; }, 1600);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────────────────
+ * Provenance, for the reader rather than for the agent.
+ * ──────────────────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Every headline figure on this page already carried the command that produced it — in
+ * `/api.json`, where only an agent would ever look. The strip reveals it on hover, which is free,
+ * and on tap, which is not: a touch device has no hover, so the same disclosure needs a control.
+ *
+ * The control is the figure itself. It is a `<button>` in the markup with `aria-expanded`, so a
+ * screen reader is told there is something behind it and a keyboard reaches it with Tab, and the
+ * hover path is pure CSS so it works before this file has run.
+ */
+for (const fig of document.querySelectorAll<HTMLButtonElement>('.fig')) {
+  fig.addEventListener('click', () => {
+    const open = fig.getAttribute('aria-expanded') !== 'true';
+    // One at a time. Two provenance notes open at once on a six-column strip overlap each other.
+    for (const other of document.querySelectorAll('.fig')) other.setAttribute('aria-expanded', 'false');
+    fig.setAttribute('aria-expanded', String(open));
+  });
+}
+document.addEventListener('click', (event) => {
+  const target = event.target;
+  if (target instanceof Element && target.closest('.fig') !== null) return;
+  for (const fig of document.querySelectorAll('.fig')) fig.setAttribute('aria-expanded', 'false');
+});
 
 addEventListener('scroll', onScroll, { passive: true });
 addEventListener('resize', onScroll, { passive: true });
