@@ -32,7 +32,7 @@
  * `undefined` in that case and {@link Scene.pause} degrades to unmounting the frame, which is
  * slower but correct.
  */
-import { DUSK, NIGHT, beginFrame, createCanvas2dSurface, createPalette, endFrame, isoTile, lerpPalette, mix, withAlpha } from '@latticekit/draw';
+import { DUSK, NIGHT, beginFrame, createCanvas2dSurface, createPalette, endFrame, extendStops, isoTile, lerpPalette, mix, withAlpha } from '@latticekit/draw';
 import { createCamera } from '@latticekit/iso';
 import { browserFrames, createLoop } from '@latticekit/loop';
 import { clamp01, hash2 } from '@latticekit/core';
@@ -56,6 +56,27 @@ const askFirst = reduceMotion || saveData;
  * 1 + 2. The day cycle, and the field it lights.
  * ──────────────────────────────────────────────────────────────────────────────────────── */
 
+/**
+ * The two slots this page adds to the kit's day cycle, and why they are slots rather than
+ * constants in the stylesheet.
+ *
+ * `draw`'s `night` is the color of a sky: `#141a38` at dusk and `#080b1c` at midnight, both of them
+ * blue, because behind a valley that is what night looks like. Behind a *document* it made the
+ * whole page navy. The ground wanted to be a warm-neutral near-black at both ends — dark enough
+ * that the amber accent reads as light landing on something, warm enough that it is not the flat
+ * `#000` every terminal-themed page already is.
+ *
+ * `extendStops` is the sanctioned way to do that: `packages/draw` documents it as "the sanctioned
+ * way to add a color to the day/night lerp", and its one warning is **hoist the results**, because
+ * `Palette.lerp` compares stop sets by identity and a set rebuilt per frame bumps `rev` — the key
+ * every cache in the kit hangs off. These are module scope for exactly that reason. Nothing here
+ * reaches into `packages/`; the page brings its own colors to the kit's interpolation.
+ */
+const PAGE_STOPS = { dusk: 0x181410ff, night: 0x0c0a08ff } as const;
+const PANEL_STOPS = { dusk: 0x231d17ff, night: 0x15110dff } as const;
+const DUSK_PAGE = extendStops(DUSK, { page: PAGE_STOPS.dusk, panel: PANEL_STOPS.dusk });
+const NIGHT_PAGE = extendStops(NIGHT, { page: PAGE_STOPS.night, panel: PANEL_STOPS.night });
+
 const root = document.documentElement;
 const groundCanvas = document.querySelector<HTMLCanvasElement>('#ground');
 
@@ -71,7 +92,7 @@ function applyNight(progress: number): void {
   // positions inside the same step produce byte-identical strings and the work below is skipped.
   // This is the same quantization `Palette.lerp` uses, and it is the reason an animated color is
   // safe here — see the ramp-cache note in docs/GALLERY.md.
-  const vars = lerpPalette(DUSK, NIGHT, progress);
+  const vars = lerpPalette(DUSK_PAGE, NIGHT_PAGE, progress);
   const key = vars['night'] ?? '';
   if (key === lastKey) return;
   lastKey = key;
@@ -92,7 +113,7 @@ function applyNight(progress: number): void {
  */
 function makeBackdrop(canvas: HTMLCanvasElement): { paint(progress: number): void } {
   const surface = createCanvas2dSurface(canvas, { pixelRatio: 1 });
-  const palette = createPalette(DUSK);
+  const palette = createPalette(DUSK_PAGE);
   // A wide, shallow camera: the field is wallpaper, so it wants to be read as texture rather
   // than as a place. Zoomed out past any exhibit's minimum on purpose.
   const camera = createCamera(Math.max(1, innerWidth), Math.max(1, innerHeight), {
@@ -110,11 +131,13 @@ function makeBackdrop(canvas: HTMLCanvasElement): { paint(progress: number): voi
 
   function paint(next: number): void {
     progress = next;
-    palette.lerp(DUSK, NIGHT, progress);
-    const pen = beginFrame({ surface, camera, palette, t: 0, clear: 'night', snap: true });
+    palette.lerp(DUSK_PAGE, NIGHT_PAGE, progress);
+    // `page`, not `night`: the wallpaper clears to the same warm near-black the document does, or
+    // a navy field shows through the one element that is behind everything.
+    const pen = beginFrame({ surface, camera, palette, t: 0, clear: 'page', snap: true });
     const seen = camera.visibleTileBounds({ gx0: 0, gy0: 0, gx1: 0, gy1: 0 }, 2);
     const ground = palette.get('ground');
-    const night = palette.get('night');
+    const base = palette.get('page');
     for (let gy = seen.gy0; gy < seen.gy1; gy++) {
       for (let gx = seen.gx0; gx < seen.gx1; gx++) {
         // Two levels of relief and nothing else. `hash2` is Tier A, so this wallpaper is the
@@ -124,7 +147,7 @@ function makeBackdrop(canvas: HTMLCanvasElement): { paint(progress: number): voi
         // The tile color is mixed toward the ground slot by a hair. A backdrop that reads as a
         // pattern rather than as content is one whose contrast against its own background is
         // under about four percent, and this is that number.
-        const fill = mix(night, ground, 0.055 + (n > 0.86 ? 0.05 : 0));
+        const fill = mix(base, ground, 0.055 + (n > 0.86 ? 0.05 : 0));
         isoTile(pen, gx, gy, fill, withAlpha(ground, 0.05), 0.06, lift);
       }
     }
@@ -751,6 +774,11 @@ const pageLoop = createLoop({
 const pageMeters = [
   createMeter(document.querySelector('#m-cadence'), { period: true }),
   createMeter(document.querySelector('#m-worst')),
+  // The proof strip's sixth cell. Five of its figures were measured on one machine on one day and
+  // are printed out of `measured.json`; this one is measuring the browser it is being read in, and
+  // it is the only figure on the page a visitor can disprove by watching it. `short` because the
+  // cell is 158 px wide and "warming up" is not.
+  createMeter(document.querySelector('#m-strip'), { short: true }),
 ];
 
 /**
@@ -793,6 +821,7 @@ pageLoop.onRender((_alpha, _t, nowMs) => {
   }
   pageMeters[0]?.update(cadenceView, now);
   pageMeters[1]?.update(pageLoop, now);
+  pageMeters[2]?.update(pageLoop, now);
   hero?.meter.update(hero.boot?.loop, now);
   for (const scene of tiles) scene.meter.update(scene.boot?.loop, now);
 });

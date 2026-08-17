@@ -1,6 +1,7 @@
 # The landing page
 
-**Nothing on this page is a picture of Lattice. Everything on it is Lattice, running.**
+**The design rule, from `docs/GALLERY.md`: nothing on this page is a picture of Lattice.**
+Everything on it is Lattice, running — and the page never says so, which is the *other* rule.
 
 The hero is `examples/demo` in an iframe, playable. The ten gallery tiles are the ten exhibits,
 live, at their own viewports, scaled into a grid. The backdrop is drawn with `@latticekit/draw`, the
@@ -44,6 +45,42 @@ from it inside a week, and this one cannot.
 
 **Nothing on the page may state a number that is not in `data/measured.json` or read live off the
 running kit.** If you want a figure that does not exist, measure it and add it with its command.
+
+## The copy doctrine, and the three things it took off the page
+
+`docs/GALLERY.md` § *"if it is on screen doing the thing, delete the sentence about it"* is the
+brief this page is written to. **Every sentence that describes something visible is deleted.** What
+survives is what a visitor cannot see: how to install it, what it costs, what it does not do.
+
+| gone | where it went |
+|---|---|
+| *"Nothing here is a screenshot."*, as a heading and as a claim | nowhere. Eleven worlds moving say it, and announcing that a thing is real is what an unreal thing does |
+| the **"Is this ready?"** section, and its `Ready?` nav item | `data/readiness-for-readme.md`, verbatim, **for somebody to move into the repository README** — that move is outstanding. The machine-readable `readiness`, `browsers` and `alternatives` keys are untouched in `/api.json` and `/llms.txt`, because the doctrine is about what a human is made to read |
+| the **test count** and the **public-symbol count** in the proof strip | `/api.json` and `/llms.txt` only. Nobody adopts a library for its test count; working is the assumed baseline |
+
+The strip counts what a visitor is deciding on instead: what it drags in, what it weighs, **how
+much of it they have to write themselves** (`exampleLines`, counted off `example/hello.ts` with
+`docs/GALLERY.md`'s own line rule and asserted against `measured.json` at build time), and **what a
+frame costs** — the last cell is `live`, read off the page's own loop through `src/meter.ts`, and
+is the one figure here that is measuring the reader's machine rather than the author's. Every cell
+keeps its provenance popover.
+
+## Color and type
+
+- **The ground is the page's own palette slot, not `draw`'s `night`.** `night` is a blue, because
+  behind a valley that is what night is; behind a document it made the whole page navy. `page.ts`
+  adds `page` and `panel` to both stop sets with `extendStops` — the mechanism `packages/draw`
+  documents for exactly this — so they cross-fade on the same `lerpPalette` call, in the same
+  quantization, as every kit slot. `#181410` at the dusk end, `#0c0a08` at midnight. Nothing
+  reaches into `packages/`.
+- **Re-measure the two ink ratios if you touch the ground.** Against `#181410`, the lightest ground
+  the cycle reaches and therefore the worst case: `--dimmer` **5.06:1**, `--dim` **6.79:1**,
+  `--accent` **8.14:1**, `--paper` 15.81:1. Those are floors, and a ground change is exactly the
+  edit that lets a legibility fix regress in silence.
+- **One display face, seven letters.** The wordmark is Fraunces 600, self-hosted, its `@font-face`
+  restricted to `U+0041-005A, U+0061-007A` so it cannot leak into a heading. `font-optical-sizing:
+  auto` is why it is a variable face rather than a static cut. Everything else on the page is IBM
+  Plex and stays that way.
 
 ## The rules this page is built against
 

@@ -10,6 +10,16 @@
  * document instead of on a canvas, and the fallbacks below are DUSK exactly, so the first paint
  * is right before a line of script has run and stays right if script never runs at all.
  *
+ * ## The ground is the page's own slot, not the kit's `night`
+ *
+ * `night` in `packages/draw` is a *blue* — `#141a38` at dusk, `#080b1c` at midnight — because it
+ * is the color of a sky over a game. On a document it made the whole page navy, which is the one
+ * thing this design was asked not to be. So the page adds two slots of its own, `page` and
+ * `panel`, through `extendStops` — the mechanism `packages/draw` documents for exactly this — and
+ * they cross-fade on the same call, in the same quantization, as every kit slot. Nothing here
+ * reaches into `packages/`; the ground is warm-neutral near-black at both ends of the cycle so the
+ * amber accent reads as light falling on something rather than as a color on a color.
+ *
  * Text is deliberately NOT on that cycle. `paper` and `dim` are constants, because a page whose
  * body copy dims as you read it is a page that has confused an effect with a design. The accent
  * is `--lattice-warn`, which the kit guarantees stays legible at midnight — `packages/draw`'s
@@ -60,6 +70,29 @@
     U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
+/*
+ * The one face on this page that is not IBM Plex, and it sets seven letters.
+ *
+ * `lattice` in the body mono read as a filename rather than as a name — which is what a monospace
+ * wordmark on a monospace page always reads as, because nothing distinguishes it from the code
+ * beside it. Fraunces is a high-contrast display serif with a real optical-size axis, so
+ * `font-optical-sizing: auto` gives the masthead the tight, high-contrast cut a display size wants
+ * instead of a text face scaled up. The tension between one elegant serif word and an otherwise
+ * entirely monospace page is the whole effect; it is used **nowhere else**, and headings and body
+ * are untouched.
+ *
+ * One file, one weight, latin subset. It is the fifth webfont on a page that prints its own font
+ * weight in the colophon, which is the honest version of taking `docs/GALLERY.md`'s exemption.
+ */
+@font-face {
+  font-family: 'Lattice Display';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/fraunces-600.woff2') format('woff2');
+  unicode-range: U+0041-005A, U+0061-007A;
+}
+
 :root {
   /* DUSK, verbatim from packages/draw/src/palette.ts. page.ts overwrites these on scroll. */
   --lattice-sky: #e0956a;
@@ -72,30 +105,40 @@
   --lattice-ok: #4c9c5c;
   --lattice-bad: #b23c36;
   --lattice-night: #141a38;
+  /* The page's own two slots, DUSK end. `page.ts` extends both kit stop sets with them, so they
+     cross-fade on the same call as everything above. `panel` is the ground plus enough light to
+     read as a surface sitting on it. */
+  --lattice-page: #181410;
+  --lattice-panel: #231d17;
 
   --paper: #f1eee7;
   --dim: #a29d94;
   /*
    * The lowest ink on the page, and it used to be `#6b675f`.
    *
-   * That is a contrast ratio of about 3.2:1 against `--lattice-night`, and it was carrying the
+   * That is a contrast ratio of about 3.2:1 against the old navy ground, and it was carrying the
    * colophon, the size footnotes and the plugin-status note — three places where the page says
    * something a skeptic specifically wants to read. "Genuinely hard to read", said the one who
    * tried. Mid-grey on near-black is the house style of a page that has confused *quiet* with
    * *faint*: quiet is small and set apart, faint is unreadable, and only one of them is a
-   * decision. Measured against `#141a38`, the *lightest* ground the day cycle ever reaches and
-   * therefore the worst case: `--dimmer` goes 3.02:1 to 4.70:1 and `--dim` 5.01:1 to 6.31:1, so
-   * both clear WCAG AA where they did not before. The accent already sat at 7.56:1, which is
-   * `packages/draw` keeping its promise that a HUD reads at midnight.
+   * decision.
+   *
+   * **Re-measured against `#181410`**, the lightest ground the day cycle now reaches and therefore
+   * the worst case: `--dimmer` is **5.06:1**, up from 4.70:1 on the navy, and `--dim` **6.79:1**,
+   * up from 6.31:1. The accent is **8.14:1**, up from 7.56:1, and `--paper` 15.81:1. At the
+   * midnight end (`#0c0a08`) they are 5.46:1 and 7.33:1. Every floor moved up rather than down,
+   * which is what a darker ground is for — and they are re-measured rather than assumed, because a
+   * ground change is exactly the edit that lets a legibility fix regress in silence.
    */
   --dimmer: #8b867d;
   --accent: var(--lattice-warn);
   --rule: color-mix(in srgb, var(--paper) 11%, transparent);
   --rule-soft: color-mix(in srgb, var(--paper) 6%, transparent);
-  --plate: color-mix(in srgb, var(--lattice-ink) 62%, transparent);
+  --plate: color-mix(in srgb, var(--lattice-panel) 72%, transparent);
 
   --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
   --sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, sans-serif;
+  --display: 'Lattice Display', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
 
   --gutter: clamp(20px, 5vw, 56px);
   --rail: 13ch;
@@ -118,7 +161,7 @@ body {
   margin: 0;
   /* The one place the ground color is set. It tracks the palette; everything else is layered
      over it with alpha, so one property moves the whole page's temperature. */
-  background: var(--lattice-night);
+  background: var(--lattice-page);
   color: var(--paper);
   font: 400 clamp(15px, 1.03vw, 17px)/1.62 var(--sans);
   -webkit-font-smoothing: antialiased;
@@ -205,14 +248,23 @@ code, kbd, samp, pre { font-family: var(--mono); }
 
 .body > * + * { margin-top: 30px; }
 
-/* A subheading inside a section. Big enough to break a long argument into parts a reader can
-   navigate, small enough that it never competes with the section's own h2. */
-.section h3 {
+/*
+ * A subheading inside a section. Big enough to break a long argument into parts a reader can
+ * navigate, small enough that it never competes with the section's own h2.
+ *
+ * **`> .body >` is load-bearing and was missing.** This rule used to be `.section h3`, which is
+ * every `h3` in the section — including the ten in the gallery grid and the nine in the reference,
+ * none of which is a subheading of anything. Every tile carried 44 px of dead space above its
+ * name, inside a flex row where nothing explained it, and every package summary the same. It only
+ * became obvious once the copy doctrine took a paragraph out of each tile and left the gap with
+ * nothing beside it to hide behind.
+ */
+.section > .body > h3 {
   font-size: 19px;
   letter-spacing: -0.02em;
   margin-top: 44px;
 }
-.section h3 + p { margin-top: 14px; }
+.section > .body > h3 + p { margin-top: 14px; }
 
 /* A list that is prose rather than an inventory: no bullets, a rule between items. */
 ul.plain { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
@@ -262,20 +314,36 @@ b.warn { color: var(--accent); }
   margin-inline: auto;
 }
 
+/*
+ * The name, and the only word on this page not set in IBM Plex.
+ *
+ * Tracked-out mono at 20px read as a path fragment — the same shapes, the same rhythm and the same
+ * color as the `code` two inches below it, so nothing said *name*. A display serif says it in one
+ * word, and it is allowed exactly one word: `--display` is scoped to this rule and its `@font-face`
+ * covers only A-Z, so it cannot leak into a heading even by accident.
+ *
+ * `font-optical-sizing: auto` is the reason the face is Fraunces rather than a static display cut.
+ * At the sizes below the browser draws the *display* master — thinner hairlines, tighter fit —
+ * instead of scaling a text master up, which is what makes a large serif word look drawn rather
+ * than enlarged.
+ */
 .wordmark {
   display: flex;
   align-items: baseline;
   gap: 16px;
-  font: 600 clamp(17px, 1.5vw, 20px)/1 var(--mono);
-  letter-spacing: 0.42em;
-  text-indent: 0.42em; /* letter-spacing adds a trailing gap; this re-centers the optical block */
+  font: 600 clamp(27px, 2.5vw, 35px)/1 var(--display);
+  font-optical-sizing: auto;
+  letter-spacing: -0.015em;
   color: var(--paper);
   text-decoration: none;
+  /* Mono sits on a 1.62 body line and a serif descender does not; this keeps the bar's optical
+     center where it was rather than where the new box says. */
+  margin-block: -6px;
 }
+.wordmark:hover { color: var(--accent); }
 .wordmark small {
   font: 500 10px/1 var(--mono);
   letter-spacing: 0.2em;
-  text-indent: 0;
   color: var(--accent);
 }
 
@@ -293,7 +361,7 @@ b.warn { color: var(--accent); }
  * has to beat is the hover one, so it carries a mark hover does not.
  */
 .topnav a[aria-current] { color: var(--accent); border-bottom-color: var(--accent); }
-@media (max-width: 700px) { .topnav a:not([href^='#gallery']):not([href^='#ready']):not(:last-child) { display: none; } }
+@media (max-width: 700px) { .topnav a:not([href^='#gallery']):not([href^='#example']):not(:last-child) { display: none; } }
 @media (max-width: 460px) { .topnav a:not(:last-child) { display: none; } }
 
 /* ── hero ─────────────────────────────────────────────────────────────────────────────── */
@@ -303,7 +371,7 @@ b.warn { color: var(--accent); }
   height: min(66vh, 720px);
   min-height: 380px;
   overflow: hidden;
-  background: var(--lattice-ink);
+  background: var(--lattice-page);
   border-block: 1px solid var(--rule);
 }
 
@@ -415,7 +483,7 @@ b.warn { color: var(--accent); }
 }
 .hero-lede .shell-cmd .arg { color: color-mix(in srgb, var(--paper) 88%, transparent); }
 .hero-lede .codebar { top: 0; right: 0; }
-.hero-lede .codebar button { background: color-mix(in srgb, #000 55%, transparent); }
+.hero-lede .codebar button { background: color-mix(in srgb, #060402 62%, transparent); }
 .hero-lede .hint { pointer-events: auto; }
 
 /* Lamp Road's ground is bright green under that corner at noon. The wash is the insurance, and it
@@ -428,7 +496,7 @@ b.warn { color: var(--accent); }
   height: 62%;
   z-index: 1;
   pointer-events: none;
-  background: linear-gradient(to top, rgb(6 8 20 / 74%), rgb(6 8 20 / 30%) 46%, transparent);
+  background: linear-gradient(to top, rgb(10 7 4 / 78%), rgb(10 7 4 / 32%) 46%, transparent);
 }
 
 @media (max-width: 900px) {
@@ -518,7 +586,7 @@ b.warn { color: var(--accent); }
   width: 100%;
   max-width: 22rem;
   font: 600 12px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--lattice-ink); background: var(--accent);
+  color: var(--lattice-page); background: var(--accent);
   border: 0; padding: 13px 18px; cursor: pointer;
 }
 .play:hover { background: color-mix(in srgb, var(--accent) 84%, var(--paper)); }
@@ -600,6 +668,18 @@ b.warn { color: var(--accent); }
   color: var(--dim);
   margin-left: 4px;
 }
+/*
+ * The one cell of the strip that is not a stored number.
+ *
+ * Five figures were measured on one machine on one day and are printed from `measured.json`. This
+ * one is read off the page's own loop while the reader is looking at it, through the same meter
+ * and the same four guards as every other figure here — so it inherits their vocabulary
+ * (`warming`, `measuring`, `hidden`) and those words are longer than a numeral. It gets a smaller
+ * set and a `nowrap` so a verdict never wraps inside a cell whose five neighbours are one line.
+ */
+.fig .v.live { font-size: clamp(18px, 1.8vw, 23px); white-space: nowrap; color: var(--accent); }
+.fig .v.live .hot { color: var(--lattice-bad); }
+.fig .v.live > span:empty::before { content: '—'; color: var(--dim); }
 /* The one tell that there is something behind the number. A dotted rule under the label rather
    than an icon: it is the typographic convention for "this is annotated" and it costs no space. */
 .fig .k { text-decoration: underline dotted color-mix(in srgb, var(--paper) 22%, transparent); text-underline-offset: 4px; }
@@ -614,7 +694,7 @@ b.warn { color: var(--accent); }
   max-width: min(60ch, 92vw);
   margin: 0;
   padding: 12px 14px;
-  background: color-mix(in srgb, var(--lattice-ink) 96%, #000);
+  background: color-mix(in srgb, var(--lattice-panel) 94%, #000);
   border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
   font: 400 12px/1.5 var(--mono);
   color: color-mix(in srgb, var(--paper) 88%, transparent);
@@ -669,7 +749,7 @@ b.warn { color: var(--accent); }
   display: block;
   text-decoration: none;
   color: inherit;
-  background: color-mix(in srgb, var(--lattice-ink) 74%, #000);
+  background: color-mix(in srgb, var(--lattice-panel) 80%, #000);
   border: 1px solid var(--rule);
   overflow: hidden;
 }
@@ -682,7 +762,7 @@ b.warn { color: var(--accent); }
   position: relative;
   aspect-ratio: var(--w) / var(--h);
   overflow: hidden;
-  background: var(--lattice-night);
+  background: var(--lattice-page);
   /* `background-image` is set by `page.ts` to the tile's own last painted frame when its document
      is given up. See Scene.capture: it is not a screenshot of Lattice, it is the frame this
      exhibit drew on this machine a moment ago, kept so that scrolling back is not a downgrade. */
@@ -788,12 +868,12 @@ b.warn { color: var(--accent); }
   align-items: baseline; gap: 8px;
   font: 500 11px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase;
   color: var(--paper);
-  background: linear-gradient(to top, rgb(6 8 20 / 88%), rgb(6 8 20 / 55%));
+  background: linear-gradient(to top, rgb(10 7 4 / 90%), rgb(10 7 4 / 58%));
   border: 0; border-top: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
   padding: 12px 14px; cursor: pointer; width: 100%; text-align: left;
 }
 .tile-run b { color: var(--accent); font-weight: 600; }
-.tile-run:hover { background: linear-gradient(to top, rgb(6 8 20 / 92%), rgb(6 8 20 / 70%)); }
+.tile-run:hover { background: linear-gradient(to top, rgb(10 7 4 / 94%), rgb(10 7 4 / 72%)); }
 .tile-run:hover b { text-decoration: underline; text-underline-offset: 3px; }
 .tile[data-state='ask'] .tile-run { display: flex; }
 
@@ -875,7 +955,7 @@ b.warn { color: var(--accent); }
   text-align: center;
 }
 .codebar button:hover { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
-.codebar button[aria-pressed='true'] { color: var(--lattice-ink); background: var(--accent); border-color: var(--accent); }
+.codebar button[aria-pressed='true'] { color: var(--lattice-page); background: var(--accent); border-color: var(--accent); }
 /* Room for the buttons, so the first line of the program never sits under them. */
 .codebox .code { padding-top: 34px; }
 .codebox-inline .shell-cmd { padding-right: 84px; }
@@ -913,7 +993,7 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; padding-right: 0
 .pkg {
   border: 1px solid var(--rule);
   margin-top: 14px;
-  background: color-mix(in srgb, var(--lattice-ink) 30%, transparent);
+  background: color-mix(in srgb, var(--lattice-panel) 40%, transparent);
 }
 .pkg > summary {
   cursor: pointer;

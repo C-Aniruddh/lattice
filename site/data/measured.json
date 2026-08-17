@@ -53,6 +53,16 @@
       "value": 90,
       "unit": "%",
       "source": ".lattice/kit.json — budgets.coverageStatements 0.9, coverageCore 1.0"
+    },
+    "exampleLines": {
+      "value": 40,
+      "unit": "",
+      "source": "grep -cvE '^[[:space:]]*($|//|/*|*)' site/example/hello.ts — docs/GALLERY.md's own line rule, applied to the whole program printed further down this page. 58 lines on disk; 40 of them are code. site/tools/build-page.mjs re-counts the file at build time and fails the build if this number has drifted from it."
+    },
+    "pageFrame": {
+      "value": "live",
+      "unit": "",
+      "source": "read off this page's own @latticekit/loop while you look at it: worstGapMs, the longest wall gap between two painted frames in the last ten seconds, with every world above it running on the same main thread. The only figure in this strip that was not measured on one machine on one day — it is measuring yours. It reads 'warming' for the first three seconds of a loop and 'hidden' in a background tab, because 0.0 ms means requestAnimationFrame stopped rather than that anything got faster."
     }
   },
   "sizes": [
