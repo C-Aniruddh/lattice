@@ -1,0 +1,647 @@
+/*
+ * The landing page's whole appearance.
+ *
+ * ## The one idea
+ *
+ * **The page is lit by the same day cycle its games are.** Every color below that is not text
+ * resolves through a `--lattice-*` custom property, and `page.ts` writes those properties from
+ * `lerpPalette(DUSK, NIGHT, scrollProgress)` — `@lattice/draw`'s own palette interpolation,
+ * quantized to its own 32 steps. So scrolling this page is the kit's day cycle running on the
+ * document instead of on a canvas, and the fallbacks below are DUSK exactly, so the first paint
+ * is right before a line of script has run and stays right if script never runs at all.
+ *
+ * Text is deliberately NOT on that cycle. `paper` and `dim` are constants, because a page whose
+ * body copy dims as you read it is a page that has confused an effect with a design. The accent
+ * is `--lattice-warn`, which the kit guarantees stays legible at midnight — `packages/draw`'s
+ * NIGHT stops keep `warn`, `ok` and `bad` bright on purpose, "because a HUD must read at
+ * midnight". The page is taking the kit at its word and can be checked against it.
+ *
+ * ## The grid
+ *
+ * Monospace is a lattice, so the measure of every text block is set in `ch` and the rail is
+ * 13ch wide. That is the reason for the typeface rather than the dev-tool reflex: the page is
+ * about a fixed grid and is set on one.
+ */
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-500.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-600.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-sans-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  /* DUSK, verbatim from packages/draw/src/palette.ts. page.ts overwrites these on scroll. */
+  --lattice-sky: #e0956a;
+  --lattice-ground: #5c6f4a;
+  --lattice-ink: #1a1b28;
+  --lattice-brand: #b04a3a;
+  --lattice-metal: #6f7686;
+  --lattice-glass: #c79a76;
+  --lattice-warn: #e0a13c;
+  --lattice-ok: #4c9c5c;
+  --lattice-bad: #b23c36;
+  --lattice-night: #141a38;
+
+  --paper: #f1eee7;
+  --dim: #8f8b83;
+  --dimmer: #6b675f;
+  --accent: var(--lattice-warn);
+  --rule: color-mix(in srgb, var(--paper) 11%, transparent);
+  --rule-soft: color-mix(in srgb, var(--paper) 6%, transparent);
+  --plate: color-mix(in srgb, var(--lattice-ink) 62%, transparent);
+
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+  --sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, sans-serif;
+
+  --gutter: clamp(20px, 5vw, 56px);
+  --rail: 13ch;
+  --bay: clamp(28px, 5vw, 76px);
+
+  color-scheme: dark;
+  accent-color: var(--accent);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  /* The rail is sticky and the anchors land under it otherwise. */
+  scroll-padding-top: 96px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  /* The one place the ground color is set. It tracks the palette; everything else is layered
+     over it with alpha, so one property moves the whole page's temperature. */
+  background: var(--lattice-night);
+  color: var(--paper);
+  font: 400 clamp(15px, 1.03vw, 17px)/1.62 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* The isometric field `page.ts` draws with @lattice/draw. Behind everything, never in the way,
+   and repainted only when the quantized palette step changes — about two dozen times over the
+   whole scroll rather than sixty times a second. */
+#ground {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.55;
+  transition: opacity 400ms linear;
+}
+
+.page { position: relative; z-index: 1; }
+
+/* ── type ─────────────────────────────────────────────────────────────────────────────── */
+
+h1, h2, h3, h4 { font-family: var(--mono); font-weight: 500; margin: 0; }
+p { margin: 0 0 1.05em; max-width: 66ch; }
+p:last-child { margin-bottom: 0; }
+strong { font-weight: 600; color: var(--paper); }
+em { font-style: normal; color: var(--accent); }
+
+a { color: var(--paper); text-decoration-color: color-mix(in srgb, var(--accent) 60%, transparent); text-underline-offset: 3px; }
+a:hover { text-decoration-color: var(--accent); }
+a:focus-visible, button:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 1px;
+}
+
+code, kbd, samp, pre { font-family: var(--mono); }
+
+.eyebrow {
+  font: 600 11px/1 var(--mono);
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.lede { font-size: clamp(17px, 1.5vw, 21px); line-height: 1.5; color: color-mix(in srgb, var(--paper) 88%, transparent); max-width: 58ch; }
+
+.note { font: 400 13px/1.55 var(--mono); color: var(--dimmer); max-width: 74ch; }
+.note a { color: var(--dim); }
+
+/* ── shell and rail ───────────────────────────────────────────────────────────────────── */
+
+.shell { max-width: 1280px; margin-inline: auto; padding-inline: var(--gutter); }
+
+.section {
+  display: grid;
+  grid-template-columns: var(--rail) minmax(0, 1fr);
+  gap: var(--bay);
+  padding-block: clamp(64px, 7.5vw, 104px);
+  border-top: 1px solid var(--rule-soft);
+}
+
+.section > .marker {
+  position: sticky;
+  top: 32px;
+  align-self: start;
+  font: 500 12px/1.4 var(--mono);
+  letter-spacing: 0.02em;
+  color: var(--dimmer);
+  height: 0; /* it must not add to the row's height on a short section */
+}
+.section > .marker a { color: inherit; text-decoration: none; display: block; }
+.section > .marker a:hover { color: var(--accent); }
+
+.section h2 {
+  font-size: clamp(24px, 2.6vw, 34px);
+  letter-spacing: -0.03em;
+  margin-bottom: 18px;
+  /* Mono headings stretch: at 34px a full-width line runs past 50 characters and stops being a
+     heading. Two lines at thirty is the shape. */
+  max-width: 31ch;
+}
+
+.body > * + * { margin-top: 30px; }
+
+@media (max-width: 900px) {
+  .section { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .section > .marker { position: static; height: auto; }
+}
+
+/* ── the top bar ──────────────────────────────────────────────────────────────────────── */
+
+/*
+ * There is deliberately no page chrome over the world.
+ *
+ * The first version put the wordmark and a frame meter on top of the hero and they landed
+ * squarely on the exhibit's own HUD — two instrument panels arguing in the same corner. The
+ * exhibit was there first and its HUD is part of it, so the page's furniture moved off the
+ * world entirely: a slim bar above, the statement below, and nothing in between but the game.
+ * `docs/GALLERY.md` asks for exactly this order anyway — "a world, moving, before any text is
+ * read", and "what it is, in one line, *under it*".
+ */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px var(--gutter);
+  max-width: 1280px;
+  margin-inline: auto;
+}
+
+.wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  font: 600 clamp(17px, 1.5vw, 20px)/1 var(--mono);
+  letter-spacing: 0.42em;
+  text-indent: 0.42em; /* letter-spacing adds a trailing gap; this re-centers the optical block */
+  color: var(--paper);
+  text-decoration: none;
+}
+.wordmark small {
+  font: 500 10px/1 var(--mono);
+  letter-spacing: 0.2em;
+  text-indent: 0;
+  color: var(--accent);
+}
+
+.topnav { display: flex; gap: 22px; font: 500 11px/1 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; }
+.topnav a { color: var(--dim); text-decoration: none; }
+.topnav a:hover { color: var(--accent); }
+@media (max-width: 560px) { .topnav a:not(:last-child) { display: none; } }
+
+/* ── hero ─────────────────────────────────────────────────────────────────────────────── */
+
+.hero {
+  position: relative;
+  height: min(66vh, 720px);
+  min-height: 380px;
+  overflow: hidden;
+  background: var(--lattice-ink);
+  border-block: 1px solid var(--rule);
+}
+
+.hero-stage { position: absolute; inset: 0; }
+/* `width`/`height`/`transform` are set by `page.ts` on a narrow screen, where the exhibit runs at
+   a wider logical viewport and is scaled down — at 390 CSS pixels its own HUD overlaps itself. */
+.hero-stage iframe {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+  border: 0; display: block;
+  transform-origin: 0 0;
+}
+
+/* The one thing the page puts over the world, in the one corner every exhibit leaves empty. */
+.hero-chrome {
+  position: absolute;
+  right: var(--gutter);
+  bottom: 18px;
+  z-index: 2;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ── the statement ────────────────────────────────────────────────────────────────────── */
+
+.statement {
+  max-width: 1280px;
+  margin-inline: auto;
+  padding: clamp(40px, 6vw, 72px) var(--gutter) clamp(34px, 4vw, 52px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: clamp(24px, 4vw, 64px);
+  align-items: end;
+}
+@media (max-width: 860px) { .statement { grid-template-columns: minmax(0, 1fr); align-items: start; } }
+
+.hero-title {
+  font: 500 clamp(34px, 5.4vw, 66px)/1.0 var(--mono);
+  letter-spacing: -0.055em;
+  margin: 0 0 20px;
+  max-width: 14ch;
+}
+.hero-title span { color: var(--accent); }
+
+.hero-sub { font-size: clamp(15px, 1.25vw, 18px); line-height: 1.55; color: color-mix(in srgb, var(--paper) 84%, transparent); max-width: 56ch; margin: 0; }
+
+/* The chip that tells you the header is a game. It is the whole discovery, so it sits where the
+   cursor already is and it says what to do rather than what the thing is. */
+.hint {
+  display: inline-flex; align-items: center; gap: 10px;
+  font: 500 11px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--dim);
+  padding: 9px 13px;
+  background: var(--plate);
+  border: 1px solid var(--rule);
+  backdrop-filter: blur(3px);
+  white-space: nowrap;
+}
+.hint b { color: var(--accent); font-weight: 600; }
+
+.meter {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 2px 16px;
+  font: 500 11px/1.5 var(--mono);
+  letter-spacing: 0.06em;
+  padding: 11px 14px;
+  color: var(--paper);
+  background: var(--plate);
+  border: 1px solid var(--rule);
+  backdrop-filter: blur(3px);
+  font-variant-numeric: tabular-nums;
+}
+.meter dt { color: var(--dim); text-transform: uppercase; font-size: 10px; letter-spacing: 0.14em; align-self: center; }
+.meter dd { margin: 0; text-align: right; }
+.meter dd.hot { color: var(--lattice-bad); }
+
+/*
+ * The touch escape hatch, and the reason it is media-queried rather than always on.
+ *
+ * A mouse can hover a world and scroll the page with two different gestures, so on a fine
+ * pointer the hero is live and grabbable from the first frame — which is the discovery the whole
+ * header exists to provoke, and a button in front of it would be a door in front of an open
+ * door. A finger has only one gesture, and a header that swallows the first swipe is a page
+ * nobody scrolls. So on a coarse pointer the world waits to be asked.
+ */
+.play {
+  display: none;
+  margin-bottom: 22px;
+  width: 100%;
+  max-width: 22rem;
+  font: 600 12px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--lattice-ink); background: var(--accent);
+  border: 0; padding: 13px 18px; cursor: pointer;
+}
+.play:hover { background: color-mix(in srgb, var(--accent) 84%, var(--paper)); }
+@media (pointer: coarse) {
+  .play { display: block; }
+  .hint { display: none; }
+}
+/* A visitor who asked for stillness, or who is paying by the megabyte, gets the button on every
+   pointer — nothing on this page auto-runs for them. */
+[data-state='ask'] .play { display: block; }
+[data-state='ask'] .hint { display: none; }
+
+/* ── the proof strip ──────────────────────────────────────────────────────────────────── */
+
+.proof {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(146px, 1fr));
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+.proof div {
+  padding: 22px var(--gutter) 20px;
+  border-left: 1px solid var(--rule-soft);
+}
+.proof div:first-child { border-left: 0; }
+.proof dt { font: 500 10px/1 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); margin-bottom: 9px; }
+.proof dd {
+  margin: 0;
+  font: 500 clamp(21px, 2.2vw, 28px)/1 var(--mono);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.proof dd small { font-size: 0.5em; letter-spacing: 0.02em; color: var(--dim); margin-left: 4px; }
+
+/* ── gallery ──────────────────────────────────────────────────────────────────────────── */
+
+/* The one section that breaks the rail. Everything else on this page is a document with a
+   margin; the gallery is the product, and it takes the whole measure. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
+  gap: 22px;
+}
+@media (min-width: 901px) {
+  .grid { margin-left: calc(-1 * (var(--rail) + var(--bay))); }
+}
+
+.tile {
+  position: relative;
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: color-mix(in srgb, var(--lattice-ink) 74%, #000);
+  border: 1px solid var(--rule);
+  overflow: hidden;
+}
+.tile:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+
+/* The exhibit runs at its own comfortable viewport and is scaled down into the tile, because an
+   exhibit is composed for a screen and squeezing its camera into 400px would be showing a
+   different picture than the one its author framed. `--w`/`--h` are that viewport. */
+.stage {
+  position: relative;
+  aspect-ratio: var(--w) / var(--h);
+  overflow: hidden;
+  background: var(--lattice-night);
+}
+.stage iframe {
+  position: absolute;
+  top: 0; left: 0;
+  width: calc(var(--w) * 1px);
+  height: calc(var(--h) * 1px);
+  border: 0;
+  transform-origin: 0 0;
+  display: block;
+  /* Taps and drags belong to the page here, not to the exhibit. The tile is a link. */
+  pointer-events: none;
+}
+
+.stage::after {
+  content: 'idle';
+  position: absolute; right: 10px; top: 10px;
+  font: 500 9px/1 var(--mono); letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--dimmer);
+  padding: 5px 7px;
+  background: color-mix(in srgb, #000 55%, transparent);
+  opacity: 0;
+  transition: opacity 240ms linear;
+}
+.tile[data-state='paused'] .stage::after { opacity: 1; }
+.tile[data-state='live'] .stage::after { content: 'live'; color: var(--lattice-ok); opacity: 1; }
+
+/*
+ * What a tile is before it has been paid for.
+ *
+ * A world that has not been mounted is an empty box, and an empty box on a page selling
+ * rendering reads as a broken tile rather than as a deliberate saving. So the placeholder is the
+ * one shape this whole kit is about — a 2:1 diamond, drawn in CSS, costing nothing — and it says
+ * what is going to happen. It fades out under the world rather than being removed, so a tile
+ * that mounts does not flash.
+ */
+.stage::before {
+  content: '';
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 128px; height: 64px;
+  margin: -32px 0 0 -64px;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  background: color-mix(in srgb, var(--paper) 4%, transparent);
+  border: 0;
+  transition: opacity 300ms linear;
+  opacity: 1;
+}
+.tile[data-state='live'] .stage::before,
+.tile[data-state='paused'] .stage::before { opacity: 0; }
+
+.tile-body { padding: 16px 18px 18px; display: grid; gap: 7px; }
+.tile-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.tile-head h3 { font-size: 15px; letter-spacing: 0.01em; }
+.tile-head span { font: 500 10px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); text-align: right; }
+.tile-body p { font: 400 13.5px/1.45 var(--sans); color: color-mix(in srgb, var(--paper) 76%, transparent); margin: 0; max-width: none; }
+.tile-links { display: flex; gap: 14px; margin-top: 3px; font: 500 11px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+.tile-links a { color: var(--dim); text-decoration: none; }
+.tile-links a:hover { color: var(--accent); text-decoration: underline; }
+
+.tile-run {
+  position: absolute; inset: auto 0 0 0;
+  display: none;
+  font: 600 11px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--lattice-ink); background: var(--accent);
+  border: 0; padding: 11px; cursor: pointer; width: 100%;
+}
+.tile[data-state='ask'] .tile-run { display: block; }
+
+/* ── code ─────────────────────────────────────────────────────────────────────────────── */
+
+.code {
+  margin: 0;
+  padding: 20px 22px;
+  overflow-x: auto;
+  background: color-mix(in srgb, #000 42%, transparent);
+  border: 1px solid var(--rule);
+  border-left: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  /* 12px at 1.5 puts the example's 48 lines inside a laptop viewport, which is the size
+     `docs/GALLERY.md` asks a paste-able example to be. */
+  font: 400 12px/1.5 var(--mono);
+  color: color-mix(in srgb, var(--paper) 86%, transparent);
+  tab-size: 2;
+}
+.code b { font-weight: 500; color: var(--accent); }        /* keyword */
+.code i { font-style: normal; color: var(--lattice-glass); } /* @lattice module path */
+.code u { text-decoration: none; color: var(--dimmer); }     /* comment */
+
+.shell-cmd {
+  display: block;
+  max-width: none;            /* it is the section's headline, not a paragraph */
+  padding: 18px 22px;
+  background: color-mix(in srgb, #000 42%, transparent);
+  border: 1px solid var(--rule);
+  border-left: 2px solid var(--accent);
+  font: 500 clamp(14px, 1.35vw, 18px)/1.55 var(--mono);
+  /* Wraps rather than scrolls. A command a reader has to drag sideways to finish reading is a
+     command they do not read, and this one is the whole pitch of the section. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.shell-cmd .prompt { color: var(--accent); user-select: none; }
+.shell-cmd .arg { color: var(--dim); }
+
+/* ── the agent flow ───────────────────────────────────────────────────────────────────── */
+
+.flow { display: grid; gap: 0; border: 1px solid var(--rule); }
+.flow > li {
+  display: grid;
+  grid-template-columns: 4ch minmax(0, 1fr);
+  gap: 18px;
+  padding: 16px 18px;
+  border-top: 1px solid var(--rule-soft);
+}
+.flow > li:first-child { border-top: 0; }
+.flow > li > b { font: 500 12px/1.5 var(--mono); color: var(--accent); font-weight: 500; }
+.flow > li > div > strong { display: block; font: 500 14px/1.4 var(--mono); margin-bottom: 4px; }
+.flow > li > div > span { font: 400 13.5px/1.5 var(--sans); color: color-mix(in srgb, var(--paper) 74%, transparent); }
+.flow { list-style: none; margin: 0; padding: 0; }
+
+/* ── tables and the reference ─────────────────────────────────────────────────────────── */
+
+table { border-collapse: collapse; width: 100%; font: 400 13px/1.5 var(--mono); }
+th, td { text-align: left; padding: 9px 14px 9px 0; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+th { font-weight: 500; color: var(--dim); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; padding-right: 0; white-space: nowrap; }
+
+.scroller { overflow-x: auto; }
+
+.pkg {
+  border: 1px solid var(--rule);
+  margin-top: 14px;
+  background: color-mix(in srgb, var(--lattice-ink) 30%, transparent);
+}
+.pkg > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 15px 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 20px;
+  align-items: baseline;
+}
+.pkg > summary::-webkit-details-marker { display: none; }
+.pkg > summary h3 { font-size: 15px; }
+.pkg > summary h3 .layer { color: var(--dimmer); font-weight: 400; margin-left: 10px; font-size: 11px; letter-spacing: 0.12em; }
+.pkg > summary .why { grid-column: 1 / -1; font: 400 13.5px/1.5 var(--sans); color: color-mix(in srgb, var(--paper) 72%, transparent); max-width: 70ch; }
+.pkg > summary .sz {
+  font: 500 12px/1 var(--mono); color: var(--accent);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+/* A `<details>` with no marker is a paragraph nobody clicks. The caret is the affordance, and
+   it is on the right where the reader's eye already is after the size. */
+.pkg > summary .sz::after { content: ' \25B8'; color: var(--dim); display: inline-block; transition: transform 160ms ease; }
+.pkg[open] > summary .sz::after { transform: rotate(90deg) translateX(1px); }
+.pkg > summary:hover h3 { color: var(--accent); }
+.pkg[open] > summary { border-bottom: 1px solid var(--rule-soft); }
+.pkg-body { padding: 18px; display: grid; gap: 20px; }
+.pkg-body h4 { font: 500 10px/1 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); margin-bottom: 10px; }
+.pkg-body ul { margin: 0; padding-left: 1.15em; }
+.pkg-body li { font: 400 13.5px/1.55 var(--sans); color: color-mix(in srgb, var(--paper) 78%, transparent); margin-bottom: 7px; }
+.pkg-body li:last-child { margin-bottom: 0; }
+
+.symbols {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  font: 400 12px/1 var(--mono);
+}
+.symbols code {
+  padding: 5px 7px;
+  background: color-mix(in srgb, #000 34%, transparent);
+  color: color-mix(in srgb, var(--paper) 74%, transparent);
+  border: 1px solid var(--rule-soft);
+}
+.symbols code.entry { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+
+/* ── footer ───────────────────────────────────────────────────────────────────────────── */
+
+.foot {
+  border-top: 1px solid var(--rule);
+  padding-block: 56px 72px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 32px;
+  font: 400 13px/1.7 var(--mono);
+}
+.foot h4 { font: 500 10px/1 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); margin-bottom: 12px; }
+.foot ul { list-style: none; margin: 0; padding: 0; }
+.foot a { color: color-mix(in srgb, var(--paper) 76%, transparent); text-decoration: none; }
+.foot a:hover { color: var(--accent); }
+.foot .colophon { color: var(--dimmer); font-size: 12px; line-height: 1.6; }
+
+/*
+ * Without JavaScript.
+ *
+ * Not a fallback: there is nothing to fall back to, because nothing on this page is a picture of
+ * a world. So everything that would be a live scene, a live number, or an instruction to touch
+ * one is removed outright and the writing, the figures and the whole API reference stay. A dark
+ * rectangle labeled "drag it" would be worse than an empty page.
+ */
+noscript { display: block; }
+html:not(.js) .hero,
+html:not(.js) .hero-chrome,
+html:not(.js) .stage,
+html:not(.js) .tile-run,
+html:not(.js) .meter,
+html:not(.js) .play,
+html:not(.js) .js-only,
+html:not(.js) #ground { display: none; }
+html:not(.js) .statement { grid-template-columns: minmax(0, 1fr); }
+
+noscript .banner {
+  display: block;
+  max-width: none;
+  padding: 16px var(--gutter);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-bottom: 1px solid var(--accent);
+  font: 500 13px/1.5 var(--mono);
+  color: var(--paper);
+}
+
+/* ── the quality floor ────────────────────────────────────────────────────────────────── */
+
+/* Only true for the reader it addresses, so only shown to them. */
+.rm-note { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rm-note { display: block; }
+  html { scroll-behavior: auto; }
+  * { transition-duration: 1ms !important; }
+}
+
+@media (max-width: 640px) {
+  .hero { height: min(72vh, 620px); }
+  .hero-bottom { flex-direction: column; align-items: stretch; }
+  .meter { grid-template-columns: 1fr auto; }
+  .proof div { padding-inline: var(--gutter); }
+}

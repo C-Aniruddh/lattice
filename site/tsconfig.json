@@ -1,0 +1,14 @@
+{
+  "$comment": "The landing page is not part of the kit and is not a workspace member, so it carries its own config rather than extending the build graph. `noEmit`: nothing here is compiled by tsc — Vite does that. This exists so `site/example/hello.ts` and `site/src/*.ts` are typechecked against the built packages, which is the only thing that keeps the page's example honest.",
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "incremental": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "types": []
+  },
+  "include": ["src/**/*.ts", "example/**/*.ts"]
+}

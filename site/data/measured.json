@@ -1,0 +1,69 @@
+{
+  "$comment": "Every number the landing page prints, with the command that produced it. Nothing on the page may state a figure that is not in this file or read live off the running kit. If you cannot name the command, the number does not go on the page. Measured 2026-08-17 at 9ccacae.",
+  "commit": "9ccacae",
+  "measuredOn": "2026-08-17",
+  "machine": "Apple Silicon, Node v24.18",
+  "figures": {
+    "packages": {
+      "value": 9,
+      "unit": "",
+      "source": ".lattice/kit.json — packages"
+    },
+    "dependencies": {
+      "value": 0,
+      "unit": "",
+      "source": "every package.json has no `dependencies` outside @lattice; core has none at all"
+    },
+    "assetFiles": {
+      "value": 0,
+      "unit": "",
+      "source": "find packages -type f -not -path '*/node_modules/*' -not -path '*/dist/*' -not -path '*/coverage/*' — 207 .ts, 19 .json, 9 .md, nothing else"
+    },
+    "tests": {
+      "value": 2599,
+      "unit": "",
+      "source": "npx vitest run — 2599 passed (2599)"
+    },
+    "testFiles": {
+      "value": 97,
+      "unit": "",
+      "source": "npx vitest run — 97 passed (97)"
+    },
+    "publicSymbols": {
+      "value": 524,
+      "unit": "",
+      "source": "unique names across .lattice/kit.json packages.*.exports (raw sum 540; VERSION appears in eight)"
+    },
+    "gzipTotal": {
+      "value": 81.72,
+      "unit": "kB",
+      "source": "npm run size — total 81.72 kB, exclusive backends charged at the heaviest, never summed"
+    },
+    "frameBudget": {
+      "value": 8,
+      "unit": "ms",
+      "source": ".lattice/kit.json — budgets.maxFrameBudgetMs"
+    },
+    "spriteDraw": {
+      "value": "2.14 ms",
+      "unit": "",
+      "source": "docs/PERFORMANCE.md:318 — 400 sprites x 42 ops, dpr 3: 2.14 ms mean, 2.24 ms p99, 27% of the budget"
+    },
+    "coverageFloor": {
+      "value": 90,
+      "unit": "%",
+      "source": ".lattice/kit.json — budgets.coverageStatements 0.9, coverageCore 1.0"
+    }
+  },
+  "sizes": [
+    { "package": "core", "gzipKb": 7.26, "budgetKb": 12 },
+    { "package": "iso", "gzipKb": 11.28, "budgetKb": 12 },
+    { "package": "draw", "gzipKb": 12.33, "budgetKb": 12.5, "note": "exclusive backends, charged at the heaviest: canvas2d 12.33 charged, record 11.30, shared 10.19" },
+    { "package": "loop", "gzipKb": 6.57, "budgetKb": 12 },
+    { "package": "input", "gzipKb": 14.43, "budgetKb": 15 },
+    { "package": "audio", "gzipKb": 7.76, "budgetKb": 12 },
+    { "package": "persist", "gzipKb": 5.79, "budgetKb": 12 },
+    { "package": "sim", "gzipKb": 7.58, "budgetKb": 12 },
+    { "package": "ui", "gzipKb": 8.72, "budgetKb": 12 }
+  ]
+}

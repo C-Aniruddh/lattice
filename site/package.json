@@ -1,0 +1,15 @@
+{
+  "name": "@lattice/site",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The landing page. Not part of the kit, not a workspace member, and nothing here may be imported by a package or an exhibit.",
+  "type": "module",
+  "$comment": "Deliberately NOT in the root `workspaces` array. The page is not shipped, must never become a dependency of anything under packages/ or examples/, and adding it to the workspace would put it in every contributor's install for no benefit. It resolves @lattice/* through the symlinks the workspace already made in the root node_modules, and it runs Vite and TypeScript out of the root devDependencies — so it has no node_modules of its own and nothing to install. Adding it to the root package.json is a change this page's author does not own; see the report.",
+  "scripts": {
+    "dev": "vite --config vite.config.ts",
+    "generate": "node tools/build-page.mjs",
+    "build": "node tools/build.mjs",
+    "preview": "vite preview --config vite.config.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}

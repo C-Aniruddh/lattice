@@ -1,0 +1,275 @@
+{
+  "$comment": "The gallery, as data. Every caption is the exhibit's OWN panel subtitle, verbatim, and every `fact` is a number the exhibit itself measured and printed — file and line in `factFrom`. Adding an exhibit is a row here and nothing else. `docs/GALLERY.md` specifies eighteen rows; ten are built, and `pending` below names the eight that are not, so the page can say so rather than imply otherwise.",
+  "hero": {
+    "dir": "demo",
+    "name": "Lamp Road",
+    "seed": "lamp-road",
+    "caption": "A valley at dusk, and the proof that the seams fit.",
+    "packages": [
+      "core",
+      "iso",
+      "draw",
+      "loop",
+      "input",
+      "audio",
+      "sim",
+      "ui"
+    ]
+  },
+  "live": [
+    {
+      "dir": "crowd",
+      "name": "Crowd",
+      "seed": "piazza",
+      "caption": "Nine hundred walkers, one expression, no per-walker state.",
+      "idea": "A walker's position is pathSample(route, ((phi*i + t*v) mod 1) * arcLength). There is no walker struct.",
+      "fact": "0 bytes of state per walker",
+      "factFrom": "examples/crowd/src/hud.ts:74",
+      "leans": [
+        "iso.path"
+      ],
+      "packages": [
+        "core",
+        "iso",
+        "draw",
+        "loop",
+        "input",
+        "ui"
+      ],
+      "tileParams": ""
+    },
+    {
+      "dir": "island",
+      "name": "Island",
+      "seed": "atoll",
+      "caption": "One day, in ninety seconds.",
+      "idea": "Terrain, a shoreline, trees, and a full day/night cycle — the palette lerp doing the whole job.",
+      "fact": "a 90-second day",
+      "factFrom": "examples/island/src/main.ts:45",
+      "leans": [
+        "draw",
+        "iso"
+      ],
+      "packages": [
+        "core",
+        "iso",
+        "draw",
+        "loop",
+        "input",
+        "ui"
+      ],
+      "tileParams": ""
+    },
+    {
+      "dir": "clay",
+      "name": "Clay",
+      "seed": "riverbed",
+      "caption": "The ground is material. Drag it, and watch everything else resettle.",
+      "idea": "Raise a ridge and the water re-routes, the walkers re-plan, and the trees ride it up and slide off.",
+      "fact": "2,200 props over a live height field",
+      "factFrom": "examples/clay/README.md:181",
+      "leans": [
+        "iso.height",
+        "iso.path"
+      ],
+      "packages": [
+        "core",
+        "iso",
+        "draw",
+        "loop",
+        "input",
+        "ui"
+      ],
+      "tileParams": ""
+    },
+    {
+      "dir": "terraces",
+      "name": "Terraces",
+      "seed": "contour",
+      "caption": "Elevation, and why a tap needs the terrain.",
+      "idea": "On ground with height the obvious screen-to-tile conversion is wrong, and it is wrong by more the higher you climb.",
+      "fact": "the naive pick misses by 1,400 px at the ridge",
+      "factFrom": "examples/terraces/README.md:41",
+      "leans": [
+        "iso.height"
+      ],
+      "packages": [
+        "core",
+        "iso",
+        "draw",
+        "loop",
+        "input",
+        "ui"
+      ],
+      "tileParams": ""
+    },
+    {
+      "dir": "caverns",
+      "name": "Caverns",
+      "seed": "lampblack",
+      "caption": "Pools that meet without a seam.",
+      "idea": "The light field costs its buffer, not its light count — which is why the price is flat from 104 pools to 704.",
+      "fact": "704 light pools",
+      "factFrom": "examples/caverns/README.md:98",
+      "leans": [
+        "draw.light"
+      ],
+      "packages": [
+        "core",
+        "iso",
+        "draw",
+        "loop",
+        "input",
+        "ui"
+      ],
+      "tileParams": "lightScale=0.3"
+    },
+    {
+      "dir": "endless",
+      "name": "Endless",
+      "seed": "endless",
+      "caption": "Pan forever. Nothing is loaded and nothing is kept.",
+      "idea": "Chunks are minted from the seed as you reach them and evicted behind you. Come back and they are identical.",
+      "fact": "256 chunks resident, a flat 128 KiB",
+      "factFrom": "examples/endless/README.md:79",
+      "leans": [
+        "core.noise",
+        "iso"
+      ],
+      "packages": [
+        "core",
+        "iso",
+        "draw",
+        "loop",
+        "input",
+        "ui"
+      ],
+      "tileParams": ""
+    },
+    {
+      "dir": "canyon",
+      "name": "Canyon",
+      "seed": "colorado",
+      "caption": "A million years of a river. The bar re-runs the model.",
+      "idea": "Erosion accumulates, so the scrub bar is a deterministic re-run from the nearest checkpoint, never a lookup.",
+      "fact": "one erosion step, 112x112 grid, 0.30 ms",
+      "factFrom": "examples/canyon/README.md:112",
+      "leans": [
+        "iso.height",
+        "core.noise"
+      ],
+      "packages": [
+        "core",
+        "iso",
+        "draw",
+        "loop",
+        "input",
+        "ui"
+      ],
+      "tileParams": ""
+    },
+    {
+      "dir": "resonance",
+      "name": "Resonance",
+      "seed": "hollow",
+      "caption": "Answer the chord.",
+      "idea": "A puzzle you solve by ear. Every gate hums a chord; you carry six tuned strings and no audio files exist.",
+      "fact": "6 ms attack on a struck string",
+      "factFrom": "examples/resonance/README.md:29",
+      "leans": [
+        "audio",
+        "draw.light"
+      ],
+      "packages": [
+        "core",
+        "iso",
+        "draw",
+        "loop",
+        "input",
+        "audio",
+        "ui"
+      ],
+      "tileParams": "lightScale=0.3"
+    },
+    {
+      "dir": "city",
+      "name": "City block",
+      "seed": "city-block",
+      "caption": "Setback massing and a window rhythm. Every value here is in the URL.",
+      "idea": "The technique that carries the whole look: one color per solid, three faces derived, a rhythm of warm windows.",
+      "fact": "36 buildings, 120 cars",
+      "factFrom": "examples/city/src/traffic.ts:30",
+      "leans": [
+        "draw"
+      ],
+      "packages": [
+        "core",
+        "iso",
+        "draw",
+        "loop",
+        "input",
+        "ui"
+      ],
+      "tileParams": "lightScale=0.35"
+    },
+    {
+      "dir": "errand",
+      "name": "Errand",
+      "seed": "meadowmill",
+      "caption": "Walk, talk, take, use, save. The whole genre, small enough to read.",
+      "idea": "Five verbs and deliberately no sixth. The save envelope is about sixty bytes and the HUD prints its size.",
+      "fact": "a ~60-byte save envelope",
+      "factFrom": "examples/errand/src/main.ts:35",
+      "leans": [
+        "iso.path",
+        "ui",
+        "persist"
+      ],
+      "packages": [
+        "core",
+        "iso",
+        "draw",
+        "loop",
+        "input",
+        "persist",
+        "ui"
+      ],
+      "tileParams": ""
+    }
+  ],
+  "pending": [
+    {
+      "name": "Harbor",
+      "idea": "tall thin objects and depth sorting — masts, cranes, a jetty over water"
+    },
+    {
+      "name": "Orbit",
+      "idea": "no ground at all: platforms, stars, a cold palette"
+    },
+    {
+      "name": "Wayfinding",
+      "idea": "a flow field re-routing a moving crowd the instant the map changes"
+    },
+    {
+      "name": "Builder",
+      "idea": "placement: footprints, a ghost, validity, and the tap-to-tile seam"
+    },
+    {
+      "name": "Idle",
+      "idea": "cost curves and buy-max in closed form, then fourteen hours of offline in one frame"
+    },
+    {
+      "name": "Replay",
+      "idea": "record, scrub, and prove it: the same seed and log land on the same pixel"
+    },
+    {
+      "name": "Migration",
+      "idea": "a v1 save opened by a v5 build, stepping the chain in front of you"
+    },
+    {
+      "name": "Instrument",
+      "idea": "sound with no files — a board that shows the synthesis as it plays"
+    }
+  ],
+  "$order": "Heavy and light alternate down the grid on purpose. Two columns means two tiles run at once, and Crowd (900 walkers) beside Clay (10,247 draw calls over a live height field) was measured at a 23.3 ms worst gap where the same pair split across rows is 20.2 ms. The gallery's running budget is a layout decision, not only a code one."
+}
