@@ -1,6 +1,6 @@
 # The gallery
 
-Lattice does not ship one demo. It ships **fourteen small examples**, shown on a landing page,
+Lattice does not ship one demo. It ships **sixteen small examples**, shown on a landing page,
 each of which a visitor can understand in one to two minutes — **and one hero**, which is the
 page's playable header and is [named and bounded below](#the-one-hero-and-the-one-exemption).
 
@@ -131,7 +131,7 @@ routed as a finding; until it exists, the two lines above are the rule.
 Rule 4 used to carry the ratio as its justification, and the ratio keeps that job: **every author
 reports the split, and no number gates on it.** An art *floor* would be met with padding within a
 week, and rule 1 already fails an exhibit that is not worth looking at. The cap binds the half that
-gets worse as it grows; the ratio is how the kit reads its own results across fourteen of them.
+gets worse as it grows; the ratio is how the kit reads its own results across sixteen of them.
 
 ### Why 200 is not a relaxation
 
@@ -175,8 +175,41 @@ and reports it as a finding instead of taking it.
 `Lamplighter` therefore leaves the table below. Its one idea — capacity gating made visible, light
 as the resource, dusk as the pressure — *is* Lamp Road's, and a smaller re-take of the hero's own
 premise is the weakest row this gallery could ship. That also settles a count this document has had
-wrong throughout: the table listed fifteen rows while the landing-page section promises fourteen
-live tiles in four separate places. **Fourteen rows and one hero** is the shape.
+wrong throughout: the table listed fifteen rows while the landing-page section promised fourteen
+live tiles in four separate places.
+
+**Sixteen rows and one hero** is the shape. It was fourteen until *Endless* and *Errand* were
+added; the count is written down here, in one place, precisely because it was wrong in four
+places for as long as it was written down in four places.
+
+---
+
+## Scale — an exhibit fills its frame
+
+The first two rows to land were individually beautiful and jointly made the same mistake: a
+small, complete world sitting in the middle of a large empty background, with more pixels
+spent on sky than on anything the kit does. It reads as a *model* of a world rather than a
+place, and it reads that way at every zoom, because the problem is not the zoom — it is that
+the world ran out before the frame did.
+
+**So the standard is: the world runs off the edges, and the player's first gesture is to go
+look at the part they cannot see.** Concretely, on a 1440×900 viewport at the opening zoom:
+
+| | the rule | the failure it names |
+|---|---|---|
+| **extent** | the world's bounding rect is **at least 1.6× the viewport on its long axis**. Something the exhibit is about is off-screen at the opening frame | a world with visible corners is a diorama. Nothing invites a drag |
+| **fill** | **no more than a third** of the opening frame is empty background — sky, sea, void | a diamond of content ringed by flat color is the shape every naive isometric demo has |
+| **edges** | the world meets the frame edge, or a horizon does. Never a hard corner with background behind it | a floating slab announces the map's dimensions, which are an implementation detail |
+| **density** | whatever the exhibit repeats — trees, towers, walkers, lamps — is measured in **hundreds**, not dozens | the kit's whole claim is that these are cheap. Thirty of anything disproves it |
+| **depth** | at least three distance bands: something near, something mid, something far and dimmer | one plane at one scale is why a diorama looks small |
+
+None of that is a line-rule problem. Extent is a constant, density is a loop bound, and the
+far band is art — the three together typically cost under twenty logic lines, and an exhibit
+that claims the cap forced it to be small should re-read § Which module is which first.
+
+**The frame is the composition.** An exhibit is judged on a screenshot taken at the opening
+frame, at a fixed 1440×900, before any input. If that image is mostly background, the exhibit
+is not finished, whatever its suite says. This is rule 10 with a ruler against it.
 
 ---
 
@@ -192,7 +225,7 @@ its row is either finished or is a different exhibit.
 | **Island** | terrain, shoreline, trees, a full day/night cycle in ninety seconds | `draw` `iso` |
 | **City block** | dense setback massing and a window rhythm — the technique that carries the whole look | `draw` |
 | **Terraces** | elevation: a hillside of stepped fields, and why picking must be terrain-aware | `iso.height` |
-| **Harbour** | tall thin objects and depth sorting — masts, cranes, a jetty over water | `iso.depth` |
+| **Harbor** | tall thin objects and depth sorting — masts, cranes, a jetty over water | `iso.depth` |
 | **Orbit** | no ground at all: platforms, stars, a cold palette. The kit is not only for grass | `draw.palette` |
 | **Caverns** | the light field alone — darkness, torches, pools that meet without a bright seam | `draw.light` |
 
@@ -209,7 +242,21 @@ its row is either finished or is a different exhibit.
 | **Instrument** | sound with no files — a board that shows the synthesis as it plays | `audio` |
 | **Resonance** | a game you play *by ear*: gates hum a chord and you have to answer it | `audio` `draw.light` |
 
-Fourteen, plus the hero. `Lamplighter` was the fifteenth and is now the hero's own premise; see
+### Whole games, small — the two rows that answer "could I actually ship something with this"
+
+| exhibit | the one idea | leans on |
+|---|---|---|
+| **Endless** | a world with no edge: pan forever, chunks minted from the seed, nothing loaded and nothing kept | `core.noise` `iso` |
+| **Errand** | an RPG in an afternoon — walk, talk, take, use, save. The whole genre's skeleton, small enough to read | `iso.path` `ui` `persist` |
+
+These two exist because every other row proves a *capability*, and a visitor deciding whether to
+use a kit is not asking what it can do — they are asking whether the shape of the thing they want
+is reachable from here. **Endless** and **Errand** are the two shapes most people arrive wanting,
+and they are on the list precisely because both are traditionally where a small kit stops being
+enough. They are still rows: bound by the line rule, no endings, no meta progression, nothing that
+is not visible in ninety seconds.
+
+Sixteen, plus the hero. `Lamplighter` was the fifteenth row and is now the hero's own premise; see
 [The one hero](#the-one-hero-and-the-one-exemption). The list is still expected to lose one or two
 that turn out to be dull and gain one or two nobody has thought of.
 
@@ -263,14 +310,14 @@ feature, and `@lattice/ui` is deliberately not a controls library.
 ## What the gallery is really for
 
 **It is the widest test the kit will ever get, and it will find things.** Nine packages were
-designed in parallel against one game's capability matrix. Fourteen exhibits will exercise
+designed in parallel against one game's capability matrix. Sixteen exhibits will exercise
 combinations nobody designed for, and every place two of them hand-roll the same thirty lines
 of bootstrap is a gap in the kit rather than a coincidence.
 
 So each exhibit's author reports the same two things the first demo was asked for: **where the
 kit fought back**, and **the logic-to-art line split** — the latter from the command in
-[The line rule](#the-line-rule) rather than by hand, so that fourteen reports are one series
-instead of fourteen different opinions about what a line is. Those reports are the input to the
+[The line rule](#the-line-rule) rather than by hand, so that sixteen reports are one series
+instead of sixteen different opinions about what a line is. Those reports are the input to the
 next cycle, and they matter more than the exhibits.
 
 ---
@@ -298,13 +345,13 @@ that is itself decorated competes with its own product.
 **Nothing on this page is a picture of Lattice. Everything is Lattice, running.**
 
 No screenshots. No recorded video. No "watch the demo" button. The hero is a live isometric
-world rendering in a canvas the moment the page paints, and the gallery below it is fourteen
-*live* scenes in a grid — not fourteen thumbnails. Fourteen worlds animating at once, in a
+world rendering in a canvas the moment the page paints, and the gallery below it is sixteen
+*live* scenes in a grid — not sixteen thumbnails. Sixteen worlds animating at once, in a
 page that weighs less than one hero image on a typical framework site, is a claim no
 competitor can make and no visitor can misread.
 
 That single decision does the persuading. A visitor does not need to be told the renderer is
-fast; they are watching fourteen of them.
+fast; they are watching sixteen of them.
 
 ### What the page has to land, in order
 
@@ -321,7 +368,7 @@ fast; they are watching fourteen of them.
    a generic gamedev library cannot copy: install the skills, point an agent at it, get a
    game. Show the actual invocation. Show what an agent produces. The audience is people who
    will build this *with* an agent, and the page should be legible to the agent too.
-5. **The gallery.** Fourteen live tiles, each one line of caption, each linking to source.
+5. **The gallery.** Sixteen live tiles, each one line of caption, each linking to source.
    The source is the point — a visitor who likes a tile wants the file, immediately.
 6. **One paste-able example** that compiles, sized so the whole thing fits on screen at once.
 
@@ -341,7 +388,7 @@ rather than importing a library to fake one.
   fine here. But it should hold itself to the rule anyway wherever it can, because a landing
   page that quietly needs a sprite sheet to look good is an argument against its own product.
 - **Nothing it does may leak into `packages/`**, and no exhibit may depend on it.
-- It must be **fast on a phone**. Fourteen live scenes is a spectacle on a laptop and a
+- It must be **fast on a phone**. Sixteen live scenes is a spectacle on a laptop and a
   disaster on a mid-range Android unless the tiles are paused until scrolled into view and
   the hero drops to a lower cadence off-screen. The kit gives you exactly the tools for this
   and it would be embarrassing to get wrong on a page selling frame-time discipline.

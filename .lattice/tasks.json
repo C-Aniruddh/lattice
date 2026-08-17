@@ -969,10 +969,10 @@
       "id": "G4",
       "phase": "gallery",
       "role": "lattice-designer",
-      "title": "Exhibit: harbour",
-      "package": "harbour",
+      "title": "Exhibit: harbor",
+      "package": "harbor",
       "paths": [
-        "examples/harbour/**"
+        "examples/harbor/**"
       ],
       "dependsOn": [
         "G0"
