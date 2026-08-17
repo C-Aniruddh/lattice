@@ -222,19 +222,42 @@ costs the frame is the same mistake as a diorama, arrived at from the other side
 
 The way out is never "put fewer things in it" as a first move. It is:
 
+- **Measure before cutting anything.** First, because the obvious suspect is usually innocent.
+  `docs/PERFORMANCE.md` puts the direct draw path at **2.14 ms for 400 sprites of 42 ops — 27%
+  of the budget** — so at the density § Scale asks for, *drawing* is not what makes an exhibit
+  slow. Suspect instead: work done per entity for entities nobody can see, a sprite definition
+  rebuilt every frame rather than once, an allocation on the hot path, or something periodic. A
+  6 ms mean beside a 23 ms worst is not a scene that is too big; it is something happening every
+  N frames, and cutting the count will not touch it.
 - **Cull.** A sprite outside the camera's rect costs nothing if it is never sorted or drawn.
-  § Scale asks for a world larger than the viewport precisely so that most of it is off-screen.
-- **Cache.** `draw`'s sprite cache exists so that a thing which looks the same twice is drawn
-  once. Three hundred trees from twelve cached silhouettes is cheap; three hundred unique trees
-  is not, and the difference is invisible at a glance.
-- **Spend the detail where the eye is.** The far band is the one asked to be dimmer and hazier,
-  which is also permission for it to be *cheaper*. Full detail at every distance is paying for
-  fidelity nobody can resolve.
-- **Count the lights separately.** They are not free the way sprites are, and a scene reads as
-  lit by scarcity and falloff rather than by how many sources it has.
+  § Scale asks for a world larger than the viewport precisely so most of it is off-screen — which
+  only pays if the off-screen part is dropped *before* the sort rather than inside the draw.
+- **Spend the detail where the eye is.** Cost scales with ops-per-sprite times sprites, so the
+  lever on a distant thing is how many faces it is made of, not whether it exists. The far band
+  is already asked to be dimmer and hazier, which is also permission for it to be *simpler*.
+  Fidelity at a distance nobody can resolve is the one saving that costs nothing to take.
+- **Count the lights separately — after measuring them.** They are not free the way sprites are,
+  and yet `Caverns` runs **692 light pools at a worst frame of 5.6 ms**, the whole light
+  subsystem accounting for about 0.2 ms of it, because the field's cost is its *buffer* and not
+  its light count. Cut lights for the **look** — a scene reads as lit by scarcity and falloff
+  rather than by how many sources it has — and for speed only once a measurement says to.
 
 Only when all four are spent is reducing the count the right answer — and at that point the
 number is a finding about `draw`, not a defeat, and it gets reported.
+
+> **There is no sprite bitmap cache in `draw`. "Cache it" is not a move available to you.**
+>
+> This list said there was one, for a day, and agents acted on it. The cache was provisional in
+> `draw`'s RFC and the benchmark deleted it on purpose: at two to four hundred sprites the direct
+> path is 13–27% of the budget, so a cache would have bought zoom buckets, palette revisions,
+> pixel snapping and a don't-fill-while-moving rule — four fresh ways to render something stale —
+> in exchange for nothing. `packages/draw/src/index.ts` records the decision and
+> `docs/PERFORMANCE.md` has the table.
+>
+> **The condition that reopens it is written down rather than left to taste**: a thousand sprites
+> of that complexity is 5.40 ms and 68% of the budget. An exhibit that reaches it has met a
+> documented threshold and should say so, pointing at the number — which is the whole reason the
+> number is a row in that table instead of a footnote.
 
 **Every exhibit's HUD carries its own worst frame.** Not the average: an average of 16 ms with
 every eighth frame at 40 ms is a visible stutter and a healthy-looking number, which is the
