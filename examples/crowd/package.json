@@ -1,0 +1,21 @@
+{
+  "name": "@lattice/crowd",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CROWD — two hundred walkers from one closed-form expression, and no per-walker state anywhere.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5175 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview --port 5176 --strictPort"
+  },
+  "$comment": "Five of nine. audio, sim and persist are absent and that is the exhibit rather than an oversight: a crowd with no state has no economy to run, nothing to save, and nothing it needs to say out loud. input is present only because bootstrap binds the camera to it.",
+  "dependencies": {
+    "@lattice/core": "^0.1.0",
+    "@lattice/draw": "^0.1.0",
+    "@lattice/input": "^0.1.0",
+    "@lattice/iso": "^0.1.0",
+    "@lattice/loop": "^0.1.0",
+    "@lattice/ui": "^0.1.0"
+  }
+}

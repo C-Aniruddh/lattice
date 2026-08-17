@@ -1,0 +1,105 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Terraces — a Lattice exhibit</title>
+<style>
+  /*
+   * The overlay's whole appearance. `@lattice/ui` ships no stylesheet at all — it writes
+   * structure, `pointer-events`, and the `--lattice-*` custom properties `hud.ts` pushes from
+   * `draw`'s live palette. Everything below is this exhibit's art direction for the DOM half,
+   * exactly as `fields.ts` is for the canvas half, and every line of it is uncounted art.
+   *
+   * Two colors carry the whole readout and neither is authored here: `--lattice-ok` is the
+   * terrain-aware answer and `--lattice-bad` is the flat-ground one, and they are *the same two
+   * hexes the markers on the hill are drawn in*, because both come from the palette rather than
+   * from a stylesheet that has to be kept in step with it. That is the cross-package promise
+   * docs/GALLERY.md rule 7 exists to exercise, and it is the reason the legend below can be a
+   * pair of dots rather than a sentence.
+   */
+  html, body { margin: 0; height: 100%; background: #cfdfdd; overscroll-behavior: none; }
+
+  .lattice-ui {
+    --paper: #fdf8ec;
+    --dim: #b9b09a;
+    --card: color-mix(in srgb, var(--lattice-ink, #1d2a1f) 86%, transparent);
+    --edge: color-mix(in srgb, var(--paper) 16%, transparent);
+    --good: var(--lattice-ok, #57b25e);
+    --bad: var(--lattice-bad, #dc4636);
+    --cut: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+    font: 600 13px/1.35 ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+    color: var(--paper);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  /*
+   * A plate with two opposite corners cut, so the cards read as terrace steps rather than as
+   * chat bubbles. `clip-path` clips the border and the box-shadow with everything else, so the
+   * hairline has to be a second clipped layer inset by a pixel — and it is `::before` rather
+   * than `::after`, because `::after` is the last child and would paint over the card's text.
+   */
+  .card { position: relative; padding: 13px 16px; background: var(--edge); clip-path: var(--cut); }
+  .card::before {
+    content: ''; position: absolute; inset: 1px; clip-path: var(--cut);
+    background: var(--card); transition: background-color .5s linear;
+  }
+  .card > * { position: relative; }
+
+  .dock { position: absolute; display: flex; gap: 10px; }
+  .dock-left { left: 18px; top: 18px; flex-direction: column; align-items: flex-start; max-width: 380px; }
+  .dock-right { right: 18px; top: 18px; }
+  .dock-foot { left: 50%; bottom: 26px; transform: translateX(-50%); }
+
+  .brief { min-width: 340px; }
+  .brief-title {
+    margin: 0 0 7px; font-size: 11px; font-weight: 800; letter-spacing: .24em;
+    color: var(--lattice-crop, #d2dc63);
+  }
+  .brief-line { margin: 0; font-size: 13.5px; line-height: 1.46; color: var(--paper); }
+  /* The two words that name the markers are colored from the palette, so the sentence and the
+     hill cannot disagree about which diamond is which. */
+  .brief-line::first-line { color: var(--paper); }
+  .brief-hint { margin: 9px 0 0; font-size: 11.5px; color: var(--dim); letter-spacing: .02em; }
+
+  /* The readout. The big number is the one Lamp Road reported by hand as 212–237 px; here it is
+     live, and it climbs as the visitor drags uphill, which is the whole argument. */
+  .gauge { min-width: 190px; }
+  .gauge-cap { display: block; font-size: 10px; letter-spacing: .2em; color: var(--dim); }
+  .gauge .lattice-roll {
+    display: block; margin: 3px 0 6px; font-size: 30px; font-weight: 800; line-height: 1;
+    letter-spacing: .01em; font-variant-numeric: tabular-nums; color: var(--good);
+    transition: color .4s linear;
+  }
+  .gauge[data-off='1'] .lattice-roll { color: var(--bad); }
+  .gauge-rows { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--dim); }
+  .gauge-rows b { font-weight: 800; color: var(--paper); font-variant-numeric: tabular-nums; }
+
+  /* The one interactive node in the overlay, and the only place `ui` grants pointer events. */
+  .mode {
+    padding: 12px 22px; border: 0; cursor: pointer; clip-path: var(--cut);
+    font: inherit; font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+    background: var(--good); color: var(--lattice-ink, #1d2a1f);
+    transition: background-color .3s linear, transform .12s ease-out;
+  }
+  .mode[data-off='1'] { background: var(--bad); color: var(--paper); }
+  .mode:hover { transform: translateY(-1px); }
+  .mode:active { transform: translateY(1px); }
+  .mode:focus-visible { outline: 2px solid var(--paper); outline-offset: 3px; }
+
+  .lattice-roll { display: inline-block; }
+  .lattice-roll.bump { animation: bump 200ms cubic-bezier(.2, .9, .3, 1); }
+  @keyframes bump { from { transform: scale(1.06); } to { transform: scale(1); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lattice-roll.bump { animation: none; }
+    .mode:hover, .mode:active { transform: none; }
+  }
+  @media (max-width: 680px) {
+    .dock-left { max-width: calc(100vw - 36px); }
+    .brief { min-width: 0; }
+    .brief-line { font-size: 12.5px; }
+    .dock-right { top: auto; bottom: 96px; right: 18px; }
+  }
+</style>
+<div id="app"></div>
+<script type="module" src="/src/main.ts"></script>

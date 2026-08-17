@@ -46,8 +46,8 @@ import { bootstrap } from '../../_shared/src/index.js';
 import { DAY, DUSK, NIGHT } from './palette.js';
 import { GATE, SHRINE, SPACING, W, H, createValley, stationAt } from './valley.js';
 import { coinRate, createRules, cycleAt, daylightAt, gates, lampCost, pilgrims, type Node, type Reach } from './rules.js';
-import { drawPilgrim, gate as gateDef, lamp, prop, shrine, site } from './sprites.js';
-import { drawSea, drawSky, duskWash, roadRibbon, terrainTile } from './sky.js';
+import { drawPilgrim, gate as gateDef, lamp, lodOf, prop, shrine, site } from './sprites.js';
+import { drawSea, drawSky, drawTerrain, duskWash, farRanges, roadRibbon } from './sky.js';
 import { drawAmbient } from './ambient.js';
 import { createSound } from './sound.js';
 import { createHud, type Hud } from './hud.js';
@@ -77,14 +77,23 @@ boot.camera.setBounds(worldRect);
 
 const reach: Reach = { run: 0 };
 const rules = createRules(reach);
-const bootMs = Date.now();
-const now = (): EpochMillis => asEpochMillis(Date.now());
-const worldSec = (ms: number): number => (ms - bootMs) / 1000;
+/**
+ * The clock, and there is only one — `boot.loop`'s.
+ *
+ * `Date.now()` and `performance.now()` are both banned in exhibit source, and `sim`'s ledger
+ * wants an `EpochMillis` rather than a duration, so the epoch is **chosen**: a fixed origin plus
+ * `loop.realTime`, which is the same monotonic accumulation the frame pump already made and the
+ * same one the overlay is driven from. Nothing here is persisted or hashed, so the origin costs
+ * nothing — and choosing one is what makes the exhibit replayable from its seed, which a wall
+ * clock never was. Two clocks in one game is a poll racing a settle; this file now has none.
+ */
+const ORIGIN = 1_700_000_000_000;
+const now = (): EpochMillis => asEpochMillis(ORIGIN + boot.loop.realTime * 1000);
 
 const litSet = new Set<number>();
 let built = 0;
 let dark = false;
-let ledger: Ledger<Node> = { stocks: { coin: 0 }, atMs: asEpochMillis(bootMs) };
+let ledger: Ledger<Node> = { stocks: { coin: 0 }, atMs: asEpochMillis(ORIGIN) };
 buildFlow(rules.eco, ledger.stocks, gates(dark), rules.flow);
 const { audio, bed } = createSound();
 
@@ -102,11 +111,25 @@ const { audio, bed } = createSound();
  * also what biases the composition down the screen, where the HUD's own dock is not.
  */
 const roadRect: Rect = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
-/** How far the valley either side of the road should stay in frame, in world pixels. */
-const OVERHANG_PX = 300;
-/** The shrine's roof and prayer flags above its own node, and the meadow below the gate. */
-const ABOVE_PX = 130;
-const BELOW_PX = 380;
+/**
+ * How far the valley either side of the road should stay in frame, in world pixels.
+ *
+ * It came down from 300 for `docs/GALLERY.md` § Scale, and the row it is answering is **extent**:
+ * a smaller overhang is a *tighter* fit on the road, which raises the fitted zoom, which is what
+ * pushes the valley's own edges off the frame. The map is 4,096 world pixels across against a
+ * viewport that holds about 1,400, so the composition is a window on a valley rather than a
+ * picture of one, and every direction but up has more of it in it.
+ */
+const OVERHANG_PX = 205;
+/**
+ * The shrine's roof and prayer flags above its own node, and the meadow below the gate.
+ *
+ * The two are deliberately lopsided and it is the whole vertical composition: growing the
+ * rectangle further up than down moves the *center* up the valley, which is what brings the coast,
+ * the far ranges and the sky into a frame the road would otherwise fill on its own.
+ */
+const ABOVE_PX = 336;
+const BELOW_PX = 248;
 /** Gutter in CSS pixels, so it is the same gutter at every fitted zoom. */
 const MARGIN_PX = 28;
 
@@ -145,24 +168,47 @@ interface Thing {
   readonly base: number;
 }
 
+/**
+ * Two lists, and the split is `docs/GALLERY.md` § The cost row rather than tidiness.
+ *
+ * It was one list rebuilt whenever a lamp was lit. At 64 tiles that was 120 objects and nobody
+ * noticed; at 96 it is **six hundred**, each with a `Variant`, a footprint literal and a
+ * `footprintBase` sample — and the rebuild fires on the one input the whole exhibit has, so the
+ * worst frame of the last ten seconds landed on the frame the player just tapped. Measured: a
+ * 19.6 ms spike under repeated taps against a steady 4–7 ms.
+ *
+ * {@link scenery} is the gate, the shrine and every tree, none of which has ever changed after
+ * boot. {@link markers} is the fifteen-odd stations, which are the only things a tap moves.
+ */
+const scenery: Thing[] = [];
+let markers: Thing[] = [];
 let dirty = true;
-let things: Thing[] = [];
+
+/** Reused by {@link push}: `footprintBase` takes a footprint, and six hundred literals at boot is
+ *  six hundred objects for the collector to walk on the frame after the first tap. */
+const foot = { gx: 0, gy: 0, w: 1, d: 1 };
 
 function push(list: Thing[], def: SpriteDef, gx: number, gy: number, flags: number, station: number): void {
+  foot.gx = gx;
+  foot.gy = gy;
+  foot.w = def.w;
+  foot.d = def.d;
   list.push({
     def,
     gx,
     gy,
     v: { level: 1, seed: hash2(valley.seed, gx, gy), flags, progress: 1, label: '' },
     station,
-    base: footprintBase(valley.field, { gx, gy, w: def.w, d: def.d }),
+    base: footprintBase(valley.field, foot),
   });
 }
 
+push(scenery, gateDef, GATE.gx - 1, GATE.gy - 1, 0, -1);
+push(scenery, shrine, SHRINE.gx - 1, SHRINE.gy - 1, FLAG_POWERED, -1);
+for (const t of valley.props) push(scenery, prop, t.gx, t.gy, t.kind | (t.big ? 8 : 0), -1);
+
 function rebuild(): void {
   const list: Thing[] = [];
-  push(list, gateDef, GATE.gx - 1, GATE.gy - 1, 0, -1);
-  push(list, shrine, SHRINE.gx - 1, SHRINE.gy - 1, FLAG_POWERED, -1);
   const p: GridPoint = { gx: 0, gy: 0 };
   for (let i = 0; i < valley.stations && i <= built; i++) {
     stationAt(valley, i, p);
@@ -171,8 +217,7 @@ function rebuild(): void {
     if (i < built) push(list, lamp, gx, gy, litSet.has(i) ? FLAG_POWERED : 0, i);
     else push(list, site, gx, gy, 0, i);
   }
-  for (const t of valley.props) push(list, prop, t.gx, t.gy, t.kind | (t.big ? 8 : 0), -1);
-  things = list;
+  markers = list;
   dirty = false;
 }
 
@@ -287,7 +332,7 @@ const reachPx = (): number => Math.max(reach.run * SPACING, SPACING * 3.4);
 
 boot.onUpdate(() => {
   const atMs = now();
-  const t = worldSec(atMs);
+  const t = boot.loop.realTime;
   daylight = daylightAt(t);
   cycle = cycleAt(t);
   const nightNow = daylight < 0.5;
@@ -316,6 +361,7 @@ function walkerAt(i: number, t: number, out: GridPoint): number {
 const passes: Passes = {
   backdrop(pen) {
     drawSky(pen, daylight, cycle);
+    farRanges(pen, valley.seed);
   },
   // The Terrain cull is `renderFrame`'s, computed on the ground plane, and this is the number it
   // needs to margin it: the map's own tallest elevation. Without it a 440-pixel summit vanishes
@@ -323,9 +369,7 @@ const passes: Passes = {
   maxHeightPx: valley.maxHeightPx,
   terrain(pen, visible) {
     drawSea(pen, valley.seed, daylight);
-    valley.terrain.forEach(visible, (gx, gy) => {
-      terrainTile(pen, valley, gx, gy, daylight);
-    });
+    drawTerrain(pen, valley, visible, daylight);
     roadRibbon(pen, valley, daylight, reach.run * SPACING);
   },
   solids(pen, sorted) {
@@ -335,7 +379,10 @@ const passes: Passes = {
         const z = walkerAt(d, pen.t, here);
         drawPilgrim(pen, d, here.gx, here.gy, z, pen.t);
       } else if (d !== undefined) {
-        drawSprite(pen, d.def, d.gx, d.gy, d.v, d.base);
+        // The one level-of-detail decision in the exhibit; `sprites.ts` owns both the threshold
+        // and the cheaper sprite, and `order.add` above kept the *detailed* height, so the cull
+        // margin stays the conservative one either way.
+        drawSprite(pen, lodOf(d.def, pen.camera.zoom), d.gx, d.gy, d.v, d.base);
       }
     }
   },
@@ -347,6 +394,30 @@ const passes: Passes = {
     if (tint !== null) wash(pen, tint);
   },
 };
+
+let sealedMs = 0;
+let windowAt = 0;
+/**
+ * The worst frame of the last ten seconds — the number `docs/GALLERY.md` § The cost row gates on.
+ *
+ * `loop.stats` keeps a high-water mark since the last reset, so a naive "reset every ten seconds"
+ * reports the worst frame of the last *zero to ten*, and a visitor who looks a moment after a
+ * reset is shown a healthy number for a scene that just stuttered. So the previous window is
+ * **sealed** rather than discarded and the readout is the larger of the two: the mark always
+ * covers between five and ten seconds of history and never less.
+ *
+ * A mark taken from page load would be the other failure — the one slow first frame every visitor
+ * pays would sit on the readout for the rest of the visit.
+ */
+function worstMs(): number {
+  const t = boot.loop.realTime;
+  if (t - windowAt >= 5) {
+    windowAt = t;
+    sealedMs = boot.loop.stats.worstFrameMs;
+    boot.loop.resetStats();
+  }
+  return Math.max(sealedMs, boot.loop.stats.worstFrameMs);
+}
 
 boot.onRender((pen) => {
   if (dirty) rebuild();
@@ -362,7 +433,11 @@ boot.onRender((pen) => {
   }
   boot.order.clear();
   frameCount = 0;
-  for (const t of things) {
+  for (const t of scenery) {
+    frame[frameCount++] = t;
+    boot.order.add(t.gx, t.gy, t.def.w, t.def.d, t.base + spriteHeightPx(t.def, t.v));
+  }
+  for (const t of markers) {
     frame[frameCount++] = t;
     boot.order.add(t.gx, t.gy, t.def.w, t.def.d, t.base + spriteHeightPx(t.def, t.v));
   }
@@ -397,6 +472,8 @@ function hudState(): Hud {
     showCoin: built > 0,
     price,
     affordable: view.coin >= price,
+    drawn: boot.order.count,
+    worstMs: worstMs(),
   };
 }
 
@@ -404,7 +481,10 @@ const hud = createHud({
   palette: boot.palette,
   read: hudState,
   onLight: lightNext,
-  now: () => performance.now(),
+  // The loop's own clock, in milliseconds. `performance.now()` is banned in exhibit source and
+  // `bootstrap` hands back no reader for the `Clock` it built the loop with — a kit finding, and
+  // `realTime` is that same monotonic reading, already accumulated.
+  now: () => boot.loop.realTime * 1000,
 });
 boot.scope.add(drive(hud.ui, boot));
 boot.scope.add(hud.destroy);

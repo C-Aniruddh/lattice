@@ -1,0 +1,114 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>City block — a Lattice exhibit</title>
+<style>
+  /*
+   * The overlay's whole appearance. `@lattice/ui` ships no stylesheet at all — it writes
+   * structure, `pointer-events`, and the `--lattice-*` custom properties, and holds no opinion
+   * about anything else. So this block is the exhibit's art direction for the DOM, exactly as
+   * `sprites.ts` is for the canvas, and it is art: uncounted, like every other art line.
+   *
+   * Every color resolves through a custom property that `hud.ts` pushes from `draw`'s live
+   * palette whenever `rev` moves. The fallbacks are the blue-hour values, so the first paint is
+   * right before a single frame has run, and the `transition` is what turns one push into a
+   * continuous nightfall — on the compositor, with no tween in the exhibit.
+   *
+   * The chrome is minimal and the content is maximal, which is the landing page's rule applied to
+   * the one piece of chrome an exhibit has: two small plates in two corners, monospace, no
+   * ornament, and the city gets the other ninety-five percent of the screen.
+   */
+  html, body { margin: 0; height: 100%; background: #070b1a; overscroll-behavior: none; }
+
+  .lattice-ui {
+    --paper: #eef3fb;
+    --dim: #94a0bc;
+    --card: color-mix(in srgb, var(--lattice-ink, #111c34) 82%, transparent);
+    --edge: color-mix(in srgb, var(--paper) 14%, transparent);
+    --accent: var(--lattice-warn, #ffbe5c);
+    --cut: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px));
+    font: 600 12px/1.35 ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+    color: var(--paper);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  /* A plate with two corners cut off. `clip-path` clips the border with everything else, so the
+     hairline is a second clipped layer inset by a pixel — and it is `::before` rather than
+     `::after`, because `::after` is the last child and would paint over the card's own text. */
+  .card { position: relative; padding: 12px 16px; background: var(--edge); clip-path: var(--cut); }
+  .card::before {
+    content: ''; position: absolute; inset: 1px; clip-path: var(--cut);
+    background: var(--card); transition: background-color 1.4s linear;
+  }
+  .card > * { position: relative; }
+
+  .dock { position: absolute; display: flex; gap: 10px; }
+  .dock-left { left: 18px; top: 18px; flex-direction: column; align-items: flex-start; max-width: 330px; }
+  .dock-right { right: 18px; top: 18px; flex-direction: column; align-items: stretch; }
+
+  .brief-title {
+    margin: 0 0 6px; font-size: 10px; font-weight: 800; letter-spacing: .22em;
+    color: var(--accent); transition: color 1.4s linear;
+  }
+  .brief-line { margin: 0; font-size: 14px; line-height: 1.4; }
+
+  .stat-label { font-size: 9px; font-weight: 700; letter-spacing: .16em; color: var(--dim); }
+
+  .lit { display: flex; align-items: center; gap: 12px; min-width: 186px; }
+  /* The lit-window mark: the exhibit's own subject, three pixels wide, in the corner of its own
+     HUD. It breathes, because everything else on this screen does. */
+  .lit-mark {
+    width: 10px; height: 16px; flex: none;
+    background: var(--accent);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 70%, transparent);
+    animation: breathe 5.5s ease-in-out infinite;
+    transition: background-color 1.4s linear;
+  }
+  .lit-body { display: flex; flex-direction: column; line-height: 1.15; }
+  .lit-body .lattice-roll { font-size: 20px; font-weight: 800; }
+  .lit-body .stat-label:last-child { color: var(--dim); }
+  .hour-name {
+    margin-left: auto; font-size: 9px; font-weight: 800; letter-spacing: .18em;
+    color: var(--accent); transition: color 1.4s linear;
+  }
+  @keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+
+  /* The frame cost, on the exhibit rather than in a devtools panel. § Scale asks every exhibit to
+     carry its own **worst** frame of the last ten seconds, not its average: an average of 16 ms
+     with every eighth frame at 40 ms is a visible stutter behind a healthy-looking number. A page
+     confident enough to display its own render cost is making an argument, and one that displays
+     the tail rather than the mean is making the honest version of it. */
+  .cost { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+  .worst-value { font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--accent); transition: color 1.4s linear; }
+
+  /* A settled number flashes once; a number that flashed every tick would have taught the
+     reader to ignore exactly the moment it moved. `ui` adds the class, `pulse` restarts it. */
+  .lattice-roll { display: inline-block; }
+  .lattice-roll.bump { animation: bump 240ms cubic-bezier(.2, .9, .3, 1); }
+  @keyframes bump { from { transform: scale(1.18); } to { transform: scale(1); } }
+
+  /* Under the left dock rather than centered: a centered column overlaps the brief on a narrow
+     window, and the brief is the entire tutorial. The layer is `inset: 0` from the package; the
+     padding is where an exhibit may write. */
+  .lattice-layer-toasts { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 116px 18px 0; }
+  .lattice-toast {
+    position: relative; max-width: 380px; padding: 10px 16px 12px; cursor: pointer;
+    background: var(--card); box-shadow: inset 0 0 0 1px var(--edge);
+    clip-path: var(--cut); font-size: 12px;
+    animation: rise 260ms cubic-bezier(.2, .9, .3, 1);
+  }
+  .lattice-toast-good { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent); }
+  .lattice-toast-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--accent); transform-origin: left; }
+  @keyframes rise { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lattice-roll.bump, .lattice-toast, .lit-mark { animation: none; }
+  }
+  @media (max-width: 560px) {
+    .dock-left { max-width: calc(100vw - 36px); }
+    .dock-right { top: auto; bottom: 18px; }
+  }
+</style>
+<div id="app"></div>
+<script type="module" src="/src/main.ts"></script>

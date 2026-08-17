@@ -1,0 +1,156 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Resonance — a Lattice exhibit</title>
+<style>
+  /*
+   * The overlay's whole appearance. `@lattice/ui` ships no stylesheet at all — it writes
+   * structure, `pointer-events`, and the `--lattice-*` custom properties `hud.ts` pushes from
+   * `draw`'s live palette. Everything below is this exhibit's art direction for the DOM half,
+   * exactly as `rock.ts` is for the canvas half, and every line of it is uncounted art.
+   *
+   * Every color resolves through a custom property written once per update and guarded on
+   * `palette.rev`, so the overlay warms as the cave does instead of glowing in one fixed
+   * daylight over a scene that is changing underneath it. The fallbacks are the sleeping
+   * cave's values, so the first paint is right before a single frame has run.
+   *
+   * The one thing here that is doing real work rather than decoration is `.string.lit`: a
+   * struck string's flash is a CSS animation started by a class the HUD toggles from
+   * `Audio.onScheduled`. It runs on the compositor, so a frame that arrives late cannot smear
+   * it — which matters more in this exhibit than in any other, because the thing a late frame
+   * would smear is the *timing*, and timing is the mechanic.
+   */
+  html, body { margin: 0; height: 100%; background: #04050b; overscroll-behavior: none; }
+
+  .lattice-ui {
+    --paper: #e8eef7;
+    --dim: #8894a8;
+    --glow: var(--lattice-vein, #4fc3cf);
+    --hot: var(--lattice-ember, #c98a4c);
+    --card: color-mix(in srgb, var(--lattice-ink, #070811) 82%, transparent);
+    --edge: color-mix(in srgb, var(--paper) 13%, transparent);
+    --cut: polygon(9px 0, calc(100% - 9px) 0, 100% 9px, 100% calc(100% - 9px),
+                   calc(100% - 9px) 100%, 9px 100%, 0 calc(100% - 9px), 0 9px);
+    font: 600 13px/1.35 ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+    color: var(--paper);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  /* A plate with its corners cut. `clip-path` clips the border along with everything else, so
+     the hairline has to be a second clipped layer inset by a pixel — and `::before`, not
+     `::after`, which would be the last child and would paint over the card's own text. */
+  .card { position: relative; padding: 12px 15px; background: var(--edge); clip-path: var(--cut); }
+  .card::before {
+    content: ''; position: absolute; inset: 1px; clip-path: var(--cut);
+    background: var(--card); transition: background-color 1.2s linear;
+  }
+  .card > * { position: relative; }
+
+  .dock { position: absolute; display: flex; gap: 10px; }
+  .dock-left { left: 18px; top: 18px; flex-direction: column; align-items: flex-start; max-width: 380px; }
+  .dock-right { right: 18px; top: 18px; flex-direction: column; align-items: stretch; min-width: 210px; }
+  .dock-foot { left: 50%; bottom: 24px; transform: translateX(-50%); }
+
+  .brief-title {
+    margin: 0 0 7px; font-size: 11px; font-weight: 800; letter-spacing: .24em;
+    color: var(--glow); transition: color 1.2s linear;
+  }
+  .brief-line { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--paper); }
+
+  /* The one line that has to be on screen before anything has made a sound. It pulses because
+     a static instruction in a dark corner of a dark scene is one nobody reads. */
+  .wake {
+    margin: 9px 0 0; font-size: 12px; font-weight: 700; letter-spacing: .1em; color: var(--hot);
+    animation: breathe 2.4s ease-in-out infinite;
+  }
+  @keyframes breathe { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+
+  .gate { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .asking { font-size: 12px; font-weight: 800; letter-spacing: .16em; color: var(--glow); }
+  .gate[data-idle='1'] .asking { color: var(--dim); }
+
+  .again {
+    padding: 7px 12px; border: 0; cursor: pointer; clip-path: var(--cut); white-space: nowrap;
+    font: inherit; font-size: 11px; font-weight: 700; letter-spacing: .06em;
+    background: color-mix(in srgb, var(--glow) 82%, #000); color: var(--lattice-ink, #070811);
+    transition: background-color 1.2s linear, transform .1s ease-out;
+  }
+  .again:active { transform: translateY(1px); }
+  .again:focus-visible { outline: 2px solid var(--paper); outline-offset: 3px; }
+  .gate[data-idle='1'] .again { opacity: .35; }
+
+  .tally { display: flex; align-items: baseline; gap: 8px; }
+  .opened { font-size: 25px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .03em; }
+  .of { font-size: 11px; letter-spacing: .13em; color: var(--dim); }
+  /* The worst frame of the last ten seconds, never the average. It sits in the corner in the
+     dim color because it is a promise the exhibit is keeping, not a number to read. */
+  .worst { margin-left: auto; font-size: 10.5px; letter-spacing: .07em; color: var(--dim); }
+
+  /* The instrument. Six real buttons, so they have focus, a pressed state and a keyboard. */
+  .rack { display: flex; gap: 9px; }
+  .rack[data-asleep='1'] .string { opacity: .4; }
+  .string {
+    width: 62px; height: 54px; border: 0; cursor: pointer; clip-path: var(--cut);
+    font: inherit; font-size: 15px; font-weight: 800; letter-spacing: .04em;
+    color: var(--paper);
+    background: color-mix(in srgb, var(--lattice-ink, #070811) 72%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--glow) 40%, transparent);
+    transition: opacity .5s linear, transform .08s ease-out;
+  }
+  .string:active { transform: translateY(2px); }
+  .string:focus-visible { outline: 2px solid var(--paper); outline-offset: 3px; }
+  .string.lit { animation: struck 620ms cubic-bezier(.15, .85, .3, 1); }
+  @keyframes struck {
+    0% { background: var(--glow); color: var(--lattice-ink, #070811); box-shadow: 0 0 26px var(--glow), inset 0 0 0 1px var(--glow); transform: translateY(2px); }
+    100% { background: color-mix(in srgb, var(--lattice-ink, #070811) 72%, transparent); color: var(--paper); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--glow) 40%, transparent); transform: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wake { animation: none; opacity: 1; }
+    .string.lit { animation: none; box-shadow: 0 0 0 2px var(--glow); }
+    .string:active, .again:active { transform: none; }
+  }
+  @media (max-width: 700px) {
+    .dock-left { max-width: calc(100vw - 36px); }
+    .dock-right { top: auto; bottom: 96px; right: 18px; min-width: 0; }
+    .brief-line { font-size: 12.5px; }
+    .string { width: 48px; height: 46px; }
+  }
+</style>
+<div id="app"></div>
+<!--
+  The overlay's structure, static, in markup — `hud.ts` adopts these nodes, mounts them into
+  `@lattice/ui`'s own layers and then only ever writes text into three of them and toggles two
+  classes. Building this tree with `el()` instead would be twenty-odd lines of TypeScript that
+  say exactly what these tags say, and `ui`'s whole seam is that an exhibit's appearance is not
+  its code. It starts `hidden` so a browser that fails to run the module shows a dark page
+  rather than a floating instrument with no cave behind it.
+-->
+<div id="hud" hidden>
+  <div class="dock dock-left">
+    <section class="card brief">
+      <h1 class="brief-title">RESONANCE</h1>
+      <p class="brief-line">Every locked gate hums a chord. Answer it on the strings — tap them, or press 1 to 6. Drag to carry the lamp deeper.</p>
+      <p class="wake">Tap anywhere — nothing sounds until you do</p>
+    </section>
+  </div>
+  <div class="dock dock-right">
+    <section class="card tally"><b class="opened">0</b><span class="of"></span><span class="worst"></span></section>
+    <section class="card gate" data-idle="1">
+      <span class="asking">ASLEEP</span>
+      <button class="again" type="button">Hum it again</button>
+    </section>
+  </div>
+  <div class="dock dock-foot">
+    <div class="rack" data-asleep="1">
+      <button class="string" type="button">1</button>
+      <button class="string" type="button">2</button>
+      <button class="string" type="button">3</button>
+      <button class="string" type="button">4</button>
+      <button class="string" type="button">5</button>
+      <button class="string" type="button">6</button>
+    </div>
+  </div>
+</div>
+<script type="module" src="/src/main.ts"></script>

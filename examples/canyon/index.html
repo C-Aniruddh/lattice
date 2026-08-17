@@ -1,0 +1,152 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Canyon — a Lattice exhibit</title>
+<style>
+  /*
+   * The overlay's whole appearance, and every line of it is uncounted art.
+   *
+   * `@lattice/ui` ships no stylesheet at all — it writes structure, `pointer-events` and the
+   * `--lattice-*` custom properties `hud.ts` pushes from `draw`'s palette. So this block is the
+   * exhibit's art direction for the DOM half, exactly as `strata.ts` is for the canvas half.
+   *
+   * The scrub bar is the interesting one. `ui` has no slider of any kind, so the control this
+   * whole exhibit is driven by is a bare `<input type="range">` and every millimetre of it —
+   * track, fill, thumb, both vendor pseudo-elements — is here. That is a lot of CSS for one
+   * control, and it is the visible half of the finding `hud.ts` reports.
+   */
+  html, body { margin: 0; height: 100%; background: #7fb5e2; overscroll-behavior: none; }
+
+  .lattice-ui {
+    --paper: #f6efe4;
+    --dim: #c7b39a;
+    --card: color-mix(in srgb, var(--lattice-ink, #2a1c1b) 86%, transparent);
+    --edge: color-mix(in srgb, var(--paper) 16%, transparent);
+    --accent: var(--lattice-warn, #ffcf5a);
+    --river: var(--lattice-glass, #8cc0dc);
+    --cut: polygon(9px 0, calc(100% - 9px) 0, 100% 9px, 100% calc(100% - 9px),
+                   calc(100% - 9px) 100%, 9px 100%, 0 calc(100% - 9px), 0 9px);
+    font: 600 13px/1.35 ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+    color: var(--paper);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  /* A plate with its corners cut. `clip-path` clips the border along with everything else, so the
+     hairline has to be a second clipped layer inset by a pixel — and it is `::before` rather than
+     `::after`, because `::after` is the last child and would paint over the card's own text. */
+  .card { position: relative; padding: 13px 16px; background: var(--edge); clip-path: var(--cut); }
+  .card::before { content: ''; position: absolute; inset: 1px; clip-path: var(--cut); background: var(--card); }
+  .card > * { position: relative; }
+
+  .dock { position: absolute; display: flex; gap: 10px; }
+  .dock-left { left: 18px; top: 18px; flex-direction: column; align-items: flex-start; max-width: 380px; }
+  .dock-right { right: 18px; top: 18px; }
+  .dock-foot { left: 50%; bottom: 24px; transform: translateX(-50%); width: min(760px, calc(100vw - 40px)); }
+
+  .brief { min-width: 340px; }
+  .brief-title {
+    margin: 0 0 7px; font-size: 11px; font-weight: 800; letter-spacing: .24em; color: var(--accent);
+  }
+  .brief-line { margin: 0; font-size: 13.5px; line-height: 1.46; color: var(--paper); }
+
+  /* The readout. The year is the loud object; the four lines under it are the ones that make the
+     claim checkable, so they are quiet, tabular, and never move. */
+  .clock { min-width: 300px; }
+  .clock-body { display: flex; flex-direction: column; gap: 4px; line-height: 1; }
+  .clock-body .lattice-roll {
+    font-size: 27px; font-weight: 800; letter-spacing: .03em; font-variant-numeric: tabular-nums;
+    margin-bottom: 3px;
+  }
+  .sub { font-size: 10px; font-weight: 700; letter-spacing: .13em; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .print { font-size: 10px; font-weight: 800; letter-spacing: .22em; color: var(--accent); }
+  /* While the model is still stepping toward where the bar was dragged. It is a caption, not a
+     warning: those frames are as exact as every other one, they are simply not there yet. */
+  .clock[data-behind='1'] .origin { color: var(--river); }
+
+  .scrub-card { display: flex; align-items: center; gap: 14px; width: 100%; box-sizing: border-box; }
+  .scrub-end { font-size: 10px; font-weight: 700; letter-spacing: .16em; color: var(--dim); white-space: nowrap; }
+
+  /*
+   * The bar. Both vendor track/thumb pairs have to be written out in full — they cannot be
+   * combined into one selector, because an unrecognised pseudo-element invalidates the whole
+   * rule in both engines.
+   */
+  .scrub {
+    position: relative; display: block; width: 100%; height: 22px; margin: 0; padding: 0;
+    -webkit-appearance: none; appearance: none; background: transparent; cursor: ew-resize;
+  }
+  .scrub:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  /* Transparent, because the rail below is drawn by this stylesheet instead. A vendor track that
+     still painted its own gradient would sit under the run and show through the hatch. */
+  .scrub::-webkit-slider-runnable-track { height: 6px; background: transparent; }
+  .scrub::-moz-range-track { height: 6px; background: transparent; }
+
+  /*
+   * The rail, and the one thing on this page that is an argument rather than a decoration.
+   *
+   * Throw the handle at a million years and the model is not there: it is two hundred thousand
+   * years back, re-running every step in between, because this exhibit's whole claim is that the
+   * bar is a *re-run and not a lookup*. The card in the corner said so in words. The bar said
+   * nothing, and a control that lies quietly is worse than a caption nobody reads.
+   *
+   * Three copies of one gradient, clipped against two fractions `hud.ts` writes:
+   *
+   *   0 ──────── reached ─┈┈┈┈┈┈ asked ─────────── 1,000,000 yr
+   *   bright, run          hatched, queued          dim, not asked for
+   *
+   * `clip-path: inset()` rather than three widths, so the gradient is laid out once at the full
+   * travel and never stretches as the fractions move, and so nothing here animates a layout box.
+   * All three insets are 6px — half a thumb — because that is where an `<input type=range>` puts
+   * the centre of its handle at either end, and a rail that disagrees with the thumb by six pixels
+   * is a rail a visitor stops trusting.
+   */
+  .scrub-track {
+    position: relative; flex: 1; min-width: 0; height: 22px; --reached: 0; --asked: 0;
+  }
+  .scrub-rail, .scrub-run, .scrub-lag {
+    position: absolute; left: 6px; right: 6px; top: 8px; height: 6px; pointer-events: none;
+    background: linear-gradient(90deg, var(--river), var(--accent));
+  }
+  .scrub-rail { opacity: .22; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .35); }
+  .scrub-run { clip-path: inset(0 calc(100% - 100% * var(--reached)) 0 0); }
+  /* The queued stretch: the same gradient, knocked back, under a hatch that drifts while the model
+     is catching up. Motion is the tell — a static hatch reads as a third color, a moving one reads
+     as work in progress. */
+  .scrub-lag {
+    opacity: .5;
+    clip-path: inset(0 calc(100% - 100% * var(--asked)) 0 calc(100% * var(--reached)));
+  }
+  .scrub-lag::after {
+    content: ''; position: absolute; inset: 0;
+    background: repeating-linear-gradient(115deg,
+      rgba(0, 0, 0, .55) 0 3px, rgba(0, 0, 0, 0) 3px 7px);
+  }
+  .scrub-track[data-behind='1'] .scrub-lag::after { animation: crawl 700ms linear infinite; }
+  @keyframes crawl { to { background-position: 15.4px 0; } }
+  @media (prefers-reduced-motion: reduce) { .scrub-lag::after { animation: none; } }
+  .scrub::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 12px; height: 22px; margin-top: -8px;
+    background: var(--paper); border: 0; box-shadow: 0 0 0 1px rgba(0, 0, 0, .5);
+    clip-path: polygon(0 3px, 50% 0, 100% 3px, 100% calc(100% - 3px), 50% 100%, 0 calc(100% - 3px));
+  }
+  .scrub::-moz-range-thumb {
+    width: 12px; height: 22px; background: var(--paper); border: 0; border-radius: 0;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, .5);
+  }
+
+  .lattice-roll { display: inline-block; }
+  .lattice-roll.bump { animation: bump 200ms cubic-bezier(.2, .9, .3, 1); }
+  @keyframes bump { from { transform: scale(1.06); } to { transform: scale(1); } }
+
+  @media (prefers-reduced-motion: reduce) { .lattice-roll.bump { animation: none; } }
+  @media (max-width: 720px) {
+    .dock-left { max-width: calc(100vw - 36px); }
+    .brief { min-width: 0; }
+    .dock-right { top: auto; bottom: 96px; right: 18px; }
+    .clock { min-width: 0; }
+    .scrub-end { display: none; }
+  }
+</style>
+<div id="app"></div>
+<script type="module" src="/src/main.ts"></script>

@@ -1,0 +1,108 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Caverns — a Lattice exhibit</title>
+<style>
+  /*
+   * The overlay's whole appearance. `@lattice/ui` ships no stylesheet at all — it writes
+   * structure, `pointer-events`, and the `--lattice-*` custom properties `hud.ts` pushes from
+   * `draw`'s live palette. Everything below is this exhibit's art direction for the DOM half,
+   * exactly as `formations.ts` is for the canvas half, and every line of it is uncounted art.
+   *
+   * The whole sheet is built against one constraint the other exhibits do not have: **it sits
+   * over a frame that is 90% near-black**, so it cannot borrow contrast from the scene the way a
+   * card over a lit island can. Every plate here therefore carries its own ground — a flat fill
+   * one step above the darkness rather than a translucent one — and every accent is the same warm
+   * `--lattice-warn` the torches are lit in, so the overlay reads as another thing in the cave
+   * that is on fire rather than as a browser window in front of it.
+   */
+  html, body { margin: 0; height: 100%; background: #04060d; overscroll-behavior: none; }
+
+  .lattice-ui {
+    --paper: #e8edf7;
+    --dim: #7e8aa4;
+    --plate: color-mix(in srgb, var(--lattice-night, #0b1024) 88%, #000);
+    --edge: color-mix(in srgb, var(--lattice-metal, #646b82) 34%, transparent);
+    --accent: var(--lattice-warn, #ffc46a);
+    --cold: var(--lattice-crystal, #8ceeff);
+    --cut: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+    font: 600 13px/1.35 ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+    color: var(--paper);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  /*
+   * A plate with two corners cut, on the diagonal the projection uses. `clip-path` clips the
+   * border and the box-shadow along with everything else, so the hairline has to be a second
+   * clipped layer inset by a pixel — and it is `::before` rather than `::after`, because
+   * `::after` is the last child and would paint over the card's own text.
+   */
+  .card { position: relative; padding: 13px 16px; background: var(--edge); clip-path: var(--cut); }
+  .card::before {
+    content: ''; position: absolute; inset: 1px; clip-path: var(--cut); background: var(--plate);
+  }
+  .card > * { position: relative; }
+
+  .dock { position: absolute; display: flex; gap: 10px; }
+  .dock-left { left: 18px; top: 18px; flex-direction: column; align-items: flex-start; max-width: 380px; }
+  .dock-right { right: 18px; top: 18px; }
+  .dock-foot { left: 50%; bottom: 26px; transform: translateX(-50%); }
+
+  .brief { min-width: 330px; }
+  .brief-title {
+    margin: 0 0 7px; font-size: 11px; font-weight: 800; letter-spacing: .26em; color: var(--accent);
+  }
+  .brief-line { margin: 0; font-size: 14px; line-height: 1.45; color: var(--paper); }
+  /* The second line names the idea and tells you the gesture that produces it. Dimmer, because a
+     visitor who only reads the first line has still been told what to do. */
+  .brief-note { margin-top: 7px; font-size: 12px; font-weight: 500; color: var(--dim); }
+
+  /* The two numbers that are one claim. Tabular figures, because the left one jumps by two
+     hundred and the right one must visibly *not* move — and a proportional font moves both. */
+  .meter { min-width: 186px; display: flex; flex-direction: column; gap: 6px; }
+  .gauge { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+  .gauge-key { font-size: 10px; font-weight: 700; letter-spacing: .2em; color: var(--dim); }
+  .gauge-value, .meter .lattice-roll {
+    font-size: 23px; font-weight: 800; letter-spacing: .02em;
+    font-variant-numeric: tabular-nums; line-height: 1;
+  }
+  .meter .lattice-roll { color: var(--cold); }
+  .gauge-value { color: var(--accent); }
+  /* § Scale's cost row is a gate, so the instrument that measures it shows the gate: over 16.7 ms
+     the worst-frame readout goes red and the plate takes a hairline of the same color. */
+  .meter[data-over='1'] .gauge-value { color: var(--lattice-bad, #d1483f); }
+  .meter[data-over='1'] { background: color-mix(in srgb, var(--lattice-bad, #d1483f) 55%, transparent); }
+  .gauge-note { font-size: 10px; font-weight: 700; letter-spacing: .16em; color: var(--dim); }
+
+  /* The only nodes in the overlay that take a pointer. Everything else passes the gesture
+     through to the world, which is `ui`'s most important decision. */
+  .act {
+    padding: 11px 20px; border: 0; cursor: pointer; clip-path: var(--cut);
+    font: inherit; font-size: 13px; font-weight: 700; letter-spacing: .04em;
+    background: var(--accent); color: #14100a;
+    transition: transform .12s ease-out, filter .12s ease-out;
+  }
+  .act-quiet { background: color-mix(in srgb, var(--lattice-metal, #646b82) 62%, #000); color: var(--paper); }
+  .act:hover { transform: translateY(-1px); filter: brightness(1.08); }
+  .act:active { transform: translateY(1px); }
+  .act:focus-visible { outline: 2px solid var(--paper); outline-offset: 3px; }
+
+  .lattice-roll { display: inline-block; }
+  .lattice-roll.bump { animation: bump 220ms cubic-bezier(.2, .9, .3, 1); }
+  @keyframes bump { from { transform: scale(1.1); } to { transform: scale(1); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lattice-roll.bump { animation: none; }
+    .act:hover, .act:active { transform: none; }
+  }
+  @media (max-width: 640px) {
+    .dock-left { max-width: calc(100vw - 36px); }
+    .brief { min-width: 0; }
+    .brief-line { font-size: 13px; }
+    .dock-right { top: auto; bottom: 96px; right: 18px; }
+    .dock-foot { bottom: 20px; }
+  }
+</style>
+<div id="app"></div>
+<script type="module" src="/src/main.ts"></script>

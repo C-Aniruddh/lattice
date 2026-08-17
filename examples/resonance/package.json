@@ -1,0 +1,22 @@
+{
+  "name": "@lattice/resonance",
+  "version": "0.1.0",
+  "private": true,
+  "description": "RESONANCE — a gallery exhibit. A dark cavern where every locked gate hums a chord and you answer it on six tuned strings.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5191 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview --port 5193 --strictPort"
+  },
+  "$comment": "Seven of nine, and this is the first exhibit in the gallery that names @lattice/audio — sound is not decoration here, it is the only channel the puzzle travels down. sim is absent because there is no economy; persist is absent because docs/GALLERY.md forbids a row any state that outlives the tab, and the mixer snapshot this exhibit could hand it is a device preference rather than save state. input and loop arrive through examples/_shared's bootstrap and are named because the strings are bound to keys through them.",
+  "dependencies": {
+    "@lattice/audio": "^0.1.0",
+    "@lattice/core": "^0.1.0",
+    "@lattice/draw": "^0.1.0",
+    "@lattice/input": "^0.1.0",
+    "@lattice/iso": "^0.1.0",
+    "@lattice/loop": "^0.1.0",
+    "@lattice/ui": "^0.1.0"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@lattice/example-endless",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ENDLESS — a world with no edge. Chunks are minted from the seed as you reach them, evicted behind you, and identical when you come back.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5194",
+    "build": "vite build",
+    "preview": "vite preview --port 5195"
+  },
+  "$comment": "Five of nine, and the four that are absent are absent for reasons. @lattice/sim has no economy: there is nothing to earn here. @lattice/persist is the one that is a finding — an endless world is exactly the shape that wants a save, and docs/GALLERY.md forbids a row a state that outlives the tab, so the pin below is a session-lifetime stand-in for what a game would write down. @lattice/audio is silent for the gallery's reason: nothing may make noise before a visitor has touched it. @lattice/input is here through the shared bootstrap rather than by name, because the pan is the whole interaction.",
+  "dependencies": {
+    "@lattice/core": "^0.1.0",
+    "@lattice/draw": "^0.1.0",
+    "@lattice/input": "^0.1.0",
+    "@lattice/iso": "^0.1.0",
+    "@lattice/loop": "^0.1.0",
+    "@lattice/ui": "^0.1.0"
+  }
+}

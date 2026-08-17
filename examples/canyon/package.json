@@ -1,0 +1,21 @@
+{
+  "name": "@lattice/example-canyon",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CANYON — a gallery exhibit. A river cutting a gorge over a million years, scrubbable, and the ground never stops moving.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5188 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview --port 5189 --strictPort"
+  },
+  "$comment": "Five of nine. @lattice/sim has no economy to run and @lattice/persist nothing to save — the timeline is not a save, it is a re-run from a seed, which is the whole point of the exhibit and is precisely why it needs no store. @lattice/audio is absent for the reason the gallery has not settled: a page that starts making noise before a visitor has touched it is worse than a silent one. @lattice/input is here through the shared bootstrap rather than by name: the camera is the whole canvas interaction, and the one control that is not the camera is a DOM range input, because @lattice/ui has no slider — see src/hud.ts.",
+  "dependencies": {
+    "@lattice/core": "^0.1.0",
+    "@lattice/draw": "^0.1.0",
+    "@lattice/input": "^0.1.0",
+    "@lattice/iso": "^0.1.0",
+    "@lattice/loop": "^0.1.0",
+    "@lattice/ui": "^0.1.0"
+  }
+}

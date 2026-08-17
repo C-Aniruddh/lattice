@@ -1,0 +1,124 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Island — a Lattice exhibit</title>
+<style>
+  /*
+   * The overlay's whole appearance. `@lattice/ui` ships no stylesheet at all — it writes
+   * structure, `pointer-events`, and the `--lattice-*` custom properties `hud.ts` pushes from
+   * `draw`'s live palette. Everything below is this exhibit's art direction for the DOM half,
+   * exactly as `trees.ts` is for the canvas half, and every line of it is uncounted art.
+   *
+   * Every color here resolves through a custom property written once per update and guarded on
+   * `palette.rev`. The fallbacks are the noon values, so the first paint is right before a single
+   * frame has run — and the `transition` is what turns one push per update into a continuous
+   * dusk, on the compositor, with no frame callback and no tween in the exhibit.
+   */
+  html, body { margin: 0; height: 100%; background: #0a1230; overscroll-behavior: none; }
+
+  .lattice-ui {
+    --paper: #f4f7fd;
+    --dim: #9db0c8;
+    --card: color-mix(in srgb, var(--lattice-ink, #16203a) 84%, transparent);
+    --edge: color-mix(in srgb, var(--paper) 15%, transparent);
+    --accent: var(--lattice-warn, #ffcf3f);
+    --moon: #dfe8fb;
+    --cut: polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px),
+                   calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px);
+    font: 600 13px/1.3 ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+    color: var(--paper);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  /*
+   * A plate with its corners cut. `clip-path` clips the border and the box-shadow along with
+   * everything else, so the hairline has to be a second clipped layer inset by a pixel — and it
+   * is `::before` rather than `::after`, because `::after` is the last child and would paint
+   * over the card's own text.
+   */
+  .card { position: relative; padding: 13px 16px; background: var(--edge); clip-path: var(--cut); }
+  .card::before {
+    content: ''; position: absolute; inset: 1px; clip-path: var(--cut);
+    background: var(--card); transition: background-color 1.1s linear;
+  }
+  .card > * { position: relative; }
+
+  .dock { position: absolute; display: flex; gap: 10px; }
+  .dock-left { left: 18px; top: 18px; flex-direction: column; align-items: flex-start; max-width: 360px; }
+  .dock-right { right: 18px; top: 18px; }
+  .dock-foot { left: 50%; bottom: 26px; transform: translateX(-50%); }
+
+  .brief { min-width: 320px; }
+  .brief-title {
+    margin: 0 0 7px; font-size: 11px; font-weight: 800; letter-spacing: .22em;
+    color: var(--accent); transition: color 1.1s linear;
+  }
+  .brief-line { margin: 0; font-size: 14px; line-height: 1.42; color: var(--paper); }
+
+  /* The clock. The orb is the sky's own body: gold with a corona by day, pale and flat by night,
+     and the swap is one attribute the HUD sets from the same `daylight` the world is lit by. */
+  .clock { display: flex; align-items: center; gap: 13px; min-width: 178px; }
+  .clock-orb {
+    width: 26px; height: 26px; border-radius: 50%; flex: none;
+    background: radial-gradient(circle at 36% 32%, color-mix(in srgb, var(--accent) 45%, #fff), var(--accent) 66%);
+    box-shadow: 0 0 20px color-mix(in srgb, var(--accent) 60%, transparent);
+    transition: background 1.1s linear, box-shadow 1.1s linear;
+  }
+  .clock[data-night='1'] .clock-orb {
+    background: radial-gradient(circle at 62% 30%, #fff, var(--moon) 62%, color-mix(in srgb, var(--moon) 45%, transparent) 68%);
+    box-shadow: 0 0 18px rgba(223, 232, 251, .45);
+  }
+  .clock-body { display: flex; flex-direction: column; gap: 3px; line-height: 1; }
+  .clock-body .lattice-roll {
+    font-size: 25px; font-weight: 800; letter-spacing: .04em; font-variant-numeric: tabular-nums;
+  }
+  .hour-name { font-size: 10px; font-weight: 700; letter-spacing: .19em; color: var(--dim); }
+
+  /* The longest gap between two painted frames in the last ten seconds, which docs/GALLERY.md
+     § Scale makes a gate. Deliberately quiet — a number a visitor should be able to find, not one
+     the composition has to make room for — and tabular, so a glance across ten-second windows
+     compares digits in the same column rather than re-reading the whole string. */
+  .perf {
+    margin-top: 6px; font-size: 9px; font-weight: 700; letter-spacing: .16em;
+    color: color-mix(in srgb, var(--dim) 72%, transparent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The sun's height, as a bar. It is the one thing on screen that says the clock is a *cycle*
+     and not a countdown, and it costs a custom property and a transition. */
+  .arc-track { margin-top: 5px; height: 3px; background: rgba(0, 0, 0, .45); }
+  .arc-fill {
+    height: 100%; width: calc(var(--sun, 1) * 100%);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 40%, transparent), var(--accent));
+    transition: width .32s linear, background 1.1s linear;
+  }
+
+  /* The one interactive node in the overlay, and the only place `ui` grants pointer events. */
+  .skip {
+    padding: 11px 22px; border: 0; cursor: pointer; clip-path: var(--cut);
+    font: inherit; font-size: 13px; font-weight: 700; letter-spacing: .04em;
+    background: var(--accent); color: var(--lattice-ink, #16203a);
+    transition: background-color 1.1s linear, color 1.1s linear, transform .12s ease-out;
+  }
+  .skip:hover { transform: translateY(-1px); }
+  .skip:active { transform: translateY(1px); }
+  .skip:focus-visible { outline: 2px solid var(--paper); outline-offset: 3px; }
+
+  .lattice-roll { display: inline-block; }
+  .lattice-roll.bump { animation: bump 220ms cubic-bezier(.2, .9, .3, 1); }
+  @keyframes bump { from { transform: scale(1.09); } to { transform: scale(1); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lattice-roll.bump { animation: none; }
+    .skip:hover, .skip:active { transform: none; }
+  }
+  @media (max-width: 620px) {
+    .dock-left { max-width: calc(100vw - 36px); }
+    .brief { min-width: 0; }
+    .brief-line { font-size: 13px; }
+    .dock-right { top: auto; bottom: 92px; right: 18px; }
+  }
+</style>
+<div id="app"></div>
+<script type="module" src="/src/main.ts"></script>

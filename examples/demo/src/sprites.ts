@@ -1,4 +1,8 @@
 /**
+ * @art — the objects themselves. Delete it and the valley still has its road, its stations, its
+ * capacity and its dusk; every one of them is simply invisible. Nothing here returns a number any
+ * decision reads, and nothing here survives the frame it was drawn in.
+ *
  * The art. Silhouette first, detail at three scales, and something moving on every object.
  *
  * Seven rules are load-bearing here and none of them is a preference:
@@ -45,8 +49,10 @@ import {
   withAlpha,
   type Ink,
   type Pen,
+  type SpriteDef,
 } from '@lattice/draw';
 import { smoke } from './ambient.js';
+import { steady } from './palette.js';
 
 const pt: Vec2 = { x: 0, y: 0 };
 
@@ -62,7 +68,10 @@ function at(pen: Pen, gx: number, gy: number, levels: number): Vec2 {
 function flame(pen: Pen, gx: number, gy: number, levels: number, phase: number, size: number, power: number): void {
   const lick = noise2(0x11ae, phase, pen.t * 2.4) * 0.5 + 0.5;
   const sway = noise2(0x22bf, phase, pen.t * 1.1) * 0.05 * size;
-  const core = mix(pen.palette.get('warn'), 0xfff2ccff, 0.4 + lick * 0.35);
+  // The flame is the exhibit's worst case for `rampFor`'s cache: `lick` is continuous, every lit
+  // lamp has one, and dusk is when they are all alight. The *color* is snapped and the sway, the
+  // height, the radius and the spark timing below are all left continuous — the eye reads those.
+  const core = steady(mix(pen.palette.get('warn'), 0xfff2ccff, 0.4 + lick * 0.35));
   glowDot(pen, gx + sway, gy - sway, levels + lick * 0.06 * size, core, size * (0.7 + lick * 0.5), power);
   for (let i = 0; i < 2; i++) {
     const k = (pen.t * 0.7 + i * 0.5 + phase) % 1;
@@ -139,7 +148,7 @@ export const lamp = defineSprite({
     // A faint cone of light in the air under the hood: what a lamp looks like in fog.
     const p = at(pen, gx + 0.5, gy + 0.5, z + 1.5);
     const k = pen.camera.zoom;
-    pen.surface.softEllipse(p.x, p.y, 26 * k, 20 * k, withAlpha(pen.palette.get('warn'), 0.13), withAlpha(pen.palette.get('warn'), 0));
+    pen.surface.softEllipse(p.x, p.y, 26 * k, 20 * k, steady(withAlpha(pen.palette.get('warn'), 0.13)), steady(withAlpha(pen.palette.get('warn'), 0)));
   },
   emit(field, gx, gy, v, rng, zPx) {
     if ((v.flags & FLAG_POWERED) === 0) return;
@@ -186,7 +195,7 @@ export const site = defineSprite({
     const p = at(pen, gx + 0.34, gy + 0.66, z + 2.2 + bob);
     const k = pen.camera.zoom;
     const ok = pen.palette.get('ok');
-    pen.surface.softEllipse(p.x, p.y, 30 * k, 30 * k, withAlpha(ok, 0.28), withAlpha(ok, 0));
+    pen.surface.softEllipse(p.x, p.y, 30 * k, 30 * k, steady(withAlpha(ok, 0.28)), steady(withAlpha(ok, 0)));
     pen.surface.ellipse(p.x, p.y, 11 * k, 11 * k, withAlpha(pen.palette.get('ink'), 0.88));
     pen.xy[0] = p.x - 4.5 * k;
     pen.xy[1] = p.y + 3.5 * k;
@@ -402,6 +411,60 @@ export const prop = defineSprite({
   },
 });
 
+/**
+ * The same five props at a dozen pixels tall: one solid each, no contact shadow, no outline,
+ * nothing that moves.
+ *
+ * **This is `docs/GALLERY.md` § Scale's "spend the detail where the eye is", as a second sprite.**
+ * The valley holds about 2,350 props and the cull normally leaves 250 of them on screen; pulled
+ * all the way out to `minZoom` it leaves **1,607**, which is past the thousand-sprite row in
+ * `docs/PERFORMANCE.md` and measured at a 24.8 ms worst frame — a red readout on the one gesture
+ * a visitor makes first. Reducing the count was available and would have thinned a forest that is
+ * the best thing in the exhibit; reducing the *ops* was the row's actual instruction.
+ *
+ * A detailed tree is three cylinders, a post, a soft shadow and a swaying bough. Every cylinder is
+ * a `surface.polyRamp` and every one of those allocates a `CanvasGradient` (see the report — that
+ * path has no cache), so the saving is roughly five sixths of the tree. At the zoom this comes in
+ * at, a tree is twelve pixels tall and the difference is not resolvable; the *stand* is what the
+ * eye reads at that distance, and the stand is unchanged.
+ *
+ * There is deliberately no `animate` hook. A sway of a fifth of a pixel is not motion.
+ */
+export const propFar = defineSprite({
+  id: 'prop-far',
+  w: 1,
+  d: 1,
+  massing(w, v, rng) {
+    const kind = v.flags & 7;
+    const big = (v.flags & 8) !== 0;
+    const h = (big ? 1.9 : 1.25) + rng.next() * 0.7;
+    if (kind === 4) {
+      w.box(0.24, 0.24, 0.5, 0.46, { color: 'metal', h: 0.34, outline: false });
+      return;
+    }
+    if (kind === 3) {
+      w.cylinder(0.5, 0.5, 0.3, { color: 'ok', h: 0.34, outline: false });
+      return;
+    }
+    // The trunk survives at every distance: it is the whole reason a wood reads as vertical
+    // rather than as a green rash on the hillside.
+    w.post(0.5, 0.5, 0, h * 0.55, 'ink', 0.12);
+    if (kind === 2) return;
+    w.cylinder(0.5, 0.5, kind === 0 ? 0.4 : 0.36, { color: 'ok', h: h * (kind === 0 ? 0.92 : 0.72), z: h * 0.34, outline: false });
+  },
+});
+
+/**
+ * Which of the two to draw, given the camera. The exhibit's one line of level-of-detail.
+ *
+ * 0.52 is where a prop's cylinder is about fourteen screen pixels across — the point at which the
+ * three-cylinder crown and the one-cylinder crown produce the same silhouette to within a pixel,
+ * measured by flipping between them at a series of zooms rather than chosen as a round number.
+ */
+export function lodOf(def: SpriteDef, zoom: number): SpriteDef {
+  return def === prop && zoom < 0.52 ? propFar : def;
+}
+
 // ── pilgrims, drawn straight because they are points on a curve ──────────────────────────────
 
 /**
@@ -450,7 +513,7 @@ export function drawPilgrim(pen: Pen, id: number, gx: number, gy: number, zPx: n
   if (hasLantern) {
     const p = at(pen, gx - 0.26, gy + 0.18, z + tall * 0.55);
     const warm = pen.palette.get('warn');
-    pen.surface.softEllipse(p.x, p.y, 15 * k, 15 * k, withAlpha(warm, 0.36), withAlpha(warm, 0));
+    pen.surface.softEllipse(p.x, p.y, 15 * k, 15 * k, steady(withAlpha(warm, 0.36)), steady(withAlpha(warm, 0)));
     pen.surface.ellipse(p.x, p.y, 2.6 * k, 2.6 * k, mix(warm, 0xfff0c8ff, 0.5));
     pen.light?.add(gx, gy, zPx, 1.5, 0.4, 'warn');
   }

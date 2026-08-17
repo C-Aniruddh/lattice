@@ -93,6 +93,16 @@
   .hour-name { font-size: 10px; font-weight: 800; letter-spacing: .16em; }
   .hour .stat-label { order: 2; }
 
+  /* The cost row, per `docs/GALLERY.md` § The cost row: the worst frame of the last ten seconds,
+     green under the 16.7 ms line and red over it, plus how many drawables survived the cull. The
+     verdict is a color rather than a sentence because it has to be readable at a glance in a
+     screenshot taken by somebody who is not the author. */
+  .cost { min-width: 176px; display: flex; flex-direction: column; gap: 3px; }
+  .cost-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .cost-worst, .cost-drawn { font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--good); }
+  .cost-drawn { color: var(--paper); }
+  .cost[data-over='1'] .cost-worst { color: var(--lattice-bad, #d6483f); }
+
   /* The one interactive node in the overlay, and the only place `ui` grants pointer events. */
   .light {
     display: flex; align-items: center; gap: 12px;

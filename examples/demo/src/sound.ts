@@ -1,4 +1,7 @@
 /**
+ * @art — synthesis is art; the zero-asset rule is the only reason it is code rather than five
+ * `.wav` files in a folder nobody counts. Mute the whole module and the economy is unchanged.
+ *
  * Four recipes and one bed. No files, and nothing exists until the first tap.
  *
  * The bed's `tone` is the *same* `daylight` number that drives `Palette.lerp` and the light

@@ -1,4 +1,8 @@
 /**
+ * @art — three stop sets and nothing else. It is read only by things that draw, it holds no state
+ * across a frame, and the number that selects between the three is `daylight`, which `rules.ts`
+ * owns. Delete it and the valley plays in the kit's default colors.
+ *
  * The valley's three hours, as three stop sets.
  *
  * The kit's own `DAY`/`DUSK`/`NIGHT` are a working default and deliberately restrained. This game
@@ -19,7 +23,36 @@
  * frame would bump `rev`, and `rev` is what every cache in the kit keys on. The symptom of
  * getting that wrong is not a wrong color — it is a game that gets slower at dusk and stays slow.
  */
-import { extendStops, hex, type Stops } from '@lattice/draw';
+import { extendStops, hex, type Rgba, type Stops } from '@lattice/draw';
+
+/**
+ * Sixteen levels per channel, rounded. **Only ever for the two endpoint colors of a soft radial
+ * ramp**, and it is a workaround for a named trap rather than a look.
+ *
+ * `canvas2d`'s `rampFor` caches its pre-rendered radial ramps on the **exact** `(inner, outer)`
+ * pair, and evicts *wholesale* — `ramps.clear()` at 96 entries. So one call site whose color
+ * moves continuously misses every frame, allocates a canvas, a context and a gradient every
+ * frame, and periodically takes every constant-color site's entry down with it: the contact
+ * shadows, the lamp pools and the sun's halo all pay for one flame.
+ *
+ * Lamp Road is the worst case that exists for it — a brazier, a road of flames, smoke, and a
+ * palette that lerps *continuously* through seven seconds of dusk, twice a cycle, so every
+ * `palette.get()` handed to a ramp is a fresh key for a quarter of the run. Measured here at
+ * **2.4 radial gradients per frame in full daylight** before this existed.
+ *
+ * Sixteen levels is a maximum error of 8/255 on the endpoint of a *blurred* gradient, which no
+ * screenshot has ever shown, and it collapses any continuous path to at most sixteen keys per
+ * channel. **Snap the color; keep the motion** — position, radius, flicker rate and timing all
+ * stay continuous, because those are what the eye is actually reading.
+ *
+ * A fix is in flight inside `draw` (quantization plus per-entry eviction). When it lands this
+ * function is redundant and should be deleted rather than kept as a second opinion.
+ */
+export function steady(color: Rgba): Rgba {
+  // 15 * 17 === 255 exactly, so full and empty channels survive the round trip unchanged.
+  const q = (b: number): number => Math.round(b / 17) * 17;
+  return (((q((color >>> 24) & 255) << 24) | (q((color >>> 16) & 255) << 16) | (q((color >>> 8) & 255) << 8) | q(color & 255)) >>> 0);
+}
 
 const SLOTS = ['sky', 'ground', 'ink', 'brand', 'metal', 'glass', 'warn', 'ok', 'bad', 'night'] as const;
 

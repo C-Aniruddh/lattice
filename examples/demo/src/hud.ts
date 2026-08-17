@@ -53,6 +53,18 @@ export interface Hud {
   readonly stations: number;
   readonly walkers: number;
   readonly daylight: number;
+  /** How many drawables survived the depth cull — the answer to "where did the other 300 go". */
+  readonly drawn: number;
+  /**
+   * `loop.stats.worstFrameMs` over a rolling ten seconds — **the figure this exhibit is judged
+   * on**, and never the average.
+   *
+   * `docs/GALLERY.md` § The cost row makes it a gate rather than a trade, and it binds the hero
+   * hardest: this canvas is the landing page's header, it runs beside a grid of other live scenes,
+   * and it runs on whatever the visitor arrived with. An average of 16 ms with every eighth frame
+   * at 40 ms is a visible stutter and a healthy-looking number. 16.7 ms is the line.
+   */
+  readonly worstMs: number;
   readonly showCoin: boolean;
   /** What the next lamp costs. Rolled on the button, so a price rise is something you watch. */
   readonly price: number;
@@ -135,6 +147,17 @@ export function createHud(opts: HudOptions): HudView {
     el('div', { class: 'hour-body' }, hour, walkers.node),
   );
 
+  // The cost row, in the overlay rather than in a devtools panel, because an exhibit that cannot
+  // show its worst frame cannot be said to have met it. `data-over` is the whole verdict.
+  const worst = el('span', { class: 'cost-worst' });
+  const drawn = el('span', { class: 'cost-drawn' });
+  const costCard = el(
+    'section',
+    { class: 'card cost' },
+    el('div', { class: 'cost-row' }, el('span', { class: 'stat-label' }, 'WORST FRAME / 10s'), worst),
+    el('div', { class: 'cost-row' }, el('span', { class: 'stat-label' }, 'DRAWN'), drawn),
+  );
+
   // The one interactive node in the whole overlay. Everything else is `pointer-events: none` by
   // default, which is `ui`'s most important decision: a tap that is not on a node you named
   // reaches the world, and the world is what this exhibit is.
@@ -147,7 +170,7 @@ export function createHud(opts: HudOptions): HudView {
   );
 
   ui.mount(el('div', { class: 'dock dock-left' }, brief, coinCard, roadCard), { layer: 'panels' });
-  ui.mount(el('div', { class: 'dock dock-right' }, hourCard), { layer: 'panels' });
+  ui.mount(el('div', { class: 'dock dock-right' }, hourCard, costCard), { layer: 'panels' });
   ui.mount(el('div', { class: 'dock dock-foot' }, button), { layer: 'panels', interactive: true });
 
   const host: ToastHost = toasts(ui, { max: 2 });
@@ -168,8 +191,16 @@ export function createHud(opts: HudOptions): HudView {
     applyPalette(ui, paletteVars(opts.palette));
   });
 
-  const stopState: Disposer = ui.every(() => {
+  // A frame-time readout that flickers through four digits is a number nobody can read, so the
+  // two cost figures settle twice a second while everything else stays on the update cadence.
+  let costDue = 0;
+  const stopState: Disposer = ui.every((nowMs) => {
     const h = opts.read();
+    if (nowMs >= costDue) {
+      costDue = nowMs + 400;
+      setText(drawn, String(h.drawn));
+      if (setText(worst, `${h.worstMs.toFixed(1)} ms`)) costCard.dataset['over'] = h.worstMs > 16.7 ? '1' : '0';
+    }
     setText(objective, h.objective);
     show(coinCard, h.showCoin);
     coin.set(h.coin);

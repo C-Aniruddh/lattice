@@ -492,6 +492,48 @@ cueing substitutes for them:
 The lesson is worth more than the exhibit: **a cue decorates a structure and cannot replace one.**
 When something is not reading, check the composition before adding another cue to it.
 
+And then a fourth thing was missing that none of the above would have fixed, because it is not a
+composition problem at all:
+
+**A continuous height field on a diamond grid renders as triangles, whatever the model says.**
+The exhibit's terrain read as a field of triangular peaks through three rebuilds — with correct
+geology underneath it, including per-bed talus angles that genuinely produced cliffs and benches
+in the data. Every tile differed slightly from its neighbor, and a grid of diamonds turns that
+into endless small triangles. Mesas are flat-topped; a landform whose silhouette should be
+orthogonal cannot be got there by making the model more correct.
+
+**The fix belongs in the render, and it must not reach the model.** Snap each drawn vertex onto
+the top of the bed it stands in, inside the `HeightField` the terrain pass reads, and the benches
+become flat and the risers abrupt. Two details this exhibit paid for: snap **most of the way, not
+all** — full quantization is a staircase whose steps only move when a vertex crosses a boundary,
+and in an exhibit about continuous time that artifact would falsify the claim it exists to make —
+and snap **up rather than down**, so the snapped height stays inside the band it was classified
+in and a bench is not striped with the color of the bed below it.
+
+Generalized: **the grid is a renderer, and a landform's silhouette is its business.** Any exhibit
+whose subject has a flat top — a mesa, a plateau, a rooftop, a terrace, a floe — is fighting the
+same interpolation, and the answer is never in the simulation.
+
+#### And a measurement worth writing down, because two agents got it wrong in opposite directions
+
+Which diagonal a gorge is cut along changes its apparent depth, and the intuition is unreliable
+enough that both available answers were argued confidently before either was measured. The number,
+taken as **vertical screen distance from a rim tile to the water below it**:
+
+| gorge runs | wall face, vertical | what it buys |
+|---|---:|---|
+| **across** the frame (`gx − gy`) | **742 px** | maximum apparent height. A wall's horizontal run lands on the *same* screen axis as its height, and the two add |
+| **along** the frame (`gx + gy`) | **312 px** | both walls in shot at once, side canyons from both sides, a river receding the full height of the frame — the shape of *being in* a canyon |
+
+The run is horizontal in the world either way; turning the landform changes which screen axis it
+lands on, and on the perpendicular axis it contributes nothing, leaving the drop alone. **58% of
+the apparent height is the price of the viewpoint**, and no framing recovers it.
+
+Note what was *not* the deciding measurement. Rim-to-rim screen **separation** — how far apart the
+two rims sit vertically — is a different quantity, mostly the distance between two things rather
+than the height of either, and it is the one that gets measured first because it is the one that
+is easy to measure.
+
 ---
 
 ## The control panel

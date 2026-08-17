@@ -1,0 +1,108 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Crowd — a Lattice exhibit</title>
+<style>
+  /*
+   * The overlay's whole appearance. `@lattice/ui` ships no stylesheet at all — it writes
+   * structure, `pointer-events` and the `--lattice-*` custom properties, and holds no opinion
+   * about anything else. So this file is the exhibit's art direction for the HUD, exactly as
+   * `scenery.ts` is for the canvas, and it is uncounted art like every other art line.
+   *
+   * Every color below resolves through a custom property that `hud.ts` pushes from `draw`'s live
+   * palette. The fallbacks are the shipped hour, so the first paint is right before a single
+   * frame has run.
+   */
+  html, body { margin: 0; height: 100%; background: #0f1526; overscroll-behavior: none; }
+
+  .lattice-ui {
+    --paper: #f4f1ea;
+    --dim: #9c9384;
+    --card: color-mix(in srgb, var(--lattice-ink, #2b2338) 84%, transparent);
+    --edge: color-mix(in srgb, var(--paper) 15%, transparent);
+    --accent: var(--lattice-warn, #f2b64a);
+    --stone: var(--lattice-metal, #b6b1a4);
+    font: 500 13px/1.35 ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+    color: var(--paper);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  .dock { position: absolute; left: 20px; top: 20px; display: flex; flex-direction: column; gap: 9px; max-width: 336px; }
+  /* The time controls sit bottom-left, under the figures they explain, and are the only
+     interactive thing on the page besides the world itself. */
+  .dock-foot { top: auto; bottom: 20px; max-width: 372px; }
+
+  /* A plate with one cut corner. `clip-path` clips the border with everything else, so the
+     hairline is a second clipped layer inset by a pixel — and it is `::before`, because `::after`
+     is the last child and would paint over the card's own text. */
+  .card { position: relative; padding: 13px 15px; background: var(--edge); clip-path: polygon(0 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%); }
+  .card::before {
+    content: ''; position: absolute; inset: 1px; clip-path: inherit;
+    background: var(--card); transition: background-color 1.2s linear;
+  }
+  .card > * { position: relative; margin: 0; }
+
+  h1 { font-size: 11px; font-weight: 800; letter-spacing: .3em; color: var(--accent); transition: color 1.2s linear; }
+  .lede { margin-top: 7px; font-size: 13px; line-height: 1.45; color: var(--paper); }
+  code {
+    display: block; margin-top: 10px; padding: 7px 9px; font: inherit; font-size: 11.5px;
+    color: var(--stone); background: rgba(0, 0, 0, .34);
+    border-left: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
+    overflow-x: auto; white-space: nowrap;
+  }
+
+  .figures { display: flex; flex-direction: column; gap: 6px; }
+  .row { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+  .key { font-size: 10px; font-weight: 700; letter-spacing: .14em; color: var(--dim); }
+  .val, .lattice-roll { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--paper); }
+  .figures .row:first-child .lattice-roll { font-size: 25px; color: var(--accent); transition: color 1.2s linear; }
+  /* The one figure that would be wrong if this exhibit were built the ordinary way. */
+  .zero { color: var(--lattice-ok, #6e9c54); }
+  /* The worst frame in the last ten seconds, green under the 16.7 ms line and red over it. The
+     colour is the whole point: a number nobody can score is a number nobody reads. */
+  .val[data-over="0"] { color: var(--lattice-ok, #6e9c54); }
+  .val[data-over="1"] { color: var(--lattice-bad, #b8483f); }
+
+  /* ── the time strip ───────────────────────────────────────────────────────────────────────
+     A scrubber and three jumps. The track is deliberately as wide as the card and as tall as a
+     thumb: this is the one control the exhibit is *about*, and a 4-pixel hairline slider reads
+     as a setting rather than as an instrument. */
+  .time { display: flex; flex-direction: column; gap: 9px; }
+  .time .lede { font-size: 11.5px; color: var(--dim); }
+  .stamp { font-size: 17px; color: var(--accent); transition: color 1.2s linear; }
+
+  .scrub { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: none; cursor: ew-resize; }
+  .scrub::-webkit-slider-runnable-track { height: 6px; background: rgba(0, 0, 0, .42); border-top: 1px solid color-mix(in srgb, var(--paper) 12%, transparent); }
+  .scrub::-moz-range-track { height: 6px; background: rgba(0, 0, 0, .42); }
+  .scrub::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 11px; height: 22px; margin-top: -8px;
+    background: var(--accent); clip-path: polygon(0 0, 100% 0, 100% 74%, 50% 100%, 0 74%);
+  }
+  .scrub::-moz-range-thumb { width: 11px; height: 22px; border: 0; border-radius: 0; background: var(--accent); }
+  .scrub:focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; }
+
+  .jumps { display: flex; gap: 6px; }
+  .jump {
+    flex: 1; padding: 7px 4px; font: inherit; font-size: 11px; font-weight: 700; letter-spacing: .1em;
+    color: var(--paper); background: color-mix(in srgb, var(--paper) 9%, transparent);
+    border: 1px solid color-mix(in srgb, var(--paper) 16%, transparent); cursor: pointer;
+    transition: background-color 120ms linear, color 120ms linear;
+  }
+  .jump:hover { background: color-mix(in srgb, var(--accent) 26%, transparent); }
+  .jump:active { background: var(--accent); color: #1a1420; }
+
+  /* A settled number flashes once; a number that flashed every tick would have taught the reader
+     to ignore exactly the moment it moved. `ui` adds the class, `pulse` restarts it. */
+  .lattice-roll { display: inline-block; }
+  .lattice-roll.bump { animation: bump 220ms cubic-bezier(.2, .9, .3, 1); }
+  @keyframes bump { from { transform: scale(1.14); } to { transform: scale(1); } }
+
+  @media (prefers-reduced-motion: reduce) { .lattice-roll.bump { animation: none; } }
+  @media (max-width: 560px) {
+    .dock { left: 12px; top: 12px; right: 12px; max-width: none; }
+    .lede { font-size: 12px; }
+  }
+</style>
+<div id="app"></div>
+<script type="module" src="/src/main.ts"></script>

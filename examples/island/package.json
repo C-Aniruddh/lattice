@@ -1,0 +1,21 @@
+{
+  "name": "@lattice/example-island",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ISLAND — a gallery exhibit. Terrain, a shoreline, trees, and a full day/night cycle in ninety seconds.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5177 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview --port 5178 --strictPort"
+  },
+  "$comment": "Six of nine, and the three that are absent are absent for reasons rather than by oversight. @lattice/sim has no economy to run: this exhibit has no numbers. @lattice/persist has nothing to save, per docs/GALLERY.md, which forbids an exhibit a state that outlives the tab. @lattice/audio is the one that is a finding — an island with surf, wind and gulls is exactly the exhibit that wants a bed, and it is left out only because a page that starts making noise before a visitor has touched it is worse than a silent one, and the gallery has no shared answer yet for the unlock gesture. @lattice/input is here through the shared bootstrap rather than by name: the camera is the whole interaction.",
+  "dependencies": {
+    "@lattice/core": "^0.1.0",
+    "@lattice/draw": "^0.1.0",
+    "@lattice/input": "^0.1.0",
+    "@lattice/iso": "^0.1.0",
+    "@lattice/loop": "^0.1.0",
+    "@lattice/ui": "^0.1.0"
+  }
+}

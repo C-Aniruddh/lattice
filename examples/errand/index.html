@@ -1,0 +1,114 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Errand — a Lattice exhibit</title>
+<style>
+  /*
+   * The overlay's whole appearance, and every line of it is uncounted art.
+   *
+   * `@lattice/ui` ships no stylesheet at all — it writes structure, `pointer-events`, and the
+   * `--lattice-*` custom properties `hud.ts` pushes from `draw`'s live palette. So the dialog box
+   * below, which is the exhibit's hardest `ui` test, is styled here exactly the way a game whose
+   * art direction was decided before the kit arrived would style it: by reaching for class names
+   * that are public API and colors that are the world's own.
+   *
+   * Every color resolves through a custom property written once, guarded on `palette.rev`. The
+   * fallbacks are the afternoon values, so the first paint is right before a single frame has run.
+   */
+  html, body { margin: 0; height: 100%; background: #2a2434; overscroll-behavior: none; }
+
+  .lattice-ui {
+    --paper: #fdf4e6;
+    --dim: #bfae9a;
+    --plate: color-mix(in srgb, var(--lattice-ink, #241d2b) 88%, transparent);
+    --edge: color-mix(in srgb, var(--paper) 17%, transparent);
+    --accent: var(--lattice-warn, #ffcc55);
+    --alarm: var(--lattice-bad, #cf4a3c);
+    --cut: polygon(9px 0, calc(100% - 9px) 0, 100% 9px, 100% calc(100% - 9px),
+                   calc(100% - 9px) 100%, 9px 100%, 0 calc(100% - 9px), 0 9px);
+    font: 600 13px/1.35 ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+    color: var(--paper);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  /*
+   * A plate with its corners cut. `clip-path` clips the border and the box-shadow along with
+   * everything else, so the hairline has to be a second clipped layer inset by a pixel — and it is
+   * `::before` rather than `::after`, because `::after` is the last child and would paint over the
+   * card's own text.
+   */
+  .card { position: relative; padding: 12px 15px; background: var(--edge); clip-path: var(--cut); }
+  .card::before { content: ''; position: absolute; inset: 1px; clip-path: var(--cut); background: var(--plate); }
+  .card > * { position: relative; }
+
+  .dock { position: absolute; display: flex; flex-direction: column; gap: 10px; }
+  .dock-left { left: 18px; top: 18px; align-items: flex-start; max-width: 380px; }
+  .dock-right { right: 18px; top: 18px; align-items: stretch; min-width: 216px; }
+
+  .brief { min-width: 330px; }
+  .brief-title { margin: 0 0 6px; font-size: 11px; font-weight: 800; letter-spacing: .24em; color: var(--accent); }
+  .brief-line { margin: 0; font-size: 13px; line-height: 1.45; color: var(--dim); }
+
+  /* The objective. One line, and the accent bar down its left edge is the only ornament in the
+     overlay that is not a corner cut — it is there so the eye finds this card first. */
+  .obj { border-left: 3px solid var(--accent); padding-left: 13px; }
+  .obj-tag { font-size: 10px; font-weight: 800; letter-spacing: .2em; color: var(--accent); }
+  .obj-line { margin: 5px 0 0; font-size: 14px; line-height: 1.42; }
+  .chip {
+    display: inline-block; margin-top: 9px; padding: 4px 9px;
+    font-size: 10px; font-weight: 800; letter-spacing: .16em;
+    background: var(--accent); color: var(--lattice-ink, #241d2b); clip-path: var(--cut);
+  }
+
+  /* The save, and the frame cost. Two readouts that are claims a visitor is invited to test. */
+  .save-tag, .cost-tag { display: block; font-size: 10px; font-weight: 800; letter-spacing: .19em; color: var(--dim); }
+  .save .lattice-roll { font-size: 21px; font-weight: 800; letter-spacing: .03em; font-variant-numeric: tabular-nums; }
+  .save-size { margin-left: 8px; font-size: 11px; color: var(--dim); }
+  .save-trouble { margin: 6px 0 0; font-size: 11px; line-height: 1.4; color: var(--alarm); }
+  .save-trouble:empty { display: none; }
+  .save[data-bad='1'] { --plate: color-mix(in srgb, var(--alarm) 30%, var(--lattice-ink, #241d2b)); }
+  .cost-ms { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .cost[data-bad='1'] .cost-ms { color: var(--alarm); }
+
+  /*
+   * The dialog. `ui` gives the panel a scrim, a focus trap, Escape, and pointer events; everything
+   * below is this exhibit deciding what a conversation in a farming valley looks like.
+   */
+  .lattice-scrim { position: absolute; inset: 0; background: color-mix(in srgb, #140f1c 46%, transparent); }
+  .lattice-panel-modal { position: absolute; left: 50%; bottom: 8vh; transform: translateX(-50%); width: min(560px, calc(100vw - 40px)); }
+  .say { padding: 20px 22px 18px; }
+  .say-who { font-size: 10px; font-weight: 800; letter-spacing: .2em; color: var(--accent); }
+  .say-line { margin: 10px 0 18px; font-size: 15px; line-height: 1.58; font-weight: 500; }
+  .say-row { display: flex; gap: 10px; }
+
+  .btn {
+    padding: 10px 18px; border: 0; cursor: pointer; clip-path: var(--cut);
+    font: inherit; font-size: 12px; font-weight: 700; letter-spacing: .07em;
+    background: color-mix(in srgb, var(--paper) 15%, transparent); color: var(--paper);
+    transition: transform .1s ease-out, background-color .1s linear;
+  }
+  .btn-act { background: var(--accent); color: var(--lattice-ink, #241d2b); }
+  .btn:hover { transform: translateY(-1px); }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 2px solid var(--paper); outline-offset: 3px; }
+
+  .lattice-roll { display: inline-block; }
+  .lattice-roll.bump { animation: bump 200ms cubic-bezier(.2, .9, .3, 1); }
+  @keyframes bump { from { transform: scale(1.08); } to { transform: scale(1); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lattice-roll.bump { animation: none; }
+    .btn:hover, .btn:active { transform: none; }
+  }
+  @media (max-width: 720px) {
+    .dock-left { max-width: calc(100vw - 36px); }
+    .brief { min-width: 0; }
+    .brief-line { display: none; }
+    .dock-right { top: auto; bottom: 18px; right: 18px; min-width: 0; }
+    .cost { display: none; }
+    .lattice-panel-modal { bottom: 4vh; }
+  }
+</style>
+<div id="app"></div>
+<script type="module" src="/src/main.ts"></script>

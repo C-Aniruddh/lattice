@@ -1,0 +1,129 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Endless — a Lattice exhibit</title>
+<style>
+  /*
+   * The overlay's whole appearance, and — unusually for this gallery — its whole structure too.
+   * `@lattice/ui` ships no stylesheet at all: it writes structure, `pointer-events`, and the
+   * `--lattice-*` custom properties `hud.ts` pushes from `draw`'s live palette. Everything below
+   * and everything in the `#hud` markup is this exhibit's art direction for the DOM half, exactly
+   * as `things.ts` is for the canvas half, and every line of both is uncounted art.
+   *
+   * Two decisions worth stating. The plates are square-cornered and hairline-ruled rather than
+   * bevelled, because this HUD is an *instrument panel* — five of its six readings are live
+   * counters and one of them turns red — and an ornamented frame around a counter reads as
+   * decoration rather than as a reading. And the accent is `--lattice-leaf`, the same green the
+   * temperate ground is drawn in, so the panel belongs to the world it is over rather than
+   * floating on it.
+   *
+   * The five sentences the pin can say are all present, and CSS shows exactly one of them from the
+   * class name `hud.ts` writes on the root. That is why the overlay module has no branch in it.
+   */
+  html, body { margin: 0; height: 100%; background: #8fc4e8; overscroll-behavior: none; }
+
+  .lattice-ui {
+    --paper: #f2f6fb;
+    --dim: #9fb0c4;
+    --deep: var(--lattice-ink, #17203a);
+    --card: color-mix(in srgb, var(--deep) 86%, transparent);
+    --rule: color-mix(in srgb, var(--paper) 15%, transparent);
+    --accent: var(--lattice-leaf, #6fae4a);
+    --hot: var(--lattice-bad, #dd4b3c);
+    --good: var(--lattice-ok, #55c06a);
+    --warn: var(--lattice-warn, #ffd25e);
+    font: 500 12px/1.45 ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+    color: var(--paper);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  .card {
+    position: absolute;
+    padding: 12px 14px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    backdrop-filter: blur(7px);
+  }
+
+  .brief { left: 18px; top: 18px; max-width: 372px; }
+  .brief h1 { margin: 0 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .3em; color: var(--accent); }
+  .brief p { margin: 0; font-size: 13px; line-height: 1.5; }
+  .brief code {
+    display: block; margin-top: 9px; padding: 6px 8px; font-size: 11px; letter-spacing: .02em;
+    color: var(--dim); background: rgba(0, 0, 0, .32); border-left: 2px solid var(--accent);
+  }
+
+  /* The instrument. Tabular numerals and a fixed label column, so five readings changing at five
+     different rates do not make the panel twitch sideways as they do it. */
+  .figures { right: 18px; top: 18px; display: grid; grid-template-columns: auto auto; gap: 5px 18px; }
+  .figures .key { font-size: 10px; letter-spacing: .16em; color: var(--dim); align-self: center; }
+  .figures .val { font-size: 14px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+  .hud.hot .worst { color: var(--hot); }
+
+  /* The one line the exhibit is really making, and the only place color carries meaning rather
+     than hierarchy: amber while the answer is not yet known, green once it is. */
+  .proof {
+    left: 50%; bottom: 24px; transform: translateX(-50%);
+    width: min(660px, calc(100vw - 36px)); text-align: center; border-left: 2px solid var(--dim);
+  }
+  .proof .at { margin: 0 0 2px; font-size: 11px; letter-spacing: .12em; color: var(--dim); }
+  .proof .at:empty { display: none; }
+  .proof p.say { margin: 0 0 11px; font-size: 13px; line-height: 1.45; }
+  .say { display: none; }
+  .hud.none .s-none, .hud.wait .s-wait, .hud.gone .s-gone, .hud.good .s-good, .hud.bad .s-bad { display: block; }
+  .hud.wait .proof, .hud.gone .proof { border-left-color: var(--warn); }
+  .hud.good .proof { border-left-color: var(--good); }
+  .hud.good .s-good { color: var(--good); }
+  .hud.bad .proof { border-left-color: var(--hot); }
+  .hud.bad .s-bad { color: var(--hot); }
+
+  .buttons { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .btn {
+    padding: 10px 18px; border: 1px solid var(--rule); cursor: pointer;
+    font: inherit; font-size: 12px; font-weight: 700; letter-spacing: .05em;
+    background: var(--card); color: var(--paper);
+    transition: transform .12s ease-out, background-color .16s linear;
+  }
+  .btn.primary { background: var(--accent); color: var(--deep); border-color: transparent; }
+  .btn:hover { transform: translateY(-1px); }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 2px solid var(--paper); outline-offset: 3px; }
+
+  @media (prefers-reduced-motion: reduce) { .btn:hover, .btn:active { transform: none; } }
+  @media (max-width: 760px) {
+    .brief { max-width: calc(100vw - 36px); }
+    .brief code { display: none; }
+    .figures { top: auto; bottom: 150px; }
+    .proof { bottom: 14px; }
+  }
+</style>
+<div id="app"></div>
+<div id="hud" class="hud none">
+  <section class="card brief">
+    <h1>ENDLESS</h1>
+    <p>Drag in any direction, for as long as you like. Every chunk ahead is minted from the seed and its own coordinates; every chunk behind is thrown away.</p>
+    <code>chunk = f(seed, chunkX, chunkY)</code>
+  </section>
+  <section class="card figures">
+    <span class="key">POSITION</span><span class="val" data-cell></span>
+    <span class="key">CHUNKS LIVE</span><span class="val" data-cell></span>
+    <span class="key">MEMORY</span><span class="val" data-cell></span>
+    <span class="key">MINTED / EVICTED</span><span class="val" data-cell></span>
+    <span class="key">WORST FRAME · 10s</span><span class="val worst" data-cell></span>
+  </section>
+  <section class="card proof">
+    <p class="at" data-cell></p>
+    <p class="say s-none">Nothing pinned. Mark the chunk under the middle of the frame, travel until it is evicted, then come back to it.</p>
+    <p class="say s-wait">Pinned and fingerprinted. Keep travelling until it leaves memory.</p>
+    <p class="say s-gone">Evicted — it is not in memory anywhere. Go back to it and it will be re-minted from the seed.</p>
+    <p class="say s-good">Evicted, re-minted on return, and bit-identical. Same seed, same world.</p>
+    <p class="say s-bad">It came back DIFFERENT. That is the one bug this exhibit exists to catch.</p>
+    <div class="buttons">
+      <button class="btn primary" type="button">Pin this chunk</button>
+      <button class="btn" type="button">Return to pin</button>
+      <button class="btn" type="button">Origin</button>
+    </div>
+  </section>
+</div>
+<script type="module" src="/src/main.ts"></script>

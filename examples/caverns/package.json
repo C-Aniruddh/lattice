@@ -1,0 +1,21 @@
+{
+  "name": "@lattice/example-caverns",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CAVERNS — a gallery exhibit. The light field alone: darkness, torches, and pools that meet without a bright seam.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5190",
+    "build": "vite build",
+    "preview": "vite preview --port 5291"
+  },
+  "$comment": "Five of nine, and this is the one exhibit whose subject is a single module of a single package — @lattice/draw's LightField. `sim` and `persist` are absent because a cave has no economy and nothing that outlives the tab. `audio` is absent and it is the loudest omission in the gallery: a cavern is the exhibit that most wants a drip and a room tone, and it is left out only because the gallery still has no shared answer for the gesture that unlocks an AudioContext — the same finding `island` and `city` filed. `input` and `loop` arrive through examples/_shared's bootstrap and are named here because they are what this runs on.",
+  "dependencies": {
+    "@lattice/core": "^0.1.0",
+    "@lattice/draw": "^0.1.0",
+    "@lattice/input": "^0.1.0",
+    "@lattice/iso": "^0.1.0",
+    "@lattice/loop": "^0.1.0",
+    "@lattice/ui": "^0.1.0"
+  }
+}
