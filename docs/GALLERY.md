@@ -477,6 +477,21 @@ isometric projection flattens exactly the axis a landform is impressive along.**
 whose subject is vertical — a canyon, a tower, a shaft, a cliff — has to buy that axis back with
 composition and cues, and none of them are the height field.
 
+**And the first build proved the cues are not enough on their own.** It shipped every row of the
+table above — countable strata, a switchback trail for scale, haze inside the gorge, feet on
+screen — and still read as a stratified hillside, because the *structure* underneath them was
+wrong. Held against a photograph of the real thing, three things were missing and no amount of
+cueing substitutes for them:
+
+| | why it is structural rather than decorative |
+|---|---|
+| **a flat tableland with a hard rim line** | the drop reads because there is something *level* to measure it against. Terrain that rises continuously to the top of the frame never establishes what level means, so nothing is falling away from anything |
+| **the river visible at the bottom of a V** | it is the brightest thing in a canyon photograph and the line the eye follows into depth. Both walls descend to it; without it there is no section, only a slope |
+| **walls that step rather than slope** | hard beds stand as cliffs, soft beds as benches, alternating all the way down. A uniform talus angle is geologically defensible and is exactly what makes a wall read as a hillside |
+
+The lesson is worth more than the exhibit: **a cue decorates a structure and cannot replace one.**
+When something is not reading, check the composition before adding another cue to it.
+
 ---
 
 ## The control panel
