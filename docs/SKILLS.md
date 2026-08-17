@@ -100,3 +100,105 @@ whether an agent that has never seen the RFCs avoids the traps anyway; and wheth
 builds is any good.
 
 **Anything that run cannot do is the real backlog.** Everything before it is preparation.
+
+---
+
+# Part two: the plugin, and the one command
+
+The section above settles *what the skills know*. This one settles **how a person gets them and
+what happens when they use them**, and it is a different problem with a much harder bar.
+
+## The bar
+
+> **A grandmother or a five-year-old installs the plugin, types their game idea, and gets a
+> game.**
+
+That is the requirement as stated, and it should be read literally rather than as enthusiasm.
+It rules out, immediately and without appeal:
+
+- asking which packages to install;
+- asking whether they want TypeScript, a bundler, or a project layout;
+- asking anything with a right answer the agent could have worked out;
+- a first response that is a plan, a question, or a wall of choices;
+- any error message whose fix is a command the user must understand.
+
+**Every question asked of the user is a failure to have chosen a default.** The only questions
+that survive are the ones where the user is the sole source of truth: what the game is about,
+and consent for something the agent may not decide alone.
+
+## The entry point is one command
+
+```
+/lattice a game where you rebuild a lighthouse and the light pushes back the fog
+```
+
+Everything after `/lattice` is the game. There is no flag, no subcommand, no mode. A user who
+types `/lattice` alone gets asked what they want to make, in one sentence, and nothing else.
+
+**One parent skill owns that command.** It is an orchestrator rather than a library: it decides
+which specialist skills to load and in what order, and the specialists never fire on their own
+for a from-scratch build. That inversion is the whole design — eleven skills triggering on
+phrase matches is a system that works when a user says the right words, and the bar above says
+they will not.
+
+## What the parent does, in order
+
+**1. Preflight, and it happens before a single file is written.**
+
+| check | if missing |
+|---|---|
+| `node` ≥ the engines floor, `npm` | stop. This is the one hard requirement, and the message names the installer link rather than a command |
+| a writable empty-ish directory | offer to make one. Never scaffold on top of someone's files without saying so |
+| **Claude in Chrome** | **warn, then ask once.** See below |
+| `git` | proceed without it, mention once |
+
+**Claude in Chrome is the interesting one**, and it is why preflight exists at all. Without a
+browser the agent cannot look at what it built, and this kit's tenth non-negotiable is that
+*green is not evidence* — a suite that passes and a black screen is the exact failure this
+project has already shipped once. So its absence is not a missing nicety, it is the removal of
+the only check that matters.
+
+The warning says that, in one sentence, and then asks the user to confirm they want to continue
+blind. It does **not** refuse. A user without the extension can still get a game; they just get
+one nobody has looked at, and they should know that is what they are getting.
+
+**2. Choose the shape, and say what was chosen — do not ask.** The game idea maps to an
+archetype, a starting exhibit, and a set of specialist skills. Announce the choice in one line
+so a user who wanted something else can say so; do not put it to a vote first.
+
+**3. Scaffold and install.** The skills know the package names, the layering, and the wiring
+order that works. This is the step where the user would otherwise have to know that `draw`
+depends on `iso`, and they must never find out.
+
+**4. Build it, and get to a running screen as fast as possible.** A visibly working thing that
+is missing features beats a complete thing that appears at the end. The first screen a user sees
+should arrive in the first minute, and should already be recognizably theirs.
+
+**5. Look at it.** Open it, screenshot it, judge it, fix what is wrong, and repeat. This is the
+step the preflight was protecting, and it is not optional when the browser is present.
+
+## What the parent must never do
+
+- **Report success on a build it has not seen.** With Chrome available, "it compiles" is not
+  done. Without Chrome, it says plainly that it has not been looked at.
+- **Surface a stack trace.** Errors are the agent's problem. The user hears what is happening in
+  their own words, or hears nothing.
+- **Leave a dead end.** Every failure has a next action the agent takes itself.
+
+## Distribution
+
+A marketplace entry, installed the way plugins are installed, carrying the parent and every
+specialist. It is **not** a dependency of any `@lattice/*` package and no package may assume it
+exists — the libraries have to work for someone who never heard of it.
+
+The skills are written against **the published packages**, not this workspace, for the reason
+Part one already gives: the user has `node_modules`, not the repository. The validation run is
+unchanged and is still the last task in the project — a fresh directory, tarballs, no repo
+access, and a judgment made by looking at the game rather than at the transcript.
+
+## The test that decides whether this shipped
+
+Not a checklist. One run, and it either happens or it does not:
+
+> Someone who has never seen this repository installs the plugin, types one sentence about a
+> game, touches nothing else, and ends up looking at that game in a browser.
