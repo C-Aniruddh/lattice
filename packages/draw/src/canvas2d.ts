@@ -16,7 +16,12 @@
  * 2. **It caches the radial ramp.** `softEllipse` is the contact shadow under every building, so
  *    a `createRadialGradient` per call is an allocation per building per frame. Instead one
  *    small offscreen ramp is rendered per color pair and blitted, which is also exactly what a
- *    GPU backend would do with a ramp texture.
+ *    GPU backend would do with a ramp texture. The two properties that make that a cache rather
+ *    than a slow allocator are written on {@link RAMP_LEVELS} and {@link RAMP_LIMIT}, and both
+ *    are there because the first version of this cache shipped without them: the key is snapped
+ *    to the resolution the ramp actually has, so a color that moves every frame still lands on a
+ *    handful of keys, and a full cache evicts **one** entry rather than all of them, so one
+ *    animated call site cannot delete every other call site's work.
  * 3. **It resets its own state on `begin`.** `setLineDash`, `globalAlpha`, `font`,
  *    `globalCompositeOperation` and `lineJoin` left set are the classic Canvas2D leaks: the next
  *    caller inherits them and the symptom appears somewhere unrelated to the cause. There is no
@@ -136,13 +141,187 @@ export interface OffscreenSurface extends Surface {
  *  pairs cost under two megabytes. */
 const RAMP_SIZE = 64;
 
-/** How many radial ramps are cached before the map is dropped wholesale. A palette's worth of
- *  shadow and glow colors is a few dozen; past this, something is generating colors per frame
- *  and an unbounded cache would be a leak wearing a cache's name. */
+/**
+ * How many levels each channel of a ramp's two colors is snapped to before it is looked up.
+ *
+ * **This is the fix for the cache's one failure mode, and it is not an approximation — it is the
+ * resolution the ramp already has.** {@link RAMP_SIZE} is 64, so there are 32 texels along a
+ * radius and the rendered falloff holds 32 steps between `inner` and `outer`. Two color pairs
+ * whose channels differ by less than a thirty-second of the range differ by less than one of the
+ * ramp's own steps: they render the same 64×64 image. Keying on the caller's exact 8-bit color
+ * asked the cache to tell apart images that are identical, and the worst case of that is not a
+ * wasted entry but the {@link RAMP_LIMIT} paragraph below.
+ *
+ * The number is the same 32 that `palette.ts` snaps a transition to, for the same reason and by
+ * the same argument: a continuous parameter that ends up in a *cache key* has to be reduced to
+ * the number of outcomes anyone can see, or the key changes every frame for ever.
+ *
+ * ## The channel, not the factor — which is a different axis and a deliberate choice
+ *
+ * Two exhibits hit this independently and both worked around it by snapping the **brightness
+ * factor** to eight or nine levels *before* it became a color, and both reported the result
+ * pixel-identical. That is evidence about what a soft radial falloff can show, and it is worth
+ * more than an argument. It is not, however, an axis this file can reach: a factor is a quantity
+ * in somebody's art module, and by the time a color arrives here the factor is gone. **The
+ * channels are the only thing the cache can see, so the channels are what it snaps.**
+ *
+ * The two axes coincide where it matters and this one is the finer of them. A factor that drives
+ * one channel — every one of those call sites was `withAlpha(color, factor)` — becomes 9 distinct
+ * bytes under their snap and at most 32 under this one, so nothing anybody has already accepted as
+ * invisible gets coarser. Replaying both exhibits' scenes against this rule with their own
+ * workarounds removed holds the cache at 26 and 40 live ramps against a limit of 96, which is what
+ * makes those workarounds deletable rather than merely unnecessary.
+ *
+ * **What it does not fix**, and what {@link Surface.softEllipse}'s doc therefore says out loud: a
+ * caller who animates both endpoints along independent paths still multiplies pairs. One moving
+ * end is 32 keys; two moving independently is 32². The cache is bounded either way now — that is
+ * {@link RAMP_LIMIT}'s job, not this one's.
+ *
+ * The widest version of that is not a flame at all. A third exhibit had **27% of its soft
+ * ellipses missing with no flickering light anywhere in it**: its day cycle ran `Palette.lerp`
+ * every frame, which moves every slot in the scene at once and makes every color in every call a
+ * new pair. This snap took that to 2.8% on the same frame. It is worth knowing that the residue
+ * is not the same shape as the flame case — a cold opening frame has to miss once per pair no
+ * matter what the key is — and worth knowing that `palette.ts` already defends the same way one
+ * layer up, by quantizing `t` and bumping `rev` 32 times across a dusk rather than 361.
+ */
+const RAMP_LEVELS = RAMP_SIZE / 2;
+
+/** One channel's level index, masked. {@link RAMP_LEVELS} is a power of two, so this is the low
+ *  five bits and the arithmetic below is shifts. */
+const LEVEL_MASK = RAMP_LEVELS - 1;
+
+/**
+ * How many radial ramps are cached before the least recently used one is dropped.
+ *
+ * A palette's worth of shadow and glow colors is a few dozen; past this, something is generating
+ * colors per frame and an unbounded cache would be a leak wearing a cache's name. **That reasoning
+ * was right and the remedy that first stood here was not.** It was `ramps.clear()`, which is the
+ * one response that punishes the innocent: an animated color anywhere in the frame did not merely
+ * fail to cache, it deleted every *other* call site's ramp as well. A gallery exhibit measured it
+ * — twenty-seven flames and a fountain's ripple rings — at **3.74 misses a frame**, a full cache
+ * drop every 26 frames, ≈225 `<canvas>` elements a second and ≈3.7 MB/s of backing store handed
+ * to the collector; the miss table named `contactShadow`, the light field's pools, the sky and
+ * every walker, all of them *constant*-color sites that should have been permanent hits. The
+ * exhibit's author had to quantize their own colors, two layers above here, to get it back.
+ *
+ * **And the cost scaled with the light count, which is the part that decided this.** A second
+ * exhibit measured the same mechanism at 4.3 misses a frame with its braziers alone and **15.9
+ * with three hundred torches lit** — a full drop every six frames — with its five hundred and
+ * fifty formations' contact shadows going down as collateral each time. Nobody there wrote
+ * anything unusual: they animated a flame, and `LightField.pool` turned a per-flame brightness
+ * into an alpha byte.
+ *
+ * **A bounded cache that drops everything is not a bounded cache; it is an allocator with a hit
+ * rate**, and it is strictly worse than either a smaller cache or no cache at all. Evicting one
+ * entry costs a scan of ninety-six integers on a miss that was already rendering a gradient, and
+ * it keeps the call sites that were never the problem. With {@link RAMP_LEVELS} in front of it
+ * there is usually nothing to evict.
+ */
 const RAMP_LIMIT = 96;
 
-/** Cached radial ramps, keyed on the inner and outer color. See {@link RAMP_SIZE}. */
-const ramps = new Map<string, HTMLCanvasElement>();
+/** One cached ramp, plus when it was last asked for. A record rather than the bare element so
+ *  that a hit can update recency with a store to a field instead of a rewrite of the map. */
+interface Ramp {
+  /** The rendered {@link RAMP_SIZE} square. */
+  readonly element: HTMLCanvasElement;
+  /** The value {@link clock} had at the last hit. Mutated in place, never re-allocated. */
+  used: number;
+}
+
+/** Cached radial ramps, keyed on the snapped inner and outer color. See {@link RAMP_SIZE}. */
+const ramps = new Map<number, Ramp>();
+
+/**
+ * Hits and misses so far, which is what "least recently used" is measured in.
+ *
+ * A frame counter would be the obvious alternative and is worse: two sites that both drew this
+ * frame would tie, and the tie-break would be map order — which is insertion order, which is
+ * exactly the FIFO behavior this is here to avoid.
+ */
+let clock = 0;
+
+/** Least recently used key found so far by {@link considerForEviction}, or `-1`. Module scope so
+ *  that the scan allocates nothing, in the shape `core`'s pools use. */
+let coldestKey = -1;
+
+/** {@link Ramp.used} of {@link coldestKey}. */
+let coldestUsed = 0;
+
+/**
+ * One step of the eviction scan, hoisted out of {@link evictColdest}.
+ *
+ * A closure written inline would be an allocation per eviction, and the point of this whole file
+ * is that the frame path hands the collector nothing.
+ */
+function considerForEviction(ramp: Ramp, key: number): void {
+  if (ramp.used < coldestUsed) {
+    coldestUsed = ramp.used;
+    coldestKey = key;
+  }
+}
+
+/**
+ * Drop the single least recently used ramp.
+ *
+ * `O(RAMP_LIMIT)` and it runs only on a miss — next to a `<canvas>`, a `getContext`, a
+ * `createRadialGradient` and a fill, a walk of ninety-six integers is nothing. The two textbook
+ * alternatives both move the cost onto the *hit*, which is the case that happens under every
+ * building of every frame: reinsertion LRU pays a `delete` and a `set` per hit to maintain an
+ * order only eviction ever reads, and a linked list pays an object per entry and a pointer
+ * rewrite per hit.
+ */
+function evictColdest(): void {
+  coldestKey = -1;
+  coldestUsed = clock + 1;
+  ramps.forEach(considerForEviction);
+  // `-1` cannot survive the scan — the map is full when this is called and every `used` is at
+  // most `clock` — and deleting a key that is not there is a no-op, so there is no branch here
+  // for anyone to get wrong later.
+  ramps.delete(coldestKey);
+}
+
+/**
+ * The five bits per channel a ramp can resolve, packed into one 20-bit integer.
+ *
+ * This is why the cache key is a number and not a `${inner}|${outer}` template: a string per
+ * `softEllipse` is a string per contact shadow per frame, which is trap 4 from `color.ts` —
+ * *"three fresh strings per box per frame, the largest single source of garbage in the
+ * renderer"* — reintroduced one layer lower down, where nothing would show it.
+ *
+ * All Tier A: shifts and masks on a uint32.
+ */
+function bitsOf(color: Rgba): number {
+  const c = color >>> 0;
+  return (
+    ((c >>> 27) << 15) |
+    (((c >>> 19) & LEVEL_MASK) << 10) |
+    (((c >>> 11) & LEVEL_MASK) << 5) |
+    ((c >>> 3) & LEVEL_MASK)
+  );
+}
+
+/** Stride that packs two {@link bitsOf} results into one key. 2²⁰ per color, so a pair is under
+ *  2⁴⁰ and stays an exact integer with twelve bits to spare. */
+const RAMP_KEY_STRIDE = 1 << 20;
+
+/**
+ * A color snapped to {@link RAMP_LEVELS} per channel: keep the top five bits and replicate them
+ * into the low three.
+ *
+ * **The replication rather than a mask alone is what keeps the ends exact** — `0xff` stays
+ * `0xff`, `0x00` stays `0x00` — and that matters more than it looks. Every glow and every contact
+ * shadow in this kit ends at alpha 0, and a rim that snapped to alpha 7 would put a visible ring
+ * around all of them. Worst-case error elsewhere is 7/255, under one step of the ramp itself.
+ *
+ * Four bitwise ops for all four channels at once: `c & 0xf8f8f8f8` keeps the top five bits of
+ * every byte, and `(c >>> 5) & 0x07070707` is the top *three* of those five, landed in the low
+ * three of the same byte. Only the miss path calls it — {@link bitsOf} is what the key needs.
+ */
+function snap(color: Rgba): Rgba {
+  const c = color >>> 0;
+  return ((c & 0xf8f8f8f8) | ((c >>> 5) & 0x07070707)) >>> 0;
+}
 
 /** Which element backs a bitmap, so `blit` can find the image behind the opaque handle without
  *  a backend-specific field on the shared `Bitmap` type. */
@@ -168,21 +347,34 @@ function contextOf(element: HTMLCanvasElement, alpha: boolean): CanvasRenderingC
   return ctx;
 }
 
-/** The cached ramp for one color pair, rendered once. */
+/**
+ * The cached ramp for one color pair, rendered once.
+ *
+ * The hit path is two {@link bitsOf}, a multiply, a `Map.get` and a store: **no string, no
+ * object, nothing for the collector.** {@link RAMP_LEVELS} is what makes it a hit at all for a
+ * color that moves, and {@link RAMP_LIMIT} is what keeps a miss from costing anybody else.
+ */
 function rampFor(inner: Rgba, outer: Rgba): HTMLCanvasElement {
-  const key = `${String(inner >>> 0)}|${String(outer >>> 0)}`;
+  const key = bitsOf(inner) * RAMP_KEY_STRIDE + bitsOf(outer);
+  clock += 1;
   const hit = ramps.get(key);
-  if (hit !== undefined) return hit;
+  if (hit !== undefined) {
+    hit.used = clock;
+    return hit.element;
+  }
   const element = makeElement(RAMP_SIZE, RAMP_SIZE);
   const ctx = contextOf(element, true);
   const half = RAMP_SIZE / 2;
   const gradient = ctx.createRadialGradient(half, half, 0, half, half, half);
-  gradient.addColorStop(0, cssOf(inner));
-  gradient.addColorStop(1, cssOf(outer));
+  // The *snapped* colors, not the caller's. Rendering the exact color the first caller happened
+  // to bring would let frame order decide what every later caller with the same key looks like,
+  // which is a rendering that depends on draw order — the one thing this kit does not ship.
+  gradient.addColorStop(0, cssOf(snap(inner)));
+  gradient.addColorStop(1, cssOf(snap(outer)));
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, RAMP_SIZE, RAMP_SIZE);
-  if (ramps.size >= RAMP_LIMIT) ramps.clear();
-  ramps.set(key, element);
+  if (ramps.size >= RAMP_LIMIT) evictColdest();
+  ramps.set(key, { element, used: clock });
   return element;
 }
 

@@ -153,6 +153,56 @@ The loop's own share of an 8 ms budget is about **0.005%**. The replay figure ma
 different reason: verifying an hour of recorded play takes under a third of a second, so a
 divergence check is something CI can run on every commit rather than a thing anyone schedules.
 
+### A green `worstFrameMs` is not proof of no hitch
+
+**`frameMs` and `worstFrameMs` are the pump's own wall time.** The loop reads its injected clock
+on the way into a pump and on the way out; the difference is the work it did. A garbage
+collection, a style recalculation, or anything else the browser chooses to do **between** two
+pumps is in neither reading and cannot appear in either number, ever. That is not a bug in the
+measurement — it is the boundary of what the measurement is — and it matters because
+`docs/GALLERY.md` § Scale's cost row made the worst frame in ten seconds the figure every exhibit
+is gated on.
+
+It failed in both available directions before it was fixed. `crowd`, hunting a tail caused by
+3.7 MB/s of canvas allocation inside `draw`, measured **23.1 ms worst on one machine and 13.1 ms
+on another for the same build** — whether the pause lands inside a pump is machine-dependent and
+the readout was not. `terraces` shipped a HUD reading **0.0 ms** against a separately measured
+9.2 ms gap. Four exhibits ended up hand-rolling their own meter, and three of them reported a
+different wrong answer.
+
+So `@lattice/loop` now publishes **both instruments**, and the pump pair was not redefined:
+
+| field | measures | sees a pause between pumps? | contains the display period? |
+|---|---|---|---|
+| `frameMs`, `worstFrameMs`, `overBudget` | the pump's own work | **no** | no |
+| `worstGapMs`, `cadenceMs` | paint-to-paint wall time, over a rolling `windowMs` | **yes** | **yes** |
+
+Measured on the live `terraces` exhibit (Apple Silicon, Chrome, `?seed=contour`), one 24-frame
+sample, both figures read off the same loop at the same instant:
+
+| | reading | what it would have said |
+|---|---:|---|
+| `worstFrameMs` — the old gate | **4.6 ms** | 58% of an 8 ms budget. Comfortably passing |
+| `worstGapMs` — the new one | **69.2 ms** | one picture held for eighteen display periods |
+| `cadenceMs` | 3.7 ms | the period the frames were actually being delivered at |
+
+The exhibit's own hand-rolled meter independently computed 69.2 ms on the same frames, which is
+the cross-check: the two instruments agree about the world and disagree about nothing except
+which question they answer.
+
+**Read `worstGapMs` against `cadenceMs`, never against `budgetMs`.** A gap contains a whole
+display period that is not work — 16.7 ms is a perfect frame at 60 Hz and 8.3 ms is a perfect one
+at 120 — so the verdict is the ratio, not the number, and `budgetMs` remains a work budget
+belonging to `overBudget`. Two exclusions keep it honest rather than flattering: a gap of
+`absenceMs` or more is a hidden tab and is counted in `stats.absences` instead of being reported
+as a 96-second frame, and the opening `warmupFrames` gaps are the page's load rather than the
+scene's steady cost and are discarded while `stats.warmingUp` says so.
+
+One measurement note that cost an hour and generalizes: **an exhibit in a background tab paints
+nothing at all**, so every frame-time figure it reports is either zero or stale. `terraces` read
+`0.0 ms` in a hidden tab and 69.2 ms in a visible one, from the same build, seconds apart. Check
+`document.visibilityState` before believing a frame number measured through tooling.
+
 ---
 
 ## `@lattice/audio`

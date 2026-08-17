@@ -466,10 +466,13 @@
       "exports": [
         "BrowserFramesOptions",
         "Clock",
+        "DEFAULT_ABSENCE_MS",
         "DEFAULT_BUDGET_MS",
         "DEFAULT_HZ",
         "DEFAULT_IDLE_PUMP_MS",
         "DEFAULT_MAX_CATCH_UP_MS",
+        "DEFAULT_WARMUP_FRAMES",
+        "DEFAULT_WINDOW_MS",
         "Disposer",
         "FrameHost",
         "FrameSource",

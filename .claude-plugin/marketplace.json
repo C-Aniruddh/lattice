@@ -1,0 +1,33 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "lattice",
+  "description": "Lattice — the grid underneath. Type one sentence about a game and get an isometric, deterministic, zero-asset game you can play in a browser.",
+  "owner": {
+    "name": "Lattice",
+    "url": "https://github.com/C-Aniruddh/lattice"
+  },
+  "plugins": [
+    {
+      "name": "lattice",
+      "source": "./",
+      "description": "Build an isometric game from one sentence. Run /lattice followed by your idea — the plugin picks the shape, installs the kit, wires it, and opens the game in a browser so someone actually looks at it.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Lattice",
+        "url": "https://github.com/C-Aniruddh/lattice"
+      },
+      "homepage": "https://github.com/C-Aniruddh/lattice",
+      "repository": "https://github.com/C-Aniruddh/lattice",
+      "license": "MIT",
+      "category": "development",
+      "keywords": [
+        "game",
+        "isometric",
+        "gamedev",
+        "typescript",
+        "canvas",
+        "deterministic"
+      ]
+    }
+  ]
+}

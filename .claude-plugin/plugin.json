@@ -1,0 +1,21 @@
+{
+  "name": "lattice",
+  "displayName": "Lattice",
+  "version": "0.1.0",
+  "description": "Build an isometric game from one sentence. /lattice <your idea> picks the shape, installs the kit, wires it, gets to a running screen, then opens it in a browser and looks at it.",
+  "author": {
+    "name": "Lattice",
+    "url": "https://github.com/C-Aniruddh/lattice"
+  },
+  "homepage": "https://github.com/C-Aniruddh/lattice",
+  "repository": "https://github.com/C-Aniruddh/lattice",
+  "license": "MIT",
+  "keywords": [
+    "game",
+    "isometric",
+    "gamedev",
+    "typescript",
+    "canvas",
+    "deterministic"
+  ]
+}

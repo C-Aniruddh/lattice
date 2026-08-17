@@ -194,6 +194,39 @@ export interface Surface {
    * a building and the halo on a glow dot. A primitive rather than a gradient object because a
    * gradient object is an allocation per shadow per frame — the source game made one — and
    * because on a GPU this is one quad and a ramp texture.
+   *
+   * **The color pair is a cache key, and a backend is allowed to snap it.** This is the one
+   * thing about this call that is not obvious from its signature, so it is stated here rather
+   * than left in a backend: a falloff cannot be drawn per call at a sane price, so both backends
+   * that rasterize render one small ramp per `(inner, outer)` pair and reuse it. Canvas2D snaps
+   * each channel of both colors to **32 levels** before it looks the pair up *and* before it
+   * renders it, which is the resolution a 64-pixel ramp has anyway. Three consequences, and the
+   * middle one is the reason this paragraph exists:
+   *
+   * - **`0` and `255` are exact**, so a rim at alpha 0 is transparent and an opaque core is
+   *   opaque. Nothing rings.
+   * - **Animate a color as freely as you like.** A flame core mixed against noise every frame, or
+   *   an alpha that is a continuous function of a ripple's age, costs nothing: a moving endpoint
+   *   visits at most 32 keys per channel and then hits for ever. You do not have to quantize in
+   *   your own art code, and if you already did, you can stop.
+   * - **Two calls whose colors differ by less than a thirty-second of a channel paint the same
+   *   pixels.** A two-second fade steps 32 times rather than 120; on a soft falloff that is not
+   *   visible, but if you need a hard edge to move smoothly you want {@link Surface.ellipse},
+   *   which is exact.
+   *
+   * What is still worth knowing: animating *both* endpoints along independent paths multiplies
+   * the pairs rather than adding them. Move one end, or move the radius — which is what the eye
+   * tracks — and the pair count stays flat. A backend that recorded rather than rasterized keeps
+   * the colors you passed, so a golden test sees your values and not the snapped ones.
+   *
+   * **And "do not animate a color" is not the whole of it, because your palette counts as one.**
+   * A day cycle running {@link Palette.lerp} every frame moves *every* slot in the scene at once,
+   * so every color in every call becomes a new pair — a whole-scene version of the same thing,
+   * with nothing at any call site that looks like an animation. An exhibit found this with no
+   * flickering light anywhere in it and 27% of its soft ellipses missing. The snap above absorbs
+   * most of it, and `Palette.lerp` absorbs the rest by quantizing `t` and bumping
+   * {@link Palette.rev} only when the quantized step moves — which is the same defense one layer
+   * up, and the reason to prefer `lerp` over re-deriving a palette from a continuous `t` yourself.
    */
   softEllipse(cx: number, cy: number, rx: number, ry: number, inner: Rgba, outer: Rgba): void;
 

@@ -302,18 +302,114 @@ describe('the radial ramp cache', () => {
     expect((dom?.created.length ?? 0) - before).toBe(2);
   });
 
-  it('drops the whole cache rather than growing without bound', () => {
-    // The branch that stops a caller generating colors per frame from turning a cache into a
-    // leak wearing a cache's name.
+  it('costs a bounded number of ramps for a color that moves every frame', () => {
+    // The measurement that named this bug. A flame whose core is mixed against a noise value per
+    // frame, or a ripple whose alpha is a continuous function of its age, was a guaranteed miss
+    // on every frame for ever — a fresh <canvas>, a fresh context, a fresh gradient and a fresh
+    // fill, measured in a live exhibit at 3.74 a frame and ~3.7 MB/s handed to the collector.
+    // The key is snapped to the resolution a 64-pixel ramp has, so the animation closes over a
+    // small set of keys instead.
     const { surface } = screen();
-    const first = rgba(3, 5, 7, 200);
-    surface.softEllipse(0, 0, 4, 2, first, 0);
-    // Fill past the limit, then ask for the first color again: if the map had merely grown, it
-    // would still be there and no new ramp would be rendered.
-    for (let i = 0; i < 200; i++) surface.softEllipse(0, 0, 4, 2, rgba(i, 200 - i, i, 201), 0);
+    const sweep = (frame: number): void => {
+      const a = Math.round((Math.sin(frame * 0.031) * 0.5 + 0.5) * 255);
+      surface.softEllipse(0, 0, 8, 4, rgba(9, 130, 240, a), rgba(9, 130, 240, 0));
+    };
     const before = dom?.created.length ?? 0;
-    surface.softEllipse(0, 0, 4, 2, first, 0);
-    expect((dom?.created.length ?? 0) - before).toBe(1);
+    for (let frame = 0; frame < 600; frame++) sweep(frame);
+    const made = (dom?.created.length ?? 0) - before;
+    // One endpoint moves in one channel, so 32 levels is the ceiling — and more than one, or the
+    // sweep is not sweeping and the test could not fail.
+    expect(made).toBeGreaterThan(1);
+    expect(made).toBeLessThanOrEqual(32);
+    // …and the set of keys is closed: replaying the same frames renders nothing at all. That is
+    // the miss rate the exhibit measured, driven to zero.
+    const settled = dom?.created.length ?? 0;
+    for (let frame = 0; frame < 600; frame++) sweep(frame);
+    expect((dom?.created.length ?? 0) - settled).toBe(0);
+  });
+
+  it('keeps a constant-color site cached while another site churns past the limit', () => {
+    // The collateral damage, and the reason this was worth fixing rather than documenting. The
+    // cache used to answer a full map with `clear()`, so one animated color anywhere in the frame
+    // deleted the contact shadows, the light-field pools, the sky and every walker — all of them
+    // constant colors that should be permanent hits and none of them the cause.
+    const { surface } = screen();
+    const constant = rgba(17, 34, 51, 96);
+    surface.softEllipse(0, 0, 6, 3, constant, 0);
+    const before = dom?.created.length ?? 0;
+    for (let i = 0; i < 200; i++) {
+      // 200 pairs that are still 200 pairs after the snap: two channels moving on their levels.
+      surface.softEllipse(0, 0, 6, 3, rgba((i % 32) * 8, ((i / 32) | 0) * 8 + 1, 200, 255), 0);
+      // …and a read of the constant site, exactly as a frame would make it.
+      surface.softEllipse(0, 0, 6, 3, constant, 0);
+    }
+    // The churn and nothing else. Under a wholesale clear the constant site was re-rendered every
+    // time the map filled, which is twice a second at the rate the exhibit measured.
+    expect((dom?.created.length ?? 0) - before).toBe(200);
+  });
+
+  it('evicts one entry rather than the map, and the one it drops is the coldest', () => {
+    const { surface } = screen();
+    const churn = (i: number): number => rgba((i % 32) * 8, ((i / 32) | 0) * 8 + 2, 120, 255);
+    const cold = rgba(7, 200, 90, 240);
+    const warm = rgba(7, 200, 90, 208);
+    surface.softEllipse(0, 0, 5, 5, cold, 0);
+    surface.softEllipse(0, 0, 5, 5, warm, 0);
+    for (let i = 0; i < 200; i++) {
+      surface.softEllipse(0, 0, 5, 5, churn(i), 0);
+      surface.softEllipse(0, 0, 5, 5, warm, 0);
+    }
+    // `warm` was read on every pass, so it is never the least recently used…
+    let mark = dom?.created.length ?? 0;
+    surface.softEllipse(0, 0, 5, 5, warm, 0);
+    expect((dom?.created.length ?? 0) - mark).toBe(0);
+    // …nor is anything else from the tail of the churn, which is what "one entry, not all of
+    // them" means: a cache that answered a full map by clearing it would be holding only what
+    // arrived since its last clear, and these forty would be misses.
+    mark = dom?.created.length ?? 0;
+    for (let i = 160; i < 200; i++) surface.softEllipse(0, 0, 5, 5, churn(i), 0);
+    expect((dom?.created.length ?? 0) - mark).toBe(0);
+    // …and `cold` was never read again, so it is the one that went. Which is also the proof that
+    // the cache is still bounded: two hundred keys did not all fit.
+    mark = dom?.created.length ?? 0;
+    surface.softEllipse(0, 0, 5, 5, cold, 0);
+    expect((dom?.created.length ?? 0) - mark).toBe(1);
+  });
+
+  it('renders the snapped color, with 0 and 255 exact so a rim never rings', () => {
+    // Rendering the color the *first* caller to reach a key happened to bring would let frame
+    // order decide what every later caller looks like.
+    const { surface } = screen();
+    surface.softEllipse(0, 0, 5, 5, rgba(255, 3, 129, 255), 0);
+    const created = dom?.created ?? [];
+    const stops = (created[created.length - 1]?.ctx.calls ?? []).filter(
+      (call) => call.fn === 'addColorStop',
+    );
+    // Five bits kept and replicated into the low three: 255 → 255, 3 → 0, 129 → 132.
+    expect(stops[0]?.args[1]).toBe('rgb(255,0,132)');
+    // The rim stays exactly transparent, which is what the replication buys over a bare mask —
+    // an outer stop that snapped to alpha 7 would ring every glow in the kit.
+    expect(stops[1]?.args[1]).toBe('rgba(0,0,0,0.000)');
+  });
+
+  it('is reached by softEllipse and by no other primitive', () => {
+    // The trap's whole character was that it was invisible from the call site — an exhibit calls
+    // `glowDot`, which calls `softEllipse`, which consults a cache nobody upstream has heard of.
+    // A second entry point that nobody had noticed would be the same bug again, so every other
+    // primitive on the surface is exercised here and none of them may reach a ramp.
+    const { surface, canvas } = screen();
+    const before = dom?.created.length ?? 0;
+    canvas.ctx.calls.length = 0;
+    surface.begin(rgba(4, 4, 4, 255));
+    surface.poly(XY([0, 0, 4, 0, 4, 4]), 3, rgba(203, 31, 29, 201));
+    surface.polyRamp(XY([0, 0, 4, 4]), 2, 0, 0, 4, 0, rgba(1, 2, 3, 4), rgba(5, 6, 7, 8));
+    surface.stroke(XY([0, 0, 4, 4]), 2, false, rgba(9, 91, 19, 90), 1);
+    surface.ellipse(2, 2, 3, 3, rgba(11, 22, 33, 44));
+    surface.text('x', 0, 0, DEFAULT_TEXT, rgba(1, 1, 1, 255));
+    surface.alpha(0.5);
+    surface.end();
+    expect((dom?.created.length ?? 0) - before).toBe(0);
+    expect(canvas.ctx.calls.filter((call) => call.fn === 'createRadialGradient')).toHaveLength(0);
   });
 
   it('blits the ramp to the ellipse’s box rather than stretching a gradient', () => {
