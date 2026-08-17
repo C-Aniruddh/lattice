@@ -1,6 +1,6 @@
 # The gallery
 
-Lattice does not ship one demo. It ships **sixteen small examples**, shown on a landing page,
+Lattice does not ship one demo. It ships **seventeen small examples**, shown on a landing page,
 each of which a visitor can understand in one to two minutes — **and one hero**, which is the
 page's playable header and is [named and bounded below](#the-one-hero-and-the-one-exemption).
 
@@ -131,7 +131,7 @@ routed as a finding; until it exists, the two lines above are the rule.
 Rule 4 used to carry the ratio as its justification, and the ratio keeps that job: **every author
 reports the split, and no number gates on it.** An art *floor* would be met with padding within a
 week, and rule 1 already fails an exhibit that is not worth looking at. The cap binds the half that
-gets worse as it grows; the ratio is how the kit reads its own results across sixteen of them.
+gets worse as it grows; the ratio is how the kit reads its own results across seventeen of them.
 
 ### Why 200 is not a relaxation
 
@@ -178,9 +178,9 @@ premise is the weakest row this gallery could ship. That also settles a count th
 wrong throughout: the table listed fifteen rows while the landing-page section promised fourteen
 live tiles in four separate places.
 
-**Sixteen rows and one hero** is the shape. It was fourteen until *Endless* and *Errand* were
-added; the count is written down here, in one place, precisely because it was wrong in four
-places for as long as it was written down in four places.
+**Seventeen rows and one hero** is the shape. It was fourteen until *Endless* and *Errand* were
+added, and sixteen until *Canyon*; the count is written down here, in one place, precisely
+because it was wrong in four places for as long as it was written down in four places.
 
 ---
 
@@ -241,6 +241,7 @@ its row is either finished or is a different exhibit.
 | **Migration** | a v1 save opened by a v5 build, stepping the chain in front of you | `persist` |
 | **Instrument** | sound with no files — a board that shows the synthesis as it plays | `audio` |
 | **Resonance** | a game you play *by ear*: gates hum a chord and you have to answer it | `audio` `draw.light` |
+| **Canyon** | deep time: a river cutting a gorge over a million years, scrubbable, and the ground never stops moving | `iso.height` `core.noise` |
 
 ### Whole games, small — the two rows that answer "could I actually ship something with this"
 
@@ -256,7 +257,7 @@ and they are on the list precisely because both are traditionally where a small 
 enough. They are still rows: bound by the line rule, no endings, no meta progression, nothing that
 is not visible in ninety seconds.
 
-Sixteen, plus the hero. `Lamplighter` was the fifteenth row and is now the hero's own premise; see
+Seventeen, plus the hero. `Lamplighter` was the fifteenth row and is now the hero's own premise; see
 [The one hero](#the-one-hero-and-the-one-exemption). The list is still expected to lose one or two
 that turn out to be dull and gain one or two nobody has thought of.
 
@@ -276,6 +277,44 @@ board never asks of a mixer.
 
 Pair it with the light field and it earns two exhibits' worth of screen: a cavern lit only by
 what you have opened, and sound as the sense you navigate by.
+
+### Canyon, and the exhibit where the closed-form answer is wrong
+
+Every terrain in this gallery is a height field that was generated once and then stood still.
+`Canyon` is the one where the ground is a function of *time* — a river cutting a gorge over a
+million years, with strata appearing as it cuts down through them, and a scrub bar so a visitor
+can watch it happen, run it backwards, and stop anywhere.
+
+It exists because it is the honest counterweight to `Crowd`. Crowd's whole claim is that two
+hundred walkers need no state at all, because a walker's position is a closed-form expression in
+`t`. That is true, it is the kit's best trick, and **it does not generalize** — erosion genuinely
+accumulates. Where the sediment goes next depends on where the water went last, and there is no
+expression that answers "what does this valley look like at t = 400,000 years" without being the
+simulation. A gallery in which every exhibit is closed-form is a gallery that has quietly
+selected for problems that happen to be closed-form, and a reader would be right to distrust it.
+
+**So the scrub bar is a re-run, not a lookup, and that is the demonstration.** Determinism is
+what buys it: the same seed stepped to the same epoch produces the same canyon to the bit, so
+"go to year 400,000" is "start from the seed and step, from the nearest checkpoint," and it lands
+on a canyon identical to the one the visitor saw on the way past. Say that in the HUD — the
+epoch, the step count, and the fact that it was recomputed rather than remembered. A scrub bar
+that is secretly a cache of screenshots proves nothing and is the easy version of this exhibit.
+
+Two consequences worth designing for rather than discovering:
+
+- **This is the gallery's sharpest Tier A / Tier B case.** Everywhere else, Tier B reaches
+  pixels and stops. Here the height field is state that feeds the next step, so a last-bit
+  disagreement in a `pow` does not stay a last-bit disagreement — it compounds for a hundred
+  thousand iterations and two engines end up with rivers in different places. The erosion step
+  is Tier A or the exhibit's headline claim is false. Art may use whatever it likes.
+- **Moving ground is the adversary of every cache in `draw`.** Sprite caching assumes a sprite
+  drawn this frame looks like the one drawn last frame, and a terrain that changes continuously
+  is the case that assumption was never tested against. Finding out what that costs is a
+  legitimate second reason for this exhibit to exist, and the number belongs in the report.
+
+It is not `Terraces` at a different scale. Terraces is about **picking on elevation** — the
+tap→tile conversion that assumes flat ground. Canyon is about **elevation as a function of
+time**, and if the two start converging, one of them is finished.
 
 ---
 
@@ -310,14 +349,14 @@ feature, and `@lattice/ui` is deliberately not a controls library.
 ## What the gallery is really for
 
 **It is the widest test the kit will ever get, and it will find things.** Nine packages were
-designed in parallel against one game's capability matrix. Sixteen exhibits will exercise
+designed in parallel against one game's capability matrix. Seventeen exhibits will exercise
 combinations nobody designed for, and every place two of them hand-roll the same thirty lines
 of bootstrap is a gap in the kit rather than a coincidence.
 
 So each exhibit's author reports the same two things the first demo was asked for: **where the
 kit fought back**, and **the logic-to-art line split** — the latter from the command in
-[The line rule](#the-line-rule) rather than by hand, so that sixteen reports are one series
-instead of sixteen different opinions about what a line is. Those reports are the input to the
+[The line rule](#the-line-rule) rather than by hand, so that seventeen reports are one series
+instead of seventeen different opinions about what a line is. Those reports are the input to the
 next cycle, and they matter more than the exhibits.
 
 ---
@@ -345,13 +384,13 @@ that is itself decorated competes with its own product.
 **Nothing on this page is a picture of Lattice. Everything is Lattice, running.**
 
 No screenshots. No recorded video. No "watch the demo" button. The hero is a live isometric
-world rendering in a canvas the moment the page paints, and the gallery below it is sixteen
-*live* scenes in a grid — not sixteen thumbnails. Sixteen worlds animating at once, in a
+world rendering in a canvas the moment the page paints, and the gallery below it is seventeen
+*live* scenes in a grid — not seventeen thumbnails. Seventeen worlds animating at once, in a
 page that weighs less than one hero image on a typical framework site, is a claim no
 competitor can make and no visitor can misread.
 
 That single decision does the persuading. A visitor does not need to be told the renderer is
-fast; they are watching sixteen of them.
+fast; they are watching seventeen of them.
 
 ### What the page has to land, in order
 
@@ -368,7 +407,7 @@ fast; they are watching sixteen of them.
    a generic gamedev library cannot copy: install the skills, point an agent at it, get a
    game. Show the actual invocation. Show what an agent produces. The audience is people who
    will build this *with* an agent, and the page should be legible to the agent too.
-5. **The gallery.** Sixteen live tiles, each one line of caption, each linking to source.
+5. **The gallery.** Seventeen live tiles, each one line of caption, each linking to source.
    The source is the point — a visitor who likes a tile wants the file, immediately.
 6. **One paste-able example** that compiles, sized so the whole thing fits on screen at once.
 
@@ -388,7 +427,7 @@ rather than importing a library to fake one.
   fine here. But it should hold itself to the rule anyway wherever it can, because a landing
   page that quietly needs a sprite sheet to look good is an argument against its own product.
 - **Nothing it does may leak into `packages/`**, and no exhibit may depend on it.
-- It must be **fast on a phone**. Sixteen live scenes is a spectacle on a laptop and a
+- It must be **fast on a phone**. Seventeen live scenes is a spectacle on a laptop and a
   disaster on a mid-range Android unless the tiles are paused until scrolled into view and
   the hero drops to a lower cadence off-screen. The kit gives you exactly the tools for this
   and it would be embarrassing to get wrong on a page selling frame-time discipline.
