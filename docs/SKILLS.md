@@ -202,3 +202,71 @@ Not a checklist. One run, and it either happens or it does not:
 
 > Someone who has never seen this repository installs the plugin, types one sentence about a
 > game, touches nothing else, and ends up looking at that game in a browser.
+
+---
+
+# The positioning, and what it makes of everything else
+
+**The kit is the underlying tech. The product is the plugin and the skills.**
+
+Stated by the owner, and it settles a question this repository had been answering the other way
+round for its whole life:
+
+> The product is that anyone can quickly build complex isometric games and ship them quickly
+> without worrying about code, sprites, ui, music or anything. Which is why advertising
+> typescript or npm and more isn't necessary.
+>
+> Product is the AI tool, everything else is just there to ensure that the AI is able to do the
+> right thing.
+
+## What it demotes
+
+Nine libraries, zero dependencies, 81.72 kB gzipped, the layering, the export count — none of
+these are things the buyer weighs, because the buyer is not choosing a rendering library. They
+want an isometric game and do not want to write code, draw sprites, or make music.
+
+**Every one of those facts stays. What changes is the sentence they belong to.** They are not
+features; they are *the reason the AI succeeds where a general coding agent fails*:
+
+| the fact | what it was sold as | what it actually is |
+|---|---|---|
+| **zero assets** | a small bundle, a clean repo | there are no sprite sheets to hallucinate. An agent cannot reference an image that was never supposed to exist |
+| **determinism** | a correctness property | the thing it built behaves the same way twice, so a fix stays fixed and a review means something |
+| **nine small libraries, one direction** | good architecture | a surface an agent can hold in its head, where an upward import is a compile error rather than a subtle bug |
+| **the traps, written down** | good documentation | the sixty findings the gallery paid for, so the agent does not re-buy them |
+| **`llms.txt`, `api.json`, `kit.json`** | agent-readable docs | the actual product surface. This is what the agent reads |
+
+That is a better argument than any of them made on their own. An AI asked to make a game
+normally invents asset paths, physics constants and a sprite pipeline. Here there is nothing to
+invent, and the failures that remain are written down.
+
+## What it promotes
+
+The eleven skills and the one command stop being a distribution channel for a library and become
+**the thing being shipped**. Everything in `packages/` exists to make them work.
+
+Three consequences worth writing down, because they change decisions already made:
+
+1. **The validation run is no longer the last item on a checklist. It is the definition of
+   done.** A stranger's directory, one sentence, a game at the end. Until that works, the product
+   does not exist — regardless of how many tests the kit passes or how good the exhibits look.
+2. **Publishing the packages matters less than the plugin working.** Registry presence is
+   plumbing; it is on the checklist because the plugin needs it, not for its own sake.
+3. **The landing page's job changed.** It sells an AI tool with a kit underneath, not a kit with
+   an agent story attached.
+
+## The honest tension, stated rather than managed
+
+**The product does not work yet.** Nothing is published, the repository is private, and the
+looking loop — the half of the flow where the agent opens the game and judges it — has never
+been exercised with a browser attached.
+
+That was tolerable while the kit was the product and the plugin was the last mile. Under this
+positioning it is the whole risk, and it moves to the front: **the gap between what the page
+says and what a visitor can do is now the gap between the product and nothing.**
+
+The discipline that follows is the same one the rest of this repo already keeps. Advertise the
+property that is true today, never the promise. What is true today is that the kit is built for
+an agent to use, that the knowledge is written down, and that eighteen worlds — ten of them
+running on the page — were built with it. What is not yet true is that a stranger can type a
+sentence and get a game, and no wording should imply otherwise until the validation run says it.
