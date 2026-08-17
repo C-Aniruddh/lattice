@@ -1,0 +1,88 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Clay — a Lattice exhibit</title>
+<style>
+  /*
+   * The overlay's whole appearance, and every line of it is uncounted art.
+   *
+   * `@lattice/ui` ships no stylesheet at all — it writes structure, `pointer-events` and the
+   * `--lattice-*` custom properties `hud.ts` pushes from `draw`'s palette. So this block is the
+   * exhibit's art direction for the DOM half, exactly as `ground.ts` is for the canvas half.
+   *
+   * The two buttons are the interesting part. `ui` has no button, no toggle and no segmented
+   * control, so the exhibit's one control besides the drag itself is a bare `<button>` pair and
+   * every millimetre of it — the fill, the lit state, the hit target, the focus ring — is here.
+   * `Canyon` reported the same absence about a slider; see `readout.ts` for why two exhibits
+   * needing two different missing primitives is a finding rather than a coincidence.
+   */
+  html, body { margin: 0; height: 100%; background: #a8cbe0; overscroll-behavior: none; }
+  /* The canvas is the only thing a drag is for, and a drag that selects text is a drag that stops
+     halfway through a ridge. `touch-action: none` is what stops a phone scrolling the page
+     instead of sculpting; the canvas itself is created by `bootstrap`, so it is set from here. */
+  canvas { touch-action: none; -webkit-user-select: none; user-select: none; }
+
+  .lattice-ui {
+    --paper: #f4f1e6;
+    --dim: #9fb0a6;
+    --card: color-mix(in srgb, var(--lattice-ink, #221d1e) 84%, transparent);
+    --edge: color-mix(in srgb, var(--paper) 15%, transparent);
+    --accent: var(--lattice-warn, #ffce5c);
+    --river: var(--lattice-glass, #86bcd0);
+    --cut: polygon(9px 0, calc(100% - 9px) 0, 100% 9px, 100% calc(100% - 9px),
+                   calc(100% - 9px) 100%, 9px 100%, 0 calc(100% - 9px), 0 9px);
+    font: 600 13px/1.35 ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+    color: var(--paper);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  /* A plate with its corners cut. `clip-path` clips the border along with everything else, so the
+     hairline has to be a second clipped layer inset by a pixel — and it is `::before` rather than
+     `::after`, because `::after` is the last child and would paint over the card's own text. */
+  .card { position: relative; padding: 13px 16px; background: var(--edge); clip-path: var(--cut); }
+  .card::before { content: ''; position: absolute; inset: 1px; clip-path: var(--cut); background: var(--card); }
+  .card > * { position: relative; }
+
+  .dock { position: absolute; display: flex; gap: 10px; }
+  .dock-left { left: 18px; top: 18px; flex-direction: column; align-items: flex-start; max-width: 400px; }
+  .dock-right { right: 18px; top: 18px; }
+  .dock-foot { left: 50%; bottom: 26px; transform: translateX(-50%); }
+
+  .brief { min-width: 360px; }
+  .brief-title {
+    margin: 0 0 7px; font-size: 11px; font-weight: 800; letter-spacing: .24em; color: var(--accent);
+  }
+  .brief-line { margin: 0; font-size: 13.5px; line-height: 1.46; color: var(--paper); }
+
+  /* The gauge. The height under the brush is the loud object, because it is the one number that
+     moves while the visitor holds still; the three lines under it are the ones that make the other
+     claims checkable, so they are quiet, tabular, and never reflow. */
+  .gauge { min-width: 262px; }
+  .gauge-body { display: flex; flex-direction: column; gap: 4px; line-height: 1; }
+  .gauge-body .lattice-roll {
+    font-size: 28px; font-weight: 800; letter-spacing: .03em; font-variant-numeric: tabular-nums;
+    margin-bottom: 4px;
+  }
+  .sub { font-size: 10px; font-weight: 700; letter-spacing: .13em; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .cost { color: var(--river); }
+
+  /*
+   * RAISE and CUT. Two buttons, and the lit one is whichever is in force — including while a
+   * shift key is held, because the modifier and the button drive the same number and a control
+   * that disagrees with the keyboard is a control a visitor stops trusting.
+   */
+  .modes { display: flex; gap: 0; clip-path: var(--cut); background: var(--edge); padding: 1px; }
+  .mode {
+    appearance: none; border: 0; margin: 0; padding: 11px 26px; min-height: 44px;
+    background: color-mix(in srgb, var(--lattice-ink, #221d1e) 88%, transparent);
+    color: var(--dim); font: inherit; font-size: 11px; font-weight: 800; letter-spacing: .2em;
+    cursor: pointer;
+  }
+  .mode:hover { color: var(--paper); }
+  .mode:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; }
+  .modes[data-mode='raise'] .mode:first-child,
+  .modes[data-mode='cut'] .mode:last-child { background: var(--accent); color: #1b1712; }
+</style>
+<div id="app"></div>
+<script type="module" src="/src/main.ts"></script>

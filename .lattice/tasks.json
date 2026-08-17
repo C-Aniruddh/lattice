@@ -2732,6 +2732,85 @@
         "observed still visible in the shipped opening frame, so whatever is decided has to be checkable"
       ],
       "notes": "Filed by examples/city; confirmed by the orchestrator looking at the opening frame."
+    },
+    {
+      "id": "K58",
+      "phase": "gaps",
+      "role": "lattice-perf",
+      "title": "PathFinder's heuristic ignores weights, so any weighted map costs 17x",
+      "package": "iso",
+      "paths": [
+        "packages/iso/src/path.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "the octile heuristic carries no weight term, so any TileCost above 1 makes the estimate inadmissible-by-underestimate and slides A* toward Dijkstra",
+        "measured on identical geometry in examples/clay: 0.13 ms mean unweighted against 2.18 ms weighted, with an 8.9 ms worst",
+        "weights are this package’s own documented way to express \"shorter but harder\", so the feature and the performance of the feature disagree",
+        "scaling the estimate by the map’s minimum weight is admissible and free"
+      ],
+      "notes": "Filed by examples/clay, the first exhibit to re-plan against a map that changes under it. Forced the exhibit to bake its cost grid into a Uint8Array to afford re-planning at all."
+    },
+    {
+      "id": "K59",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "tileSourceOf answers has() true everywhere, so a height pick never misses",
+      "package": "iso",
+      "paths": [
+        "packages/iso/src/tilemap.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "correct for an unbounded world, and screenToTileOnHeights uses has() as its ONLY off-map test",
+        "so the naive composition of the two returns a grid coordinate for a tap on the sky — examples/clay reports sculpting grid (-4000, 900) from one",
+        "a boundedTileSource(get, w, h) closes it; every bounded-heightfield exhibit currently writes the same six lines by hand"
+      ],
+      "notes": "Filed by examples/clay. Two correct decisions composing into a wrong answer, which is the class this repo keeps finding."
+    },
+    {
+      "id": "K60",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "ui has no button, toggle, segmented control or slider",
+      "package": "ui",
+      "paths": [
+        "packages/ui/src/**"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "canyon needed a slider and hand-wrote an <input type=range> with ~35 lines of vendor-pseudo-element CSS; clay needed a raise/cut toggle and hand-wrote that",
+        "in both cases the missing primitive was the exhibit’s ONE control — the thing the whole exhibit is operated by",
+        "GALLERY.md rule 7 says an exhibit that finds it easier to draw its readouts into the canvas has found something. Two exhibits, two different missing primitives, is that finding twice",
+        "decide deliberately: either ui grows input primitives, or rule 7 is amended to say controls are the exhibit’s own and only readouts are ui’s"
+      ],
+      "notes": "Filed independently by examples/canyon and examples/clay."
+    },
+    {
+      "id": "K61",
+      "phase": "gallery",
+      "role": "lattice-designer",
+      "title": "A bounded square map has a minimum size, and it is not in the document",
+      "package": "docs",
+      "paths": [
+        "docs/GALLERY.md"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "a square grid projects to a diamond, and a viewport inscribed in it needs w <= 2H - 4h",
+        "examples/clay at 96 tiles: 3,044 px against a 2,939 px frame — satisfiable at exactly one camera position, which produces § Scale’s named \"hard corner with background behind it\" and no way to pan out of it",
+        "the exhibit’s map is 160 tiles for this reason rather than for the extent row, which means § Scale is currently taking credit for arithmetic it does not state",
+        "any exhibit sizing a bounded square map should do this first; it belongs beside the extent row"
+      ],
+      "notes": "Filed by examples/clay. A constraint § Scale implies and never spells out."
     }
   ]
 }
