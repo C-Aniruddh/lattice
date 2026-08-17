@@ -347,6 +347,63 @@ b.warn { color: var(--accent); }
   color: var(--accent);
 }
 
+.masthead { display: flex; align-items: center; gap: clamp(12px, 1.6vw, 20px); min-width: 0; }
+
+/*
+ * The dated announcement chip, and what it replaced.
+ *
+ * The version stamp left this bar for a good reason — a version number in a masthead is a verdict
+ * delivered before the reader has seen anything to apply it to — and **nothing replaced it**. Eight
+ * of the eleven best-in-class developer pages in the comparison set carry a dated chip in exactly
+ * this position, and it is the most reliable marker that a page is maintained, because a date is
+ * checkable and a stale one is the reader's evidence rather than the page's claim.
+ *
+ * Both halves are generated: the date is `measured.json`'s own measurement date and the sentence
+ * counts the rows in `exhibits.json`. A chip nobody has to remember to update is the only kind that
+ * stays true.
+ */
+.news {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 11px 6px;
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, transparent);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  font: 500 10.5px/1.4 var(--mono);
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--paper) 82%, transparent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.news b { color: var(--accent); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; font-size: 9.5px; }
+.news time { color: var(--dim); }
+.news:hover { border-color: var(--accent); color: var(--paper); }
+/* The sentence goes before the date does: a chip with only a date still reads as maintained, and
+   one with only a sentence does not read as dated at all. */
+@media (max-width: 1080px) { .news span { display: none; } }
+
+/*
+ * Under 700 px the chip takes a line of its own, and gets its sentence back.
+ *
+ * Three things were sharing one row and the arithmetic does not work at 390: the wordmark is about
+ * 100 px, the chip 180, and even the two nav items that survive are 130 — so the chip ran under
+ * `GALLERY`. Dropping it was the easy answer and the wrong one, because the chip is the only
+ * evidence on a phone that this page is maintained, and a phone is the machine `docs/GALLERY.md`
+ * says this page will be judged on.
+ *
+ * `display: contents` on the masthead promotes its two children into the top bar's own flex line,
+ * so `order` and a 100% flex basis can put the chip on row two. It costs about 34 px of header and
+ * there is room: at 390x813 the last call to action still lands at y≈737.
+ */
+@media (max-width: 700px) {
+  .topbar { flex-wrap: wrap; row-gap: 11px; }
+  .masthead { display: contents; }
+  .wordmark { order: 1; }
+  .topnav { order: 2; }
+  .news { order: 3; flex: 1 1 100%; max-width: max-content; }
+  .news span { display: revert; }
+}
+
 .topnav { display: flex; gap: clamp(13px, 1.6vw, 22px); font: 500 11px/1 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; }
 .topnav a { color: var(--dim); text-decoration: none; padding-bottom: 4px; border-bottom: 1px solid transparent; }
 .topnav a:hover { color: var(--accent); }
@@ -361,20 +418,61 @@ b.warn { color: var(--accent); }
  * has to beat is the hover one, so it carries a mark hover does not.
  */
 .topnav a[aria-current] { color: var(--accent); border-bottom-color: var(--accent); }
-@media (max-width: 700px) { .topnav a:not([href^='#gallery']):not([href^='#example']):not(:last-child) { display: none; } }
-@media (max-width: 460px) { .topnav a:not(:last-child) { display: none; } }
+/*
+ * What the rail drops, and what it may never drop.
+ *
+ * At 420 px this collapsed to the single word `GITHUB`, which is the page handing a phone reader
+ * one destination and it is the one they are least likely to want. The two that survive at every
+ * width are **Gallery** — the page's whole argument, and the only link that goes to something
+ * running — and **GitHub**. Everything else is reachable from the body and the footer.
+ */
+@media (max-width: 820px) { .topnav a[href$='#how'], .topnav a[href='/llms.txt'] { display: none; } }
+@media (max-width: 560px) { .topnav a[href$='#example'], .topnav a[href='/reference/'] { display: none; } }
 
 /* ── hero ─────────────────────────────────────────────────────────────────────────────── */
 
+/*
+ * The split hero, and the decision behind it.
+ *
+ * ## What was wrong
+ *
+ * The header was 537 px of an 813 px viewport, so the first screen was a cropped world plus the
+ * top of a text slab and neither landed. The `<h1>` sat *over* the world on an argument written
+ * into this stylesheet — that the top-left sky of Lamp Road "is the darkest, emptiest region of
+ * the frame at every hour of its day cycle" — and measured, the heading was at y≈364, in foliage.
+ * And at 420 px the whole first screen was world, heading and a hint: no install, no call to
+ * action, nothing about the agent, nothing to act on.
+ *
+ * ## Why the type came off the world entirely
+ *
+ * The alternative was to recompose the shot so the clearing the design was justified against is
+ * genuinely empty sky. That is a real option — the world is this project's own and procedural —
+ * and it did not survive testing: Lamp Road frames itself with `camera.fitBounds` over the road it
+ * generated from its seed, and every lever that would move the composition is in `examples/`,
+ * which this page does not own. No seed reachable through `?seed=` holds an empty corner at both
+ * ends of the day cycle *and* at 390 px, where the exhibit is scaled to fit and its own dock
+ * lands in whatever corner is left.
+ *
+ * So the words take a column of their own. That does not answer the scrim question, it **retires**
+ * it: there is no plate, no gradient and no card over the live scene, because there is no type
+ * over the live scene. `docs/GALLERY.md` still gets what it asked for — a world, moving, in the
+ * first frame, before a word has been read — because the world is half the first screen rather
+ * than a strip at the top of it.
+ *
+ * `100svh` rather than `100vh`: on a phone `vh` is the viewport with the browser chrome retracted,
+ * so a full-height hero measured in it is always taller than the screen it is on and the reader
+ * never sees the bottom of the column they are supposed to act on.
+ */
 .hero {
   position: relative;
-  height: min(66vh, 720px);
-  min-height: 380px;
-  overflow: hidden;
-  background: var(--lattice-page);
-  border-block: 1px solid var(--rule);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.06fr);
+  align-items: stretch;
+  min-height: min(100svh - 84px, 940px);
+  border-bottom: 1px solid var(--rule);
 }
 
+.hero-world { position: relative; overflow: hidden; background: var(--lattice-page); border-left: 1px solid var(--rule); }
 .hero-stage { position: absolute; inset: 0; }
 /* `width`/`height`/`transform` are set by `page.ts` on a narrow screen, where the exhibit runs at
    a wider logical viewport and is scaled down — at 390 CSS pixels its own HUD overlaps itself. */
@@ -386,173 +484,190 @@ b.warn { color: var(--accent); }
 }
 
 /*
- * The eight words, over the sky.
+ * No `max-width` here, and that is a measurement rather than a preference.
  *
- * ## Why it is here and not below the world
- *
- * The page used to put every word under the hero, on the principle — which is in
- * `docs/GALLERY.md` and is right — that a world should be read before any text is. What that
- * produced was a hundred vertical percent of valley whose only legible content was a wordmark, a
- * version number and five nav items, and a reader deciding at second eight whether to scroll. The
- * heading sat about seven hundred pixels below the fold on a laptop. **It landed above the fold
- * at 390 px**, which is the tell: the desktop breakpoint was the broken one, and it was broken by
- * having more room rather than less.
- *
- * The world still paints first and still fills the frame. It is now eight words further into the
- * argument by the time the reader has finished looking at it.
- *
- * ## Bottom-left, and not top-left, which is what was asked for
- *
- * The suggestion was the top-left corner, "because the sky up there is dark and empty". It is
- * not: Lamp Road's own dock is there — its brief card and its road-lit gauge — and the *first*
- * version of this page already learned that lesson the other way round, when the wordmark and a
- * frame meter were put over the world and landed on the exhibit's instruments. The exhibit was
- * there first and its HUD is part of it.
- *
- * So the words take the corner the exhibit leaves empty. Measured on Lamp Road at 1440x900: the
- * dock ends about 130 px down, the top-right pair of cards is the exhibit's clock and cost row,
- * and the only control at the bottom is centered. The bottom-left quarter is world and nothing
- * else, at every hour of the day cycle. That is where the sentence goes, and it is still the
- * first text on the page and still inside the first screen — which was the whole complaint.
- *
- * ## No plate, no scrim, no card
- *
- * A panel behind this text would be the page competing with its own product. What holds it
- * legible is a text shadow and one soft wash along the bottom edge: a shadow costs no pixels of
- * the world, degrades to "slightly softer" rather than to "a grey box" if the exhibit ever
- * changes, and has no edge that has to be aligned with anything.
- *
- * The `pointer-events: none` is load-bearing: the whole header is draggable, and a paragraph
- * floating over it that swallows a drag is a game that appears broken in one corner. Only the
- * thing that *is* a control takes the pointer back.
+ * It was `62ch`, which is a sensible measure for a paragraph and was silently capping the
+ * *heading*: with `box-sizing: border-box` the 62ch resolved to a 558 px border box, the two
+ * paddings took 114 px of it, and the longest clause of the headline had 444 px to fit 506 px of
+ * type in — so it wrapped, and the three-line figure the copy was written as became four lines
+ * with a widow. The column is the measure; the sentence under it carries its own 54ch.
  */
-.hero-lede {
-  position: absolute;
-  left: var(--gutter);
-  bottom: clamp(16px, 2.6vh, 30px);
-  right: var(--gutter);
-  z-index: 2;
-  max-width: min(52ch, 46vw);
-  pointer-events: none;
-  text-shadow: 0 1px 20px rgb(0 0 0 / 70%), 0 1px 3px rgb(0 0 0 / 62%);
+.hero-copy {
+  align-self: center;
+  padding: clamp(28px, 5vw, 68px) clamp(24px, 4vw, 60px) clamp(28px, 5vw, 68px) var(--gutter);
 }
-.hero-lede > * + * { margin-top: 12px; }
-/* Paper rather than accent, and this is the one place the accent loses an argument. The accent is
-   `--lattice-warn`, which the kit guarantees stays legible at *midnight*; the ground under this
-   corner at noon is a bright green, and an amber on it is the one pairing on this page that fails.
-   White on green with a shadow reads at both ends of the cycle. */
-.hero-lede .eyebrow {
+.hero-copy .eyebrow { margin: 0; color: var(--accent); }
+
+/*
+ * The headline.
+ *
+ * Three clauses on three lines, which is the house's own proven cadence — the statement slab that
+ * used to sit under the world read "No engine. No editor. No loader." and it was the strongest
+ * copy on the page. It is the same shape pointed at what the reader is spared rather than at what
+ * the library is not.
+ */
+/*
+ * The line breaks are in the markup, so the only job left here is a size at which the longest
+ * clause does not wrap *on top of them* — a clause that wraps turns a three-line figure into a
+ * four-line paragraph and the whole device is gone. `Nothing to hallucinate.` is 23 characters,
+ * which at 40px in a 0.6-advance mono with -0.05em tracking is 524 px inside a 558 px column.
+ *
+ * No `max-width` in `ch`, deliberately: `ch` resolves against whatever face is actually loaded at
+ * the time, so a webfont that has not arrived yet measures the fallback and the cap lands
+ * somewhere nobody chose. Measured here it came out at 17.8 px per `ch` against a 26.4 px advance
+ * and clipped the heading to two-thirds of the column. The column is the measure.
+ */
+.hero-copy h1 {
+  font: 500 clamp(26px, 2.9vw, 42px)/1.12 var(--mono);
+  letter-spacing: -0.05em;
   color: var(--paper);
   margin: 0;
-  letter-spacing: 0.3em;
-  /* Small uppercase mono over a moving world needs more shadow than a headline does: there is
-     less ink per glyph to carry the contrast. */
-  text-shadow: 0 1px 10px rgb(0 0 0 / 92%), 0 0 3px rgb(0 0 0 / 80%);
 }
-.hero-lede h1 {
-  font: 500 clamp(21px, 2.35vw, 33px)/1.1 var(--mono);
-  letter-spacing: -0.045em;
-  max-width: 26ch;
-  color: var(--paper);
-}
-/* A flex row rather than a sentence, so a wrap breaks *between* facts and never leaves a
-   separator hanging at the end of a line with nothing after it. */
-.hero-facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 9px;
-  font: 500 clamp(11px, 1vw, 13px)/1.5 var(--mono);
-  letter-spacing: 0.1em;
+
+.hero-sub { font-size: clamp(15px, 1.25vw, 18px); line-height: 1.55; color: color-mix(in srgb, var(--paper) 84%, transparent); max-width: 54ch; margin: 0; }
+
+/* After both, so it wins on source order rather than on a specificity trick. `.hero-sub`'s own
+   `margin: 0` was silently beating an identically-specific rule declared above it, which put the
+   sentence hard against the descenders of a 40px heading. */
+.hero-copy > * + * { margin-top: clamp(15px, 1.9vw, 24px); }
+
+/* ── the two things a visitor can do, at every width ──────────────────────────────────── */
+
+/*
+ * Both of these go somewhere on this page rather than to a signup, and that is deliberate. Bolt
+ * and Lovable both take a sentence in the hero and wall you at a sign-in with nothing rendered,
+ * which is the worst trade in the comparison set; an input that does nothing is worse than none.
+ * Ten worlds are running four hundred pixels below, so the primary action is to go and look.
+ */
+.hero-cta { display: flex; flex-wrap: wrap; gap: 12px; }
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font: 600 12px/1 var(--mono);
+  letter-spacing: 0.13em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--paper) 86%, transparent);
-  margin: 0;
-  max-width: none;
+  text-decoration: none;
+  padding: 14px 20px;
+  color: var(--lattice-page);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  white-space: nowrap;
 }
-.hero-facts span + span::before { content: '· '; color: var(--accent); }
+.cta:hover { background: color-mix(in srgb, var(--accent) 84%, var(--paper)); }
+.cta.ghost { color: var(--paper); background: none; border-color: var(--rule); }
+.cta.ghost:hover { color: var(--accent); border-color: var(--accent); background: none; }
 
-/* The install line over the world loses its plate and keeps its accent rule. Everywhere else on
-   the page a code block sits on a dark panel; here that panel would be a card in front of the
-   product, which is the one thing this overlay is not allowed to be. */
-.hero-lede .codebox { pointer-events: auto; max-width: 62ch; }
-.hero-lede .shell-cmd {
-  background: none;
-  border: 0;
-  border-left: 2px solid var(--accent);
-  padding: 2px 76px 2px 14px;
-  font-size: clamp(12px, 1.05vw, 14.5px);
-}
-.hero-lede .shell-cmd .arg { color: color-mix(in srgb, var(--paper) 88%, transparent); }
-.hero-lede .codebar { top: 0; right: 0; }
-.hero-lede .codebar button { background: color-mix(in srgb, #060402 62%, transparent); }
-.hero-lede .hint { pointer-events: auto; }
-
-/* Lamp Road's ground is bright green under that corner at noon. The wash is the insurance, and it
-   is a wash rather than a plate: no edge, no rectangle, nothing to align, and it is a gradient of
-   the page's own ground color so it reads as the page darkening rather than as a panel. */
-.hero::after {
-  content: '';
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 62%;
-  z-index: 1;
-  pointer-events: none;
-  background: linear-gradient(to top, rgb(10 7 4 / 78%), rgb(10 7 4 / 32%) 46%, transparent);
-}
-
-@media (max-width: 900px) {
-  /* One column: the exhibit is scaled down and its dock with it, and there is no second column to
-     stay out of, so the words take the whole width. */
-  .hero-lede { max-width: none; }
-}
-
-@media (max-width: 640px) {
-  /* A phone has no room for the install line beside the world, and it is the one thing here a
-     phone cannot act on anyway — nobody types `npm i` into a phone. It is in the Example section
-     with a Copy button, which is where a phone reader would reach for it. */
-  .hero-lede .codebox { display: none; }
-  .hero-lede > * + * { margin-top: 9px; }
-  /* Lamp Road is scaled to fit at this width, and its one control — the lamp button — comes with
-     it, landing about forty pixels above the bottom edge. Sitting the last line of the overlay on
-     somebody else's button is the mistake this whole overlay was moved to avoid. */
-  .hero-lede { bottom: clamp(46px, 7vh, 62px); }
-}
-
-/* ── the statement ────────────────────────────────────────────────────────────────────── */
-
-.statement {
-  max-width: 1280px;
-  margin-inline: auto;
-  padding: clamp(40px, 6vw, 72px) var(--gutter) clamp(34px, 4vw, 52px);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: clamp(24px, 4vw, 64px);
-  align-items: end;
-}
-@media (max-width: 860px) { .statement { grid-template-columns: minmax(0, 1fr); align-items: start; } }
-
-.hero-title {
-  font: 500 clamp(34px, 5.4vw, 66px)/1.0 var(--mono);
-  letter-spacing: -0.055em;
-  margin: 0 0 20px;
-  max-width: 14ch;
-}
-.hero-title span { color: var(--accent); }
-
-.hero-sub { font-size: clamp(15px, 1.25vw, 18px); line-height: 1.55; color: color-mix(in srgb, var(--paper) 84%, transparent); max-width: 56ch; margin: 0; }
-
-/* The line that tells you the header is a game. It is the whole discovery, so it says what to do
-   rather than what the thing is — and it lost its plate when it moved onto the world, because a
-   bordered chip floating over a live scene is a page putting furniture in front of its product. */
+/*
+ * The drag hint, and why it is the pill rather than the label.
+ *
+ * `DRAG IT` set in a corner is static signage — it names a gesture and demonstrates nothing, and
+ * it is still there long after the reader has dragged. This is PlayCanvas's shape: a pill with a
+ * hand in it that slides ±11 px on a two-second loop *miming* the gesture, appears only once the
+ * world is actually up, and is removed permanently on the first drag. `page.ts` owns all three
+ * transitions; this file owns what each looks like.
+ *
+ * `prefers-reduced-motion` keeps the pill and drops the slide, because the pill is the
+ * instruction and the slide is the decoration.
+ */
 .hint {
-  display: block;
+  position: absolute;
+  left: clamp(14px, 2vw, 24px);
+  bottom: clamp(14px, 2.4vh, 26px);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 9px;
   margin: 0;
-  font: 500 clamp(10px, 0.9vw, 11.5px)/1.5 var(--mono);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--paper) 70%, transparent);
+  padding: 9px 14px 9px 11px;
   max-width: none;
+  border: 1px solid color-mix(in srgb, var(--paper) 22%, transparent);
+  border-radius: 999px;
+  /* 82%, not 66%, and it is a contrast floor rather than a taste. The pill sits over a live world
+     whose brightest state is Lamp Road's noon sky (#79c2ee): at 66% the accent on `Drag` measured
+     4.46:1 against what showed through, which is under the floor. At 82% it is 6.10:1 and the
+     world is still visibly moving behind it. */
+  background: rgb(8 5 3 / 82%);
+  backdrop-filter: blur(4px);
+  font: 500 11px/1 var(--mono);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--paper) 88%, transparent);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 420ms linear;
 }
 .hint b { color: var(--accent); font-weight: 600; }
+.hint .hand { width: 17px; height: 17px; display: block; color: var(--accent); }
+/* Written by `page.ts` once the hero's loop is actually running. Before that the pill would be an
+   instruction floating over an empty box. */
+.hint[data-hint='on'] { opacity: 1; animation: mime 2s ease-in-out infinite; }
+@keyframes mime {
+  0%, 100% { transform: translateX(-11px); }
+  50%      { transform: translateX(11px); }
+}
+
+.play {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 3;
+  display: none;
+  font: 600 12px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--lattice-page); background: var(--accent);
+  border: 0; padding: 15px 18px; cursor: pointer; width: 100%;
+}
+.play:hover { background: color-mix(in srgb, var(--accent) 84%, var(--paper)); }
+/*
+ * A mouse can hover a world and scroll the page with two different gestures, so on a fine pointer
+ * the hero is live and grabbable from the first frame — which is the discovery the whole header
+ * exists to provoke, and a button in front of it would be a door in front of an open door. A
+ * finger has only one gesture, and a header that swallows the first swipe is a page nobody
+ * scrolls. So on a coarse pointer the world waits to be asked.
+ */
+@media (pointer: coarse) {
+  .play { display: block; }
+  .hint { display: none; }
+}
+/* A visitor who asked for stillness, or who is paying by the megabyte, gets the button on every
+   pointer — nothing on this page auto-runs for them. */
+[data-state='ask'] .play { display: block; }
+[data-state='ask'] .hint { display: none; }
+
+/*
+ * The stack, and what it is ordered for.
+ *
+ * World first, words under it: `docs/GALLERY.md`'s first requirement is a world moving before any
+ * text is read, and that is the one thing a narrow screen must not lose. What it *was* losing is
+ * everything after the heading — at 420 px the first screen was world, `<h1>`, hint, and nothing
+ * to do. At 46vh the world is unmistakably a world and unmistakably running, and the headline,
+ * the sentence under it and both calls to action all land inside the same screen.
+ *
+ * PlayCanvas deletes its live canvas outright below 750 px rather than ship a degraded one. Not
+ * here: a page whose one rule is that nothing on it is a picture cannot open on a phone with
+ * nothing running. It is one scene, and `page.ts`'s running budget already spends exactly one at
+ * this width.
+ */
+@media (max-width: 900px) {
+  .hero { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  /*
+   * The band is sized by what has to fit under it, not by taste. At 390x813: 62 px of masthead
+   * plus this, plus the eyebrow, the heading, the sentence and the buttons — and the buttons are
+   * the part that was landing at y=880, seventy pixels below the fold, which is the whole finding
+   * this breakpoint exists to fix. At 36svh everything above lands by y≈745.
+   */
+  .hero-world { order: -1; height: clamp(230px, 36svh, 400px); border-left: 0; border-bottom: 1px solid var(--rule); }
+  .hero-copy { align-self: start; padding: clamp(22px, 5vw, 40px) var(--gutter); max-width: none; }
+  /* 6.6vw, and the ceiling is what a 23-character clause fits in at this measure: at 390 px the
+     column is 350 px and `Nothing to hallucinate.` is 325 px. It was 8vw, and it wrapped. */
+  .hero-copy h1 { font-size: clamp(23px, 6.6vw, 34px); }
+  .hero-copy > * + * { margin-top: 13px; }
+  .hero-cta .cta { flex: 1 1 auto; justify-content: center; }
+}
+
+/* ── the meter, which is an instrument rather than a headline ─────────────────────────── */
+
+.meter-bay { display: grid; gap: 12px; justify-items: start; }
+.meter-bay .note { max-width: 46ch; }
 
 .meter {
   display: grid;
@@ -570,34 +685,6 @@ b.warn { color: var(--accent); }
 .meter dt { color: var(--dim); text-transform: uppercase; font-size: 10px; letter-spacing: 0.14em; align-self: center; }
 .meter dd { margin: 0; text-align: right; }
 .meter dd.hot { color: var(--lattice-bad); }
-
-/*
- * The touch escape hatch, and the reason it is media-queried rather than always on.
- *
- * A mouse can hover a world and scroll the page with two different gestures, so on a fine
- * pointer the hero is live and grabbable from the first frame — which is the discovery the whole
- * header exists to provoke, and a button in front of it would be a door in front of an open
- * door. A finger has only one gesture, and a header that swallows the first swipe is a page
- * nobody scrolls. So on a coarse pointer the world waits to be asked.
- */
-.play {
-  display: none;
-  margin-bottom: 22px;
-  width: 100%;
-  max-width: 22rem;
-  font: 600 12px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--lattice-page); background: var(--accent);
-  border: 0; padding: 13px 18px; cursor: pointer;
-}
-.play:hover { background: color-mix(in srgb, var(--accent) 84%, var(--paper)); }
-@media (pointer: coarse) {
-  .play { display: block; }
-  .hint { display: none; }
-}
-/* A visitor who asked for stillness, or who is paying by the megabyte, gets the button on every
-   pointer — nothing on this page auto-runs for them. */
-[data-state='ask'] .play { display: block; }
-[data-state='ask'] .hint { display: none; }
 
 /* ── the proof strip ──────────────────────────────────────────────────────────────────── */
 
@@ -632,6 +719,17 @@ b.warn { color: var(--accent); }
   border-left: 1px solid var(--rule-soft);
 }
 .proof > li:first-child { border-left: 0; }
+/*
+ * Two cells drawn as one claim.
+ *
+ * `81.72 kB` alone invites *"so what"*. Beside `0 asset files` it says **the whole game is code**,
+ * which is a sentence — and a sentence a visitor can act on, because it is the reason there is
+ * nothing for an agent to invent. So the rule between them goes and both sit on a faint wash,
+ * which is the whole of the pairing: a caption explaining that two figures belong together is the
+ * copy doctrine's exact failure, committed in the act of fixing something else.
+ */
+.proof > li[data-pair] { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.proof > li[data-pair] + li[data-pair] { border-left-color: transparent; }
 
 .fig {
   display: block;
@@ -674,8 +772,12 @@ b.warn { color: var(--accent); }
  * Five figures were measured on one machine on one day and are printed from `measured.json`. This
  * one is read off the page's own loop while the reader is looking at it, through the same meter
  * and the same four guards as every other figure here — so it inherits their vocabulary
- * (`warming`, `measuring`, `hidden`) and those words are longer than a numeral. It gets a smaller
- * set and a `nowrap` so a verdict never wraps inside a cell whose five neighbours are one line.
+ * (`warming`, `measuring`) and those words are longer than a numeral. It gets a smaller set and a
+ * `nowrap` so a verdict never wraps inside a cell whose five neighbours are one line.
+ *
+ * The one verdict that is **not** a word is a backgrounded tab: it prints an em dash, the same
+ * mark `:empty` draws below, because a state name in a figure's slot reads as an unfilled
+ * template. See `meter.ts`.
  */
 .fig .v.live { font-size: clamp(18px, 1.8vw, 23px); white-space: nowrap; color: var(--accent); }
 .fig .v.live .hot { color: var(--lattice-bad); }
@@ -840,11 +942,43 @@ b.warn { color: var(--accent); }
 .tile[data-state='paused'] .stage::before,
 .tile[data-held] .stage::before { opacity: 0; }
 
-.tile-body { padding: 16px 18px 18px; display: grid; gap: 7px; }
-.tile-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.tile-head h3 { font-size: 15px; letter-spacing: 0.01em; }
-.tile-head span { font: 500 10px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); text-align: right; }
+.tile-body { padding: 15px 18px 18px; display: grid; gap: 7px; }
+.tile-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 3px; }
+.tile-head h3 { font-size: 14px; letter-spacing: 0.01em; color: var(--dim); font-weight: 500; }
+.tile-head span { font: 500 10px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); text-align: right; }
 .tile-body p { font: 400 13.5px/1.45 var(--sans); color: color-mix(in srgb, var(--paper) 76%, transparent); margin: 0; max-width: none; }
+
+/*
+ * The capability tag and the prompt, which are the two lines that turn the gallery into the
+ * argument instead of the portfolio.
+ *
+ * **The tag is the feature list.** EROSION, LIGHT POOLS, ELEVATION PICKING, CLOSED-FORM CROWDS
+ * read down the grid as an inventory the visitor assembles for themselves, with every entry
+ * standing over the thing it names, running. That is why this page never writes a feature list:
+ * one exists here and it cannot be accused of overclaiming.
+ *
+ * **The prompt is set larger than the exhibit's name**, which is the whole point of the hierarchy.
+ * A visitor is not deciding between ten exhibits, they are deciding whether a sentence is enough —
+ * so the sentence is the tile's headline and `Crowd` is its filename. The quotation marks are
+ * generated rather than typed so that a copy of the text is the sentence and not the punctuation
+ * around it.
+ */
+.tile-tag {
+  font: 600 9.5px/1.4 var(--mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0;
+}
+.tile-prompt {
+  font: 400 15px/1.42 var(--sans);
+  color: color-mix(in srgb, var(--paper) 92%, transparent);
+  margin: 0;
+  max-width: 44ch;
+  text-wrap: pretty;
+}
+.tile-prompt::before { content: '\201C'; color: var(--dim); }
+.tile-prompt::after { content: '\201D'; color: var(--dim); }
 .tile-links { display: flex; gap: 14px; margin-top: 3px; font: 500 11px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
 .tile-links a { color: var(--dim); text-decoration: none; }
 .tile-links a:hover { color: var(--accent); text-decoration: underline; }
@@ -965,21 +1099,120 @@ b.warn { color: var(--accent); }
   overflow-x: hidden;
 }
 
-/* ── the agent flow ───────────────────────────────────────────────────────────────────── */
+/* ── the install, as a terminal ───────────────────────────────────────────────────────── */
 
-.flow { display: grid; gap: 0; border: 1px solid var(--rule); }
-.flow > li {
-  display: grid;
-  grid-template-columns: 4ch minmax(0, 1fr);
-  gap: 18px;
-  padding: 16px 18px;
-  border-top: 1px solid var(--rule-soft);
+/*
+ * ## What was wrong with the line this replaces
+ *
+ * `npm i` followed by five package names is **89 characters**, it wrapped to three lines, and it
+ * was the longest install command in a comparison of twenty-five developer pages — printed on the
+ * page whose entire thesis is *small*. The first thing a visitor learned about a kit that weighs
+ * 81 kB was that installing it takes a paragraph.
+ *
+ * ## The shape, which is PlayCanvas's
+ *
+ * One visible command, the variants behind tabs, a `$` that cannot be selected, and the command
+ * typed in rather than pasted in. The default tab fits on one line because it uses brace
+ * expansion; the `full` tab is the portable form, named rather than hidden.
+ *
+ * `user-select: none` on the prompt is the detail that makes the block worth building: a reader
+ * who drags across it and hits ⌘C gets a command they can paste, not a command with a shell
+ * prompt welded to the front of it. The Copy button reads `[data-cmd]` directly, so it is right
+ * whatever the selection is.
+ *
+ * ## The typewriter
+ *
+ * `--w` is the command's length in `ch` and `--n` is the same number as a step count, both written
+ * into the markup at build time — the string is known then, and measuring a layout on first paint
+ * in order to animate it is a jank this page does not need. In a monospace face `1ch` is exactly
+ * one advance width, so `steps(--n)` lands one character per step and the caret never sits half
+ * inside a glyph.
+ */
+.term { border: 1px solid var(--rule); background: color-mix(in srgb, #000 42%, transparent); max-width: 62ch; }
+.term-tabs { display: flex; border-bottom: 1px solid var(--rule-soft); }
+.term-tabs button {
+  font: 500 10px/1 var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim);
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 11px 14px 9px;
+  cursor: pointer;
 }
-.flow > li:first-child { border-top: 0; }
-.flow > li > b { font: 500 12px/1.5 var(--mono); color: var(--accent); font-weight: 500; }
-.flow > li > div > strong { display: block; font: 500 14px/1.4 var(--mono); margin-bottom: 4px; }
-.flow > li > div > span { font: 400 13.5px/1.5 var(--sans); color: color-mix(in srgb, var(--paper) 74%, transparent); }
-.flow { list-style: none; margin: 0; padding: 0; }
+.term-tabs button:hover { color: var(--paper); }
+.term-tabs button[aria-selected='true'] { color: var(--accent); border-bottom-color: var(--accent); }
+
+.term-body { position: relative; }
+.term-cmd {
+  display: none;
+  margin: 0;
+  max-width: none;
+  padding: 16px 76px 16px 18px;
+  font: 500 clamp(12.5px, 1.05vw, 14.5px)/1.5 var(--mono);
+  /* One line, and it scrolls rather than wraps — the whole reason for the tabs is that the
+     visible command fits. `full` is the one that can overflow, and it is the one nobody reads
+     unless they came looking for it. */
+  white-space: nowrap;
+  overflow-x: auto;
+}
+.term-cmd[data-on='yes'] { display: block; }
+/* The `$` is a picture of a shell, not part of the command, so it is not part of a selection
+   either. This is the whole reason a copied command out of this block is clean. */
+.term-cmd .prompt { color: var(--accent); user-select: none; -webkit-user-select: none; }
+.term-cmd .type { display: inline-block; overflow: hidden; white-space: nowrap; vertical-align: bottom; width: var(--w); }
+.term-cmd code { color: color-mix(in srgb, var(--paper) 90%, transparent); }
+.term-cmd .caret {
+  display: inline-block;
+  width: 0.6ch;
+  height: 1.05em;
+  vertical-align: text-bottom;
+  background: var(--accent);
+  margin-left: 1px;
+  animation: blink 1.05s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+/* Written by `page.ts` on mount and again on every tab change, so switching tabs re-types rather
+   than swapping a finished string in. */
+.term-cmd[data-type='run'] .type { animation: type 620ms steps(var(--n)) both; }
+@keyframes type { from { width: 0; } to { width: var(--w); } }
+
+.term-copy {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  font: 500 10px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  background: color-mix(in srgb, #000 70%, transparent);
+  border: 1px solid var(--rule);
+  padding: 7px 9px;
+  cursor: pointer;
+  min-width: 5.5ch;
+}
+.term-copy:hover { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+
+/* ── the traps ────────────────────────────────────────────────────────────────────────── */
+
+/* Each one is a mistake that compiles, runs, and produces a plausible-looking broken game — which
+   is why they are the evidence for this section rather than a footnote to it. */
+ul.plain.traps > li { border-left-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+
+/* ── the closing band ─────────────────────────────────────────────────────────────────── */
+
+/*
+ * The page used to end **inside the reference's contract table, on a row about `stepMs`**. The
+ * last thing a reader carried away from it was a compatibility constant. One line, the install,
+ * and the two places to go.
+ */
+.band { border-top: 1px solid var(--rule); background: color-mix(in srgb, var(--lattice-panel) 46%, transparent); }
+.band-in { padding-block: clamp(56px, 7vw, 96px); display: grid; gap: 22px; justify-items: start; }
+.band-in h2 { font: 500 clamp(26px, 3.2vw, 40px)/1.05 var(--mono); letter-spacing: -0.04em; max-width: 22ch; }
+.band-in .lede { margin: 0; }
+.term-bay { width: 100%; }
+.band-links { display: flex; flex-wrap: wrap; gap: 12px; }
 
 /* ── tables and the reference ─────────────────────────────────────────────────────────── */
 
@@ -1061,35 +1294,25 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; padding-right: 0
  * rectangle labeled "drag it" would be worse than an empty page.
  */
 noscript { display: block; }
-html:not(.js) .hero-stage,
-html:not(.js) .hero::before,
+html:not(.js) .hero-world,
 html:not(.js) .stage,
 html:not(.js) .tile-run,
-html:not(.js) .meter,
+html:not(.js) .meter-bay,
 html:not(.js) .play,
 html:not(.js) .js-only,
 html:not(.js) #ground { display: none; }
-html:not(.js) .statement { grid-template-columns: minmax(0, 1fr); }
 /*
- * The `<h1>` moved onto the world, so the hero can no longer be removed wholesale without taking
- * the sentence that says what this project is with it. The world goes; the words stay, and the
- * header collapses to exactly the height of what is left. This is the difference between the
- * honest fallback `docs/GALLERY.md` asks for and a page that is blank at the top.
+ * The split hero is the honest fallback for free, which the overlay never was.
+ *
+ * The words were never over the world, so removing the world removes a column and leaves a
+ * heading, a sentence and two links — a header that says what this is and where to go, at exactly
+ * the height of what is left in it. No rule here has to undo a `position: absolute`, a text shadow
+ * or a `pointer-events`, because none of those was needed in the first place.
  */
-html:not(.js) .hero {
-  height: auto;
-  min-height: 0;
-  background: none;
-  border-top: 0;
-  overflow: visible;
-}
-html:not(.js) .hero-lede {
-  position: static;
-  max-width: 60ch;
-  padding: clamp(28px, 6vw, 64px) 0 clamp(16px, 3vw, 32px);
-  text-shadow: none;
-  pointer-events: auto;
-}
+html:not(.js) .hero { grid-template-columns: minmax(0, 1fr); min-height: 0; border-bottom: 1px solid var(--rule); }
+html:not(.js) .hero-copy { padding-inline: var(--gutter); }
+/* With no terminal there is a plain command instead, and it is the portable one. */
+html:not(.js) .band-in .term-bay { width: auto; }
 
 noscript .banner {
   display: block;
@@ -1106,15 +1329,36 @@ noscript .banner {
 /* Only true for the reader it addresses, so only shown to them. */
 .rm-note { display: none; }
 
+/*
+ * Reduced motion, and the two things it does *not* switch off.
+ *
+ * The drag pill keeps its pill and loses its slide: the pill is the instruction and the slide is
+ * the decoration, and a reader who asked for stillness still has to be told the header is a game.
+ * The caret stops blinking and the command stops typing itself for the same reason — the command
+ * is the content, and it is shown finished rather than not at all.
+ */
 @media (prefers-reduced-motion: reduce) {
   .rm-note { display: block; }
   html { scroll-behavior: auto; }
   * { transition-duration: 1ms !important; }
+  .hint[data-hint='on'] { animation: none; }
+  .term-cmd[data-type='run'] .type { animation: none; width: var(--w); }
+  .term-cmd .caret { animation: none; }
 }
 
 @media (max-width: 640px) {
-  .hero { height: min(72vh, 620px); }
-  .hero-bottom { flex-direction: column; align-items: stretch; }
   .meter { grid-template-columns: 1fr auto; }
   .proof div { padding-inline: var(--gutter); }
+  /*
+   * The provenance notes were the page's only horizontal overflow at 390 px: `min-width: 34ch`
+   * inside a 195 px cell puts their right edge at 441, and a note that is `visibility: hidden`
+   * still counts toward `scrollWidth`. `body { overflow-x: hidden }` was quietly absorbing it,
+   * which is a fix for the symptom — a document wider than the viewport still makes some mobile
+   * browsers fit-to-width on load and shrink every glyph on the page.
+   *
+   * Two columns here, so the anchor alternates by parity rather than by "the last two".
+   */
+  .proof .src { min-width: 0; width: max-content; max-width: min(88vw, 44ch); }
+  .proof > li:nth-child(odd) .src { left: 0; right: auto; }
+  .proof > li:nth-child(even) .src { left: auto; right: 0; }
 }

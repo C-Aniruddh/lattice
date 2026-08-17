@@ -30,7 +30,7 @@ will break before `1.0`. Today is **v0.1.0**, and nothing has been published to 
 | the size of each package | **budgeted** | a gzip budget per package, 12 kB by default, with every override written down and argued for in the manifest. |
 | function *signatures* | **may change** | nothing has shipped to a registry, so nothing has been used by anybody outside this repository yet. That is the whole reason the version starts with a zero. |
 | the `/lattice` plugin | **specified, not shipped** | the flow is `docs/SKILLS.md`, which is a specification and says so. Read it as a promise about a design, not about a build. |
-| the gallery | **10 of 18** | the brief specifies eighteen exhibits and one hero. 8 are not built and are named by name on the landing page rather than left out. |
+| the gallery | **10 of 18** | the brief specifies eighteen exhibits and one hero. The eight that are not built are named below, and in `/llms.txt` and `/api.json`. |
 | the API reference | **names, not signatures** | it answers "which package, which symbol" and never "how do I call it", because the manifest carries no types. Generating from the `.d.ts` files is a tool this project has not written. |
 
 ## Versioning, and what a breaking change means here
@@ -94,6 +94,50 @@ invariants, the cross-package contracts and the traps that cost this project rea
 machine-readable at `/api.json`, which is a thing you can check in ten seconds rather than a claim.
 
 If none of those three is worth anything to you, the honest recommendation is Phaser.
+
+---
+
+## The eight exhibits that are specified and not built
+
+Moved here from the landing page's `/gallery` section, where they were printed by name under ten
+worlds that were running. Three places on that page were separately telling a first-time visitor
+what had **not** been built — *"Eighteen specified. Ten built."* as the gallery's heading, this
+list under the grid, and *"The plugin is not built yet"* as the closing sentence of the section
+above it — which is the pattern `docs/GALLERY.md` already deleted once as *"a page-length
+apology"*, regrown in three new places. No competitor in the comparison set scores itself as 44%
+incomplete on its own front page.
+
+The list is not deleted, because none of it is wrong and a gallery that quietly ships fewer than
+it promised is the one thing a gallery must not do. It is *addressed to the reader who is auditing
+the project* rather than to the one who arrived four seconds ago, and it stays published in
+`/llms.txt` and `/api.json` (`gallery.specifiedNotBuilt`), which is where an agent auditing the
+kit will look for it. The source of truth is `site/data/exhibits.json` → `pending`.
+
+| exhibit | what it is for |
+|---|---|
+| **Harbor** | tall thin objects and depth sorting — masts, cranes, a jetty over water |
+| **Orbit** | no ground at all: platforms, stars, a cold palette |
+| **Wayfinding** | a flow field re-routing a moving crowd the instant the map changes |
+| **Builder** | placement: footprints, a ghost, validity, and the tap-to-tile seam |
+| **Idle** | cost curves and buy-max in closed form, then fourteen hours of offline in one frame |
+| **Replay** | record, scrub, and prove it: the same seed and log land on the same pixel |
+| **Migration** | a v1 save opened by a v5 build, stepping the chain in front of you |
+| **Instrument** | sound with no files — a board that shows the synthesis as it plays |
+
+## The `/lattice` plugin, and where its status is stated
+
+The plugin and its skills are **the product**; the nine libraries are what make the agent driving
+them succeed. It is specified in `docs/SKILLS.md` and it is **not shipped**.
+
+That is not hidden and must not be. It is stated **once** on the landing page, as a factual line
+inside the how-it-works section and immediately beside what *is* shipped — `/llms.txt`,
+`/api.json` and `/kit.json`, which an agent can be pointed at today. What was removed is its
+position: it used to be the **closing sentence of the agent section**, which is the last thing a
+reader carried out of the page's own differentiator, and the five-step flow above it walked
+through a build sequence no visitor could run. The flow is `docs/SKILLS.md`'s content and it is
+whole there.
+
+The rule this follows: **state a status once, factually, and never as a section's closing word.**
 
 ---
 

@@ -13,7 +13,7 @@
  *
  * | the lie | what it looks like | the guard here |
  * |---|---|---|
- * | the tab is hidden | `0.0 ms` — very fast! | {@link Verdict} `hidden`; nothing is printed at all |
+ * | the tab is backgrounded | `0.0 ms` — very fast! | {@link Verdict} `backgrounded`; an em dash is printed |
  * | the loop is stopped | last frame's figure, for ever | `paused`; the figure is stale and says so |
  * | the loop just started | a mount spike, quoted as steady state | `warming`, then `mounting` |
  * | nothing has painted yet | a sub-millisecond worst *gap* | `unmeasured` — below {@link FLOOR_MS} |
@@ -64,7 +64,7 @@ export const WARMUP_MS = 3000;
  * documentation says what that costs: a reset "zeroes `fps` for every other reader of the same
  * object". Probed here, the hero's `worstGapMs` reads `0.00` with `cadenceMs` at `0.00` for a
  * fraction of a second every five seconds, between `17.8` and `17.6`. That is the whole mechanism
- * behind the `0.1 ms` and `0.4 ms` a reviewer caught this page printing: it was not a hidden tab,
+ * behind the `0.1 ms` and `0.4 ms` a reviewer caught this page printing: it was not a background tab,
  * it was sampling a window somebody else had just emptied. This floor prints `measuring` there.
  */
 export const FLOOR_MS = 1;
@@ -96,7 +96,7 @@ export interface LoopLike {
  */
 export type Verdict =
   /** No `requestAnimationFrame` at all. Every figure below is frozen at whatever it last was. */
-  | { readonly kind: 'hidden' }
+  | { readonly kind: 'backgrounded' }
   /** Nothing to read: no loop, or a loop this page could not reach inside a cross-origin frame. */
   | { readonly kind: 'absent' }
   /** The loop is stopped. Its last figure survives in the object and means nothing now. */
@@ -129,7 +129,7 @@ export function judge(
   startedAt: number | undefined,
   nowMs: number,
 ): Verdict {
-  if (document.visibilityState !== 'visible') return { kind: 'hidden' };
+  if (document.visibilityState !== 'visible') return { kind: 'backgrounded' };
   if (loop === undefined || startedAt === undefined) return { kind: 'absent' };
   if (!loop.running) return { kind: 'paused' };
   const ranMs = nowMs - startedAt;
@@ -172,9 +172,28 @@ export function format(v: Verdict, opts: FormatOpts = {}): Printed {
   const short = opts.short === true;
   const period = opts.period === true;
   switch (v.kind) {
-    case 'hidden':
+    /**
+     * An em dash, and **never the word**.
+     *
+     * The guard is right and the wording was not. `hidden` is a state name — it is what the code
+     * calls this branch — and printing a state name in a figure's slot is how a page reads as a
+     * template somebody forgot to fill in. It appeared fourteen times at once, because every
+     * meter on the page reaches this branch in the same instant the tab loses focus, and a
+     * gallery captioned `LIVE hidden` ten times over is the one thing here that looked amateur.
+     *
+     * The em dash is this page's existing vocabulary for "no figure" — it is what `.fig .v.live`
+     * already draws for an empty cell and what the reference tables print for a missing size —
+     * so a backgrounded tab now degrades to the same mark as every other absent number, and the
+     * `title` still says exactly what happened for anyone who asks.
+     */
+    case 'backgrounded':
       return {
-        text: 'hidden',
+        // `short` is a tile chip and the strip's live cell. A tile already reads `LIVE` or
+        // `PAUSED` beside this, so an em dash there is a second way of saying nothing — the same
+        // reasoning `absent` uses one case down. The strip has no such label, and `.fig .v.live`
+        // draws the em dash for an empty cell itself, so both get the mark and neither gets the
+        // word.
+        text: short ? '' : '—',
         title:
           'This tab is in the background, so requestAnimationFrame is not running and there is nothing to measure. A frame figure here would read 0.0 ms and mean the opposite of fast.',
         hot: false,
@@ -261,7 +280,7 @@ export function createMeter(node: Element | null, opts: FormatOpts = {}): Meter 
 }
 
 /**
- * A hidden tab has no rAF, so every window a meter is rolling stops rolling with it and the
+ * A backgrounded tab has no rAF, so every window a meter is rolling stops rolling with it and the
  * figures on the other side are a mixture of two visits. Callers hand this to every meter's
  * {@link Meter.started} when the page comes back.
  */

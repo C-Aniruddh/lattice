@@ -146,42 +146,136 @@ const source = (name) => {
 };
 
 /**
- * The strip, and what it counts now.
+ * The headline, and the two that were written beside it.
  *
- * **`tests` and `public symbols` are gone.** Nobody adopts a library because it has 2,599 tests:
- * working is the assumed baseline, not an achievement, and a number nobody asked for reads as a
- * project arguing with itself. `docs/GALLERY.md`'s copy doctrine names both of them by name. They
- * are still in `/api.json` and `/llms.txt`, where an agent auditing the kit has a use for them.
+ * The page used to sell a TypeScript kit with an agent story attached, and the owner's reframe is
+ * that it is the other way round: **the product is the plugin and its skills; the nine libraries
+ * are the reason the agent driving them succeeds.** The audience is somebody who wants an
+ * isometric game and does not want to write code, draw sprites or make music, so a headline about
+ * nine libraries, a dependency count or a gzip total is a spec sheet handed to somebody who did
+ * not ask for one.
  *
- * **What replaced them is what a visitor is deciding on**: how much they have to write themselves,
- * and what a frame costs. The first is the whole program printed further down, counted with
- * `docs/GALLERY.md`'s own line rule. The second is `live` — read off this page's loop, through the
- * same meter and the same four guards as every other figure here, because a page confident enough
- * to print its own render cost while the reader watches is making an argument a stored number
- * cannot.
+ * The constraint that did not move: **headline a property that is true today, not a promise.**
+ * `/lattice` is specified and not shipped, so a hero implying that a sentence gets you a game
+ * right now is the one thing this page cannot ship — Phaser says *"Describe it. Play it."* and can
+ * actually do it. What is true today, and checkable in ten seconds by a skeptic, is that there is
+ * nothing in this kit for an agent to invent: `find packages -type f` returns 207 `.ts`, 19
+ * `.json`, 9 `.md` and **no other kind of file at all**.
+ *
+ * So the headline is the failure mode it removes, and the three clauses are three things the
+ * reader does not have to do. The two alternates are kept here rather than in a report, because
+ * the next person to reconsider this should see what was already considered:
+ *
+ * | | | |
+ * |---|---|---|
+ * | **shipped** | *Nothing to draw. Nothing to load. Nothing to hallucinate.* | the failure mode named. Echoes the house's proven "No engine. No editor. No loader." cadence, and the third clause is the whole argument in one word |
+ * | alternate A | *Isometric games with nothing to draw and nothing to load.* | says the category out loud, which the shipped one leaves to the subhead. Softer, and it drops the agent |
+ * | alternate B | *The game is code, all the way down.* | the truest sentence about this kit and the least legible to somebody who does not write code |
+ *
+ * Swapping one in is this constant and nothing else.
+ */
+const HEADLINE = 'Nothing to draw. Nothing to load. Nothing to hallucinate.';
+
+/**
+ * The strip, and what it leads with now.
+ *
+ * **`tests` and `public symbols` are gone**, and stay gone. Nobody adopts anything because it has
+ * 2,599 tests: working is the assumed baseline, and a number nobody asked for reads as a project
+ * arguing with itself. `docs/GALLERY.md`'s copy doctrine names both of them by name; they are
+ * still in `/api.json` and `/llms.txt` where an agent auditing the kit has a use for them.
+ *
+ * **It leads with what the reader is spared rather than with what the kit weighs.** `81.72 kB` was
+ * first, and a bundle size is a figure a developer choosing a rendering library weighs — which is
+ * not who this page is for any more. `asset files: 0` is the same measurement pointed at the thing
+ * the reader actually cares about: there are no sprite sheets to draw, no audio files to license,
+ * and no asset paths for an agent to invent.
+ *
+ * **The first two cells are one claim and are drawn as one.** `81.72 kB` alone invites *"so
+ * what"*; next to `0 asset files` it says *the whole game is code*, which is a sentence. They are
+ * bracketed in the markup with `data-pair` rather than captioned, because a caption explaining a
+ * pairing is the copy doctrine's exact failure.
  *
  * **Every one of them still carries its command.** `from` names the figure in `measured.json`, so
  * the provenance on the page is the same string `/api.json` serves and cannot drift from it — the
  * single most persuasive thing a blind reviewer found here, and nothing above was worth losing it.
  */
 const proof = [
-  { key: 'packages', value: String(fig('packages')), unit: '', from: 'packages' },
+  { key: 'asset files', value: String(fig('assetFiles')), unit: '', from: 'assetFiles', pair: 'a' },
+  { key: 'gzipped, all nine', value: fig('gzipTotal').toFixed(2), unit: 'kB', from: 'gzipTotal', pair: 'a' },
   { key: 'dependencies', value: String(fig('dependencies')), unit: '', from: 'dependencies' },
-  { key: 'asset files', value: String(fig('assetFiles')), unit: '', from: 'assetFiles' },
-  { key: 'gzipped, all 9', value: fig('gzipTotal').toFixed(2), unit: 'kB', from: 'gzipTotal' },
+  { key: 'worlds running here', value: String(fig('exhibits')), unit: '', from: 'exhibits' },
   { key: 'a world, in lines', value: String(fig('exampleLines')), unit: '', from: 'exampleLines' },
   { key: 'this page, worst 10s', live: 'm-strip', from: 'pageFrame' },
 ];
 
-/** Five lines, one each. Every one of them was a paragraph, and every paragraph was the same
- *  sentence with its reasoning attached — which belongs in `docs/SKILLS.md`, where it is. */
-const flow = [
-  ['01', 'Preflight', 'Node, a directory, and one question: is there a browser to look at the result in.'],
-  ['02', 'Choose the shape', 'Archetype, starting exhibit, skills. Announced in a line, not put to a vote.'],
-  ['03', 'Scaffold and install', 'Nobody has to learn that <code>draw</code> depends on <code>iso</code>.'],
-  ['04', 'Build to a running screen', 'A working thing missing features, inside a minute, already recognizably theirs.'],
-  ['05', 'Look at it', 'Screenshot, judge, fix, repeat. Success is never reported on a build nobody has seen.'],
+/**
+ * The three traps, verbatim from the set `/llms.txt` serves.
+ *
+ * The headline claims the traps are written down, so the page shows three of them rather than
+ * saying so again — and they are the evidence for the whole section, because each is a mistake
+ * that compiles, runs, and produces a plausible-looking broken game. That is precisely the class
+ * of failure a general coding agent cannot get out of on its own, and the reason this kit ships
+ * its own.
+ *
+ * Three rather than six: the full list is one fetch away and a landing page is not a manual.
+ */
+const traps = [
+  ['An animated color is an allocator', 'a color that moves continuously misses the ramp cache every frame and takes every other caller’s entry down with it. Snap it to eight levels; keep position and timing continuous.'],
+  ['Tile lookup floors, never rounds', 'and once ground has elevation the projection stops being invertible, so a tap has to be resolved against the terrain. The naive version misses by 1,400 px at the top of a hill.'],
+  ['<code>readonly</code> is not a barrier', 'TypeScript ignores property <code>readonly</code> when checking assignability, so a frozen vector flows into a parameter that writes to it. The failure is a <code>TypeError</code> on the one frame that path runs.'],
 ];
+
+/**
+ * The install, as a terminal with tabs.
+ *
+ * The old line named five packages, wrapped to three lines, and was the longest install command in
+ * a comparison of twenty-five developer pages — on the page whose whole argument is *small*. The
+ * shape is PlayCanvas's: one visible command, the variants behind tabs, a `$` that cannot be
+ * selected, and the command typed in rather than pasted in.
+ *
+ * The default tab uses **brace expansion**, which is why it fits on one line: `bash`, `zsh` and
+ * `fish` all expand `@latticekit/{core,iso}` to the two package names, and the `full` tab is the
+ * portable form for anybody whose shell does not — PowerShell, or a CI step that is not a shell at
+ * all. Naming the escape hatch `full` rather than hiding it is the honest version of the trick.
+ */
+const PKGS = ['core', 'iso', 'draw', 'loop', 'input'];
+const install = [
+  { tab: 'npm', cmd: `npm i @latticekit/{${PKGS.join(',')}}` },
+  { tab: 'pnpm', cmd: `pnpm add @latticekit/{${PKGS.join(',')}}` },
+  { tab: 'bun', cmd: `bun add @latticekit/{${PKGS.join(',')}}` },
+  { tab: 'full', cmd: `npm i ${PKGS.map((p) => `@latticekit/${p}`).join(' ')}` },
+];
+/** The literal, portable form — what `/llms.txt` and `/api.json` publish, and what `full` shows. */
+const INSTALL_PLAIN = install[install.length - 1].cmd;
+
+/**
+ * One terminal. `id` scopes the tabs' `aria-controls` so two of them on one page do not collide.
+ *
+ * `--n` and `--w` are the typewriter: the command is a monospace string, so its width in `ch` is
+ * its length in characters exactly, and `steps(--n)` lands one character per step. Both are set
+ * here rather than measured at runtime, because the string is known at build time and a layout
+ * read on first paint to animate a thing is a jank this page does not need.
+ */
+const terminal = (id) => `<div class="term js-only" data-term id="${id}">
+        <div class="term-tabs" role="tablist" aria-label="Package manager">
+${install
+  .map(
+    (v, i) =>
+      `          <button role="tab" type="button" id="${id}-t${String(i)}" aria-controls="${id}-p${String(i)}" aria-selected="${i === 0 ? 'true' : 'false'}" tabindex="${i === 0 ? '0' : '-1'}">${esc(v.tab)}</button>`,
+  )
+  .join('\n')}
+        </div>
+        <div class="term-body">
+${install
+  .map(
+    (v, i) =>
+      `          <pre class="term-cmd" role="tabpanel" id="${id}-p${String(i)}" aria-labelledby="${id}-t${String(i)}" data-on="${i === 0 ? 'yes' : 'no'}" style="--n:${String(v.cmd.length)};--w:${String(v.cmd.length)}ch"><span class="prompt">$</span> <span class="type"><code data-cmd>${esc(v.cmd)}</code></span><i class="caret"></i></pre>`,
+  )
+  .join('\n')}
+          <button class="term-copy" type="button" data-term-copy>Copy</button>
+        </div>
+      </div>
+      <noscript><pre class="shell-cmd"><span class="prompt">$</span> ${esc(INSTALL_PLAIN)}</pre></noscript>`;
 
 /**
  * A tile's own viewport, and why it is not the tile's size.
@@ -210,22 +304,33 @@ function tileHtml(x) {
   //
   // `.cost` is the tile's own frame figure, written by the same meter as the statement panel.
   //
-  // **One line of caption, which is what `docs/GALLERY.md` asked for.** Each tile carried two
-  // paragraphs — the caption and the exhibit's one idea — under a world the reader is trying to
-  // look at, and ten of those is four hundred words of margin note wrapped around the part of the
-  // page that does the persuading. `idea` is still in `/llms.txt` and `/api.json`, and the tile
-  // links to the file, which is where somebody who wants the mechanism is going anyway.
+  // **The prompt is the caption now, and the tag is the feature list.**
+  //
+  // The tile used to carry the exhibit's own panel subtitle — *"Pools that meet without a seam"* —
+  // which is a sentence written by somebody who already knows what a light field is, under a world
+  // that is showing them one. What replaces it is the sentence somebody would *ask* for this world
+  // in, in ordinary voice, with no jargon in it: that is the page's entire argument, made ten
+  // times, next to ten worlds that are running rather than ten stills.
+  //
+  // `tag` earns its own line for a reason worth writing down: it makes the gallery double as the
+  // feature list, so the page never has to write one. EROSION, LIGHT POOLS and ELEVATION PICKING
+  // scanned down the left of the grid are a capability inventory a reader assembles themselves,
+  // and every entry in it is standing over the proof.
+  //
+  // `caption` and `idea` are both still in `/llms.txt` and `/api.json`, and the tile links to the
+  // file, which is where somebody who wants the mechanism is going anyway.
   return `      <article class="tile" data-src="/x/${x.dir}/" data-params="${esc(x.tileParams ?? '')}" data-name="${esc(x.name)}" data-w="${W}" data-h="${H}">
         <div class="stage" style="--w:${W};--h:${H}">
           <button class="tile-run" type="button"><b>Run</b> ${esc(x.name)}</button>
         </div>
         <div class="tile-body">
+          <p class="tile-tag">${esc(x.tag)}</p>
+          <p class="tile-prompt">${esc(x.prompt)}</p>
           <div class="tile-head">
             <h3>${esc(x.name)}</h3>
             <span>${esc(x.fact)}</span>
           </div>
           <p class="chip js-only"><span class="cost"></span></p>
-          <p>${esc(x.caption)}</p>
           <div class="tile-links">
             <a href="/x/${x.dir}/">Open full size</a>
             <a href="${tree(`examples/${x.dir}`)}">Source</a>
@@ -273,13 +378,22 @@ function packageHtml(name) {
         </details>`;
 }
 
-const html = `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
+/* ── the shared chrome ─────────────────────────────────────────────────────────────────── */
+
+/**
+ * Everything in `<head>` that both documents need.
+ *
+ * There are two documents now — the landing page and `/reference/` — and the reference used to be
+ * the largest section of the first one. At 2,255 px it was the second-biggest object on a page a
+ * newcomer had four seconds for, and it is content for somebody who has already adopted this: an
+ * index of names that answers *"which package is `pathSample` in"* and never *"should I use
+ * this"*. It is a route now, linked from the rail and the footer, and `appType: 'mpa'` in
+ * `vite.config.ts` means it is a real document rather than a client-side tab.
+ */
+const head = ({ title, description, extra = '' }) => `<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Lattice &mdash; isometric, deterministic, zero-asset games in TypeScript</title>
-<meta name="description" content="A TypeScript kit for isometric, deterministic, zero-asset games. Nine libraries, no dependencies, no asset files, ${esc(kb(fig('gzipTotal')))} gzipped for all of them.">
+<title>${esc(title)}</title>
+<meta name="description" content="${esc(description)}">
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#181410">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 12 60 28 32 44 4 28Z' fill='%23e0a13c'/%3E%3Cpath d='M32 20 46 28 32 36 18 28Z' fill='%23181410'/%3E%3C/svg%3E">
@@ -291,7 +405,7 @@ const html = `<!doctype html>
 
 <!-- The only inline script on the page, and the only way CSS can know whether the worlds below
      will ever run. Everything that is a live scene, a live number or an instruction to touch one
-     is hidden by html:not(.js) - see page.css. docs/GALLERY.md asks this page to work without
+     is removed by html:not(.js) - see page.css. docs/GALLERY.md asks this page to work without
      JavaScript "not gracefully - just honestly", and honesty here means not printing "drag it"
      over a rectangle that will never move. -->
 <script>document.documentElement.classList.add('js')</script>
@@ -303,7 +417,89 @@ const html = `<!doctype html>
 <link rel="preload" href="/fonts/fraunces-600.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/src/page.css">
 <script type="module" src="/src/page.ts"></script>
+${extra}`;
 
+/**
+ * The masthead, and the chip beside the wordmark.
+ *
+ * The version stamp came out of here for a good reason — *"lattice v0.1.0"* made a verdict the
+ * second thing a visitor's eye landed on, before they had seen anything to apply it to — and
+ * nothing replaced it. Eight of the eleven best-in-class developer pages in the comparison set
+ * carry a **dated announcement chip** in exactly this position, and it is the most reliable
+ * single marker that a page is maintained: a date is checkable, and a stale one is the reader's
+ * evidence rather than the page's claim.
+ *
+ * So it is a date and a fact, not a version and not a verdict, and both come out of the data
+ * files rather than out of this template — `measured.json`'s own measurement date, and the number
+ * of rows in `exhibits.json`. A chip nobody has to remember to update is the only kind that stays
+ * true.
+ */
+const chipDate = new Date(`${measured.measuredOn}T00:00:00Z`).toLocaleDateString('en-US', {
+  timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric',
+});
+
+const topbar = (home = '', current = '') => `<nav class="topbar">
+  <div class="masthead">
+    <a class="wordmark" href="/">lattice</a>
+    <a class="news" href="${home}#gallery"><b>New</b><time datetime="${esc(measured.measuredOn)}">${esc(chipDate)}</time><span>${gallery.live.length} worlds live in the gallery</span></a>
+  </div>
+  <div class="topnav">
+    <a href="${home}#gallery">Gallery</a>
+    <a href="${home}#how">How</a>
+    <a href="${home}#example">Example</a>
+    <a href="/reference/"${current === 'reference' ? ' aria-current="page"' : ''}>Reference</a>
+    <a href="/llms.txt">llms.txt</a>
+    <a href="${REPO_URL}">GitHub</a>
+  </div>
+</nav>`;
+
+const footer = () => `<footer class="shell">
+  <div class="foot">
+    <div>
+      <h4>Start</h4>
+      <ul>
+        <li><a href="${REPO_URL}">Repository</a></li>
+        <li><a href="${src('README.md')}">Read me</a></li>
+        <li><a href="${src('AGENTS.md')}">The eleven rules</a></li>
+        <li><a href="${src('docs/GUIDE.md')}">Guide</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>For agents</h4>
+      <ul>
+        <li><a href="/llms.txt">llms.txt</a></li>
+        <li><a href="/api.json">api.json</a></li>
+        <li><a href="/kit.json">kit.json</a></li>
+        <li><a href="${src('docs/SKILLS.md')}">The skills spec</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Deeper</h4>
+      <ul>
+        <li><a href="/reference/">API reference</a></li>
+        <li><a href="${src('docs/ARCHITECTURE.md')}">Architecture</a></li>
+        <li><a href="${src('docs/PERFORMANCE.md')}">Performance</a></li>
+        <li><a href="${src('docs/GALLERY.md')}">The gallery brief</a></li>
+      </ul>
+    </div>
+    <div class="colophon">
+      <h4>Colophon</h4>
+      <p style="margin:0"><code>lerpPalette(DUSK, NIGHT, scroll)</code>, repainted <span id="repaints">0</span> times
+      so far. Set in IBM Plex and Fraunces, self-hosted &mdash; ${fontKb} kB of font, and the only asset here.
+      ${esc(kit.license)}-licensed. Measured at <code>${esc(measured.commit)}</code>, ${esc(measured.measuredOn)}.</p>
+    </div>
+  </div>
+</footer>`;
+
+/* ── the landing page ──────────────────────────────────────────────────────────────────── */
+
+const html = `<!doctype html>
+<html lang="en">
+<head>
+${head({
+  title: 'Lattice — isometric games with nothing to draw and nothing to load',
+  description: `Isometric games where the art is derived and the sound is synthesized — no sprite sheets, no audio files, nothing for an agent to invent. ${String(gallery.live.length)} worlds running on the page.`,
+  extra: `
 <script type="application/ld+json">
 ${JSON.stringify(
   {
@@ -312,23 +508,24 @@ ${JSON.stringify(
     name: 'Lattice',
     alternateName: kit.tagline,
     description:
-      'A TypeScript kit for isometric, deterministic, zero-asset games. Nine composable libraries with no dependencies.',
+      'A TypeScript kit for isometric, deterministic, zero-asset games, written to be driven by an agent. Nine composable libraries with no dependencies and no asset files.',
     programmingLanguage: 'TypeScript',
     codeRepository: REPO_URL,
     license: `https://opensource.org/licenses/${kit.license}`,
     version: kit.version,
-    keywords: ['isometric', 'game development', 'deterministic', 'procedural', 'zero-asset', 'typescript'],
+    keywords: ['isometric', 'game development', 'ai agent', 'deterministic', 'procedural', 'zero-asset', 'typescript'],
   },
   null,
   2,
 )}
-</script>
+</script>`,
+})}
 </head>
 <body>
 
 <noscript>
   <p class="banner">Every world on this page renders in your browser as you read, so with JavaScript off there is
-  nothing to fall back to. The writing, the figures and the whole API reference are below.
+  nothing to fall back to. The writing, the figures and the reference are still here.
   Source: <a href="${REPO_URL}">${esc(REPO_URL)}</a></p>
 </noscript>
 
@@ -336,96 +533,100 @@ ${JSON.stringify(
 
 <div class="page">
 
-<!--
-  The masthead used to read "lattice v0.1.0", which made the version the second thing a visitor's
-  eye landed on. A blind reviewer called it "the worst possible second thing", and they were
-  right for a reason worth writing down: a version number in a masthead is not information, it is
-  a *verdict*, delivered before the reader has seen anything to apply it to. It now appears
-  nowhere on this page: it belongs beside a stability table, and a stability table belongs in a
-  README. See site/data/readiness-for-readme.md.
+${topbar()}
 
-  "Ready?" left the rail with the section it pointed at.
+<!--
+  The hero, and why it is split rather than an overlay.
+
+  ## What it had to fix
+
+  Three findings landed on the same element. The header was **537 px of an 813 px viewport**, so
+  the first screen was a cropped world plus the top of a text slab and neither landed. The '<h1>'
+  was set over the world on the argument — written into this file — that "the sky in the top-left
+  of Lamp Road is the darkest, emptiest region of the frame at every hour", and it was **not**:
+  measured, the heading sat at y≈364, in foliage. And at 420 px the whole first screen was world,
+  heading and a drag hint, with **no install, no call to action and no mention of the agent** —
+  nothing a visitor could act on.
+
+  ## The two options, and which one survived testing
+
+  The first choice was to recompose the shot so that the region the design was justified against
+  is genuinely empty sky, which is a thing this project can do precisely because the world is its
+  own and procedural. It did not survive: Lamp Road frames itself with 'camera.fitBounds' over the
+  road it generated from the seed, in 'examples/demo/src/main.ts', and every lever that would move
+  that clearing is in 'examples/', which this page does not own. The seeds reachable from here
+  through '?seed=' change the valley but not the composition rule, and none of them holds an empty
+  corner at both ends of the day cycle **and** at 390 px, where the exhibit is scaled to fit and
+  its own dock arrives in whatever corner is left. The measurements are in the report.
+
+  So: **the split hero, which is the fallback the brief named and the better answer anyway.** Text
+  left, world right, full viewport, and no type over the world at all — which retires the whole
+  question of scrims, plates and washes rather than answering it. 'docs/GALLERY.md' still gets what
+  it asked for: a world, moving, in the first frame, before any text has been read.
+
+  On a phone the two stack with the **world on top and the words under it**, so the first screen is
+  a live world, the headline, and the two things a visitor can actually do. The live canvas is kept
+  at every width rather than dropped below 750 px, because a page whose one rule is "everything
+  here is Lattice, running" cannot open on a phone with nothing running. It is one scene, and the
+  running budget in 'page.ts' already spends exactly one there.
 -->
-<nav class="topbar">
-  <a class="wordmark" href="/">lattice</a>
-  <div class="topnav">
-    <a href="#gallery">Gallery</a>
-    <a href="#example">Example</a>
-    <a href="#reference">Reference</a>
-    <a href="/llms.txt">llms.txt</a>
-    <a href="${REPO_URL}">GitHub</a>
+<header class="hero" data-src="${heroSrc}" data-name="${esc(gallery.hero.name)}" data-w="900">
+  <div class="hero-world">
+    <div class="hero-stage"></div>
+    <!--
+      The drag hint, and why it is a pill that moves rather than a label that does not.
+
+      'DRAG IT' set in the corner is static signage: it names the gesture and demonstrates
+      nothing, and it is still there twenty seconds after the reader has dragged. This is
+      PlayCanvas's shape — a pill with a hand in it that slides ±11 px on a two-second loop miming
+      the gesture, fades in only once the world is actually up so it never floats over an empty
+      box, and **deletes itself permanently on the first drag**, because a hint that outlives its
+      own instruction is furniture. 'prefers-reduced-motion' keeps the pill and drops the slide.
+    -->
+    <p class="hint js-only" data-hint="off">
+      <svg class="hand" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M12 10.5V4.5a1.5 1.5 0 0 1 3 0v6"/><path d="M15 11V7a1.5 1.5 0 0 1 3 0v7.5a6.5 6.5 0 0 1-6.5 6.5h-.6a5.9 5.9 0 0 1-4.6-2.2l-3-3.8a1.6 1.6 0 0 1 2.4-2.1L9 15"/><path d="M9 15V6.5a1.5 1.5 0 0 0-3 0V14"/></svg>
+      <b>Drag the world</b>
+    </p>
+    <!-- Below the world, never over it. A finger has one gesture and the exhibit already owns the
+         bottom of its own frame; a play button floating there covers the exhibit's. -->
+    <button class="play" id="hero-play" type="button">Tap the world to play</button>
   </div>
-</nav>
 
-<!--
-  data-w is the logical viewport the hero falls back to on a narrow screen; see Scene.scaledNow.
-
-  The overlay is the fix for the page's worst finding: a full screen of valley with no sentence
-  on it. The reviewer nearly left at the eighth second and scrolled "purely because the picture
-  was pretty, not because I'd been told anything" — and at 390 px the layout was *better*, because
-  a shorter heading and a shorter hero put the tagline above the fold there and not here.
-
-  It is text over the world, with no plate and no scrim behind it, for the same reason the top bar
-  has none: a card floating over a live scene is the page arguing with its own product. The sky in
-  the top-left of Lamp Road is the darkest, emptiest region of the frame at every hour of its day
-  cycle, and a text shadow is enough there.
-
-  **Two things left it under the copy doctrine.** The eyebrow repeated the wordmark six inches
-  above it, and the fact row — nine libraries, zero dependencies, zero asset files, the gzip total
-  — is the proof strip, printed twice, one screen apart. The install line stays, because how to
-  install it is the one thing here a visitor cannot get by looking. So does the hint, cut to the
-  two words that are an instruction rather than a description: the valley does not need to be told
-  it is running.
--->
-<header class="hero" data-src="${heroSrc}" data-name="${esc(gallery.hero.name)}" data-w="840">
-  <div class="hero-stage"></div>
-  <div class="hero-lede">
-    <h1>Isometric, deterministic, zero&#8209;asset games in TypeScript.</h1>
-    <div class="codebox codebox-inline js-only">
-      <pre class="shell-cmd"><span class="prompt">npm i</span> <span class="arg">@latticekit/core @latticekit/iso @latticekit/draw @latticekit/loop @latticekit/input</span></pre>
-      <div class="codebar"><button type="button" data-code-copy>Copy</button></div>
+  <div class="hero-copy">
+    <p class="eyebrow">Isometric games, built with an agent</p>
+    <!-- One clause per line, in the markup rather than left to a wrap. It is the same device the
+         statement slab used for "No engine. / No editor. / No loader.", it is what makes three
+         short sentences read as one figure, and a heading whose line breaks depend on the
+         viewport is a heading whose rhythm is an accident. -->
+    <h1>${HEADLINE.trim().split(' ').reduce((lines, word) => {
+      const last = lines[lines.length - 1];
+      if (last === undefined || last.endsWith('.')) lines.push(word);
+      else lines[lines.length - 1] = `${last} ${word}`;
+      return lines;
+    }, []).map(esc).join('<br>')}</h1>
+    <p class="hero-sub">Every world is derived from a color and a seed. There are no sprite sheets, no audio files and
+    no asset paths &mdash; so there is nothing here for an agent to invent, and nothing you have to make before it
+    can start. It reads the whole kit, the rules and the traps at <a href="/llms.txt"><code>/llms.txt</code></a>.</p>
+    <div class="hero-cta">
+      <a class="cta" href="#gallery">See ${gallery.live.length} of them running</a>
+      <a class="cta ghost" href="#how">How it works</a>
     </div>
-    <p class="hint js-only"><b>drag it</b></p>
   </div>
 </header>
 
 <!--
-  What survived here, and what the copy doctrine took.
+  The strip, immediately under the hero.
 
-  The heading announced that the worlds on this page are real. Announcing that a thing is real is
-  what an unreal thing does, and there are eleven of them moving here to say it instead. The
-  paragraph under it described the valley above as running, which the valley is doing.
-
-  What is left is the one claim on this page a visitor cannot check by looking at it: the shape of
-  the thing they would be adopting, stated as what it is not.
+  It sat about eleven hundred pixels down, behind a full-screen text wall, and it is the most
+  credible object on this page: six figures, each carrying the command that produced it, one of
+  them measuring the machine it is being read on. It is the second thing now.
 -->
-<div class="statement">
-  <div>
-    <!-- Below the world, never over it. A finger has one gesture and the exhibit already owns
-         the bottom of its own frame; a play button floating there covers the exhibit's. -->
-    <button class="play" id="hero-play" type="button">Tap the world to play</button>
-    <h2 class="hero-title">No engine.<br>No editor.<br>No loader.</h2>
-    <p class="hero-sub">Nothing owns your <code>main</code>. You import the two or three packages you need and call them
-    from your own loop.</p>
-  </div>
-  <div class="js-only" style="display:grid;gap:12px;justify-items:start">
-    <dl class="meter">
-      <dt>hero worst 10s</dt><dd id="m-hero">&mdash;</dd>
-      <dt>page period</dt><dd id="m-cadence">&mdash;</dd>
-      <dt>page worst 10s</dt><dd id="m-worst">&mdash;</dd>
-      <dt>scenes live</dt><dd id="live">0</dd>
-    </dl>
-    <p class="note" style="max-width:40ch">Worst gap between two painted frames, never frame time.
-    <b>Hover any of them for what was running.</b></p>
-  </div>
-</div>
-
 <ul class="proof">
 ${proof
   .map(
     // A live figure has nothing to say with script off, and a cell with a label and no number in
     // it is worse than one fewer cell. The strip is `auto-fit`, so five lay out as five.
-    (p) => `  <li${p.live === undefined ? '' : ' class="js-only"'}>
+    (p) => `  <li${p.live === undefined ? '' : ' class="js-only"'}${p.pair === undefined ? '' : ` data-pair="${p.pair}"`}>
     <button class="fig" type="button" aria-expanded="false">
       <span class="k">${esc(p.key)}</span>
       ${p.live === undefined
@@ -442,62 +643,84 @@ ${proof
 
 <main class="shell">
 
-  <section class="section" id="what">
-    <div class="marker"><a href="#what">/what</a></div>
-    <div class="body">
-      <p class="eyebrow">What it is</p>
-      <h2>Nine libraries, and the graph points one way.</h2>
-      <ul class="plain">
-        <li><strong>Nothing transitive.</strong> <code>core</code> depends on nothing; every other package
-        depends only on the ones below it. All nine are ${esc(kb(fig('gzipTotal')))} gzipped and a game imports
-        four or five.</li>
-        <li><strong>No asset files, and no loader.</strong> A solid is one color with its faces derived; a
-        sound is synthesized from a declaration. Nothing to load, nothing to license, and a recolor is a
-        runtime value.</li>
-        <li><strong><code>Math.random()</code>, <code>Date.now()</code> and <code>performance.now()</code> are
-        lint errors inside a package.</strong> Same seed, same world, on every machine &mdash; which is what
-        makes a replay land on the same pixel and a seed a link you can send.</li>
-      </ul>
+  <!--
+    The gallery is the centre of the page now, not an exhibit of it.
 
-      <div class="scroller">
-        <table>
-          <caption class="eyebrow" style="text-align:left;padding-bottom:12px">The nine</caption>
-          <thead><tr><th>package</th><th>layer</th><th>what it is for</th><th class="num">gzip</th></tr></thead>
-          <tbody>
-${packageNames
-  .map((n) => {
-    const p = kit.packages[n];
-    const s = sizeOf(n);
-    return `            <tr><td><a href="#pkg-${n}"><code>${esc(p.name)}</code></a></td><td>${layerOf(n)}</td><td>${esc(p.purpose)}</td><td class="num">${s === undefined ? '&mdash;' : esc(kb(s.gzipKb))}</td></tr>`;
-  })
-  .join('\n')}
-          </tbody>
-        </table>
+    Phaser's relaunched page pairs a verbatim user sentence with a capability tag against each
+    rendered game, and its gallery is headed "Real prompts, and what Phaser AE actually rendered
+    for them." The claim they cannot answer is that **ours run where theirs are stills** — so the
+    tiles keep every pixel of what they were and gain the two lines that make them an argument
+    rather than a portfolio: the capability, and the sentence somebody would ask for that world in.
+
+    The tags double as the feature list, which is why this page never writes one.
+
+    The heading no longer scores the project. "Eighteen specified. Ten built." was one of three
+    separate places telling a first-time visitor what had not been built, under ten worlds that
+    were running; 'docs/GALLERY.md' deleted that pattern once already as "a page-length apology"
+    and it had regrown. The eight are in site/data/readiness-for-readme.md, /llms.txt and
+    /api.json, which is where somebody auditing the project looks.
+  -->
+  <section class="section" id="gallery">
+    <div class="marker"><a href="#gallery">/gallery</a></div>
+    <div class="body">
+      <p class="eyebrow">The gallery</p>
+      <h2>${['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen'][gallery.live.length] ?? String(gallery.live.length)} worlds, running right now.</h2>
+      <p class="lede">Under each one is the sentence it would be asked for. Above it is that world, live in your
+      browser &mdash; a directory under <code>examples/</code>, under 200 lines of logic, seeded from its own URL.</p>
+
+      <p class="note rm-note">You have asked your browser for reduced motion, so nothing on this page starts by
+      itself. Every tile below is built and painted once, and stays on that frame until you press <em>Run</em>.</p>
+
+      <div class="grid">
+${gallery.live.map(tileHtml).join('\n')}
       </div>
-      <p class="note">Sizes are <code>npm run size</code> at ${esc(measured.commit)}, exclusive backends charged at the
-      heaviest and never summed. If you want a game engine &mdash; scenes, physics, a loader, a decade of
-      documentation every agent has already read &mdash; use Phaser.</p>
     </div>
   </section>
 
-  <section class="section" id="agent">
-    <div class="marker"><a href="#agent">/agent</a></div>
+  <!--
+    /how — the old /what and the old /agent, merged, and re-pointed.
+
+    Two sections were making one argument in two places, and the statement slab between them
+    ("No engine. No editor. No loader.") was stealing the bottom third of the first screen to make
+    a third of it again. They are one section, and its question is not *what is this* but **why
+    does the agent get it right**, because that is the thing the reader is deciding.
+
+    Every fact here is the fact that was here before. What changed is what each is for: zero assets
+    is not a bundle-size boast, it is the reason the output is not broken; determinism is not a
+    purity rule, it is the reason a thing an agent built behaves the same way twice; the traps are
+    not documentation, they are the failures that compile.
+
+    The five-step plugin flow is gone. It walked through a build sequence no visitor can run, at
+    the top of the page, one section under a hero that must not imply '/lattice' works. It is
+    docs/SKILLS.md's content and it is whole there. The plugin's status is stated once, below,
+    beside the three files that are shipped.
+  -->
+  <section class="section" id="how">
+    <div class="marker"><a href="#how">/how</a></div>
     <div class="body">
-      <p class="eyebrow">For agents</p>
-      <h2>Built to be handed to an agent.</h2>
-      <p class="lede">An agent can read a <code>.d.ts</code>. What it cannot read is the set of failures that are
-      individually surprising and jointly the difference between a working game and a plausible-looking broken
-      one, so those ship too, as skills, behind one command.</p>
+      <p class="eyebrow">How it works</p>
+      <h2>Why the agent gets it right.</h2>
+      <p class="lede">Ask a general coding agent for a game and it invents a sprite sheet, an asset path and a
+      physics constant, and hands you something that compiles and is broken. None of those three exists here.</p>
 
-      <p class="shell-cmd"><span class="prompt">/lattice</span> <span class="arg">a game where you rebuild a lighthouse and the light pushes back the fog</span></p>
-      <p>Everything after <code>/lattice</code> is the game. No flag, no subcommand, no mode, and no question with a
-      right answer the agent could have worked out.</p>
+      <ul class="plain">
+        <li><strong>No asset files, so no asset paths.</strong> A solid is one color with its faces derived; a sound
+        is synthesized from a declaration. Nothing to draw, nothing to load, nothing to license &mdash; and nothing
+        to name wrongly. A recolor is a runtime value.</li>
+        <li><strong>Deterministic by rule, not by discipline.</strong> <code>Math.random()</code>,
+        <code>Date.now()</code> and <code>performance.now()</code> are lint errors inside a package. Same seed, same
+        world, on every machine &mdash; so a bug is reproducible from a link, and a fix can be shown to have worked.</li>
+        <li><strong>Nothing owns your <code>main</code>.</strong> No engine, no editor, no loader, no scene format
+        and no build step past a bundler. There is no framework shape to get wrong because there is no framework.</li>
+      </ul>
 
-      <ol class="flow">
-${flow.map(([n, title, body]) => `        <li><b>${n}</b><div><strong>${title}</strong><span>${body}</span></div></li>`).join('\n')}
-      </ol>
-      <p class="note">The plugin <strong>is not built yet</strong>. The five lines above are
-      <a href="${src('docs/SKILLS.md')}">docs/SKILLS.md</a>, which is a specification and says so.</p>
+      <h3>The traps, written down</h3>
+      <p>An agent can read a <code>.d.ts</code>. What it cannot read is the set of failures that are individually
+      surprising and jointly the difference between a working game and a plausible-looking broken one. Three of them,
+      and the rest at <a href="/llms.txt"><code>/llms.txt</code></a>:</p>
+      <ul class="plain traps">
+${traps.map(([t, b]) => `        <li><strong>${t}.</strong> ${b}</li>`).join('\n')}
+      </ul>
 
       <h3>The whole kit, without the prose</h3>
       <div class="scroller">
@@ -510,30 +733,48 @@ ${flow.map(([n, title, body]) => `        <li><b>${n}</b><div><strong>${title}</
           </tbody>
         </table>
       </div>
-    </div>
-  </section>
+      <p class="note">Those three are live. The <code>/lattice</code> plugin that will drive them is specified in
+      <a href="${src('docs/SKILLS.md')}">docs/SKILLS.md</a> and is not shipped yet; today you point your own agent at
+      the files above.</p>
 
-  <section class="section" id="gallery">
-    <div class="marker"><a href="#gallery">/gallery</a></div>
-    <div class="body">
-      <p class="eyebrow">The gallery</p>
-      <h2>Eighteen specified. ${['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen'][gallery.live.length] ?? String(gallery.live.length)} built.</h2>
-      <p class="lede">None of them is a demo of this page. Each is a directory under <code>examples/</code>, under 200
-      lines of logic, seeded from its own URL &mdash; something to copy and start deleting.</p>
-
-      <p class="note rm-note">You have asked your browser for reduced motion, so nothing on this page starts by
-      itself. Every tile below is built and painted once, and stays on that frame until you press <em>Run</em>.</p>
-
-      <div class="grid">
-${gallery.live.map(tileHtml).join('\n')}
+      <h3>The nine underneath</h3>
+      <p><code>core</code> depends on nothing and every other package depends only on the ones below it. All nine are
+      ${esc(kb(fig('gzipTotal')))} gzipped and a game imports four or five.</p>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>package</th><th>layer</th><th>what it is for</th><th class="num">gzip</th></tr></thead>
+          <tbody>
+${packageNames
+  .map((n) => {
+    const p = kit.packages[n];
+    const s = sizeOf(n);
+    return `            <tr><td><a href="/reference/#pkg-${n}"><code>${esc(p.name)}</code></a></td><td>${layerOf(n)}</td><td>${esc(p.purpose)}</td><td class="num">${s === undefined ? '&mdash;' : esc(kb(s.gzipKb))}</td></tr>`;
+  })
+  .join('\n')}
+          </tbody>
+        </table>
       </div>
+      <p class="note">Sizes are <code>npm run size</code> at ${esc(measured.commit)}, exclusive backends charged at the
+      heaviest and never summed. Every symbol is at <a href="/reference/">/reference</a>. If you want a game engine
+      &mdash; scenes, physics, a loader, a decade of documentation every agent has already read &mdash; use Phaser.</p>
 
-      <p class="note">Not yet built: ${gallery.pending.map((p) => esc(p.name)).join(', ')}. They are named rather than
-      left out, because a gallery that quietly ships fewer than it promised is the one thing a gallery must not do.
-      The brief is <a href="${src('docs/GALLERY.md')}">docs/GALLERY.md</a>.</p>
+      <div class="js-only meter-bay">
+        <dl class="meter">
+          <dt>hero worst 10s</dt><dd id="m-hero">&mdash;</dd>
+          <dt>page period</dt><dd id="m-cadence">&mdash;</dd>
+          <dt>page worst 10s</dt><dd id="m-worst">&mdash;</dd>
+          <dt>scenes live</dt><dd id="live">0</dd>
+        </dl>
+        <p class="note">Worst gap between two painted frames, never frame time.
+        <b>Hover any of them for what was running.</b></p>
+      </div>
     </div>
   </section>
 
+  <!--
+    Untouched, and protected. It is a real file, selectable, and typechecked against the built
+    packages before this page is generated — Bevy's equivalent is an SVG image of code.
+  -->
   <section class="section" id="example">
     <div class="marker"><a href="#example">/example</a></div>
     <div class="body">
@@ -552,21 +793,87 @@ ${gallery.live.map(tileHtml).join('\n')}
         </div>
         <pre class="code"><code>${highlight(exampleBody)}</code></pre>
       </div>
-      <div class="codebox">
-        <div class="codebar js-only"><button type="button" data-code-copy>Copy</button></div>
-        <pre class="shell-cmd"><span class="prompt">npm i</span> <span class="arg">@latticekit/core @latticekit/iso @latticekit/draw @latticekit/loop @latticekit/input</span></pre>
-      </div>
     </div>
   </section>
 
-  <section class="section" id="reference">
-    <div class="marker"><a href="#reference">/reference</a></div>
+</main>
+
+<!--
+  The closing band.
+
+  The page used to end **inside the reference's contract table, on a row about 'stepMs'** — the
+  last thing a reader carried out of it was a compatibility constant. One line, the install, and
+  the two places to go.
+-->
+<section class="band">
+  <div class="shell band-in">
+    <h2>Point an agent at it.</h2>
+    <p class="lede">It reads the rules, the invariants and the traps, and writes the game.</p>
+    <div class="term-bay">
+      ${terminal('t-band')}
+    </div>
+    <div class="band-links">
+      <a class="cta" href="${REPO_URL}">Repository</a>
+      <a class="cta ghost" href="/llms.txt">llms.txt</a>
+    </div>
+  </div>
+</section>
+
+${footer()}
+
+</div>
+</body>
+</html>
+`;
+
+/* ── /reference/ ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The API reference, on a route of its own.
+ *
+ * It is the same generator it always was — every row still comes out of `.lattice/kit.json`, which
+ * `npm run lint` fails the build over — and the only thing that changed is which document it is
+ * in. `site/vite.config.ts` names it as a second Rollup input; `appType: 'mpa'` means a link to it
+ * is a navigation rather than a router, and a mistyped path under it still 404s.
+ */
+const referenceHtml = `<!doctype html>
+<html lang="en">
+<head>
+${head({
+  title: 'Lattice API reference — every public symbol, from the manifest',
+  description: `Every exported name in the nine Lattice packages, generated from .lattice/kit.json: ${commas(fig('publicSymbols'))} symbols, their layer, their invariants and their size budgets.`,
+})}
+</head>
+<body>
+
+<noscript>
+  <p class="banner">This page is a table of names and reads fine without JavaScript. The worlds are on
+  <a href="/">the front page</a>.</p>
+</noscript>
+
+<canvas id="ground" aria-hidden="true"></canvas>
+
+<div class="page">
+
+${topbar('/', 'reference')}
+
+<main class="shell">
+
+  <!-- Deliberately without an 'id'. 'page.ts''s scroll spy walks 'main .section[id]' and writes
+       both the rail and 'history.replaceState', so an id here would rewrite this document's URL to
+       /reference/#reference the moment it is scrolled — a hash that names the only section on the
+       page. The rail's Reference link carries 'aria-current' from the markup instead, which is
+       true for the whole document rather than for a scroll position inside it. Deep links still
+       work: every '#pkg-*' anchor is on the '<details>', not on this element. -->
+  <section class="section">
+    <div class="marker"><a href="/">&larr; back</a></div>
     <div class="body">
       <p class="eyebrow">API reference</p>
       <h2>Every public symbol, from the manifest.</h2>
       <p class="lede">Generated from <a href="${src('.lattice/kit.json')}"><code>.lattice/kit.json</code></a>, which
       <code>npm run lint</code> fails the build over. It answers &ldquo;which package, which symbol&rdquo; and never
-      &ldquo;how do I call it&rdquo; &mdash; the manifest carries no types.</p>
+      &ldquo;how do I call it&rdquo; &mdash; the manifest carries no types. An agent should read
+      <a href="/api.json"><code>/api.json</code></a> instead of this.</p>
 
       <div class="scroller">
         <table>
@@ -597,49 +904,12 @@ ${kit.contracts.map((c) => `            <tr><td>${esc(c.claim)}</td><td>${c.pack
 
 </main>
 
-<footer class="shell">
-  <div class="foot">
-    <div>
-      <h4>Start</h4>
-      <ul>
-        <li><a href="${REPO_URL}">Repository</a></li>
-        <li><a href="${src('README.md')}">Read me</a></li>
-        <li><a href="${src('AGENTS.md')}">The eleven rules</a></li>
-        <li><a href="${src('docs/GUIDE.md')}">Guide</a></li>
-      </ul>
-    </div>
-    <div>
-      <h4>For agents</h4>
-      <ul>
-        <li><a href="/llms.txt">llms.txt</a></li>
-        <li><a href="/api.json">api.json</a></li>
-        <li><a href="/kit.json">kit.json</a></li>
-        <li><a href="${src('docs/SKILLS.md')}">The skills spec</a></li>
-      </ul>
-    </div>
-    <div>
-      <h4>Deeper</h4>
-      <ul>
-        <li><a href="${src('docs/ARCHITECTURE.md')}">Architecture</a></li>
-        <li><a href="${src('docs/PERFORMANCE.md')}">Performance</a></li>
-        <li><a href="${src('docs/GALLERY.md')}">The gallery brief</a></li>
-        <li><a href="${src('docs/SEAMS.md')}">Seams</a></li>
-      </ul>
-    </div>
-    <div class="colophon">
-      <h4>Colophon</h4>
-      <p style="margin:0"><code>lerpPalette(DUSK, NIGHT, scroll)</code>, repainted <span id="repaints">0</span> times
-      so far. Set in IBM Plex and Fraunces, self-hosted &mdash; ${fontKb} kB of font, and the only asset here.
-      ${esc(kit.license)}-licensed. Measured at <code>${esc(measured.commit)}</code>, ${esc(measured.measuredOn)}.</p>
-    </div>
-  </div>
-</footer>
+${footer()}
 
 </div>
 </body>
 </html>
 `;
-
 /* ── llms.txt ──────────────────────────────────────────────────────────────────────────── */
 
 const llms = `# Lattice
@@ -909,13 +1179,16 @@ const api = {
 /* ── write ─────────────────────────────────────────────────────────────────────────────── */
 
 mkdirSync(join(site, 'public'), { recursive: true });
+mkdirSync(join(site, 'reference'), { recursive: true });
 writeFileSync(join(site, 'index.html'), html);
+writeFileSync(join(site, 'reference/index.html'), referenceHtml);
 writeFileSync(join(site, 'public/llms.txt'), llms);
 writeFileSync(join(site, 'public/api.json'), `${JSON.stringify(api, null, 2)}\n`);
 writeFileSync(join(site, 'public/kit.json'), readFileSync(join(repo, '.lattice/kit.json')));
 
 const bytes = (s) => `${(Buffer.byteLength(s) / 1024).toFixed(1)} kB`;
 console.log(`site/index.html        ${bytes(html)}`);
+console.log(`site/reference/index.html ${bytes(referenceHtml)}`);
 console.log(`site/public/llms.txt   ${bytes(llms)}`);
 console.log(`site/public/api.json   ${bytes(JSON.stringify(api, null, 2))}`);
 console.log(`${packageNames.length} packages, ${gallery.live.length} live exhibits, ${Object.values(kit.packages).reduce((n, p) => n + p.exports.length, 0)} export rows`);

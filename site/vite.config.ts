@@ -39,6 +39,24 @@ export default defineConfig({
   preview: { port: 5171, strictPort: true },
   build: {
     outDir: 'dist',
+    /**
+     * **Two documents, and Rollup has to be told about the second one.**
+     *
+     * Vite's default input is the single `index.html` at the root, so `/reference/` would build
+     * in dev and be missing from `dist` — the worst shape of bug, because the dev server serves
+     * it from disk and only the deployed site 404s. The reference is `site/reference/index.html`,
+     * written by `tools/build-page.mjs` from the same manifest as everything else.
+     *
+     * It is a route rather than a section because at 2,255 px it was the second-largest object on
+     * a landing page a newcomer has four seconds for, and it is content for somebody who has
+     * already adopted this. With `appType: 'mpa'` a link to it is a navigation, not a router.
+     */
+    rollupOptions: {
+      input: {
+        index: fileURLToPath(new URL('./index.html', import.meta.url)),
+        reference: fileURLToPath(new URL('./reference/index.html', import.meta.url)),
+      },
+    },
     // **False on purpose.** The gallery is built into `dist/x/<exhibit>/` by
     // `site/tools/build.mjs` after this step, and an `emptyOutDir: true` here deletes all eleven
     // of them the next time somebody rebuilds only the page — which reads as ten tiles that

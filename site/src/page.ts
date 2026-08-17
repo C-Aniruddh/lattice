@@ -413,9 +413,16 @@ class Scene {
   /**
    * Whether this scene is being scaled down right now.
    *
-   * Always, for a tile. For the hero only on a narrow screen: Lamp Road's overlay is composed for
-   * a laptop and at 390 CSS pixels its own cards overlap each other, so a phone gets the exhibit
-   * at a 840-pixel viewport shrunk to fit rather than at 390 with its HUD folded over itself.
+   * Always, for a tile. For the hero, **whenever the box it was given is narrower than the
+   * viewport the exhibit wants** — which is now a comparison against the stage rather than against
+   * `innerWidth`, and that is a real fix rather than a tidy-up. The hero used to be the full width
+   * of the page, so `innerWidth` and the stage were the same number; in a split hero the stage is
+   * about half of it, and a 1440-pixel laptop was handing Lamp Road a 707-pixel viewport and being
+   * told it did not need scaling. Its dock and its clock cards overlapped each other in the top
+   * left, which is the same failure a 390-pixel phone had and the reason this test existed at all.
+   *
+   * The rule is the honest version of the same intent: an exhibit is composed for a screen, so
+   * give it one and scale the result into whatever column the layout has.
    *
    * Scaling a *playable* frame is safe only because it is an iframe. Inside it, `clientX` and
    * `getBoundingClientRect` are both in the frame's own untransformed space, so
@@ -423,7 +430,7 @@ class Scene {
    * right. The same transform applied to a bare canvas would offset every tap by 1/scale.
    */
   get scaledNow(): boolean {
-    return this.scaled || innerWidth < 840;
+    return this.scaled || this.stage.clientWidth < this.w;
   }
 
   /** Fit the exhibit's own viewport into whatever box the layout gave this scene. */
@@ -567,7 +574,13 @@ function requestMount(scene: Scene): void {
   mountTimer = setTimeout(() => { mountTimer = undefined; schedule(); }, wait);
 }
 
-function onAdopted(_scene: Scene): void { schedule(); }
+function onAdopted(scene: Scene): void {
+  // The drag hint is an instruction about a thing that has to exist first. `adopt` is the moment
+  // this page can prove the hero's loop is reachable and running, which is the earliest honest
+  // point to tell somebody to drag it.
+  if (scene === hero) heroIsUp();
+  schedule();
+}
 
 function countLive(): void {
   const live = tiles.filter((s) => s.boot?.loop.running === true).length +
@@ -716,6 +729,68 @@ if (hero !== undefined && heroHost !== null) {
   if (coarse && hero.frame !== undefined) hero.frame.style.pointerEvents = 'none';
 }
 
+/* ────────────────────────────────────────────────────────────────────────────────────────
+ * The drag hint, which deletes itself.
+ * ──────────────────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * A hint with three states and an end, rather than a label with one.
+ *
+ * `DRAG IT` set in the corner of the header was signage: it named a gesture, demonstrated nothing,
+ * appeared before there was anything to drag, and was still sitting there twenty seconds after the
+ * reader had dragged. Three separate faults, and the fix for each is a moment in this file:
+ *
+ * | fault | when it is fixed |
+ * |---|---|
+ * | it was there before the world was | {@link heroIsUp} — the frame has booted and its loop is reachable |
+ * | it described the gesture instead of miming it | CSS, a ±11 px slide on a two-second loop |
+ * | it outlived its own instruction | {@link retireHint} — the first `pointerdown`, and it never comes back |
+ *
+ * **Permanently** is the word that matters in the third row. Not hidden, not faded, `remove()` —
+ * a reader who has dragged the world has learned the thing the header exists to teach, and an
+ * instruction they have already followed is furniture over a live scene.
+ *
+ * The slide is `prefers-reduced-motion`-gated in the stylesheet rather than here, because a reader
+ * who asked for stillness still has to be told the header is a game: they keep the pill and lose
+ * the motion.
+ */
+const hintEl = document.querySelector<HTMLElement>('[data-hint]');
+let hintRetired = false;
+
+function heroIsUp(): void {
+  // Both bridges, at the first moment the frame's `Window` exists. `onScroll` offers them again
+  // on every scroll and both are idempotent, but a reader who never scrolls still gets a hint
+  // that retires itself and a wheel that scrolls the page.
+  const frame = hero?.frame;
+  if (frame !== undefined) { forwardWheel(frame); watchDrag(frame); }
+  if (hintRetired || hintEl === null) return;
+  hintEl.dataset['hint'] = 'on';
+}
+
+function retireHint(): void {
+  hintRetired = true;
+  hintEl?.remove();
+}
+
+/**
+ * Notice the first drag, from inside the frame.
+ *
+ * Events in an iframe do not bubble into the parent, so a listener on `.hero` never fires — the
+ * exhibit's canvas has the pointer. Same-origin is what makes this possible at all, exactly as it
+ * is for {@link forwardWheel} and {@link Scene.capture}, and a cross-origin gallery degrades to a
+ * hint that stays until the visitor scrolls the header off screen. `pointerdown` rather than a
+ * real drag threshold: a press on a world is already the discovery, and waiting for movement
+ * leaves the pill sitting under the reader's own finger.
+ */
+const dragWatched = new WeakSet<Window>();
+
+function watchDrag(frame: HTMLIFrameElement): void {
+  const view = frame.contentWindow;
+  if (view === null || dragWatched.has(view)) return;
+  dragWatched.add(view);
+  view.addEventListener('pointerdown', retireHint, { capture: true, passive: true, once: true });
+}
+
 /**
  * Give the wheel back to the page.
  *
@@ -854,7 +929,7 @@ function onScroll(): void {
     // so the wheel bridge is offered on every scroll and `bridged` makes the repeat free. A
     // frame that is replaced gets a fresh `Window` and therefore a fresh bridge.
     const frame = hero?.frame;
-    if (frame !== undefined) forwardWheel(frame);
+    if (frame !== undefined) { forwardWheel(frame); watchDrag(frame); }
     // Distance is a scroll position, so the gallery's policy is re-decided on the same rAF that
     // repaints the sky. The observer alone is not enough: it fires when a *threshold* is crossed,
     // and two tiles in the same row cross none of them while the row slides up the screen.
@@ -946,6 +1021,77 @@ for (const box of document.querySelectorAll<HTMLElement>('.codebox')) {
       () => { say(copy, 'Press ⌘C'); },
     );
   });
+}
+
+/* ────────────────────────────────────────────────────────────────────────────────────────
+ * The install, as a terminal with tabs.
+ * ──────────────────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * One visible command, the variants behind tabs, and a copy that yields a clean line.
+ *
+ * The line this replaces named five packages, ran to 89 characters, and wrapped to three — the
+ * longest install command in a comparison of twenty-five developer pages, printed on the page
+ * whose whole thesis is *small*.
+ *
+ * Three details are the whole widget:
+ *
+ * 1. **`[data-cmd]` is what Copy reads**, not the `<pre>`. The `$` is a picture of a shell and is
+ *    `user-select: none` besides, so neither a drag-select nor this button can put it on somebody's
+ *    clipboard in front of the command they are about to run.
+ * 2. **The typewriter restarts on every tab change.** Swapping a finished string in would make the
+ *    tabs feel like a table of contents; re-typing makes them feel like the same terminal being
+ *    used again. `data-type` is removed, the layout is read once to flush the animation, and it is
+ *    set again — the one deliberate forced reflow on this page, on a click, costing nothing.
+ * 3. **The tablist is a real tablist.** `role`, `aria-selected` and roving `tabindex` are in the
+ *    markup; the arrow keys are here. A tab strip a keyboard cannot cross is a tab strip that hides
+ *    four of its five commands from anybody not using a mouse.
+ */
+for (const term of document.querySelectorAll<HTMLElement>('[data-term]')) {
+  const tabs = [...term.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+  const panels = [...term.querySelectorAll<HTMLElement>('.term-cmd')];
+  const copy = term.querySelector<HTMLButtonElement>('[data-term-copy]');
+  let shown = 0;
+
+  function show(next: number, focus: boolean): void {
+    shown = (next + tabs.length) % tabs.length;
+    tabs.forEach((tab, i) => {
+      const on = i === shown;
+      tab.setAttribute('aria-selected', String(on));
+      tab.tabIndex = on ? 0 : -1;
+      const panel = panels[i];
+      if (panel === undefined) return;
+      panel.dataset['on'] = on ? 'yes' : 'no';
+      panel.removeAttribute('data-type');
+      if (on) {
+        // Read a layout property to flush the removal, or the browser coalesces both writes and
+        // the animation never restarts. `offsetWidth` is the cheapest such read.
+        void panel.offsetWidth;
+        panel.dataset['type'] = 'run';
+      }
+    });
+    if (focus) tabs[shown]?.focus();
+  }
+
+  tabs.forEach((tab, i) => {
+    tab.addEventListener('click', () => { show(i, false); });
+    tab.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowRight') { event.preventDefault(); show(shown + 1, true); }
+      else if (event.key === 'ArrowLeft') { event.preventDefault(); show(shown - 1, true); }
+      else if (event.key === 'Home') { event.preventDefault(); show(0, true); }
+      else if (event.key === 'End') { event.preventDefault(); show(tabs.length - 1, true); }
+    });
+  });
+
+  copy?.addEventListener('click', () => {
+    const text = panels[shown]?.querySelector('[data-cmd]')?.textContent ?? '';
+    void navigator.clipboard.writeText(text).then(
+      () => { say(copy, 'Copied'); },
+      () => { say(copy, 'Press ⌘C'); },
+    );
+  });
+
+  show(0, false);
 }
 
 /** Flash a word on a button and put its own label back. */
