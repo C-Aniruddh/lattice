@@ -202,14 +202,50 @@ look at the part they cannot see.** Concretely, on a 1440×900 viewport at the o
 | **edges** | the world meets the frame edge, or a horizon does. Never a hard corner with background behind it | a floating slab announces the map's dimensions, which are an implementation detail |
 | **density** | whatever the exhibit repeats — trees, towers, walkers, lamps — is measured in **hundreds**, not dozens | the kit's whole claim is that these are cheap. Thirty of anything disproves it |
 | **depth** | at least three distance bands: something near, something mid, something far and dimmer | one plane at one scale is why a diorama looks small |
+| **cost** | **60 fps on a mid laptop, judged on the worst frame in ten seconds.** Density is bought with culling, caching and cheaper sprites — never with frame time | see below. This row is the price of the one above it, and it was missing for exactly one exhibit |
 
 None of that is a line-rule problem. Extent is a constant, density is a loop bound, and the
 far band is art — the three together typically cost under twenty logic lines, and an exhibit
 that claims the cap forced it to be small should re-read § Which module is which first.
 
+### The cost row, and why it is not a footnote
+
+The first four rows shipped without it, and the first exhibit rebuilt against them came back
+dense and **slow on a decent laptop**. That is the rule's fault rather than the author's: a
+standard that asks for more of something and names no price is a standard that will be paid for
+out of frame time, because frame time is the only budget in this repo that nobody was watching.
+
+So the rows are read in order and **cost is a gate, not a trade**. An exhibit that is grand and
+drops frames has not half-passed; it has failed, and it fails *before* the density row is
+scored, because a stuttering scene reads as cheap no matter how much is in it. Grandeur that
+costs the frame is the same mistake as a diorama, arrived at from the other side.
+
+The way out is never "put fewer things in it" as a first move. It is:
+
+- **Cull.** A sprite outside the camera's rect costs nothing if it is never sorted or drawn.
+  § Scale asks for a world larger than the viewport precisely so that most of it is off-screen.
+- **Cache.** `draw`'s sprite cache exists so that a thing which looks the same twice is drawn
+  once. Three hundred trees from twelve cached silhouettes is cheap; three hundred unique trees
+  is not, and the difference is invisible at a glance.
+- **Spend the detail where the eye is.** The far band is the one asked to be dimmer and hazier,
+  which is also permission for it to be *cheaper*. Full detail at every distance is paying for
+  fidelity nobody can resolve.
+- **Count the lights separately.** They are not free the way sprites are, and a scene reads as
+  lit by scarcity and falloff rather than by how many sources it has.
+
+Only when all four are spent is reducing the count the right answer — and at that point the
+number is a finding about `draw`, not a defeat, and it gets reported.
+
+**Every exhibit's HUD carries its own worst frame.** Not the average: an average of 16 ms with
+every eighth frame at 40 ms is a visible stutter and a healthy-looking number, which is the
+argument `docs/PERFORMANCE.md` makes about the tail. An exhibit that cannot show its worst
+frame cannot be said to have met this row.
+
 **The frame is the composition.** An exhibit is judged on a screenshot taken at the opening
 frame, at a fixed 1440×900, before any input. If that image is mostly background, the exhibit
-is not finished, whatever its suite says. This is rule 10 with a ruler against it.
+is not finished, whatever its suite says. This is rule 10 with a ruler against it — and rule 10
+says *someone looks at it running*, which is where a frame rate is found and a screenshot is
+silent.
 
 ---
 
