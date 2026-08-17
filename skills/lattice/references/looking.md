@@ -9,7 +9,7 @@ The step the preflight was protecting. With a browser available this is not opti
 
 1. `npm run check` — a type error is a wrong game, not a red squiggle.
 2. Open `http://localhost:5173` in a tab and **take a screenshot**.
-3. **Read the console.** Warnings from `@lattice/*` are written for you and usually name the
+3. **Read the console.** Warnings from `@latticekit/*` are written for you and usually name the
    exact mistake — `input`'s covered-by-overlay diagnostic, `draw`'s missing light field,
    `iso`'s "you did not call sort()".
 4. Judge the screenshot against the five rows below.

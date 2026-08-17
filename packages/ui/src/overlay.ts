@@ -18,7 +18,7 @@
  *
  * `driver: 'driven'` is the default and the default is the point: no timer, no
  * `requestAnimationFrame` loop, nothing advances until `tick()` or `repaint()` is called. In a
- * game that means `@lattice/loop`'s `update` and `render`, which is what {@link drive} wires.
+ * game that means `@latticekit/loop`'s `update` and `render`, which is what {@link drive} wires.
  *
  * The failure this designs out is not a crash. It is a HUD that *appears* to work: one cadence
  * from the loop and one of its own, drifting apart, until a poll lands between the player's
@@ -27,7 +27,7 @@
  * acquires a poll it did not know it had written.
  */
 
-import { createScope, expectFinite, type Disposer, type Scope } from '@lattice/core';
+import { createScope, expectFinite, type Disposer, type Scope } from '@latticekit/core';
 import { createCadence, type CadenceFn } from './cadence.js';
 import { el, interactive, passthrough } from './el.js';
 import { hostComputedStyle, hostDocument, hostFrameLoop, hostInterval } from './host.js';
@@ -35,7 +35,7 @@ import { hostComputedStyle, hostDocument, hostFrameLoop, hostInterval } from './
 /**
  * Undo a mount, a subscription or a widget.
  *
- * The kit's teardown vocabulary is `Disposer` from `@lattice/core` and this is that type, not a
+ * The kit's teardown vocabulary is `Disposer` from `@latticekit/core` and this is that type, not a
  * second one: `Scope.add` has to accept what `ui.every` returns without a cast, and two
  * identical aliases would be two things to keep in step. The name `Dispose` is kept because the
  * RFC spells it that way and consumers were written against it; prefer `Disposer` in new code.
@@ -62,7 +62,7 @@ const DEFAULT_STANDALONE_MS = 1000;
 /** How an overlay is created. */
 export interface OverlayOptions {
   /**
-   * Time, injected — and it must be **the same clock `@lattice/loop` was given**.
+   * Time, injected — and it must be **the same clock `@latticekit/loop` was given**.
    *
    * The kit bans `Date.now()` inside every `src/`, and a widget that reads a clock it was not
    * handed is a widget no test can fast-forward. Most of this package's time arrives as the
@@ -183,7 +183,7 @@ export interface Overlay {
 
   /**
    * Register work on the **state cadence** — everything `tick()` runs, and therefore
-   * `@lattice/loop`'s `update`, which advances on wall time whether or not anything paints.
+   * `@latticekit/loop`'s `update`, which advances on wall time whether or not anything paints.
    *
    * Anything whose absence would make the HUD *wrong* goes here: prices, affordability,
    * disabled buttons, build timers, toast expiry, the day/night palette.
@@ -197,7 +197,7 @@ export interface Overlay {
 
   /**
    * Register work on the **paint cadence** — everything `repaint()` runs, and therefore
-   * `@lattice/loop`'s `render`: rAF, 0 Hz in a hidden tab, throttled on a low-power device,
+   * `@latticekit/loop`'s `render`: rAF, 0 Hz in a hidden tab, throttled on a low-power device,
    * skipped entirely under load.
    *
    * Anything registered here must be *cosmetic*: **if it never runs once, every number on
@@ -211,7 +211,7 @@ export interface Overlay {
    * `nowMs` defaults to the overlay's own clock, which is what {@link drive} uses. Pass it
    * explicitly only when you are the clock's owner.
    *
-   * **Do not write `loop.onUpdate(ui.tick)` against `@lattice/loop`.** Its update callback is
+   * **Do not write `loop.onUpdate(ui.tick)` against `@latticekit/loop`.** Its update callback is
    * `(dt, tick)` in *seconds*, so the overlay would be told the time is 0.016 ms, forever. It is
    * bound, so the reference is safe to pass around; it is the argument that is wrong. Use
    * `drive(ui, loop)`.
@@ -268,7 +268,7 @@ export function createOverlay(opts: OverlayOptions): Overlay {
   const now = opts.now;
   if (typeof now !== 'function') {
     throw new TypeError(
-      `createOverlay: \`now\` must be a function returning milliseconds, got ${typeof now} — pass the same clock @lattice/loop was given`,
+      `createOverlay: \`now\` must be a function returning milliseconds, got ${typeof now} — pass the same clock @latticekit/loop was given`,
     );
   }
   const driver = opts.driver ?? 'driven';
@@ -489,11 +489,11 @@ export function createOverlay(opts: OverlayOptions): Overlay {
  * The shape of a game loop, as this package needs it.
  *
  * Declared structurally rather than imported: `ui` is layer 3 and depends on `core` and `draw`
- * only, so it cannot name `@lattice/loop` — but it can describe it, and the real `Loop`
+ * only, so it cannot name `@latticekit/loop` — but it can describe it, and the real `Loop`
  * satisfies this without knowing that `ui` exists.
  *
  * **Both callbacks are declared as taking no arguments, and that is deliberate.**
- * `@lattice/loop` hands `update` a *delta in seconds* and `render` an interpolation alpha;
+ * `@latticekit/loop` hands `update` a *delta in seconds* and `render` an interpolation alpha;
  * neither is the wall-clock reading this overlay wants, and a `Driven` that promised one would
  * be a promise the real loop does not keep. The overlay reads its own injected clock instead —
  * the same clock the loop was given.

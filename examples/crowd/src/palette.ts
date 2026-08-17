@@ -12,7 +12,7 @@
  * The slot names are `draw`'s ten and this file adds none — the kit refuses to invent a slot at
  * runtime, which is what lets `Palette.get` name a typo instead of rendering black.
  */
-import { hex, type Stops } from '@lattice/draw';
+import { hex, type Stops } from '@latticekit/draw';
 
 /** `sky ground ink brand metal glass warn ok bad night`, in that order. */
 function stops(row: string): Stops {

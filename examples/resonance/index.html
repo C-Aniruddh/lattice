@@ -4,7 +4,7 @@
 <title>Resonance — a Lattice exhibit</title>
 <style>
   /*
-   * The overlay's whole appearance. `@lattice/ui` ships no stylesheet at all — it writes
+   * The overlay's whole appearance. `@latticekit/ui` ships no stylesheet at all — it writes
    * structure, `pointer-events`, and the `--lattice-*` custom properties `hud.ts` pushes from
    * `draw`'s live palette. Everything below is this exhibit's art direction for the DOM half,
    * exactly as `rock.ts` is for the canvas half, and every line of it is uncounted art.
@@ -121,7 +121,7 @@
 <div id="app"></div>
 <!--
   The overlay's structure, static, in markup — `hud.ts` adopts these nodes, mounts them into
-  `@lattice/ui`'s own layers and then only ever writes text into three of them and toggles two
+  `@latticekit/ui`'s own layers and then only ever writes text into three of them and toggles two
   classes. Building this tree with `el()` instead would be twenty-odd lines of TypeScript that
   say exactly what these tags say, and `ui`'s whole seam is that an exhibit's appearance is not
   its code. It starts `hidden` so a browser that fails to run the module shows a dark page

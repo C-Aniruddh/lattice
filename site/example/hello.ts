@@ -8,12 +8,12 @@
  * Keep it inside one screen. `docs/GALLERY.md` asks for an example "sized so the whole thing fits
  * on screen at once", and a listing a reader has to scroll is a listing they skim.
  */
-import { createRng, noise2 } from '@lattice/core';
-import { DepthSorter, createCamera } from '@lattice/iso';
+import { createRng, noise2 } from '@latticekit/core';
+import { DepthSorter, createCamera } from '@latticekit/iso';
 import { BASE_SLOTS, beginFrame, createCanvas2dSurface, createPalette, endFrame,
-  isoBox, isoTile, renderFrame, type Passes } from '@lattice/draw';
-import { browserFrames, createLoop } from '@lattice/loop';
-import { createInput } from '@lattice/input';
+  isoBox, isoTile, renderFrame, type Passes } from '@latticekit/draw';
+import { browserFrames, createLoop } from '@latticekit/loop';
+import { createInput } from '@latticekit/input';
 
 const canvas = document.body.appendChild(document.createElement('canvas'));
 canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%';

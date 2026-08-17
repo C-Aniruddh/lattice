@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createRng, mix32 } from '@lattice/core';
+import { createRng, mix32 } from '@latticekit/core';
 import { manualClock } from '../src/clock.js';
 import { manualFrames } from '../src/frames.js';
 import { createLoop } from '../src/loop.js';

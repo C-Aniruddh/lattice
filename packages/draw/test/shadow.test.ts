@@ -7,8 +7,8 @@
  * blurred copy of a silhouette.
  */
 
-import type { Vec2 } from '@lattice/core';
-import { HALF_W, gridToScreen } from '@lattice/iso';
+import type { Vec2 } from '@latticekit/core';
+import { HALF_W, gridToScreen } from '@latticekit/iso';
 import { describe, expect, it } from 'vitest';
 import { SHADE_TINT, rgba, withAlpha } from '../src/color.js';
 import { contactShadow, wash } from '../src/shadow.js';

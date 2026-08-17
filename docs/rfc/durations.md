@@ -60,7 +60,7 @@ createInput({ …, stepMs: someMillis });   // "the branded type exists precisel
                                           //  substitution cannot compile"
 ```
 
-`Millis` is `@lattice/loop`'s, it is `type Millis = number`, its own doc comment says it "guards
+`Millis` is `@latticekit/loop`'s, it is `type Millis = number`, its own doc comment says it "guards
 nothing", and `loop` is `input`'s **sibling** on the DAG so the import does not exist in either
 direction. Three independent reasons the sentence was false, and none of them needed a builder to
 discover — all three are readable in the two files the sentence names.

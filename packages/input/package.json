@@ -1,5 +1,5 @@
 {
-  "name": "@lattice/input",
+  "name": "@latticekit/input",
   "version": "0.1.0",
   "description": "Normalized input: pointer, touch, keyboard and gamepad into one event stream, plus gestures, an action map, and a camera controller.",
   "license": "MIT",
@@ -32,7 +32,7 @@
     "input"
   ],
   "dependencies": {
-    "@lattice/core": "^0.1.0",
-    "@lattice/iso": "^0.1.0"
+    "@latticekit/core": "^0.1.0",
+    "@latticekit/iso": "^0.1.0"
   }
 }

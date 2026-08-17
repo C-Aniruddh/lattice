@@ -14,7 +14,7 @@
       "id": "A1",
       "phase": "design",
       "role": "lattice-architect",
-      "title": "RFC the public surface of @lattice/core",
+      "title": "RFC the public surface of @latticekit/core",
       "package": "core",
       "paths": [
         "docs/rfc/core.md"
@@ -34,7 +34,7 @@
       "id": "A2",
       "phase": "design",
       "role": "lattice-architect",
-      "title": "RFC the public surface of @lattice/iso",
+      "title": "RFC the public surface of @latticekit/iso",
       "package": "iso",
       "paths": [
         "docs/rfc/iso.md"
@@ -54,7 +54,7 @@
       "id": "A3",
       "phase": "design",
       "role": "lattice-architect",
-      "title": "RFC the public surface of @lattice/draw",
+      "title": "RFC the public surface of @latticekit/draw",
       "package": "draw",
       "paths": [
         "docs/rfc/draw.md"
@@ -74,7 +74,7 @@
       "id": "A4",
       "phase": "design",
       "role": "lattice-architect",
-      "title": "RFC the public surface of @lattice/loop",
+      "title": "RFC the public surface of @latticekit/loop",
       "package": "loop",
       "paths": [
         "docs/rfc/loop.md"
@@ -94,7 +94,7 @@
       "id": "A5",
       "phase": "design",
       "role": "lattice-architect",
-      "title": "RFC the public surface of @lattice/input",
+      "title": "RFC the public surface of @latticekit/input",
       "package": "input",
       "paths": [
         "docs/rfc/input.md"
@@ -114,7 +114,7 @@
       "id": "A6",
       "phase": "design",
       "role": "lattice-architect",
-      "title": "RFC the public surface of @lattice/audio",
+      "title": "RFC the public surface of @latticekit/audio",
       "package": "audio",
       "paths": [
         "docs/rfc/audio.md"
@@ -134,7 +134,7 @@
       "id": "A7",
       "phase": "design",
       "role": "lattice-architect",
-      "title": "RFC the public surface of @lattice/persist",
+      "title": "RFC the public surface of @latticekit/persist",
       "package": "persist",
       "paths": [
         "docs/rfc/persist.md"
@@ -154,7 +154,7 @@
       "id": "A8",
       "phase": "design",
       "role": "lattice-architect",
-      "title": "RFC the public surface of @lattice/sim",
+      "title": "RFC the public surface of @latticekit/sim",
       "package": "sim",
       "paths": [
         "docs/rfc/sim.md"
@@ -174,7 +174,7 @@
       "id": "A9",
       "phase": "design",
       "role": "lattice-architect",
-      "title": "RFC the public surface of @lattice/ui",
+      "title": "RFC the public surface of @latticekit/ui",
       "package": "ui",
       "paths": [
         "docs/rfc/ui.md"
@@ -213,7 +213,7 @@
       "id": "B1a",
       "phase": "build",
       "role": "lattice-builder",
-      "title": "Implement @lattice/core: rng, hash, noise — the determinism heart",
+      "title": "Implement @latticekit/core: rng, hash, noise — the determinism heart",
       "package": "core",
       "paths": [
         "packages/core/src/rng.ts",
@@ -240,7 +240,7 @@
       "id": "B1b",
       "phase": "build",
       "role": "lattice-builder",
-      "title": "Implement @lattice/core: math, easing, vec2, time",
+      "title": "Implement @latticekit/core: math, easing, vec2, time",
       "package": "core",
       "paths": [
         "packages/core/src/math.ts",
@@ -269,7 +269,7 @@
       "id": "B1c",
       "phase": "build",
       "role": "lattice-builder",
-      "title": "Implement @lattice/core: events, pool, dispose, guard, format",
+      "title": "Implement @latticekit/core: events, pool, dispose, guard, format",
       "package": "core",
       "paths": [
         "packages/core/src/events.ts",
@@ -300,7 +300,7 @@
       "id": "B2",
       "phase": "build",
       "role": "lattice-builder",
-      "title": "Implement @lattice/iso",
+      "title": "Implement @latticekit/iso",
       "package": "iso",
       "paths": [
         "packages/iso/**"
@@ -323,7 +323,7 @@
       "id": "B3",
       "phase": "build",
       "role": "lattice-builder",
-      "title": "Implement @lattice/draw",
+      "title": "Implement @latticekit/draw",
       "package": "draw",
       "paths": [
         "packages/draw/**"
@@ -346,7 +346,7 @@
       "id": "B4",
       "phase": "build",
       "role": "lattice-builder",
-      "title": "Implement @lattice/loop",
+      "title": "Implement @latticekit/loop",
       "package": "loop",
       "paths": [
         "packages/loop/**"
@@ -369,7 +369,7 @@
       "id": "B5",
       "phase": "build",
       "role": "lattice-builder",
-      "title": "Implement @lattice/input",
+      "title": "Implement @latticekit/input",
       "package": "input",
       "paths": [
         "packages/input/**"
@@ -392,7 +392,7 @@
       "id": "B6",
       "phase": "build",
       "role": "lattice-builder",
-      "title": "Implement @lattice/audio",
+      "title": "Implement @latticekit/audio",
       "package": "audio",
       "paths": [
         "packages/audio/**"
@@ -415,7 +415,7 @@
       "id": "B7",
       "phase": "build",
       "role": "lattice-builder",
-      "title": "Implement @lattice/persist",
+      "title": "Implement @latticekit/persist",
       "package": "persist",
       "paths": [
         "packages/persist/**"
@@ -438,7 +438,7 @@
       "id": "B8",
       "phase": "build",
       "role": "lattice-builder",
-      "title": "Implement @lattice/sim",
+      "title": "Implement @latticekit/sim",
       "package": "sim",
       "paths": [
         "packages/sim/**"
@@ -463,7 +463,7 @@
       "id": "B9",
       "phase": "build",
       "role": "lattice-builder",
-      "title": "Implement @lattice/ui",
+      "title": "Implement @latticekit/ui",
       "package": "ui",
       "paths": [
         "packages/ui/**"
@@ -486,7 +486,7 @@
       "id": "C1",
       "phase": "audit",
       "role": "lattice-auditor",
-      "title": "Adversarially audit @lattice/core",
+      "title": "Adversarially audit @latticekit/core",
       "package": "core",
       "paths": [
         "packages/core/**"
@@ -508,7 +508,7 @@
       "id": "C2",
       "phase": "audit",
       "role": "lattice-auditor",
-      "title": "Adversarially audit @lattice/iso",
+      "title": "Adversarially audit @latticekit/iso",
       "package": "iso",
       "paths": [
         "packages/iso/**"
@@ -530,7 +530,7 @@
       "id": "C3",
       "phase": "audit",
       "role": "lattice-auditor",
-      "title": "Adversarially audit @lattice/draw",
+      "title": "Adversarially audit @latticekit/draw",
       "package": "draw",
       "paths": [
         "packages/draw/**"
@@ -552,7 +552,7 @@
       "id": "C4",
       "phase": "audit",
       "role": "lattice-auditor",
-      "title": "Adversarially audit @lattice/loop",
+      "title": "Adversarially audit @latticekit/loop",
       "package": "loop",
       "paths": [
         "packages/loop/**"
@@ -574,7 +574,7 @@
       "id": "C5",
       "phase": "audit",
       "role": "lattice-auditor",
-      "title": "Adversarially audit @lattice/input",
+      "title": "Adversarially audit @latticekit/input",
       "package": "input",
       "paths": [
         "packages/input/**"
@@ -596,7 +596,7 @@
       "id": "C6",
       "phase": "audit",
       "role": "lattice-auditor",
-      "title": "Adversarially audit @lattice/audio",
+      "title": "Adversarially audit @latticekit/audio",
       "package": "audio",
       "paths": [
         "packages/audio/**"
@@ -618,7 +618,7 @@
       "id": "C7",
       "phase": "audit",
       "role": "lattice-auditor",
-      "title": "Adversarially audit @lattice/persist",
+      "title": "Adversarially audit @latticekit/persist",
       "package": "persist",
       "paths": [
         "packages/persist/**"
@@ -640,7 +640,7 @@
       "id": "C8",
       "phase": "audit",
       "role": "lattice-auditor",
-      "title": "Adversarially audit @lattice/sim",
+      "title": "Adversarially audit @latticekit/sim",
       "package": "sim",
       "paths": [
         "packages/sim/**"
@@ -662,7 +662,7 @@
       "id": "C9",
       "phase": "audit",
       "role": "lattice-auditor",
-      "title": "Adversarially audit @lattice/ui",
+      "title": "Adversarially audit @latticekit/ui",
       "package": "ui",
       "paths": [
         "packages/ui/**"
@@ -786,7 +786,7 @@
       "id": "B0",
       "phase": "build",
       "role": "lattice-perf",
-      "title": "Measure whether @lattice/draw needs a sprite cache at all",
+      "title": "Measure whether @latticekit/draw needs a sprite cache at all",
       "package": "draw",
       "paths": [
         "docs/PERFORMANCE.md",
@@ -894,7 +894,7 @@
       ],
       "status": "done",
       "owner": "lattice-architect",
-      "notes": "Lives in examples/_shared/, never in packages/. It is a gallery instrument; @lattice/ui is deliberately not a controls library."
+      "notes": "Lives in examples/_shared/, never in packages/. It is a gallery instrument; @latticekit/ui is deliberately not a controls library."
     },
     {
       "id": "G1",
@@ -1273,14 +1273,14 @@
         "G3"
       ],
       "acceptance": [
-        "organized by what a person is TRYING TO DO, never by package boundary — nobody sits down to use @lattice/iso",
+        "organized by what a person is TRYING TO DO, never by package boundary — nobody sits down to use @latticekit/iso",
         "trigger phrasing is the deliverable: a skill nobody's task matches is a skill that never fires",
         "each skill is self-contained — the user has node_modules, not this repo, so no reference to AGENTS.md or docs/ may survive",
-        "decide the distribution shape: plugin manifest, marketplace entry, or a droppable directory — and that it is NOT a dependency of any @lattice/* package"
+        "decide the distribution shape: plugin manifest, marketplace entry, or a droppable directory — and that it is NOT a dependency of any @latticekit/* package"
       ],
       "status": "todo",
       "owner": null,
-      "notes": "The constraint that shapes everything: the user installed from npm and never cloned. Package READMEs DO ship (files includes README.md), so node_modules/@lattice/iso/README.md is a real path a skill may point at."
+      "notes": "The constraint that shapes everything: the user installed from npm and never cloned. Package READMEs DO ship (files includes README.md), so node_modules/@latticekit/iso/README.md is a real path a skill may point at."
     },
     {
       "id": "S1",
@@ -1727,7 +1727,7 @@
       ],
       "acceptance": [
         "docs/rfc/demo.md describes a game that no longer exists — offline accrual, presses, rockfall, the shrine ending. Retire it or re-scope it against docs/GALLERY.md",
-        "examples/demo/package.json declares @lattice/persist and @lattice/ui, neither imported",
+        "examples/demo/package.json declares @latticekit/persist and @latticekit/ui, neither imported",
         "record what the exhibit cut left with NO consumer at all — persist entirely, sim.offline and sim.schedule in full including the CatchUp.fromSeconds that D2 added and nothing now calls, the whole replay story, FlowField, ChunkGrid, anchor"
       ],
       "status": "done",
@@ -1758,7 +1758,7 @@
       "id": "K10",
       "phase": "gaps",
       "role": "lattice-builder",
-      "title": "Retrofit the exhibit HUD onto @lattice/ui",
+      "title": "Retrofit the exhibit HUD onto @latticekit/ui",
       "package": "demo",
       "paths": [
         "examples/demo/src/hud.ts",
@@ -1807,7 +1807,7 @@
       ],
       "dependsOn": [],
       "acceptance": [
-        "covered-by-overlay fires on the FIRST TAP on any HUD over the canvas — including every @lattice/ui panel",
+        "covered-by-overlay fires on the FIRST TAP on any HUD over the canvas — including every @latticekit/ui panel",
         "this now BLOCKS a rule: GALLERY.md requires exhibits use ui for their overlay, so every exhibit would hit it",
         "the bootstrap works around it by filtering on class name, which is exactly the kind of workaround a kit exists to remove",
         "wants InputOptions.overlays, or something better — decide the shape"
@@ -2032,7 +2032,7 @@
       "status": "done",
       "owner": "lattice-architect",
       "acceptance": [
-        "core exports EpochMillis and MonotonicMillis, both branded — but neither is a DURATION. Millis belongs to @lattice/loop, is a bare number alias, and its own doc comment says it guards nothing",
+        "core exports EpochMillis and MonotonicMillis, both branded — but neither is a DURATION. Millis belongs to @latticekit/loop, is a bare number alias, and its own doc comment says it guards nothing",
         "so a { stepMs: Millis } parameter was never an available shape for a sibling package, and the acceptance criterion I wrote for K13 asserted that it was",
         "a brand living in loop cannot help any sibling across the DAG. input took the step STRUCTURALLY instead, as the two fields the loop already publishes, and cross-checks them",
         "decide whether a branded duration belongs in core, or whether structural pairs are the better answer kit-wide — input argues a cross-checked pair is self-verifying in a way a brand is not",

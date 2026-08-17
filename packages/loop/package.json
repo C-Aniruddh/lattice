@@ -1,5 +1,5 @@
 {
-  "name": "@lattice/loop",
+  "name": "@latticekit/loop",
   "version": "0.1.0",
   "description": "Time. A wall-clock game loop with fixed-step simulation and interpolated rendering, plus scheduling, tweens and frame statistics.",
   "license": "MIT",
@@ -32,6 +32,6 @@
     "loop"
   ],
   "dependencies": {
-    "@lattice/core": "^0.1.0"
+    "@latticekit/core": "^0.1.0"
   }
 }

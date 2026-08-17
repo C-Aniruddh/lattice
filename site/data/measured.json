@@ -12,7 +12,7 @@
     "dependencies": {
       "value": 0,
       "unit": "",
-      "source": "every package.json has no `dependencies` outside @lattice; core has none at all"
+      "source": "every package.json has no `dependencies` outside @latticekit; core has none at all"
     },
     "assetFiles": {
       "value": 0,

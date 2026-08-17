@@ -11,12 +11,12 @@
  * first exhibit reported is absent from those five lines rather than handled inside them.
  */
 
-import { clamp01 } from '@lattice/core';
-import { DAY, NIGHT, isoBox, isoTile, glowDot, renderFrame, type Passes, type Pen } from '@lattice/draw';
-import { tileBounds, type Rect } from '@lattice/iso';
-import { createAudio, type Audio } from '@lattice/audio';
-import type { OfflineCurve } from '@lattice/sim';
-import { offlineCredit } from '@lattice/sim';
+import { clamp01 } from '@latticekit/core';
+import { DAY, NIGHT, isoBox, isoTile, glowDot, renderFrame, type Passes, type Pen } from '@latticekit/draw';
+import { tileBounds, type Rect } from '@latticekit/iso';
+import { createAudio, type Audio } from '@latticekit/audio';
+import type { OfflineCurve } from '@latticekit/sim';
+import { offlineCredit } from '@latticekit/sim';
 import { bootstrap } from './bootstrap.js';
 import { createBucket } from './bucket.js';
 import { controlPanel } from './panel.js';
@@ -171,32 +171,32 @@ const panel = controlPanel(
   [
     { kind: 'group', label: 'the world' },
     knobs.seed(boot),
-    { kind: 'group', label: 'camera — @lattice/iso' },
+    { kind: 'group', label: 'camera — @latticekit/iso' },
     knobs.minZoom(boot),
     knobs.maxZoom(boot),
     knobs.keepVisible(boot),
-    { kind: 'group', label: 'touch — @lattice/input' },
+    { kind: 'group', label: 'touch — @latticekit/input' },
     knobs.tapSlop(boot),
     knobs.longPress(boot),
     knobs.flingHalfLife(boot),
     knobs.flingFloor(boot),
-    { kind: 'group', label: 'the night — @lattice/draw' },
+    { kind: 'group', label: 'the night — @latticekit/draw' },
     knobs.lightBloom(boot),
     knobs.lightScale(boot),
     knobs.lightFalloff(boot),
-    { kind: 'group', label: 'pixels — @lattice/draw' },
+    { kind: 'group', label: 'pixels — @latticekit/draw' },
     knobs.snap(boot),
     knobs.pixelRatio(boot),
-    { kind: 'group', label: 'offline — @lattice/sim' },
+    { kind: 'group', label: 'offline — @latticekit/sim' },
     knobs.offlineExponent(curve),
     knobs.offlineUncapped(curve),
     knobs.offlineHorizon(curve),
-    { kind: 'group', label: 'sound — @lattice/audio' },
+    { kind: 'group', label: 'sound — @latticekit/audio' },
     {
       kind: 'range',
       key: 'voices',
       label: 'voice ceiling',
-      param: '@lattice/audio AudioOptions.maxVoices',
+      param: '@latticekit/audio AudioOptions.maxVoices',
       note: 'Tap or hold Space and mash. Refusals show in the tab.',
       min: 1,
       max: 32,

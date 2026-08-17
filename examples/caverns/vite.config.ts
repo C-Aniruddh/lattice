@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
  * than into a different number in the banner. 5190 because 5173–5178, 5183, 5186 and 5199 are
  * spoken for.
  *
- * `@lattice/*` is deliberately not aliased to package source: the workspace symlinks resolve it
+ * `@latticekit/*` is deliberately not aliased to package source: the workspace symlinks resolve it
  * to each package's `dist`, which is what a visitor who installed the kit gets, and an exhibit
  * that only renders against source is one that has never been run the way anyone else will run
  * it. `npm run build` first.

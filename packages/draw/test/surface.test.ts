@@ -8,8 +8,8 @@
  * cached images resample, terrain seams open and close, and everyone blames the browser.
  */
 
-import { createRng } from '@lattice/core';
-import { createCamera } from '@lattice/iso';
+import { createRng } from '@latticekit/core';
+import { createCamera } from '@latticekit/iso';
 import { describe, expect, it } from 'vitest';
 import { rgba } from '../src/color.js';
 import { BASE_SLOTS, createPalette } from '../src/palette.js';

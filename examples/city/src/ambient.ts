@@ -12,9 +12,9 @@
  * Everything here is closed form in `pen.t` and a seeded hash of the instance's own index, so it
  * holds no state, allocates nothing, and is identical on every reload.
  */
-import { hash2, noise2, toUnit, type Vec2 } from '@lattice/core';
-import { gridToScreen } from '@lattice/iso';
-import { mix, withAlpha, type Pen } from '@lattice/draw';
+import { hash2, noise2, toUnit, type Vec2 } from '@latticekit/core';
+import { gridToScreen } from '@latticekit/iso';
+import { mix, withAlpha, type Pen } from '@latticekit/draw';
 import { snap } from './palette.js';
 
 const pt: Vec2 = { x: 0, y: 0 };

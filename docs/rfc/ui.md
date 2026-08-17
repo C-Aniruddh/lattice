@@ -1,10 +1,10 @@
-# RFC — `@lattice/ui`
+# RFC — `@latticekit/ui`
 
 | | |
 |---|---|
 | **status** | proposed — no implementation yet |
 | **layer** | 3 (the top; nothing imports this) |
-| **depends on** | `@lattice/core`, `@lattice/draw` |
+| **depends on** | `@latticekit/core`, `@latticekit/draw` |
 | **environment** | browser. Every module in this package touches `document`. |
 | **modules** | `overlay`, `el`, `panel`, `toast`, `roll`, `thumb`, `theme` |
 | **budget** | 12 kB gzipped, and it should come in near half of that |
@@ -13,7 +13,7 @@
 
 ## 1. The one sentence
 
-**`@lattice/ui` is the handful of DOM primitives a game HUD cannot avoid needing — a
+**`@latticekit/ui` is the handful of DOM primitives a game HUD cannot avoid needing — a
 pointer-transparent overlay, an element builder, panels, toasts, number rolls, floating
 feedback and canvas thumbnails — and it is deliberately not a framework, because the whole
 overlay is a few dozen nodes that change a few times a second and a virtual DOM would be
@@ -34,8 +34,8 @@ The thing a game does 90% of the time: put a number on the screen, keep it right
 something when an event happens.
 
 ```ts
-import { fmt } from '@lattice/core';
-import { createOverlay, drive, el, roll } from '@lattice/ui';
+import { fmt } from '@latticekit/core';
+import { createOverlay, drive, el, roll } from '@latticekit/ui';
 
 const ui = createOverlay({ now: () => Date.now() });
 const gold = roll(ui, { format: fmt });
@@ -50,7 +50,7 @@ Five lines, and five of the package's hard decisions are already made for the ca
 
 - **The overlay is pointer-transparent** and `{ interactive: true }` is the only thing that
   ever makes a node tappable. A tap that is not on a node you named reaches the world.
-- **This package owns no clock.** `ui.every` runs on `@lattice/loop`'s **`update`** callback,
+- **This package owns no clock.** `ui.every` runs on `@latticekit/loop`'s **`update`** callback,
   which advances on wall time whether or not anything paints. The overlay starts no timer of
   its own, because a second cadence beside the loop's is a poll racing a settle (§6, trap 4).
 - **There is no way to put a state update in `render`.** The only other cadence is called
@@ -58,7 +58,7 @@ Five lines, and five of the package's hard decisions are already made for the ca
 - **The roll animates itself** on the paint cadence and snaps on `visibilitychange`, so a tab
   that comes back from an hour in the background shows the right number instantly rather
   than counting up from an hour ago.
-- **Formatting comes from `@lattice/core`.** This package has no `fmt`, and never will.
+- **Formatting comes from `@latticekit/core`.** This package has no `fmt`, and never will.
 
 ---
 
@@ -75,31 +75,31 @@ to update it (I own only this file):
 | **add `overlay`** | The pointer-event contract, the two cadences and the layer stack are the package's reason to exist. Leaving them implicit means every widget re-invents them, which is precisely how `hud.ts` reached 3,102 lines. |
 | **add `theme`** | Recolouring the whole HUD from one brand hue is one function and three custom properties. Without it, every game writes `document.documentElement.style.setProperty('--brand', …)` by hand and the thumbnail cache goes stale behind it (§6, trap 7). |
 | **keep floating numbers inside `roll`** | `+120` rising off a building and a wallet ticking up to 1,240 are the same feature seen twice: a number in screen space, animated, that must be correct without animation. One module, two exports. |
-| **reword this package's third invariant** | It currently reads *"anything that is not painting updates on an interval, not inside the frame loop."* Right in spirit, wrong in letter. `@lattice/loop`'s `update` **already is** the interval; a `ui` that reads that sentence literally starts a `setInterval` of its own and now the HUD polls on one clock while the simulation settles on another — which is `PLAYBOOK.md` trap 12, the bug that overwrote a player's typed company name. It must read: **"anything that is not painting updates on the loop's `update` callback, never inside `render`."** The two sentences sound identical and are not. |
+| **reword this package's third invariant** | It currently reads *"anything that is not painting updates on an interval, not inside the frame loop."* Right in spirit, wrong in letter. `@latticekit/loop`'s `update` **already is** the interval; a `ui` that reads that sentence literally starts a `setInterval` of its own and now the HUD polls on one clock while the simulation settles on another — which is `PLAYBOOK.md` trap 12, the bug that overwrote a player's typed company name. It must read: **"anything that is not painting updates on the loop's `update` callback, never inside `render`."** The two sentences sound identical and are not. |
 
 Seven modules, twenty exported functions. Everything else in this section is a type.
 
 ### 3.1 What this package needs from its dependencies
 
-This is the complete list of symbols `@lattice/ui` imports. If a name here does not survive
+This is the complete list of symbols `@latticekit/ui` imports. If a name here does not survive
 its own package's RFC, this one needs a note, not a workaround.
 
 ```ts
-// @lattice/core
-import type { Rng } from '@lattice/core';        // only in doc comments: thumbnails must be seeded
-import { easeOutCubic } from '@lattice/core';    // the roll's curve
+// @latticekit/core
+import type { Rng } from '@latticekit/core';        // only in doc comments: thumbnails must be seeded
+import { easeOutCubic } from '@latticekit/core';    // the roll's curve
 
-// @lattice/draw
-import type { Surface } from '@lattice/draw';
-import { createCanvasSurface } from '@lattice/draw'; // an offscreen Surface over a <canvas>
-import { hueToHex } from '@lattice/draw';           // one hue -> one CSS color
+// @latticekit/draw
+import type { Surface } from '@latticekit/draw';
+import { createCanvasSurface } from '@latticekit/draw'; // an offscreen Surface over a <canvas>
+import { hueToHex } from '@latticekit/draw';           // one hue -> one CSS color
 ```
 
-`@lattice/core`'s `fmt` / `fmtRate` / `fmtDuration` are **not** imported. Formatting is the
+`@latticekit/core`'s `fmt` / `fmtRate` / `fmtDuration` are **not** imported. Formatting is the
 caller's choice, passed in as `RollOptions.format`, so a game can ship its own suffix ladder
 without forking this package.
 
-**`@lattice/loop` is not imported either, and that is a layering fact rather than a
+**`@latticekit/loop` is not imported either, and that is a layering fact rather than a
 preference** — `ui` is layer 3 and depends on `core` and `draw` only. But the HUD's cadence
 *is* the loop's `update`, so this package meets it structurally: `Driven` in §3.2 is the shape
 of a loop, declared here, satisfied by the real one without an import. A game with no loop at
@@ -120,7 +120,7 @@ export type LayerName = 'floats' | 'panels' | 'modal' | 'toasts';
 
 export interface OverlayOptions {
   /**
-   * Time, injected — and it must be **the same clock `@lattice/loop` was given**.
+   * Time, injected — and it must be **the same clock `@latticekit/loop` was given**.
    *
    * The kit bans `Date.now()` inside `src/`, and a widget that reads a clock it was not handed
    * is a widget no test can fast-forward. Almost all of this package's time arrives as the
@@ -136,7 +136,7 @@ export interface OverlayOptions {
    *
    * - `'driven'` — the overlay starts **no timer and no `requestAnimationFrame` loop**. It
    *   advances only when something calls `tick()` / `repaint()`, which in a game means
-   *   `@lattice/loop`'s `update` and `render` (see `drive` below). One clock, the loop's.
+   *   `@latticekit/loop`'s `update` and `render` (see `drive` below). One clock, the loop's.
    * - `'standalone'` — the overlay runs its own `setInterval` at `standaloneMs` and its own
    *   rAF loop. This is for a HUD with no game behind it: a menu, a settings screen, a
    *   component page. In this mode `tick()` throws, because a host calling it *as well* is
@@ -173,7 +173,7 @@ export interface Overlay {
 
   /**
    * Register work on the **state cadence** — everything `tick()` runs, and therefore
-   * `@lattice/loop`'s `update` callback, which advances on wall time whether or not anything
+   * `@latticekit/loop`'s `update` callback, which advances on wall time whether or not anything
    * paints. Anything whose absence would be a *wrong* HUD goes here: prices, affordability,
    * disabled buttons, build timers, toast expiry, the day/night palette.
    *
@@ -186,7 +186,7 @@ export interface Overlay {
 
   /**
    * Register work on the **paint cadence** — everything `repaint()` runs, and therefore
-   * `@lattice/loop`'s `render` callback: `requestAnimationFrame`, 0 Hz in a hidden tab,
+   * `@latticekit/loop`'s `render` callback: `requestAnimationFrame`, 0 Hz in a hidden tab,
    * throttled on a low-power device, skipped entirely under load. Anything registered here
    * must be *cosmetic*: if it never runs once, every number on screen must still be right.
    * That is the whole rule, and §5, invariant 2 tests it.
@@ -217,7 +217,7 @@ export function createOverlay(opts: OverlayOptions): Overlay;
  * The shape of a game loop, as this package needs it.
  *
  * Declared structurally rather than imported: `ui` is layer 3 and depends on `core` and `draw`
- * only, so it cannot name `@lattice/loop` — but it can describe it, and the real `Loop`
+ * only, so it cannot name `@latticekit/loop` — but it can describe it, and the real `Loop`
  * satisfies this without knowing that `ui` exists.
  */
 export interface Driven {
@@ -393,7 +393,7 @@ export interface AcknowledgeOptions {
  * way out is the acknowledgement, which is the entire point.
  *
  * **This exists for a specific class of message: the session has silently stopped working and
- * the player cannot tell.** `@lattice/persist` found the case that named it — a save written by
+ * the player cannot tell.** `@latticekit/persist` found the case that named it — a save written by
  * a newer deploy, which `persist` correctly refuses to overwrite, so the player's progress is
  * safe and their *current session* is no longer being recorded. A toast is exactly wrong here:
  * it is dismissible, it expires whether or not it was read, and it competes with the toast that
@@ -457,7 +457,7 @@ export interface ToastHost {
    * Show one **at most once per key for this session**, and say whether this call was the one
    * that showed it.
    *
-   * The case that named it, from `@lattice/persist`: storage may be non-persistent — private
+   * The case that named it, from `@latticekit/persist`: storage may be non-persistent — private
    * browsing, a quota-constrained device, a user who has blocked site data — and the autosave
    * rediscovers this every thirty seconds for the rest of the session. Shown every time, "your
    * browser will not keep this save" becomes furniture: the player learns the shape of a toast
@@ -471,7 +471,7 @@ export interface ToastHost {
    *
    * The scope is **this session and this host**, held in memory. It is deliberately not
    * persisted: see §4 — "once ever, across reloads" is a flag in your saved state, and
-   * `@lattice/persist` owns that. This package never touches storage.
+   * `@latticekit/persist` owns that. This package never touches storage.
    */
   once(key: string, text: string, kind?: ToastKind): boolean;
 
@@ -499,7 +499,7 @@ company-name bug that came of it).
 export interface RollOptions {
   /** Where it lives. Created as `<span class="lattice-roll">` if you do not pass one. */
   readonly node?: HTMLElement;
-  /** Default `String`. Pass `fmt` from `@lattice/core` for compact magnitudes. */
+  /** Default `String`. Pass `fmt` from `@latticekit/core` for compact magnitudes. */
   readonly format?: (value: number) => string;
   /** Roll duration. Default 400. Longer than about 600 and the number is unreadable while it moves. */
   readonly ms?: number;
@@ -530,7 +530,7 @@ export function roll(ui: Overlay, opts?: RollOptions): Roll;
 
 export type FloatKind = 'gain' | 'loss' | 'plain';
 
-/** A mutable point, used only as an output parameter. Structurally a `Vec2` from `@lattice/core`. */
+/** A mutable point, used only as an output parameter. Structurally a `Vec2` from `@latticekit/core`. */
 export interface ScreenPoint { x: number; y: number }
 
 export interface FloatOptions {
@@ -548,8 +548,8 @@ export interface FloatOptions {
    * Omit it and `spawn()` takes screen pixels, which is right for a static camera. Supply it
    * and `spawn()` takes whatever coordinates you like — world units, grid units — and this
    * converts them, so a `+120` stays glued to the building it came from while the player is
-   * still dragging the camera. `@lattice/ui` does not know what a camera is and must not;
-   * three lines of `worldToScreen` from `@lattice/iso` live on the game's side of this hook.
+   * still dragging the camera. `@latticekit/ui` does not know what a camera is and must not;
+   * three lines of `worldToScreen` from `@latticekit/iso` live on the game's side of this hook.
    */
   readonly project?: (anchorX: number, anchorY: number, out: ScreenPoint) => void;
 }
@@ -568,7 +568,7 @@ export interface FloatHost {
  * Floating "+120" feedback, in the overlay's bottom layer.
  *
  * It is DOM rather than canvas because it is screen-space type: it wants the game's font,
- * its text shadow and its color tokens, and painting it through `@lattice/draw`'s text kit
+ * its text shadow and its color tokens, and painting it through `@latticekit/draw`'s text kit
  * would mean a second typographic system that drifts from the first. It is in the *bottom*
  * layer because feedback must never intercept the next tap, and the layer is
  * `pointer-events: none` with no way to turn that on.
@@ -642,7 +642,7 @@ export interface BrandOptions {
  * Recolour the overlay from a single hue in degrees.
  *
  * Writes exactly three custom properties on the overlay root — `--lattice-brand`,
- * `--lattice-brand-hi`, `--lattice-brand-lo` — derived through `@lattice/draw`'s color model,
+ * `--lattice-brand-hi`, `--lattice-brand-lo` — derived through `@latticekit/draw`'s color model,
  * so the HUD accent and the buildings in the world are the same hue *by construction* rather
  * than by two people picking hex codes. Your stylesheet consumes them; this package never
  * reads them back.
@@ -660,7 +660,7 @@ export function setBrand(ui: Overlay, hue: number, opts?: BrandOptions): void;
  * Set arbitrary custom properties on the overlay root.
  *
  * The escape hatch that stops this package growing a design system: a game that wants a
- * `--panel-radius` or a `--danger` sets it here and styles with it. `@lattice/ui` defines no
+ * `--panel-radius` or a `--danger` sets it here and styles with it. `@latticekit/ui` defines no
  * scale, no ramp and no palette beyond the brand triplet above.
  *
  * @throws RangeError naming the offending key if any key does not start with `--`.
@@ -668,9 +668,9 @@ export function setBrand(ui: Overlay, hue: number, opts?: BrandOptions): void;
 export function setTokens(ui: Overlay, tokens: Readonly<Record<string, string>>): void;
 
 /**
- * A set of named colors. Whatever `@lattice/draw` produces from interpolating two palettes
+ * A set of named colors. Whatever `@latticekit/draw` produces from interpolating two palettes
  * by a 0..1 parameter is one of these: names to CSS color strings, and nothing else.
- * `@lattice/ui` neither defines the names nor knows what they mean.
+ * `@latticekit/ui` neither defines the names nor knows what they mean.
  */
 export type Palette = Readonly<Record<string, string>>;
 
@@ -751,7 +751,7 @@ the boundary between "primitives" and "a look you have to fight".
 
 ## 4. What is deliberately absent
 
-This is the section that stops the next agent adding it back. `@lattice/ui` is the package
+This is the section that stops the next agent adding it back. `@latticekit/ui` is the package
 most likely to go wrong by growing: every one of the following has an obvious first version
 that is fifteen lines and a mature version that is a framework.
 
@@ -761,17 +761,17 @@ that is fifteen lines and a mature version that is a framework.
 | **State binding** — `bind(state, node, selector)` | The moment this package can read your state it needs a shape for your state, and the shape wins. You call `set()` and `setText()` inside `ui.every()`. That is three characters more than a binding and it never surprises you about *when*. |
 | **A component library** — buttons, tabs, sliders, dropdowns, progress bars, accordions | A button is `el('button', { class: 'btn', onclick })` plus your stylesheet, and every game wants a different one. Shipping a styled button means shipping a look, and a look is the one thing a zero-asset kit must let the game own. The three widgets that *are* here (panel, toast, float) earn it by owning **behavior** — a focus trap, a hold-on-hover expiry, a recycling pool — not appearance. |
 | **A layout engine** — grids, stacks, anchoring, breakpoints, safe-area insets | CSS is the layout engine and it is already in the browser. This package guarantees exactly one thing about geometry: the root fills the viewport and the four layers stack in a fixed order. Where your dock sits, and whether it clears the iPhone home indicator, is `env(safe-area-inset-bottom)` in your sheet. |
-| **A stylesheet, a theme preset, or a dark mode** | Non-negotiable 8 is zero assets, and a CSS file is an asset. `setBrand` is a bridge from `@lattice/draw`'s color model into three custom properties; that is the entire opinion this package holds about how anything looks. |
-| **Input handling** — gestures, pointer normalization, drag, long-press, keyboard maps | `@lattice/input` (layer 2). This package sets `pointer-events` and attaches `click`; if you find yourself computing a drag threshold in here, you are writing the wrong package. |
-| **Color interpolation, palette blending, contrast checking** | `@lattice/draw` owns the color model, including interpolating two palettes by a `t` for day and night. `applyPalette` takes the *result* — a bag of name-to-CSS-string — so the overlay darkens with the world without this package learning what "dusk" is, or holding a second opinion about how a color is derived. |
+| **A stylesheet, a theme preset, or a dark mode** | Non-negotiable 8 is zero assets, and a CSS file is an asset. `setBrand` is a bridge from `@latticekit/draw`'s color model into three custom properties; that is the entire opinion this package holds about how anything looks. |
+| **Input handling** — gestures, pointer normalization, drag, long-press, keyboard maps | `@latticekit/input` (layer 2). This package sets `pointer-events` and attaches `click`; if you find yourself computing a drag threshold in here, you are writing the wrong package. |
+| **Color interpolation, palette blending, contrast checking** | `@latticekit/draw` owns the color model, including interpolating two palettes by a `t` for day and night. `applyPalette` takes the *result* — a bag of name-to-CSS-string — so the overlay darkens with the world without this package learning what "dusk" is, or holding a second opinion about how a color is derived. |
 | **A dialog system** — `confirm` / `prompt` / `alert` families, severity levels, icon sets, a notification queue with a priority policy, "don't show me this again" checkboxes | `acknowledge` is one function with one button and one guarantee (it cannot be dismissed), and that is where the line is drawn. The moment a second button appears it is a *choice*, and a choice needs a return type, then a default, then a destructive-action convention, then an icon to mark which kind it is — and now the package has a severity taxonomy and an opinion about what red means. Two actions is `panel`, which exists, and which the game styles. |
-| **Persistence of any kind** — a `once` that survives a reload, a "seen" set, a dismissal log | `once(key, …)` latches for **this session**, in memory, and that is the whole scope. "Tell the player once ever" is a boolean in the game's saved state, and `@lattice/persist` owns saved state; a UI package that writes `localStorage` behind the save layer's back is a second owner of the same truth, which is the storage-shaped version of the two-clocks bug this RFC has already fixed once. `if (!save.warnedAboutStorage) { save.warnedAboutStorage = toasts.once(…) }` is the composition, and it is one line. |
-| **A clock, a scheduler, a `setInterval`, a `requestAnimationFrame` loop** | `@lattice/loop` owns time, and a HUD that brings its own clock is a HUD that polls while the simulation settles. The overlay is *driven*: `tick` from `update`, `repaint` from `render`. `driver: 'standalone'` exists only for a page with no game behind it, and it refuses to coexist with a host that also calls `tick()`. |
-| **Tweening and easing curves** | `@lattice/loop` has tweens and `@lattice/core` has easing. The roll uses `easeOutCubic` from core; floats and toast bars use Web Animations, which is the platform's own tween and runs off the main thread. |
-| **Number formatting, pluralisation, i18n** | `@lattice/core`'s `format` module. The source game put `fmt` in its DOM helpers and that is exactly the accretion this table exists to prevent: formatting is a pure function of a number and belongs where pure functions live. `RollOptions.format` is how it gets here. |
-| **A camera, a projection, or world-space anchoring** | `@lattice/iso`. `FloatOptions.project` is a hook, not a dependency: three lines of `worldToScreen` on the game's side, and this package stays runnable with no world at all — which is what makes it usable on a menu screen. |
+| **Persistence of any kind** — a `once` that survives a reload, a "seen" set, a dismissal log | `once(key, …)` latches for **this session**, in memory, and that is the whole scope. "Tell the player once ever" is a boolean in the game's saved state, and `@latticekit/persist` owns saved state; a UI package that writes `localStorage` behind the save layer's back is a second owner of the same truth, which is the storage-shaped version of the two-clocks bug this RFC has already fixed once. `if (!save.warnedAboutStorage) { save.warnedAboutStorage = toasts.once(…) }` is the composition, and it is one line. |
+| **A clock, a scheduler, a `setInterval`, a `requestAnimationFrame` loop** | `@latticekit/loop` owns time, and a HUD that brings its own clock is a HUD that polls while the simulation settles. The overlay is *driven*: `tick` from `update`, `repaint` from `render`. `driver: 'standalone'` exists only for a page with no game behind it, and it refuses to coexist with a host that also calls `tick()`. |
+| **Tweening and easing curves** | `@latticekit/loop` has tweens and `@latticekit/core` has easing. The roll uses `easeOutCubic` from core; floats and toast bars use Web Animations, which is the platform's own tween and runs off the main thread. |
+| **Number formatting, pluralisation, i18n** | `@latticekit/core`'s `format` module. The source game put `fmt` in its DOM helpers and that is exactly the accretion this table exists to prevent: formatting is a pure function of a number and belongs where pure functions live. `RollOptions.format` is how it gets here. |
+| **A camera, a projection, or world-space anchoring** | `@latticekit/iso`. `FloatOptions.project` is a hook, not a dependency: three lines of `worldToScreen` on the game's side, and this package stays runnable with no world at all — which is what makes it usable on a menu screen. |
 | **A screen/scene/route state machine** | The game's own `main.ts`. In the source game this was a `mode` machine, it was 200 lines, it was entirely about that game's verbs, and no two games would have agreed on it. |
-| **Canvas rendering** | `@lattice/draw`. `thumb` is the single bridge and it does not draw anything: it hands you a `Surface` and turns what you painted into a `data:` URL. |
+| **Canvas rendering** | `@latticekit/draw`. `thumb` is the single bridge and it does not draw anything: it hands you a `Surface` and turns what you painted into a `data:` URL. |
 | **Tooltips, context menus, drag-and-drop, virtualised lists** | Nobody's job yet. Each is a real package's worth of edge cases (positioning against a viewport edge, touch equivalence, a11y), and none of them is load-bearing for an isometric idle game. If the demo game needs one, it writes it, and *then* we look at whether it generalised. |
 
 ---
@@ -885,7 +885,7 @@ What a naive implementation gets wrong. Numbers in brackets are traps from
 
 3b. **"Not in the frame loop" and "not in the render callback" are not the same sentence.**
    This is the subtlest trap in the package and it was caught in review, not in code.
-   `@lattice/loop` runs *two* callbacks: `render`, driven by rAF and dead in a hidden tab, and
+   `@latticekit/loop` runs *two* callbacks: `render`, driven by rAF and dead in a hidden tab, and
    `update`, driven by the wall clock and alive. **`update` already is the interval.** So an
    implementer who reads "put non-painting work on an interval, not in the frame loop" and
    dutifully calls `setInterval` has not obeyed the rule — they have built a second clock beside
@@ -915,7 +915,7 @@ What a naive implementation gets wrong. Numbers in brackets are traps from
    hard cap: a wall of toasts hides the game they are about.
 
 6b. **The severity of a message is not a property of the message — it is a property of what the
-   player loses by missing it.** Two notices from `@lattice/persist` look alike on paper and
+   player loses by missing it.** Two notices from `@latticekit/persist` look alike on paper and
    need opposite mechanisms, and getting them the wrong way round is the whole trap.
 
    | notice | the player's exposure | mechanism |
@@ -990,24 +990,24 @@ What a naive implementation gets wrong. Numbers in brackets are traps from
 Things this RFC needs that are not this package's to build. Each is a one-line task for the
 orchestrator, not a change I can make from here.
 
-- **`@lattice/draw`** must export an offscreen `Surface` factory over a `<canvas>` and a way
+- **`@latticekit/draw`** must export an offscreen `Surface` factory over a `<canvas>` and a way
   to get a `data:` URL out of it, plus `hueToHex(hue, sat?, light?)`. Without the first,
   `thumb` cannot exist; without the second, `theme` duplicates a color model that already
   lives in `draw` — and two color models is how a HUD accent stops matching the buildings.
-- **`@lattice/draw` owns palette interpolation** and must export it as a function of two
+- **`@latticekit/draw` owns palette interpolation** and must export it as a function of two
   palettes and a `t` in 0..1 returning a plain name-to-CSS-color bag (`lerpPalette(a, b, t)`
   in the demo RFC's spelling). `applyPalette` accepts exactly that shape and nothing narrower,
   so the seam is one structural type and neither side imports the other's opinions. The demo
   should quantise `t` — 1/64 steps over a dusk is beyond what anyone can see — so that the
   overlay's per-key change guard turns most pushes into no-ops.
-- **`@lattice/loop` must present `onUpdate` / `onRender` subscriptions**, or tell me the two
+- **`@latticekit/loop` must present `onUpdate` / `onRender` subscriptions**, or tell me the two
   names it does present. `Driven` in §3.2 is a structural type — `ui` cannot import `loop` and
   does not want to — so `drive(ui, loop)` compiles only if the loop's real shape has those two
   methods, each returning a disposer. If the loop instead takes its callbacks at construction
   (`createLoop({ update, render })`), `drive` should be dropped from this package and the demo
   wires `ui.tick` and `ui.repaint` by hand; both are one line, and the RFC's requirement is only
   that `tick` never lands on `render`. **This is the one open question in the document.**
-- **`@lattice/persist` should expose its two notices as *conditions*, not as rendered
+- **`@latticekit/persist` should expose its two notices as *conditions*, not as rendered
   messages.** `ui` now has a home for both — `toasts.once(key, …)` for "storage will not keep
   this save", `acknowledge(…)` for "this save is from a newer version, writing has stopped" —
   and neither is `persist`'s to call, because `persist` is isomorphic and correctly declines to
@@ -1027,13 +1027,13 @@ orchestrator, not a change I can make from here.
 - **`.lattice/kit.json`'s third `ui` invariant needs the reword in §3.0** — "on the loop's
   `update` callback, never inside `render`", not "on an interval, not inside the frame loop".
   The current wording instructs the builder to create the second clock this RFC forbids.
-- **`@lattice/core`** owns `fmt`, `fmtRate`, `fmtDuration` (its `format` module) and
+- **`@latticekit/core`** owns `fmt`, `fmtRate`, `fmtDuration` (its `format` module) and
   `easeOutCubic` (its `easing` module). This package imports the easing and deliberately does
   not import the formatters.
-- **`@lattice/core`'s `Vec2` must be a mutable `{ x, y }`**, or every out-parameter signature
+- **`@latticekit/core`'s `Vec2` must be a mutable `{ x, y }`**, or every out-parameter signature
   in the kit needs a second type. `ScreenPoint` here is declared structurally so `ui` compiles
   either way, but the kit should have one answer.
-- **`@lattice/input` needs pointer capture on the canvas.** With this overlay, a camera drag
+- **`@latticekit/input` needs pointer capture on the canvas.** With this overlay, a camera drag
   that starts on the world and passes under an interactive panel loses its move events unless
   the canvas captured the pointer. That is an `input` fix; the overlay cannot help.
 - **Nothing in the kit anchors a persistent DOM node to a world entity.** Floats solve the

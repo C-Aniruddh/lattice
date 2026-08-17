@@ -27,7 +27,7 @@
  * | **a contact shadow on every one** | without it people hover, and a hovering crowd is a diagram |
  * | **things carried** | a basket, a bundle, a staff, a parasol. People in a market are *doing something* |
  */
-import { hash2, toUnit } from '@lattice/core';
+import { hash2, toUnit } from '@latticekit/core';
 import {
   LEVEL_H,
   contactShadow,
@@ -39,8 +39,8 @@ import {
   withAlpha,
   type Pen,
   type Rgba,
-} from '@lattice/draw';
-import { gridToScreen } from '@lattice/iso';
+} from '@latticekit/draw';
+import { gridToScreen } from '@latticekit/iso';
 
 /** The one salt every walker property is drawn against. Fixed rather than seeded from the URL:
  *  the *place* changes with the seed, the people do not, so two links can be compared. */

@@ -23,9 +23,9 @@ Two facts that decide most of what follows:
 ## Ground, and height on it
 
 ```ts
-import { TileGrid, footprintBase, heightAt, slopeAt, tileSourceOf } from '@lattice/iso';
-import type { Footprint, HeightField } from '@lattice/iso';
-import { fbm2 } from '@lattice/core';
+import { TileGrid, footprintBase, heightAt, slopeAt, tileSourceOf } from '@latticekit/iso';
+import type { Footprint, HeightField } from '@latticekit/iso';
+import { fbm2 } from '@latticekit/core';
 
 const W = 96;
 const H = 96;
@@ -71,8 +71,8 @@ one exhibit reported sculpting grid `(-4000, 900)` from one. If your world is bo
 the source with a real bound:
 
 ```ts
-import { tileSourceOf } from '@lattice/iso';
-import type { TileSource } from '@lattice/iso';
+import { tileSourceOf } from '@latticekit/iso';
+import type { TileSource } from '@latticekit/iso';
 
 export function boundedSource(get: (gx: number, gy: number) => number, w: number, h: number): TileSource {
   const inner = tileSourceOf(get);
@@ -96,7 +96,7 @@ Raise a point by half a tile height and it lands on **exactly the same screen pi
 point one unit of `gx + gy` further away at sea level. So a screen pixel does not name a tile; it
 names a *family* of tiles, and choosing between them needs the heightfield.
 
-**Every `ActionEvent` from `@lattice/input` carries `gx`/`gy` computed as though the ground were
+**Every `ActionEvent` from `@latticekit/input` carries `gx`/`gy` computed as though the ground were
 flat.** There is no seam anywhere in the input options for a heightfield, so on any map with
 elevation those coordinates are the wrong answer — silently, plausibly, and by more the taller
 the terrain.
@@ -109,7 +109,7 @@ lands several terraces **up the slope** from the finger.
 ```ts wrong
 // On flat ground this is right. On a hill it is wrong by more the higher the hill,
 // and nothing anywhere reports it.
-import type { ActionEvent } from '@lattice/input';
+import type { ActionEvent } from '@latticekit/input';
 export function place(e: ActionEvent<'touch'>): void {
   buildAt(e.gx, e.gy);
 }
@@ -117,8 +117,8 @@ declare function buildAt(gx: number, gy: number): void;
 ```
 
 ```ts
-import { screenToTileOnHeights } from '@lattice/iso';
-import type { Camera, HeightField, Tile } from '@lattice/iso';
+import { screenToTileOnHeights } from '@latticekit/iso';
+import type { Camera, HeightField, Tile } from '@latticekit/iso';
 
 const hit: Tile = { gx: 0, gy: 0 };
 
@@ -154,8 +154,8 @@ advanced at a constant rate in *grid* units speeds up by 58% every time the road
 exactly like a frame-rate problem and is not one.
 
 ```ts
-import { Path, PathFinder, pathSample, pathSimplify } from '@lattice/iso';
-import type { GridPoint, TileCost } from '@lattice/iso';
+import { Path, PathFinder, pathSample, pathSimplify } from '@latticekit/iso';
+import type { GridPoint, TileCost } from '@latticekit/iso';
 
 const cost: TileCost = (gx, gy) => walkCost(gx, gy);
 declare function walkCost(gx: number, gy: number): number;
@@ -233,8 +233,8 @@ waits its turn while the walker climbs a cliff that did not exist a moment ago.
 ## A flow field, when many things share one destination
 
 ```ts
-import { FlowField, TileGrid } from '@lattice/iso';
-import type { TileCost } from '@lattice/iso';
+import { FlowField, TileGrid } from '@latticekit/iso';
+import type { TileCost } from '@latticekit/iso';
 
 const ground = new TileGrid(96, 96, { fill: 1 });
 const cost: TileCost = (gx, gy) => ground.get(gx, gy);
@@ -293,7 +293,7 @@ it produces depends on the path the player walked to reach it. **Pan away from a
 back and you get a different landmark.**
 
 ```ts
-import { fbm2, hash2, toUnit } from '@lattice/core';
+import { fbm2, hash2, toUnit } from '@latticekit/core';
 
 const SEED = 0x5eed;
 
@@ -351,4 +351,4 @@ thirty-four storeys of buildings.
 | a stutter, a cull, a frame budget | `performance` |
 | something that renders and looks wrong | `traps` |
 
-Long form, on disk: `node_modules/@lattice/iso/README.md`.
+Long form, on disk: `node_modules/@latticekit/iso/README.md`.

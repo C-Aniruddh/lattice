@@ -1,7 +1,7 @@
 /**
  * A hand-written DOM double, for tests only.
  *
- * `@lattice/ui` is the kit's only browser package, and the kit has **no dependencies at all** —
+ * `@latticekit/ui` is the kit's only browser package, and the kit has **no dependencies at all** —
  * not in `src`, not in `devDependencies`. Adding `jsdom` to run these tests would put a
  * 3 MB, 200-package tree behind a kit whose entire premise is that it installs in one `npm i`
  * with nothing transitive. So this file implements the subset of the platform the package
@@ -282,7 +282,7 @@ export class FakeElement extends FakeNode {
   }
 }
 
-/** A `<canvas>`: a real element plus the two members `@lattice/draw` needs from one. */
+/** A `<canvas>`: a real element plus the two members `@latticekit/draw` needs from one. */
 export class FakeCanvas extends FakeElement {
   width = 0;
   height = 0;
@@ -396,7 +396,7 @@ export class FakeDocument {
 
 /** A handle on an installed fake environment. */
 export interface DomHandle {
-  /** The document `@lattice/ui` will build into. */
+  /** The document `@latticekit/ui` will build into. */
   readonly doc: FakeDocument;
   /** Calls to `setInterval`. Invariant 3 — a default overlay starts no clock — is this being 0. */
   intervals: number;

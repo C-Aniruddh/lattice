@@ -38,7 +38,7 @@ import type { PointerKind } from './profile.js';
  * The format version of {@link InputLog}.
  *
  * Bumped whenever the meaning of a sample stream changes — a new sample kind, a changed field,
- * or a change in how the recognizer reads one. `@lattice/persist` compares it for equality and
+ * or a change in how the recognizer reads one. `@latticekit/persist` compares it for equality and
  * **refuses** a replay that differs, because a migrated input log is a log that no longer
  * replays and a divergence report from one is worse than no report at all.
  */
@@ -85,7 +85,7 @@ export type SampleKind = RawSample['kind'];
 /**
  * A recorded session's input, and everything needed to know the recording is still valid.
  *
- * `@lattice/persist` owns the envelope this goes in — versioning, integrity, storage — and
+ * `@latticekit/persist` owns the envelope this goes in — versioning, integrity, storage — and
  * stores this **verbatim**: it never reorders `samples` and never rewrites a field. The three
  * scalars are its `ReplayCompat` triple, compared for exact equality before the first tick,
  * because recognition rules change with the package version, gesture durations are counted in

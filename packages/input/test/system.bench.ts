@@ -12,8 +12,8 @@
  */
 
 import { bench, describe } from 'vitest';
-import { createCamera } from '@lattice/iso';
-import type { GridPoint } from '@lattice/iso';
+import { createCamera } from '@latticekit/iso';
+import type { GridPoint } from '@latticekit/iso';
 import { createHeadlessInput } from '../src/system.js';
 import type { InputSystem } from '../src/system.js';
 import type { RawSample } from '../src/sample.js';

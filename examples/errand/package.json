@@ -1,5 +1,5 @@
 {
-  "name": "@lattice/example-errand",
+  "name": "@latticekit/example-errand",
   "version": "0.1.0",
   "private": true,
   "description": "ERRAND — a gallery exhibit. An RPG in an afternoon: walk, talk, take, use, save.",
@@ -9,14 +9,14 @@
     "build": "vite build",
     "preview": "vite preview --port 5193 --strictPort"
   },
-  "$comment": "Seven of nine. @lattice/sim is absent because an errand has no economy — there is no number the player is playing for, which is precisely what the five-verb rule protects. @lattice/audio is absent for the reason island reported: the gallery still has no shared answer for the unlock gesture, and a page that makes noise before it is touched is worse than a silent one. Everything else is here by name, and this is the first exhibit to hold `persist` and `ui` at the same time: a dialog box, a HUD that says when the save wrote, and a reload that puts the player back where they were.",
+  "$comment": "Seven of nine. @latticekit/sim is absent because an errand has no economy — there is no number the player is playing for, which is precisely what the five-verb rule protects. @latticekit/audio is absent for the reason island reported: the gallery still has no shared answer for the unlock gesture, and a page that makes noise before it is touched is worse than a silent one. Everything else is here by name, and this is the first exhibit to hold `persist` and `ui` at the same time: a dialog box, a HUD that says when the save wrote, and a reload that puts the player back where they were.",
   "dependencies": {
-    "@lattice/core": "^0.1.0",
-    "@lattice/draw": "^0.1.0",
-    "@lattice/input": "^0.1.0",
-    "@lattice/iso": "^0.1.0",
-    "@lattice/loop": "^0.1.0",
-    "@lattice/persist": "^0.1.0",
-    "@lattice/ui": "^0.1.0"
+    "@latticekit/core": "^0.1.0",
+    "@latticekit/draw": "^0.1.0",
+    "@latticekit/input": "^0.1.0",
+    "@latticekit/iso": "^0.1.0",
+    "@latticekit/loop": "^0.1.0",
+    "@latticekit/persist": "^0.1.0",
+    "@latticekit/ui": "^0.1.0"
   }
 }

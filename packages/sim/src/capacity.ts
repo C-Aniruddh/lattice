@@ -35,7 +35,7 @@
  * Isomorphic and Tier A throughout: comparison, multiplication, division.
  */
 
-import { expectFinite } from '@lattice/core';
+import { expectFinite } from '@latticekit/core';
 
 /** The wall's one parameter. */
 export interface CapacityCurve {

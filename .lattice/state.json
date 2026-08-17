@@ -34,10 +34,10 @@
   "blocked": [],
   "health": {
     "verify": "green",
-    "packages": 8,
-    "publicSymbols": 484,
-    "tests": 2056,
-    "testFiles": 83,
-    "$note": "tests measured with `npx vitest run`, not estimated. An earlier value here was written from memory and was wrong by 256 \u2014 agents read this file first, so a number in it that nobody measured is worse than no number."
+    "packages": 9,
+    "publicSymbols": 540,
+    "tests": 2599,
+    "testFiles": 97,
+    "$note": "Every number here is measured, never estimated: packages/publicSymbols from `npm run lint` (it prints both), tests/testFiles from `npx vitest run`. publicSymbols is the raw sum of kit.json exports, which is what lint prints; site/data/measured.json reports 524 for the same kit because it de-duplicates names that several packages share (VERSION). An earlier set of values here was written from memory and had drifted by 543 tests, 14 files and a whole package \u2014 agents read this file first, so a number in it that nobody measured is worse than no number."
   }
 }

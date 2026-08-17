@@ -15,7 +15,7 @@
  *
  * ## Rule one: no `AudioContext` until a gesture
  *
- * `@lattice/audio` installs no listener of its own, on purpose — `@lattice/input` owns the DOM
+ * `@latticekit/audio` installs no listener of its own, on purpose — `@latticekit/input` owns the DOM
  * event surface. So every entry point calls `unlock()` first, every time: it is idempotent, and it
  * also *resumes* a context a background tab suspended, which is the failure where sound works for
  * one session and then silently stops. The opening frame is therefore silent by design, and the
@@ -40,9 +40,9 @@
  * is copied into a number on the line it is read. A bug there does not look like a bug — it looks
  * like every note having the properties of the most recent one.
  */
-import { gridToWorldX, tileBounds, worldToGridX, worldToGridY, type Rect } from '@lattice/iso';
-import { drive } from '@lattice/ui';
-import { createAudio, createBed, validateSounds } from '@lattice/audio';
+import { gridToWorldX, tileBounds, worldToGridX, worldToGridY, type Rect } from '@latticekit/iso';
+import { drive } from '@latticekit/ui';
+import { createAudio, createBed, validateSounds } from '@latticekit/audio';
 import { bootstrap, controlPanel, knobs } from '../../_shared/src/index.js';
 import { ASLEEP } from './palette.js';
 import { CX, CY, H, W, createCavern, nearestLocked, type Gate } from './cavern.js';

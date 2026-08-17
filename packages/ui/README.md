@@ -1,4 +1,4 @@
-# @lattice/ui
+# @latticekit/ui
 
 > DOM overlay primitives — a pointer-transparent overlay, an element builder, panels, toasts,
 > number rolls, floating feedback and canvas thumbnails. Deliberately **not** a framework.
@@ -6,7 +6,7 @@
 Part of **[Lattice](https://github.com/C-Aniruddh/lattice)** — the grid underneath.
 
 ```bash
-npm i @lattice/ui
+npm i @latticekit/ui
 ```
 
 The whole overlay of a game HUD is a few dozen nodes that change a few times a second. A virtual
@@ -21,9 +21,9 @@ the first time.
 Put a number on the screen, keep it right, and say something when an event happens.
 
 ```ts
-import { fmtCompact } from '@lattice/core';
-import { browserFrames, createLoop } from '@lattice/loop';
-import { createOverlay, drive, el, roll, toasts } from '@lattice/ui';
+import { fmtCompact } from '@latticekit/core';
+import { browserFrames, createLoop } from '@latticekit/loop';
+import { createOverlay, drive, el, roll, toasts } from '@latticekit/ui';
 
 const now = (): number => performance.now();
 const loop = createLoop({ clock: { now }, frames: browserFrames() });
@@ -55,7 +55,7 @@ Five lines, and five decisions are already made for you:
 | `roll` | the number animates on paint and is *correct* on update: if `render` never runs, the text is still right |
 | `ui.every` | the state cadence is the loop's `update`. This package starts **no timer and no rAF loop** |
 | `drive` | the pairing it is fatal to cross is a function body, not a comment |
-| `format` | formatting comes from `@lattice/core`. This package has no `fmt` and never will |
+| `format` | formatting comes from `@latticekit/core`. This package has no `fmt` and never will |
 
 ---
 
@@ -133,7 +133,7 @@ toasts(ui, opts?): ToastHost      // { show, once, clear, destroy }
 roll(ui, opts?): Roll             // { node, value, set, snap, destroy }
 floats(ui, opts?): FloatHost      // { spawn, destroy }
 
-// thumb — the one bridge from @lattice/draw to the DOM
+// thumb — the one bridge from @latticekit/draw to the DOM
 thumbnails(ui, capacity?): ThumbCache   // { url, invalidate, size, destroy }
 
 // theme — one hue, one palette, no design system
@@ -169,7 +169,7 @@ if (store.status === 'refusing-newer') {
 }
 ```
 
-**`once` keys on the condition, never the rendered text.** `@lattice/persist` exposes
+**`once` keys on the condition, never the rendered text.** `@latticekit/persist` exposes
 `store.status` as a bare union member for exactly this: a message carrying a byte count or an
 attempt number changes on every rediscovery and defeats a latch keyed on it — a deduplication
 that stops deduplicating in precisely the case it was written for.
@@ -224,7 +224,7 @@ life bar scales down. Everything else about how they look is yours.
 ui.every(() => applyPalette(ui, lerpPalette(DAY, NIGHT, world.dayT)));
 ```
 
-`@lattice/draw` owns the colour model and hands over a bag of name → CSS string; this writes it
+`@latticekit/draw` owns the colour model and hands over a bag of name → CSS string; this writes it
 onto the root as custom properties, guarded per key, and returns whether anything moved. Three
 properties make that correct rather than merely cheap:
 
@@ -293,12 +293,12 @@ argument.
 ## What is deliberately absent
 
 A virtual DOM, reactivity or signals · state binding · a component library · a layout engine · a
-stylesheet, theme preset or dark mode · input handling (`@lattice/input`) · colour interpolation
-(`@lattice/draw`) · a dialog system beyond one-button `acknowledge` · persistence of any kind
-(`@lattice/persist` owns saved state; `once` latches for this session only) · a clock, a scheduler
-or a rAF loop (`@lattice/loop`) · tweening (`@lattice/loop`, `@lattice/core`) · number formatting
-(`@lattice/core`) · a camera or world-space anchoring (`@lattice/iso`, through
-`FloatOptions.project`) · a scene/route state machine · canvas rendering (`@lattice/draw`;
+stylesheet, theme preset or dark mode · input handling (`@latticekit/input`) · colour interpolation
+(`@latticekit/draw`) · a dialog system beyond one-button `acknowledge` · persistence of any kind
+(`@latticekit/persist` owns saved state; `once` latches for this session only) · a clock, a scheduler
+or a rAF loop (`@latticekit/loop`) · tweening (`@latticekit/loop`, `@latticekit/core`) · number formatting
+(`@latticekit/core`) · a camera or world-space anchoring (`@latticekit/iso`, through
+`FloatOptions.project`) · a scene/route state machine · canvas rendering (`@latticekit/draw`;
 `thumb` is the single bridge and it draws nothing) · tooltips, context menus, drag-and-drop,
 virtualised lists.
 

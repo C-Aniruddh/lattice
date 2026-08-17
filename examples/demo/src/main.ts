@@ -13,7 +13,7 @@
  * are *silent* when you make them — a `stepMs` literal beside a loop that runs at 16.667, and a
  * light field that was never attached to the pen. Neither is available to be made here any more.
  */
-import { asEpochMillis, clamp01, hash2, type EpochMillis } from '@lattice/core';
+import { asEpochMillis, clamp01, hash2, type EpochMillis } from '@latticekit/core';
 import {
   boxSilhouette,
   footprintBase,
@@ -28,7 +28,7 @@ import {
   type GridPoint,
   type Rect,
   type Volume,
-} from '@lattice/iso';
+} from '@latticekit/iso';
 import {
   FLAG_POWERED,
   drawSprite,
@@ -39,9 +39,9 @@ import {
   type Passes,
   type SpriteDef,
   type Variant,
-} from '@lattice/draw';
-import { drive } from '@lattice/ui';
-import { advance, buildFlow, elapsedSeconds, project, zeroStocks, type Ledger } from '@lattice/sim';
+} from '@latticekit/draw';
+import { drive } from '@latticekit/ui';
+import { advance, buildFlow, elapsedSeconds, project, zeroStocks, type Ledger } from '@latticekit/sim';
 import { bootstrap } from '../../_shared/src/index.js';
 import { DAY, DUSK, NIGHT } from './palette.js';
 import { GATE, SHRINE, SPACING, W, H, createValley, stationAt } from './valley.js';

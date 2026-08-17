@@ -18,8 +18,8 @@ import {
   pickSorted,
   pointInPolygon,
   tileSourceOf,
-} from '@lattice/iso';
-import type { HeightField, Rect, TileRange, Volume } from '@lattice/iso';
+} from '@latticekit/iso';
+import type { HeightField, Rect, TileRange, Volume } from '@latticekit/iso';
 import { describe, expect, it } from 'vitest';
 import {
   BASE_SLOTS,

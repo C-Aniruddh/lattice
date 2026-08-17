@@ -47,9 +47,9 @@
  * Both second passes also read the four corners `isoTerrain` left in `pen.xy`, so foam, glint,
  * seam and every blade of grass cost no projection at all.
  */
-import { clamp01, hash2, noise2, toUnit } from '@lattice/core';
-import { HALF_H, HALF_W, TILE_H, TILE_W, slopeAt, type TileRange } from '@lattice/iso';
-import { isoTerrain, mix, shade, withAlpha, type Ink, type Pen } from '@lattice/draw';
+import { clamp01, hash2, noise2, toUnit } from '@latticekit/core';
+import { HALF_H, HALF_W, TILE_H, TILE_W, slopeAt, type TileRange } from '@latticekit/iso';
+import { isoTerrain, mix, shade, withAlpha, type Ink, type Pen } from '@latticekit/draw';
 import { MAIN_V, MAX_HEIGHT_PX, SKY_V, STEP_PX, W, H, bedAt, type Island } from './island.js';
 
 /**

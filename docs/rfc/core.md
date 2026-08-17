@@ -1,4 +1,4 @@
-# RFC: `@lattice/core`
+# RFC: `@latticekit/core`
 
 - **Status:** proposed
 - **Layer:** 0 — imports nothing, from npm or from this repo
@@ -14,7 +14,7 @@ The signatures in §3 are written with `declare` so the whole section can be pas
 
 ## 1. The one sentence
 
-**`@lattice/core` is the set of primitives that every other Lattice package needs and that
+**`@latticekit/core` is the set of primitives that every other Lattice package needs and that
 must produce the same bits on every machine — so that a seed and an input log replay to the
 same pixel, on a phone, in CI, and on a server.**
 
@@ -29,7 +29,7 @@ list of things it has already rejected.
 This is written before the API on purpose. The API below exists to serve it.
 
 ```ts
-import { createRng, fbm2, remap, fmtCompact } from '@lattice/core';
+import { createRng, fbm2, remap, fmtCompact } from '@latticekit/core';
 
 const run = createRng('run:42');                              // one seed owns the session
 const terrain = run.derive('terrain');                        // a fork that ignores draw order
@@ -683,7 +683,7 @@ v2Add(frozen, pointA, pointB);   // compiles clean. throws at runtime.
 which means **it remains assignable to `Vec2` and protects nothing.** The same applies to
 `Readonly<{ x: number; y: number }>` and to any locally-declared read-only-looking vector.
 `iso`, `draw`, `input` and `ui` all have read parameters that must be spelled
-`ReadonlyVec2`, **imported from `@lattice/core`**. `AGENTS.md`'s house rule about `Readonly<T>`
+`ReadonlyVec2`, **imported from `@latticekit/core`**. `AGENTS.md`'s house rule about `Readonly<T>`
 on boundary-crossing values does not extend to this pair, and has been corrected.
 
 Four rules, for every package downstream:
@@ -1913,7 +1913,7 @@ adds a second spelling of something that already exists.
   rather than shipping a free-function binder. `input` has already built this shape and it is
   now the kit's.
 - **`iso`, `draw`, `input`, `ui`** — none of which have started building: every read-only
-  vector parameter must be spelled `ReadonlyVec2`, **imported from `@lattice/core`**. Not
+  vector parameter must be spelled `ReadonlyVec2`, **imported from `@latticekit/core`**. Not
   `Readonly<Vec2>`, which is assignable to `Vec2` and protects nothing (§3.7). `AGENTS.md`'s
   house rule about `Readonly<T>` has been corrected; this is the one place in the kit where
   the reflex is actively wrong, and it is free to fix now and four packages' worth of edits

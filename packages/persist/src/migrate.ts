@@ -32,11 +32,11 @@ export type Increment<N extends number, Counter extends readonly unknown[] = []>
  *
  * Not `(value: unknown) => value is T`. A boolean predicate has already discarded the thing
  * that was wrong by the time it returns, so it cannot produce the message house rule 9
- * demands — it can only ever say "no". This is the same shape `@lattice/core`'s `guard`
+ * demands — it can only ever say "no". This is the same shape `@latticekit/core`'s `guard`
  * module took for the same reason, and it composes directly with it:
  *
  * ```ts
- * import { expectObject, expectRecordOfFinite } from '@lattice/core';
+ * import { expectObject, expectRecordOfFinite } from '@latticekit/core';
  *
  * const isV2: Recognize<V2> = value => {
  *   const o = expectObject(value, 'save.v2');

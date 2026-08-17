@@ -3,7 +3,7 @@
  *
  * This package ships zero CSS, so everything here writes **custom properties on the overlay
  * root** and stops. Your stylesheet consumes them; nothing in this package ever reads them back.
- * That is the entire opinion `@lattice/ui` holds about how anything looks, and the reason it can
+ * That is the entire opinion `@latticekit/ui` holds about how anything looks, and the reason it can
  * be dropped into a game whose art direction was decided before the kit existed.
  *
  * On the root, not on `document.documentElement`, for two reasons: a global custom property is
@@ -13,8 +13,8 @@
  * Nothing here touches a global. Every function takes the overlay whose root it writes.
  */
 
-import { clamp01, expectFinite } from '@lattice/core';
-import { hueToHex } from '@lattice/draw';
+import { clamp01, expectFinite } from '@latticekit/core';
+import { hueToHex } from '@latticekit/draw';
 import { internalsOf, type Overlay } from './overlay.js';
 
 /** How a brand hue is turned into a color. */
@@ -58,11 +58,11 @@ const BRAND_LIGHT = 0.62;
 const BRAND_STEP = 0.14;
 
 /**
- * A set of named colors — whatever `@lattice/draw` produces from interpolating two palettes by
+ * A set of named colors — whatever `@latticekit/draw` produces from interpolating two palettes by
  * a 0..1 parameter. Names to CSS color strings, and nothing else.
  *
  * Structurally identical to `draw`'s `Vars`, and declared here rather than imported so the seam
- * between the two packages is one shape rather than one package's opinions. `@lattice/ui`
+ * between the two packages is one shape rather than one package's opinions. `@latticekit/ui`
  * neither defines the names nor knows what they mean.
  */
 export type Palette = Readonly<Record<string, string>>;
@@ -100,7 +100,7 @@ function writeVar(ui: Overlay, prop: string, value: string): boolean {
  * Recolour the overlay from a single hue in degrees.
  *
  * Writes exactly three custom properties on the overlay root — `--lattice-brand`,
- * `--lattice-brand-hi`, `--lattice-brand-lo` — derived through `@lattice/draw`'s color model,
+ * `--lattice-brand-hi`, `--lattice-brand-lo` — derived through `@latticekit/draw`'s color model,
  * so the HUD accent and the buildings in the world are the same hue **by construction** rather
  * than by two people picking hex codes that drift apart at the next art pass.
  *
@@ -133,7 +133,7 @@ export function setBrand(ui: Overlay, hue: number, opts?: BrandOptions): void {
  *
  * The escape hatch that stops this package growing a design system: a game that wants a
  * `--panel-radius`, a `--danger` or a `--dock-height` sets it here and styles with it.
- * `@lattice/ui` defines no scale, no ramp and no palette beyond the brand triplet above.
+ * `@latticekit/ui` defines no scale, no ramp and no palette beyond the brand triplet above.
  *
  * Change-guarded per key, exactly like {@link applyPalette}, so a token written from `every()`
  * costs a string comparison rather than a style invalidation of the whole overlay.

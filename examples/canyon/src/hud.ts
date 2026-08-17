@@ -1,7 +1,7 @@
 /**
  * The numbers on the overlay, and the one control that drives the model.
  *
- * **`@lattice/ui` over the canvas, because `docs/GALLERY.md` makes it a rule.** There is no canvas
+ * **`@latticekit/ui` over the canvas, because `docs/GALLERY.md` makes it a rule.** There is no canvas
  * text anywhere in this exhibit. The *structure* of the overlay is `readout.ts` and is art, per
  * § *Static markup is art*; what is left here is what that section calls logic and always will be
  * — code that reads state and writes it into the tree, plus the handlers on the bar.
@@ -33,14 +33,14 @@
  * added with `addEventListener` rather than through `el`'s `on*` keys for the same reason: by
  * then the element is somebody else's markup.
  *
- * That `@lattice/ui` has no slider, meter or track to build that control out of **at all** is the
+ * That `@latticekit/ui` has no slider, meter or track to build that control out of **at all** is the
  * finding this exhibit reports about the package. Rule 7 says an exhibit that finds it easier to
  * draw its readouts into the canvas has found something about `ui`; this one found the
  * neighbouring thing — the control had to be built beside `ui` rather than out of it.
  */
-import { fmtInteger, type Disposer } from '@lattice/core';
-import { paletteVars, type Palette as WorldPalette } from '@lattice/draw';
-import { applyPalette, createOverlay, roll, setText } from '@lattice/ui';
+import { fmtInteger, type Disposer } from '@latticekit/core';
+import { paletteVars, type Palette as WorldPalette } from '@latticekit/draw';
+import { applyPalette, createOverlay, roll, setText } from '@latticekit/ui';
 import { STEPS, YEARS_PER_STEP, type DeepTime } from './deeptime.js';
 import { buildReadout } from './readout.js';
 
@@ -69,7 +69,7 @@ export interface HudOptions {
   readonly onScrub: (epoch: number) => void;
   /** The bar was let go. The ground never stops moving, so this is where play resumes. */
   readonly onRelease: () => void;
-  /** Milliseconds, and it must be the clock `@lattice/loop` was given. */
+  /** Milliseconds, and it must be the clock `@latticekit/loop` was given. */
   readonly now: () => number;
 }
 

@@ -12,7 +12,7 @@
  * frame did not happen; it is only less pretty.
  */
 
-import { clamp01, cubicOut, expectFinite, type Disposer } from '@lattice/core';
+import { clamp01, cubicOut, expectFinite, type Disposer } from '@latticekit/core';
 import { el, pulse, setText, show } from './el.js';
 import { internalsOf, type Overlay } from './overlay.js';
 
@@ -21,7 +21,7 @@ export interface RollOptions {
   /** Where it lives. Created as `<span class="lattice-roll">` if you do not pass one, and never
    *  mounted for you — a number belongs inside your own markup, not in a layer of its own. */
   readonly node?: HTMLElement;
-  /** Default `String`. Pass `fmtCompact` from `@lattice/core` for compact magnitudes. This
+  /** Default `String`. Pass `fmtCompact` from `@latticekit/core` for compact magnitudes. This
    *  package has no formatter and never will: formatting is a pure function of a number and
    *  belongs where pure functions live. */
   readonly format?: (value: number) => string;
@@ -198,7 +198,7 @@ export function roll(ui: Overlay, opts?: RollOptions): Roll {
 export type FloatKind = 'gain' | 'loss' | 'plain';
 
 /** A mutable point, used only as an output parameter. Structurally a `Vec2` from
- *  `@lattice/core`, declared here so `ui` compiles with no import for three fields. */
+ *  `@latticekit/core`, declared here so `ui` compiles with no import for three fields. */
 export interface ScreenPoint {
   /** CSS pixels from the left of the viewport. */
   x: number;
@@ -222,8 +222,8 @@ export interface FloatOptions {
    * Omit it and `spawn()` takes screen pixels, which is right for a static camera. Supply it and
    * `spawn()` takes whatever coordinates you like — world units, grid units — and this converts
    * them, so a `+120` stays glued to the building it came from while the player is still
-   * dragging the camera. `@lattice/ui` does not know what a camera is and must not; three lines
-   * of `worldToScreen` from `@lattice/iso` live on the game's side of this hook.
+   * dragging the camera. `@latticekit/ui` does not know what a camera is and must not; three lines
+   * of `worldToScreen` from `@latticekit/iso` live on the game's side of this hook.
    *
    * Called with the same `out` object every time. Write into it; do not keep it.
    */
@@ -273,7 +273,7 @@ interface Slot {
  * Floating "+120" feedback, in the overlay's bottom layer.
  *
  * It is DOM rather than canvas because it is screen-space type: it wants the game's font, its
- * text shadow and its color tokens, and painting it through `@lattice/draw`'s text kit would
+ * text shadow and its color tokens, and painting it through `@latticekit/draw`'s text kit would
  * mean a second typographic system that drifts from the first. It is in the *bottom* layer
  * because feedback must never intercept the next tap, and that layer is `pointer-events: none`
  * with no way to turn it on.

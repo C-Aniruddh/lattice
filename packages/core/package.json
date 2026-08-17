@@ -1,5 +1,5 @@
 {
-  "name": "@lattice/core",
+  "name": "@latticekit/core",
   "version": "0.1.0",
   "description": "Deterministic primitives. Seeded randomness, noise, maths, easing, typed events, pools, formatting.",
   "license": "MIT",

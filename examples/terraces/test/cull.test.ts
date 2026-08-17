@@ -14,7 +14,7 @@
  * the world, which is where a superset that is not quite a superset would first show.
  */
 import { expect, it } from 'vitest';
-import { DepthSorter, createCamera, gridToWorldX, gridToWorldY, heightAt, tileBounds, type Camera, type Rect } from '@lattice/iso';
+import { DepthSorter, createCamera, gridToWorldX, gridToWorldY, heightAt, tileBounds, type Camera, type Rect } from '@latticekit/iso';
 import { createBucket } from '../../_shared/src/index.js';
 import { H, OPEN_AT, W, createHill, type Hill, type Prop } from '../src/hill.js';
 import { fillProps } from '../src/props.js';

@@ -11,7 +11,7 @@
  * generic belongs one level up, where it can be `Thing | Walker` without anybody below being told.
  */
 
-import { DepthSorter, pickSorted } from '@lattice/iso';
+import { DepthSorter, pickSorted } from '@latticekit/iso';
 
 /**
  * A frame's drawables, in one array whose indices are the sorter's own insertion indices.

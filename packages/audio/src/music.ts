@@ -28,7 +28,7 @@
  * never changes; a tempo change mid-loop is a mistake you cannot un-hear.
  */
 
-import { clamp, expectFinite, expectInt, expectNonEmpty, expectRange, hash3, toUnit } from '@lattice/core';
+import { clamp, expectFinite, expectInt, expectNonEmpty, expectRange, hash3, toUnit } from '@latticekit/core';
 
 import { internalsOf, type Audio, type EngineInternals } from './engine.js';
 import { everyInterval } from './host.js';

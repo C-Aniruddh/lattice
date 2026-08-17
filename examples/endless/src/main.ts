@@ -41,9 +41,9 @@
  * anywhere reads the answer — and the HUD's whole structure is in `index.html`, uncounted, beside
  * the stylesheet that is already art by name.
  */
-import { worldToGrid, type GridPoint, type Rect } from '@lattice/iso';
-import { renderFrame, type Passes } from '@lattice/draw';
-import { drive } from '@lattice/ui';
+import { worldToGrid, type GridPoint, type Rect } from '@latticekit/iso';
+import { renderFrame, type Passes } from '@latticekit/draw';
+import { drive } from '@latticekit/ui';
 import { bootstrap, controlPanel, knobs } from '../../_shared/src/index.js';
 import { AFTERNOON } from './palette.js';
 import * as world from './chunks.js';
@@ -145,7 +145,7 @@ const stopDrift = (): void => { drifting = false; };
 boot.on('dragstart', stopDrift);
 boot.on('zoom', stopDrift);
 /**
- * **Streaming is state, and state goes on `update`.** `@lattice/loop`'s own table is explicit —
+ * **Streaming is state, and state goes on `update`.** `@latticekit/loop`'s own table is explicit —
  * *"pixels, and nothing else"* on render, *"rules, HUD data, anything that must not freeze"* on
  * update — and this was on render first, which meant that a tab behind another one stopped minting
  * while its camera kept moving: come back and the world ahead is flat waterline until the next

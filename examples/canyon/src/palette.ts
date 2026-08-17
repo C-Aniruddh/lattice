@@ -36,7 +36,7 @@
  * One stop set and no cycle: this exhibit's variable is time in years, not time of day, and a
  * day/night cycle here would be a second clock competing with the one the exhibit is about.
  */
-import { extendStops, hex, type Stops } from '@lattice/draw';
+import { extendStops, hex, type Stops } from '@latticekit/draw';
 
 const SLOTS = ['sky', 'ground', 'ink', 'brand', 'metal', 'glass', 'warn', 'ok', 'bad', 'night'] as const;
 

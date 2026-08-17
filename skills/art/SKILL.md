@@ -25,8 +25,8 @@ render that skips them still produces a picture, and the picture looks like a pl
 ## A sprite
 
 ```ts
-import { VARIANT_ZERO, defineSprite, drawSprite, glowDot, spriteHeightPx } from '@lattice/draw';
-import type { Pen } from '@lattice/draw';
+import { VARIANT_ZERO, defineSprite, drawSprite, glowDot, spriteHeightPx } from '@latticekit/draw';
+import type { Pen } from '@latticekit/draw';
 
 const LIGHTHOUSE = defineSprite({
   id: 'lighthouse',
@@ -156,7 +156,7 @@ The tell in a profile was never a flicker. It was a game that got slower and sta
 ## Palettes, and the reason a game gets slower at dusk
 
 ```ts
-import { DAY, DUSK, createPalette, extendStops, hexOf, hsl } from '@lattice/draw';
+import { DAY, DUSK, createPalette, extendStops, hexOf, hsl } from '@latticekit/draw';
 
 // HOISTED, at module scope. See below — this is the whole point.
 const DAY_X = extendStops(DAY, { sand: 0xe8d9a8ff, foam: 0xf4f8ffff });
@@ -198,9 +198,9 @@ to explain it.
 vertex heights, projects the quad, and shades it by its own cross-slope.
 
 ```ts
-import { isoTerrain } from '@lattice/draw';
-import type { Pen } from '@lattice/draw';
-import type { HeightField } from '@lattice/iso';
+import { isoTerrain } from '@latticekit/draw';
+import type { Pen } from '@latticekit/draw';
+import type { HeightField } from '@latticekit/iso';
 
 export function paintGround(pen: Pen, field: HeightField, gx: number, gy: number): void {
   //                                                       fill      stroke     tint
@@ -255,8 +255,8 @@ renders with its head beside its neck. It is worst on the tallest, leaniest inst
 why it survives a review at a glance. Address by index instead:
 
 ```ts
-import { hashStep, toUnit } from '@lattice/core';
-import type { Variant } from '@lattice/draw';
+import { hashStep, toUnit } from '@latticekit/core';
+import type { Variant } from '@latticekit/draw';
 
 /** The same number in `massing` and in `animate`, addressed by position rather than by order. */
 export function vat(v: Variant, i: number): number {
@@ -292,4 +292,4 @@ keeps the ramp cache happy.
 | something that renders and looks wrong | `traps` |
 
 The long-form version of everything here, with the full primitive list, is on disk at
-`node_modules/@lattice/draw/README.md`.
+`node_modules/@latticekit/draw/README.md`.

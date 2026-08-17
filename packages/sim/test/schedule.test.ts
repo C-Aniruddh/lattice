@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { asEpochMillis } from '@lattice/core';
-import type { EpochMillis } from '@lattice/core';
+import { asEpochMillis } from '@latticekit/core';
+import type { EpochMillis } from '@latticekit/core';
 
 import { defineEconomy, zeroStocks } from '../src/graph.js';
 import type { Economy } from '../src/graph.js';

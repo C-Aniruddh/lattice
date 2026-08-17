@@ -4,7 +4,7 @@
 > tuned strings. The gallery's one exhibit where **sound is the mechanic**, not the decoration.
 
 ```bash
-npm run build                 # @lattice/* resolves to each package's dist, not to source
+npm run build                 # @latticekit/* resolves to each package's dist, not to source
 npx vite examples/resonance   # http://localhost:5191
 ```
 
@@ -19,7 +19,7 @@ gates and the same answers on every machine.
 `Instrument` shows the synthesis. This one puts sound on the critical path: **you cannot see the
 answer anywhere.** The ring above a gate tells you *how many* notes it wants and *when each one
 lands*; which notes they are exists only in the air. That is the whole reason this exhibit is a
-better test of `@lattice/audio` than a sound board — a board can be admired with the volume off.
+better test of `@latticekit/audio` than a sound board — a board can be admired with the volume off.
 
 Four things a board never has to get right, and what each cost:
 
@@ -38,7 +38,7 @@ This is `src/sound.ts`'s pitch table and `src/main.ts`'s arpeggio, in Node, with
 `AudioContext` anywhere. It has been run and this is its output.
 
 ```ts
-import { createAudio, SEMITONE, validateSounds } from '@lattice/audio';
+import { createAudio, SEMITONE, validateSounds } from '@latticekit/audio';
 
 // The exhibit's scale, as `src/sound.ts` builds it: repeated multiplication, never `pow`.
 const ROOT_HZ = 220;
@@ -104,7 +104,7 @@ answer never *sounds* wrong — it simply is not the one the gate asked for. A s
 in it would let a player rule combinations out by taste rather than by ear, which is an easier
 game and a different one.
 
-**How the intervals are kept exact.** `@lattice/audio` exports `SEMITONE` — the twelfth root of
+**How the intervals are kept exact.** `@latticekit/audio` exports `SEMITONE` — the twelfth root of
 two written out as a literal — precisely so a game need not call `pow`, which ECMA-262 does not
 require to be correctly rounded. `hzOf` walks the interval one multiply at a time, which is Tier A
 and bit-identical on every engine, and the partials are exact small-integer ratios (`f * 2`), so
@@ -259,7 +259,7 @@ because they are the ones that could have gone either way:
 
 ## Where the kit fought back
 
-Ranked by how much each cost, and every one of them is about `@lattice/audio` or about drawing
+Ranked by how much each cost, and every one of them is about `@latticekit/audio` or about drawing
 sound.
 
 ### 1. A chord cannot be one sound. `minGapMs` is keyed on the id, and a chord is *n* plays of one timbre in one millisecond
@@ -311,7 +311,7 @@ The workaround lives in `props.ts` as `snapGlow`, and the shape of it is worth k
 Six levels rather than sixteen is a *budget* — the cache holds 96 pairs across the whole page, and
 three light inks × six levels × two pools already spends 36 of them.
 
-### 5. `bootstrap` exposes no clock, and `@lattice/ui`'s `createOverlay` wants one
+### 5. `bootstrap` exposes no clock, and `@latticekit/ui`'s `createOverlay` wants one
 
 `createOverlay({ now })` takes milliseconds, `performance.now()` is banned in exhibit source, and
 `Boot` publishes no clock. This exhibit does what `caverns` did: `() => boot.loop.realTime * 1000`.
@@ -393,12 +393,12 @@ in it.
 
 ## What I did not do
 
-- **No `@lattice/persist`.** The mixer's `snapshot()` is exactly the device-scoped preference the
+- **No `@latticekit/persist`.** The mixer's `snapshot()` is exactly the device-scoped preference the
   package documents, and saving it is the right thing for a game — but `docs/GALLERY.md` forbids a
   row any state that outlives the tab, so it is left out on purpose.
 - **No `createDeck`.** A sequencer under a puzzle you are listening to would be an argument with
   the mechanic. The bed is the whole of the continuous half.
-- **No `@lattice/sim`.** There is no economy.
+- **No `@latticekit/sim`.** There is no economy.
 - **No visual fallback for a browser that refuses a context.** The HUD says `NO AUDIO DEVICE`
   plainly, and that is where it stops: the exhibit is unplayable without sound and pretending
   otherwise would be a worse lie than the notice. The alternative — showing the chord on the ring —
@@ -408,7 +408,7 @@ in it.
 
 ## What I would build next
 
-**A `duck` policy inside `@lattice/audio`** — which buses duck, how far, and over how long, as
+**A `duck` policy inside `@latticekit/audio`** — which buses duck, how far, and over how long, as
 three numbers on `AudioOptions`. This exhibit is the demo the package README asked for before
 guessing, and the answer it produces is small: an envelope set by any accepted play, a depth, and
 a recovery time. The only thing the package needs that it does not have is the recovery *ramp*,

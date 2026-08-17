@@ -1,5 +1,5 @@
 /**
- * The overlay — `@lattice/ui` over the canvas, because `docs/GALLERY.md` makes it a rule, and
+ * The overlay — `@latticekit/ui` over the canvas, because `docs/GALLERY.md` makes it a rule, and
  * because three of the readings here are counters that must keep counting in a background tab.
  *
  * `ui.every` runs on the loop's **update** while the canvas runs on `render` and drops to 0 Hz
@@ -27,15 +27,15 @@
  * under it: pushing an unchanged palette sixty times a second is sixty full subtree recalculations
  * for a color that is not moving.
  */
-import { paletteVars, type Palette } from '@lattice/draw';
-import { applyPalette, createOverlay, interactive, setText, type Disposer, type Overlay } from '@lattice/ui';
+import { paletteVars, type Palette } from '@latticekit/draw';
+import { applyPalette, createOverlay, interactive, setText, type Disposer, type Overlay } from '@latticekit/ui';
 
 /**
  * Wire the markup in `index.html` to the world.
  *
  * @param read One string per `[data-cell]` node, in document order.
  * @param state Class names for the root — the stylesheet's whole conditional.
- * @param now Milliseconds, and it must be the clock `@lattice/loop` was given: `boot.loop.realTime`
+ * @param now Milliseconds, and it must be the clock `@latticekit/loop` was given: `boot.loop.realTime`
  *   rather than a second `performance.now()`, because two clocks in one HUD is a poll racing a
  *   settle. That `bootstrap` exposes no reader for the clock it built the loop with is a finding.
  * @param act One handler per `<button>`, in document order.

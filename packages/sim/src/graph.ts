@@ -32,9 +32,9 @@
  * arithmetic operation is comparison and integer addition.
  */
 
-import { expectFinite, expectNonEmpty, expectObject } from '@lattice/core';
+import { expectFinite, expectNonEmpty, expectObject } from '@latticekit/core';
 
-/** A stock vector, keyed by node id. Plain JSON: this is what `@lattice/persist` writes. */
+/** A stock vector, keyed by node id. Plain JSON: this is what `@latticekit/persist` writes. */
 export type Stocks<N extends string> = Readonly<Record<N, number>>;
 
 /** The mutable form. Every hot-path function writes into one of these instead of allocating. */

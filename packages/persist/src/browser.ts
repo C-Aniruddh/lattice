@@ -3,7 +3,7 @@
  *
  * It knows through parameters. Everything here compiles without the DOM lib, tests in Node
  * against plain objects, and is the single grep-able exception to the rule that
- * `@lattice/persist` runs unchanged under `node`. If a second module in this package ever
+ * `@latticekit/persist` runs unchanged under `node`. If a second module in this package ever
  * needs this header, the package has stopped being isomorphic and the change should be
  * argued rather than merged.
  *
@@ -24,7 +24,7 @@ import { memoryStorage, webStorage, type StorageAdapter, type StorageLike } from
 import type { Autosave } from './store.js';
 
 /** The probe key. Written and removed inside the guard, so it never outlives the check. */
-const PROBE_KEY = '@lattice/persist:probe';
+const PROBE_KEY = '@latticekit/persist:probe';
 
 /** `addEventListener`/`removeEventListener`, structurally, so no DOM type is imported. */
 export interface ListenerTarget {

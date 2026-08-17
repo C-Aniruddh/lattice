@@ -20,7 +20,7 @@ are in the wrong place.
 Two instruments, and the one that reads better is blind.
 
 ```ts
-import type { Loop } from '@lattice/loop';
+import type { Loop } from '@latticekit/loop';
 
 export function verdict(loop: Loop): string {
   const gap = loop.stats.worstGapMs;      // wall time between two PAINTED frames
@@ -63,7 +63,7 @@ other reader, so a naive rolling window makes a second readout show `0.0ms · 0f
 five. Seal the previous window and report the larger of the two:
 
 ```ts
-import type { Loop } from '@lattice/loop';
+import type { Loop } from '@latticekit/loop';
 
 let sealedMs = 0;
 let windowAt = 0;
@@ -172,9 +172,9 @@ parameter or returns a primitive. `{ x, y }` returned sixty times a second times
 sprites is a garbage-collector pause with a nice API.
 
 ```ts
-import { v2, v2AddScaled } from '@lattice/core';
-import { gridToScreen } from '@lattice/iso';
-import type { Camera } from '@lattice/iso';
+import { v2, v2AddScaled } from '@latticekit/core';
+import { gridToScreen } from '@latticekit/iso';
+import type { Camera } from '@latticekit/iso';
 
 const pos = v2(0, 0);            // allocated once, at setup
 const at = v2(0, 0);

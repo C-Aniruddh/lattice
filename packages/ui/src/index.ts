@@ -1,10 +1,10 @@
 /**
- * `@lattice/ui` — the handful of DOM primitives a game HUD cannot avoid needing, and
+ * `@latticekit/ui` — the handful of DOM primitives a game HUD cannot avoid needing, and
  * deliberately not a framework.
  *
  * ```ts
- * import { fmtCompact } from '@lattice/core';
- * import { createOverlay, drive, el, roll, toasts } from '@lattice/ui';
+ * import { fmtCompact } from '@latticekit/core';
+ * import { createOverlay, drive, el, roll, toasts } from '@latticekit/ui';
  *
  * const ui = createOverlay({ now: () => performance.now() });
  * const gold = roll(ui, { format: fmtCompact });
@@ -21,7 +21,7 @@
  * | `roll` | the number animates on paint and is *correct* on update: if `render` never runs, the text is still right |
  * | `ui.every` | the state cadence is the loop's `update`. This package starts **no timer and no rAF loop** |
  * | `drive` | the pairing it is fatal to cross is a function body, not a comment |
- * | `format` | formatting comes from `@lattice/core`. This package has no `fmt` and never will |
+ * | `format` | formatting comes from `@latticekit/core`. This package has no `fmt` and never will |
  *
  * ## The two cadences, which is the whole design
  *
@@ -96,7 +96,7 @@ export type { CadenceFn } from './cadence.js';
  * returns without a cast, and two identical aliases are two things to keep in step. `Dispose`
  * above is an alias of this, kept because the RFC spells it that way.
  */
-export type { Disposer } from '@lattice/core';
+export type { Disposer } from '@latticekit/core';
 
 // ── elements ────────────────────────────────────────────────────────────────────
 //

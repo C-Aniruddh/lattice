@@ -33,7 +33,7 @@
  * bumps `rev`, and `rev` is what every cache in the kit keys on. The symptom of getting that
  * wrong is not a wrong color — it is an exhibit that gets slower at dusk and stays slow.
  */
-import { extendStops, hex, withAlpha, type Palette, type Pen, type Rgba, type Stops } from '@lattice/draw';
+import { extendStops, hex, withAlpha, type Palette, type Pen, type Rgba, type Stops } from '@latticekit/draw';
 
 /**
  * Every soft glow in this exhibit, drawn so that `draw`'s radial-ramp cache can hit.

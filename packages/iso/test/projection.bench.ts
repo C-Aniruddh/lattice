@@ -15,7 +15,7 @@
  */
 
 import { bench, describe } from 'vitest';
-import { v2 } from '@lattice/core';
+import { v2 } from '@latticekit/core';
 import { createCamera, gridToScreen } from '../src/camera.js';
 import {
   gridToWorld,
@@ -40,7 +40,7 @@ const range: TileRange = { gx0: 0, gy0: 0, gx1: 0, gy1: 0 };
 const worldRect: Rect = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 const silhouette = new Float64Array(12);
 const volume: Volume = { ox: 0, oy: 0, w: 2, d: 2, zPx: 0, hPx: 52 };
-/** The pen `@lattice/draw` writes polygon corners into. The scalar forms exist for this. */
+/** The pen `@latticekit/draw` writes polygon corners into. The scalar forms exist for this. */
 const pen = new Float64Array(8);
 
 describe('the scalar forms', () => {
@@ -76,7 +76,7 @@ describe('the out-parameter forms', () => {
     for (let i = 0; i < 3200; i++) worldToTile(i * 0.5, i * 0.25, grid);
   });
 
-  bench('3,200 screenToTile — the pointer path in @lattice/input', () => {
+  bench('3,200 screenToTile — the pointer path in @latticekit/input', () => {
     for (let i = 0; i < 3200; i++) screenToTile(camera, i * 0.6, i * 0.3, grid);
   });
 });

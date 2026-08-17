@@ -18,8 +18,8 @@
  */
 
 import { bench, describe } from 'vitest';
-import { createRng } from '@lattice/core';
-import { DepthSorter, createCamera, pickSorted } from '@lattice/iso';
+import { createRng } from '@latticekit/core';
+import { DepthSorter, createCamera, pickSorted } from '@latticekit/iso';
 import { createBucket } from '../src/bucket.js';
 
 interface Box {

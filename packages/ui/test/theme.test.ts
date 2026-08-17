@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DAY, NIGHT, hueToHex, lerpPalette } from '@lattice/draw';
+import { DAY, NIGHT, hueToHex, lerpPalette } from '@latticekit/draw';
 import { createOverlay, type Overlay } from '../src/overlay.js';
 import { applyPalette, setBrand, setTokens } from '../src/theme.js';
 import { thumbnails } from '../src/thumb.js';

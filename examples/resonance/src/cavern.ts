@@ -31,8 +31,8 @@
  * about 29% floor, 8% wall face and 63% overhead mass across every seed tried, which is the
  * proportion that makes a frame full of rock with somewhere to walk.
  */
-import { clamp01, fbm2, hash2, hashString, noise2 } from '@lattice/core';
-import { TILE_H, TileGrid, heightAt, type HeightField } from '@lattice/iso';
+import { clamp01, fbm2, hash2, hashString, noise2 } from '@latticekit/core';
+import { TILE_H, TileGrid, heightAt, type HeightField } from '@latticekit/iso';
 import { CHORD_MAX, chordOf } from './puzzle.js';
 
 export const W = 108, H = 108, CX = 54, CY = 54;

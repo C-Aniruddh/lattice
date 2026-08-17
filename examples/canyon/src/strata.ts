@@ -57,9 +57,9 @@
  * | **rim light** | the top of any steep face takes `sun`, the one warm edge in the frame, and it is what draws the line where the mesa top stops |
  * | **things of a known size** | junipers on the rims four pixels tall, scree you can pick out single blocks in, a river that is a thread, birds flying *below* the rim line in `sky.ts`, and {@link trail} — five switchbacks down the left wall, which is the one object in the frame a person could be standing on |
  */
-import { clamp, clamp01, hash2, noise2, toUnit, type Vec2 } from '@lattice/core';
-import { HALF_H, HALF_W, gridToScreen, tileSourceOf, type HeightField, type TileRange } from '@lattice/iso';
-import { isoTerrain, mix, shade, withAlpha, type Ink, type Pen } from '@lattice/draw';
+import { clamp, clamp01, hash2, noise2, toUnit, type Vec2 } from '@latticekit/core';
+import { HALF_H, HALF_W, gridToScreen, tileSourceOf, type HeightField, type TileRange } from '@latticekit/iso';
+import { isoTerrain, mix, shade, withAlpha, type Ink, type Pen } from '@latticekit/draw';
 import { CELLS, CELL_COUNT, N, STEP_PX, UPLIFT, WALL, type State } from './erosion.js';
 import type { DeepTime } from './deeptime.js';
 import { SECTION } from './palette.js';

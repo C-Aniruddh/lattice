@@ -147,10 +147,10 @@ documented.
 
 ## The surface
 
-`examples/_shared/bucket.ts`. No dependency on anything but `@lattice/iso`.
+`examples/_shared/bucket.ts`. No dependency on anything but `@latticekit/iso`.
 
 ```ts
-import { DepthSorter, pickSorted } from '@lattice/iso';
+import { DepthSorter, pickSorted } from '@latticekit/iso';
 
 /**
  * A frame's drawables, in one array whose indices are the sorter's own insertion indices.
@@ -309,11 +309,11 @@ evidence decides, and the criterion is written down now so it is not relitigated
 
 | what the exhibits did | what it means | where the bucket goes |
 |---|---|---|
-| **six or more of fifteen import it unchanged** | it is a kit feature that happens to live outside the kit | into `@lattice/kit` beside `bootstrap()`, as the second thing that package exists for |
+| **six or more of fifteen import it unchanged** | it is a kit feature that happens to live outside the kit | into `@latticekit/kit` beside `bootstrap()`, as the second thing that package exists for |
 | **exhibits fork it** — different `T` shapes, different `each` | it is per-game plumbing | stays in `_shared`; the named pattern is the deliverable |
 | **fewer than three import it** | the demo's thirty-seven lines were a demo problem | delete it, keep the pattern, and this document was still worth writing |
 
-`@lattice/kit` does not exist. `examples/demo/README.md` asks for it independently, for
+`@latticekit/kit` does not exist. `examples/demo/README.md` asks for it independently, for
 `bootstrap({ mount, seed })`, and the two requests should be answered by one package or neither —
 a kit-level convenience package with exactly one export is a package nobody installs.
 

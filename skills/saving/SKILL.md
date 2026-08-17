@@ -24,10 +24,10 @@ own source: *"a bump is not a migration — it is a deletion of every player's c
 ## A save, its chain, and its autosave
 
 ```ts
-import { asEpochMillis } from '@lattice/core';
-import { browserStorage, createStore, migrations, scheduleFrom } from '@lattice/persist';
-import type { Recognize } from '@lattice/persist';
-import type { Loop } from '@lattice/loop';
+import { asEpochMillis } from '@latticekit/core';
+import { browserStorage, createStore, migrations, scheduleFrom } from '@latticekit/persist';
+import type { Recognize } from '@latticekit/persist';
+import type { Loop } from '@latticekit/loop';
 
 interface V1 { readonly version: 1; readonly coins: number }
 interface V2 { readonly version: 2; readonly wallet: { readonly coin: number }; readonly hue: number }
@@ -90,8 +90,8 @@ why it is `loop.real` and not `loop.sim`.
 And in a browser, one more line:
 
 ```ts
-import { installFlushTriggers } from '@lattice/persist';
-import type { Autosave } from '@lattice/persist';
+import { installFlushTriggers } from '@latticekit/persist';
+import type { Autosave } from '@latticekit/persist';
 
 export function flushOnLeave(auto: Autosave): () => void {
   return installFlushTriggers(auto, { visibility: document, page: window });
@@ -152,7 +152,7 @@ A modal about a hypothetical blocks a first-time player at the door; a toast abo
 will not survive the tab closing expires unread.
 
 ```ts
-import type { Store } from '@lattice/persist';
+import type { Store } from '@latticekit/persist';
 
 export function tell(store: Store<unknown>, toastOnce: (k: string, m: string) => void): void {
   if (store.status === 'not-persistent') {
@@ -191,8 +191,8 @@ Two consequences pull in opposite directions, and which applies depends on wheth
 hashing *text a human means* or *bytes a machine wrote*.
 
 ```ts
-import { hashString } from '@lattice/core';
-import { defaultChecksum } from '@lattice/persist';
+import { hashString } from '@latticekit/core';
+import { defaultChecksum } from '@latticekit/persist';
 
 // A key derived from something a player typed. NORMALIZE FIRST, ALWAYS.
 // macOS hands you NFD; Windows and most browsers hand you NFC. Without this, the same
@@ -279,4 +279,4 @@ rung that exists and is **wrong**, which is the failure that actually ships.
 | the modal or toast that reports a status | `hud` |
 | replays, divergence and cross-engine agreement | `determinism` |
 
-Long form, on disk: `node_modules/@lattice/persist/README.md`.
+Long form, on disk: `node_modules/@latticekit/persist/README.md`.

@@ -1,5 +1,5 @@
 /**
- * The ledger, the calendar, and the seam with `@lattice/loop`.
+ * The ledger, the calendar, and the seam with `@latticekit/loop`.
  *
  * `sim`'s entire state is one value: a stock vector and the instant it is true at. Everything
  * else in this package is a function of that value and a number the caller passes in.
@@ -37,14 +37,14 @@
  * omitting it is a compile error rather than an elapsed time of fifty-six years.
  */
 
-import { isSerializable, type EpochMillis } from '@lattice/core';
+import { isSerializable, type EpochMillis } from '@latticekit/core';
 import type { Economy, Stocks, StockVec } from './graph.js';
 import { zeroStocks } from './graph.js';
 import { integrate, type Flow } from './flow.js';
 
 /**
  * A stock vector and the instant it is true at. This is the whole of `sim`'s state, and it is a
- * value — JSON-round-trippable as-is, which is what `@lattice/persist` writes.
+ * value — JSON-round-trippable as-is, which is what `@latticekit/persist` writes.
  *
  * `atMs` is an **epoch** timestamp and nothing else will do. Not `loop.time`, not a duration
  * accumulated on the fixed step, not a monotonic reading: those have no calendar, run at roughly

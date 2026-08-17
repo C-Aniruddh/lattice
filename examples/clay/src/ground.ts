@@ -50,10 +50,10 @@
  * anything built on it. The *geometry* stays perfectly continuous, which is the half a visitor can
  * actually resolve.
  */
-import { clamp } from '@lattice/core';
-import { HALF_H, HALF_W, gridToScreen, type TileRange } from '@lattice/iso';
-import { isoTerrain, mix, withAlpha, type Pen, type Rgba } from '@lattice/draw';
-import type { Vec2 } from '@lattice/core';
+import { clamp } from '@latticekit/core';
+import { HALF_H, HALF_W, gridToScreen, type TileRange } from '@latticekit/iso';
+import { isoTerrain, mix, withAlpha, type Pen, type Rgba } from '@latticekit/draw';
+import type { Vec2 } from '@latticekit/core';
 import { BASE, CELLS, MAX_UNITS, N, PUDDLE, STEP_PX, TILT, type Clay } from './clay.js';
 
 /** The five ground bands, waterline upward, and the height above the valley datum each unit of the

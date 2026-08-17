@@ -1,4 +1,4 @@
-# @lattice/core
+# @latticekit/core
 
 > Deterministic primitives. Seeded randomness, stateless hashing, noise, maths, easing,
 > vectors, typed events, pools, lifetimes, validation and formatting.
@@ -8,11 +8,11 @@ runs unchanged in Node. Everything else in the kit is built on this package, and
 is built on nothing.
 
 ```bash
-npm i @lattice/core
+npm i @latticekit/core
 ```
 
 ```ts
-import { createRng, hash2, v2, v2AddScaled } from '@lattice/core';
+import { createRng, hash2, v2, v2AddScaled } from '@latticekit/core';
 
 const rng = createRng('valley-3');
 const trees = rng.derive('scenery'); // a sub-stream — see below, this is the important bit
@@ -106,7 +106,7 @@ frozen constant. This package builds a real barrier instead, with a phantom opti
 whose types conflict in exactly one direction. It erases at runtime and costs nothing.
 
 ```ts
-import type { ReadonlyVec2 } from '@lattice/core';
+import type { ReadonlyVec2 } from '@latticekit/core';
 
 function lengthOf(a: ReadonlyVec2): number {
   /* … */

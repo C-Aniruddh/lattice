@@ -1,5 +1,5 @@
 /**
- * `@lattice/iso` — the three coordinate spaces of a 2:1 tile game, and every operation that is
+ * `@latticekit/iso` — the three coordinate spaces of a 2:1 tile game, and every operation that is
  * only correct because it knows which one it is in.
  *
  * Grid, world and screen: projection, elevation, camera, depth order, footprints, picking, and
@@ -37,7 +37,7 @@
  * | **buffer** | `boxSilhouette(cam, gx, gy, vol, out)` | geometry with more than one point |
  *
  * The only functions that produce an object are the constructors and `createCamera`, which run
- * at setup. Everything else writes into what it was given. `@lattice/draw` cannot meet the
+ * at setup. Everything else writes into what it was given. `@latticekit/draw` cannot meet the
  * constitution's rule 7 otherwise, and the rule is checkable by reading the emitted `.d.ts`:
  * no return type is a bare interface the caller did not pass in.
  *
@@ -57,8 +57,8 @@
  *
  * A runtime tile size (any uniform size is exactly a camera zoom). A third grid axis — but
  * elevation itself *is* here, as a layer. Anything that draws, including `LEVEL_H`, which is
- * an art proportion and `@lattice/draw`'s. Camera feel: inertia, pinch, edge-scroll and smooth
- * follow need a clock and a pointer, and both live in `@lattice/input`. Steering, avoidance
+ * an art proportion and `@latticekit/draw`'s. Camera feel: inertia, pinch, edge-scroll and smooth
+ * follow need a clock and a pointer, and both live in `@latticekit/input`. Steering, avoidance
  * and anything that owns a walker. Entities, components and any scene graph. Serialization.
  * Fog of war and line of sight. An incremental replanner — recompute is a few tens of
  * microseconds against an 8 ms budget, and `MutableTileSource.version` makes it happen exactly
@@ -119,7 +119,7 @@ export type { Camera, CameraOptions } from './camera.js';
 // ── depth: an order over footprints ──────────────────────────────────────────────
 //
 // `pickSorted` walks the same sorter instance that painted, backwards. That is a contract with
-// `@lattice/draw`, which must not reorder after `sort()`, and it is why picking is structural
+// `@latticekit/draw`, which must not reorder after `sort()`, and it is why picking is structural
 // rather than a comment someone has to remember. `DepthSorter.sorted` holds up the half of it
 // that is visible from this side: a sorter refilled between the paint and the tap refuses to be
 // read at all, rather than answering with a permutation that no longer describes the frame.

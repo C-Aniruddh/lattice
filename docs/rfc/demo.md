@@ -63,7 +63,7 @@ Four grades, because they are not equivalent and lumping them together is how th
 Census taken across `examples/**`, `test/**`, `tools/**`, every `packages/*/src`, `README.md` and
 `docs/**`, at cycle 2.
 
-### `@lattice/persist` — the whole package, minus a seam and a doc
+### `@latticekit/persist` — the whole package, minus a seam and a doc
 
 | surface | grade | which exhibit will exercise it |
 |---|---|---|
@@ -82,7 +82,7 @@ Census taken across `examples/**`, `test/**`, `tools/**`, every `packages/*/src`
 of calling it.** The package's own showcase did not reach for the function the package's own
 header says exists. That is not an orphan; that is a discoverability failure with a witness.
 
-### `@lattice/sim` — `offline` and `schedule`, entire
+### `@latticekit/sim` — `offline` and `schedule`, entire
 
 | surface | grade | which exhibit will exercise it |
 |---|---|---|
@@ -108,7 +108,7 @@ It is therefore a correct, well-tested, well-argued answer to a question this re
 asks. Appendix A is the question, kept so that whoever finds this field can decide with the
 evidence rather than without it.
 
-### `@lattice/loop` + `@lattice/input` + `@lattice/persist` — the replay story
+### `@latticekit/loop` + `@latticekit/input` + `@latticekit/persist` — the replay story
 
 The seam is deliberately structural: the three packages declare each other's shapes and import
 nothing, which is right and which also means nothing links them but a caller.
@@ -124,7 +124,7 @@ nothing, which is right and which also means nothing links them but a caller.
 Covered on paper, and `G11` is carrying more weight than any other row in the gallery. It is the
 sole planned consumer of three packages' worth of replay surface plus most of `persist`.
 
-### `@lattice/iso`
+### `@latticekit/iso`
 
 | surface | grade | which exhibit |
 |---|---|---|
@@ -145,7 +145,7 @@ available and did not know it existed. An unused export is a maybe. An export wh
 reimplemented it is a naming or a documentation defect, and it is the same failure as
 `scheduleFrom` above.
 
-### `@lattice/draw`
+### `@latticekit/draw`
 
 | surface | grade | which exhibit |
 |---|---|---|
@@ -162,7 +162,7 @@ grounds that **"`ui` wants it for layout measurement without a canvas."** That i
 recording surface at all. A comment asserting a consumer that does not exist is how an orphan
 survives an audit.
 
-### `@lattice/input` — the gestures
+### `@latticekit/input` — the gestures
 
 The whole gesture *type* surface is `self`, which is structural rather than damning: exhibits
 reach gestures through string literals (`actions: { touch: ['tap'] }`), not through the types. The
@@ -176,26 +176,26 @@ question that matters is which gestures anything actually asks for.
 | `longpress` | **doc** only (`GUIDE.md`) | ❌ **nothing** |
 | gamepad | **self** | ❌ **nothing.** The original RFC already flagged this: *"`input.gamepad` is the one module this design never touches"*. It is still true, one design later |
 
-### `@lattice/audio`
+### `@latticekit/audio`
 
 | surface | grade | which exhibit |
 |---|---|---|
 | `createAudio`, `createBed`, `SoundDef`, `BedLayer` | **shipped** — `examples/demo/src/sound.ts` | — |
 | **music deck** — `createDeck`, `validateSong`, `Song`, `Track`, `TrackVoice`, `Note`, `SongProblem`, `LOOKAHEAD_SEC`, `PUMP_INTERVAL_MS` | **self** | ❌ **nothing as written.** **Instrument** (`G13`) shows *synthesis*; **Resonance** (`G14`) is chords, a bed, and ducking. A drone is `createBed`. Nothing in the gallery currently needs a *scheduled sequence with lookahead*, which is what the deck is |
-| **mixer** — `Mixer`, `MixerState`, `snapshot()`, `restore()`, `effectiveGain` | **self** | ⚠️ partial. **Resonance** (`G14`) exercises bus gains and ducking. `snapshot()`/`restore()` exist, per `packages/audio/src/index.ts`, so a game can hand mixer state to `@lattice/persist` — which needs one artifact holding *audio and a save at once*, and there is no such row |
+| **mixer** — `Mixer`, `MixerState`, `snapshot()`, `restore()`, `effectiveGain` | **self** | ⚠️ partial. **Resonance** (`G14`) exercises bus gains and ducking. `snapshot()`/`restore()` exist, per `packages/audio/src/index.ts`, so a game can hand mixer state to `@latticekit/persist` — which needs one artifact holding *audio and a save at once*, and there is no such row |
 
-### And the one nobody listed: `@lattice/ui`
+### And the one nobody listed: `@latticekit/ui`
 
-`examples/demo` declared `@lattice/ui` and never imported it; that dependency is removed as part of
+`examples/demo` declared `@latticekit/ui` and never imported it; that dependency is removed as part of
 `K8`. Look at what replaces it and the position is worse than orphaned:
 
 - Not one of the fifteen exhibit rows names `ui`.
 - The control panel — the one obviously UI-shaped thing in the plan — **lives in
-  `examples/_shared/` on purpose**, and `GALLERY.md` says so in as many words: *"`@lattice/ui` is
+  `examples/_shared/` on purpose**, and `GALLERY.md` says so in as many words: *"`@latticekit/ui` is
   deliberately not a controls library."*
 - *Lamplighter* drew its HUD into the canvas with `draw`, in `hud.ts`.
 
-**`@lattice/ui` is a package the gallery has no planned consumer for at all.** It is `B9`, still
+**`@latticekit/ui` is a package the gallery has no planned consumer for at all.** It is `B9`, still
 in flight, and this is worth putting in front of whoever finishes it before they finish it.
 
 ---
@@ -346,7 +346,7 @@ absence long enough for the warp to bite, the second number is larger than the f
 larger the longer they are gone. **Closing the tab is never a win, and the mechanism that makes
 it a loss is the same one that produces the middle game's best beat.**
 
-### What this asked of `@lattice/sim` — and got
+### What this asked of `@latticekit/sim` — and got
 
 **`advanceOver` and `solveCrossingOver` must be able to resume a partially-consumed absence
 without restarting the warp.** Each extinguishment is a commit partway through the absence, and

@@ -8,7 +8,7 @@
  *
  * **The viewport is in CSS pixels.** A pointer event arrives in CSS pixels, so a camera that
  * worked in device pixels would make every input path multiply by a ratio this package must
- * not name. `devicePixelRatio` is `@lattice/draw`'s business at the point it sets a
+ * not name. `devicePixelRatio` is `@latticekit/draw`'s business at the point it sets a
  * transform, and nowhere else.
  *
  * **`x`, `y` and `zoom` are getters over private state and there is no setter.** That is not
@@ -35,13 +35,13 @@
  * move.
  *
  * No inertia, no drag handling, no pinch, no edge-scroll, no smooth follow, no shake. Feel
- * needs a clock and a pointer and both live in `@lattice/input`, which drives this camera
+ * needs a clock and a pointer and both live in `@latticekit/input`, which drives this camera
  * through `panByScreen`, `zoomAt` and `centerOn`. A camera that eases itself cannot be
  * stepped deterministically in a replay.
  */
 
-import { clamp } from '@lattice/core';
-import type { Vec2 } from '@lattice/core';
+import { clamp } from '@latticekit/core';
+import type { Vec2 } from '@latticekit/core';
 import type { Rect, TileRange } from './projection.js';
 import { HALF_H, HALF_W, TILE_H, TILE_W } from './projection.js';
 
@@ -226,7 +226,7 @@ export interface Camera {
    * Where a world x sits **across** the viewport: `-1` at the left edge, `0` at the center,
    * `+1` at the right, continuing past them rather than clamping.
    *
-   * The third member of the projection family, and it exists because `@lattice/audio` needs
+   * The third member of the projection family, and it exists because `@latticekit/audio` needs
    * it and may not depend on this package: a sound's stereo pan is the `normalizedX` of the
    * thing that made it. **Unclamped on purpose** — how far a pan may go is a mixing policy
    * (`audio` caps at ±0.6, because full-width panning is unpleasant on headphones and

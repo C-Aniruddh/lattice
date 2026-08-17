@@ -17,7 +17,7 @@
  * including one faster than the state that drives it.
  */
 
-import type { Disposer } from '@lattice/core';
+import type { Disposer } from '@latticekit/core';
 import { el, hide, show } from './el.js';
 import { createLatch } from './latch.js';
 import { internalsOf, type LayerName, type ModalEntry, type Overlay } from './overlay.js';
@@ -255,7 +255,7 @@ export interface AcknowledgeOptions {
  * out is the acknowledgement, which is the entire point.
  *
  * **This exists for a specific class of message: the session has silently stopped working and
- * the player cannot tell.** `@lattice/persist`'s `'refusing-newer'` is the case that named it —
+ * the player cannot tell.** `@latticekit/persist`'s `'refusing-newer'` is the case that named it —
  * a save written by a newer deploy, which `persist` correctly refuses to overwrite, so the
  * player's progress is safe and their *current session* is not being recorded. A toast is
  * exactly wrong there: it is dismissible, it expires whether or not it was read, and it competes

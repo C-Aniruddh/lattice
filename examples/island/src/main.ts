@@ -29,10 +29,10 @@
  * that pair. Two schedules — one for color and one for the mask — is a coast whose darkness and
  * whose blue disagree, and it gets reported as a light bug rather than as the two clocks it is.
  */
-import { clamp, clamp01 } from '@lattice/core';
-import { TILE_H, TILE_W, rectFromSize, type Rect } from '@lattice/iso';
-import { renderFrame, spriteHeightPx, type Passes } from '@lattice/draw';
-import { drive } from '@lattice/ui';
+import { clamp, clamp01 } from '@latticekit/core';
+import { TILE_H, TILE_W, rectFromSize, type Rect } from '@latticekit/iso';
+import { renderFrame, spriteHeightPx, type Passes } from '@latticekit/draw';
+import { drive } from '@latticekit/ui';
 import { bootstrap, controlPanel, createBucket, knobs } from '../../_shared/src/index.js';
 import { DAY, rollPalette } from './palette.js';
 import { MAX_HEIGHT_PX, SKY_V, createIsland, type Tree } from './island.js';
@@ -99,7 +99,7 @@ frame(boot.camera.viewW, boot.camera.viewH);
 // ── the day ──────────────────────────────────────────────────────────────────────────────────
 
 let phase = OPENS_AT, daylight = 1, minutes = OPENS_AT * 1440;
-/** The loop's own clock, caught on the way past. `@lattice/loop` takes a `Clock` and does not
+/** The loop's own clock, caught on the way past. `@latticekit/loop` takes a `Clock` and does not
  *  offer one back, so an exhibit that needs the same instant the loop is using either reads
  *  `performance.now()` — banned in exhibit source, and a second clock racing the first — or does
  *  this. Filed as a kit finding. */

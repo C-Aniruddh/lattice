@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createRng } from '@lattice/core';
+import { createRng } from '@latticekit/core';
 import { MinHeap, sortIndicesByKey } from '../src/heap.js';
 
 /** Drain a heap into the order it pops. */

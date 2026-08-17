@@ -1,5 +1,5 @@
 /**
- * The overlay — **`@lattice/ui` over the canvas, because `docs/GALLERY.md` makes it a rule.**
+ * The overlay — **`@latticekit/ui` over the canvas, because `docs/GALLERY.md` makes it a rule.**
  *
  * There is no canvas text anywhere in this exhibit. That is worth saying rather than assuming,
  * because an island with a clock on it is exactly the shape of exhibit that would have drawn the
@@ -37,9 +37,9 @@
  * That seam is the whole reason the package can be dropped into a game whose art direction was
  * decided first.
  */
-import type { Disposer } from '@lattice/core';
-import { paletteVars, type Palette as WorldPalette } from '@lattice/draw';
-import { applyPalette, createOverlay, setText, type Overlay } from '@lattice/ui';
+import type { Disposer } from '@latticekit/core';
+import { paletteVars, type Palette as WorldPalette } from '@latticekit/draw';
+import { applyPalette, createOverlay, setText, type Overlay } from '@latticekit/ui';
 import { mountChrome } from './overlay.js';
 
 /** What the exhibit tells the overlay, once per update. A pull, not a push, so there is exactly
@@ -76,7 +76,7 @@ export interface HudOptions {
   /** Half a cycle forward. The one control, and it exists so a viewer who will not wait
    *  forty-five seconds for the other half of the idea does not have to. */
   readonly onSkip: () => void;
-  /** Milliseconds, and it must be the clock `@lattice/loop` was given. Two clocks in one HUD is a
+  /** Milliseconds, and it must be the clock `@latticekit/loop` was given. Two clocks in one HUD is a
    *  poll racing a settle. */
   readonly now: () => number;
 }

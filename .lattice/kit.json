@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "license": "MIT",
   "repository": "https://github.com/C-Aniruddh/lattice",
-  "scope": "@lattice",
+  "scope": "@latticekit",
   "budgets": {
     "coverageStatements": 0.9,
     "coverageCore": 1,
@@ -55,8 +55,8 @@
   ],
   "packages": {
     "core": {
-      "name": "@lattice/core",
-      "purpose": "Deterministic primitives. Seeded randomness, noise, maths, easing, typed events, pools, formatting.",
+      "name": "@latticekit/core",
+      "purpose": "Deterministic primitives. Seeded randomness, noise, math, easing, typed events, pools, formatting.",
       "environment": "isomorphic",
       "dependsOn": [],
       "modules": [
@@ -191,7 +191,7 @@
       "$entryPointsNote": "The three or four symbols a reader calls FIRST. `exports` answers 'which package'; a flat list of 484 names cannot answer 'which symbol'. Every package carries this; an empty list means the package is not yet built."
     },
     "iso": {
-      "name": "@lattice/iso",
+      "name": "@latticekit/iso",
       "purpose": "Isometric space: the projection, the camera, depth sorting, tile maps, footprints, hit-testing, and grid pathfinding.",
       "environment": "isomorphic",
       "dependsOn": [
@@ -293,9 +293,9 @@
         "Three coordinate spaces — grid, world, screen — never conflated. Every conversion is a named function taking an output parameter.",
         "Tile lookup floors, never rounds. Rounding snaps to the nearest lattice vertex and picks the wrong tile for three quarters of every diamond.",
         "Hit-testing is computed from state and camera, never cached during a draw pass. pick() is a method on the sorted Scene, so 'reverse of paint order' is structural rather than remembered.",
-        "Tile size is fixed at 64x32. Any other uniform size is exactly a camera zoom, and parameterising it would infect draw, input and ui signatures permanently.",
+        "Tile size is fixed at 64x32. Any other uniform size is exactly a camera zoom, and parameterizing it would infect draw, input and ui signatures permanently.",
         "Elevation lives on grid vertices, not tile centres. Once z exists the projection is no longer invertible, so picking must be terrain-aware.",
-        "A path is a curve to be sampled by arc length, not a list of nodes to be stepped. Grid-unit parameterisation would make a walker 58% faster on one diagonal than the other."
+        "A path is a curve to be sampled by arc length, not a list of nodes to be stepped. Grid-unit parameterization would make a walker 58% faster on one diagonal than the other."
       ],
       "entryPoints": [
         "createCamera",
@@ -305,8 +305,8 @@
       ]
     },
     "draw": {
-      "name": "@lattice/draw",
-      "purpose": "The rendering layer: a Surface interface with a Canvas2D backend, colour derivation, and the isometric solid kit that makes procedural art read as designed.",
+      "name": "@latticekit/draw",
+      "purpose": "The rendering layer: a Surface interface with a Canvas2D backend, color derivation, and the isometric solid kit that makes procedural art read as designed.",
       "environment": "browser (Canvas2D) with an offscreen/headless backend for tests",
       "dependsOn": [
         "core",
@@ -430,7 +430,7 @@
       ],
       "invariants": [
         "Draw calls go through Surface. No package reaches for CanvasRenderingContext2D directly.",
-        "A solid is described by one colour; its faces are derived. Shadows cool, highlights warm.",
+        "A solid is described by one color; its faces are derived. Shadows cool, highlights warm.",
         "Everything is drawable into an offscreen surface, which is what makes UI thumbnails and golden tests possible."
       ],
       "entryPoints": [
@@ -448,7 +448,7 @@
       }
     },
     "loop": {
-      "name": "@lattice/loop",
+      "name": "@latticekit/loop",
       "purpose": "Time. A wall-clock game loop with fixed-step simulation and interpolated rendering, plus scheduling, tweens and frame statistics.",
       "environment": "isomorphic (host clock is injected)",
       "dependsOn": [
@@ -518,8 +518,8 @@
       ]
     },
     "input": {
-      "name": "@lattice/input",
-      "purpose": "Normalised input: pointer, touch and keyboard into one per-tick sample stream, plus gestures, an action map, a camera controller, and the recorded log a replay is driven from.",
+      "name": "@latticekit/input",
+      "purpose": "Normalized input: pointer, touch and keyboard into one per-tick sample stream, plus gestures, an action map, a camera controller, and the recorded log a replay is driven from.",
       "environment": "browser",
       "dependsOn": [
         "core",
@@ -596,7 +596,7 @@
       ]
     },
     "audio": {
-      "name": "@lattice/audio",
+      "name": "@latticekit/audio",
       "purpose": "Sound without assets: WebAudio synthesis from declarative sound definitions, with voice limiting, buses and a music sequencer.",
       "environment": "browser",
       "dependsOn": [
@@ -661,7 +661,7 @@
       ]
     },
     "persist": {
-      "name": "@lattice/persist",
+      "name": "@latticekit/persist",
       "purpose": "Saves that survive: versioned state, an explicit migration chain, pluggable storage, debounced writes and integrity checks.",
       "environment": "isomorphic (storage adapter is injected)",
       "dependsOn": [
@@ -728,7 +728,7 @@
       ],
       "invariants": [
         "The chain IS the version. createStore reads the head off the migration chain, so declaring version 7 and shipping a chain that ends at 6 is inexpressible.",
-        "Every migration steps exactly one rung, and every rung carries a recogniser. A save can never be orphaned.",
+        "Every migration steps exactly one rung, and every rung carries a recognizer. A save can never be orphaned.",
         "Writes flush on visibilitychange, not beforeunload — mobile Safari does not reliably deliver the latter. reset() closes handles BEFORE removing the key, or the autosave writes the live state back over the clear.",
         "A corrupt save degrades to a fresh one with one of seven closed reasons, returned as a value. Never a thrown exception on boot.",
         "A save from the future makes the store read-only. A stale deploy must not eat a good save.",
@@ -741,7 +741,7 @@
       ]
     },
     "sim": {
-      "name": "@lattice/sim",
+      "name": "@latticekit/sim",
       "purpose": "Idle-economy mathematics in closed form: cost curves, the flow integrator, offline accrual, and capacity gating.",
       "environment": "isomorphic",
       "dependsOn": [
@@ -826,7 +826,7 @@
       ]
     },
     "ui": {
-      "name": "@lattice/ui",
+      "name": "@latticekit/ui",
       "purpose": "DOM overlay primitives — a declarative element builder, panels, toasts, number rolls, and thumbnails rendered from the draw kit. Deliberately not a framework.",
       "environment": "browser",
       "dependsOn": [

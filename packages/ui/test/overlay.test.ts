@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fmtCompact } from '@lattice/core';
-import type { Loop } from '@lattice/loop';
+import { fmtCompact } from '@latticekit/core';
+import type { Loop } from '@latticekit/loop';
 import { el } from '../src/el.js';
 import { roll } from '../src/roll.js';
 import { toasts } from '../src/toast.js';
@@ -46,7 +46,7 @@ function effectivePointerEvents(node: FakeElement): string {
   return 'auto';
 }
 
-/** A loop with `@lattice/loop`'s real callback signatures: a delta in *seconds* for update and
+/** A loop with `@latticekit/loop`'s real callback signatures: a delta in *seconds* for update and
  *  an interpolation alpha for render. Neither is a wall-clock reading, which is why `drive`
  *  ignores both and reads the overlay's own injected clock. */
 function fakeLoop(): Driven & {
@@ -374,7 +374,7 @@ describe('drive', () => {
     expect(() => drive(ui, null as unknown as Driven)).toThrow(TypeError);
   });
 
-  it('accepts the real @lattice/loop, which the compiler checks', () => {
+  it('accepts the real @latticekit/loop, which the compiler checks', () => {
     // A structural proof rather than an import: `ui` is layer 3 and may not depend on `loop`.
     // If `Loop` ever stops satisfying `Driven`, this line fails to compile.
     const asDriven = (loop: Loop): Driven => loop;

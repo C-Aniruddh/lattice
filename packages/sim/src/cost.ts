@@ -48,7 +48,7 @@
  * Isomorphic: no clock, no randomness, no platform.
  */
 
-import { expectFinite, expectInt } from '@lattice/core';
+import { expectFinite, expectInt } from '@latticekit/core';
 
 /**
  * How many bounded correction steps {@link maxBuyable} may take after the logarithm.

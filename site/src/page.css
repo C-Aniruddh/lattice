@@ -5,7 +5,7 @@
  *
  * **The page is lit by the same day cycle its games are.** Every color below that is not text
  * resolves through a `--lattice-*` custom property, and `page.ts` writes those properties from
- * `lerpPalette(DUSK, NIGHT, scrollProgress)` — `@lattice/draw`'s own palette interpolation,
+ * `lerpPalette(DUSK, NIGHT, scrollProgress)` — `@latticekit/draw`'s own palette interpolation,
  * quantized to its own 32 steps. So scrolling this page is the kit's day cycle running on the
  * document instead of on a canvas, and the fallbacks below are DUSK exactly, so the first paint
  * is right before a line of script has run and stays right if script never runs at all.
@@ -113,7 +113,7 @@ body {
   overflow-x: hidden;
 }
 
-/* The isometric field `page.ts` draws with @lattice/draw. Behind everything, never in the way,
+/* The isometric field `page.ts` draws with @latticekit/draw. Behind everything, never in the way,
    and repainted only when the quantized palette step changes — about two dozen times over the
    whole scroll rather than sixty times a second. */
 #ground {
@@ -493,7 +493,7 @@ code, kbd, samp, pre { font-family: var(--mono); }
   tab-size: 2;
 }
 .code b { font-weight: 500; color: var(--accent); }        /* keyword */
-.code i { font-style: normal; color: var(--lattice-glass); } /* @lattice module path */
+.code i { font-style: normal; color: var(--lattice-glass); } /* @latticekit module path */
 .code u { text-decoration: none; color: var(--dimmer); }     /* comment */
 
 .shell-cmd {

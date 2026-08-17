@@ -8,9 +8,9 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { createCamera } from '@lattice/iso';
-import type { GridPoint } from '@lattice/iso';
-import type { Vec2 } from '@lattice/core';
+import { createCamera } from '@latticekit/iso';
+import type { GridPoint } from '@latticekit/iso';
+import type { Vec2 } from '@latticekit/core';
 import { createHeadlessInput, internalsOf } from '../src/system.js';
 import type { Diagnostic } from '../src/sample.js';
 import { createLog, record } from '../src/record.js';
@@ -19,7 +19,7 @@ import { STEP_60, camera, down, harness, move, types, up, watch } from './harnes
 describe('construction', () => {
   it('refuses a system with no camera to resolve through', () => {
     expect(() => createHeadlessInput({ camera: undefined as never, step: STEP_60 })).toThrow(
-      /expected an @lattice\/iso Camera/,
+      /expected an @latticekit\/iso Camera/,
     );
     expect(() => createHeadlessInput({ camera: {} as never, step: STEP_60 })).toThrow(TypeError);
   });

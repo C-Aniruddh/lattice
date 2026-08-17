@@ -7,7 +7,7 @@
  * it holds a scope, not an array of disposers, because an array is a thing you can forget to
  * push to and a scope is not.
  *
- * The teardown vocabulary itself is `@lattice/core`'s `Scope`. This module adds three things
+ * The teardown vocabulary itself is `@latticekit/core`'s `Scope`. This module adds three things
  * on top of it and nothing else: the typed `on`/`onAction` surface, the dispatch order below,
  * and `own`, so that a scene has **one** teardown tree rather than one per package it happens
  * to use.
@@ -27,7 +27,7 @@
  * Pure: no DOM, no clock.
  */
 
-import type { Disposer, Scope } from '@lattice/core';
+import type { Disposer, Scope } from '@latticekit/core';
 import type { ActionEvent, AnyActionHandler, GestureMap } from './events.js';
 
 /**

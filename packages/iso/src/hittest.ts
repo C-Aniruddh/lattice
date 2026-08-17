@@ -1,7 +1,7 @@
 /**
  * screen → what.
  *
- * **Who owns tap → grid cell.** `iso` owns the geometry, `@lattice/input` owns the event and
+ * **Who owns tap → grid cell.** `iso` owns the geometry, `@latticekit/input` owns the event and
  * the composition, and the composition is one line: `input` turns a `PointerEvent` into
  * CSS-pixel coordinates relative to the viewport, decides whether it was a tap or a drag, and
  * then calls {@link screenToTile}. The inverse split is unbuildable — a `screenToTile` living
@@ -45,7 +45,7 @@ import { heightAt } from './height.js';
  * the wrong tile over three quarters of the area of every diamond; the symptom is a placement
  * ghost that jumps a tile as the pointer crosses the middle of a tile rather than its edge.
  *
- * `@lattice/input` resolves this on every pointer event against the camera as the tick
+ * `@latticekit/input` resolves this on every pointer event against the camera as the tick
  * opened, so it is on that package's hottest path: two multiplies, two adds and two floors,
  * no allocation and no branch.
  */
@@ -160,7 +160,7 @@ export function screenToTileOnHeights(
  * elevation and height in **world pixels**.
  *
  * The units differ because height has no tile. A storey is an art proportion and belongs to
- * `@lattice/draw`; `iso`'s entire height vocabulary is world pixels. Mixing the two produces
+ * `@latticekit/draw`; `iso`'s entire height vocabulary is world pixels. Mixing the two produces
  * buildings a hundred tiles tall, which is at least an obvious failure.
  */
 export interface Volume {
@@ -186,7 +186,7 @@ export interface Volume {
  * that hexagon. Walking eight corners and taking a convex hull would produce the same shape
  * and cost a hull.
  *
- * **The order is a cross-package contract.** `@lattice/draw`'s solid kit must stroke a box in
+ * **The order is a cross-package contract.** `@latticekit/draw`'s solid kit must stroke a box in
  * this same order, or hit-testing and pixels diverge with no test in either package noticing —
  * each is correct against its own idea of the shape. This function is the definition and
  * `draw` is the conformer, which is why the shared assertion lives in this package's suite.

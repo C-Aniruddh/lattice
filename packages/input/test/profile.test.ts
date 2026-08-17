@@ -1,7 +1,7 @@
 /**
  * The thresholds, their validation, and the fingerprint a replay is refused by.
  *
- * The fingerprint tests are the load-bearing ones: `@lattice/persist` compares that string for
+ * The fingerprint tests are the load-bearing ones: `@latticekit/persist` compares that string for
  * exact equality and refuses a replay that differs, so a change in how it is built silently
  * invalidates every log ever recorded. Two of these exist to make that change loud.
  */

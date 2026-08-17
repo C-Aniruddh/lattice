@@ -5,7 +5,7 @@ stops moving.** `iso.height` · `core.noise`
 
 ```bash
 npm run build                       # the exhibits render against each package's dist, not its src
-npm run dev --workspace=@lattice/example-canyon
+npm run dev --workspace=@latticekit/example-canyon
 # http://localhost:5188/  ·  ?seed=colorado
 ```
 

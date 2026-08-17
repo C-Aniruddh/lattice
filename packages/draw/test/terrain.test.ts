@@ -13,9 +13,9 @@
  * to buy and it is invisible until terrain is actually drawn.
  */
 
-import type { Vec2 } from '@lattice/core';
-import { heightAt, gridToScreen, tileSourceOf } from '@lattice/iso';
-import type { HeightField } from '@lattice/iso';
+import type { Vec2 } from '@latticekit/core';
+import { heightAt, gridToScreen, tileSourceOf } from '@latticekit/iso';
+import type { HeightField } from '@latticekit/iso';
 import { describe, expect, it } from 'vitest';
 import { FACE_LEFT, FACE_RIGHT, rgba, shade } from '../src/color.js';
 import { isoTerrain } from '../src/terrain.js';

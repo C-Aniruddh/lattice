@@ -32,7 +32,7 @@
  * The one `Math.sqrt` in this file is arc length, which ECMA-262 does specify exactly.
  */
 
-import { expectIndex, hash2 } from '@lattice/core';
+import { expectIndex, hash2 } from '@latticekit/core';
 import type { GridPoint, TileRange } from './projection.js';
 import { HALF_H, HALF_W } from './projection.js';
 import { MinHeap } from './heap.js';

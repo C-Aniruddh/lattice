@@ -30,8 +30,8 @@
  * the same direction. The dashed line between them is the only honest way to show that they are
  * two answers to one question rather than two different questions.
  */
-import { withAlpha, type Pen, type Rgba } from '@lattice/draw';
-import type { HeightField, Tile } from '@lattice/iso';
+import { withAlpha, type Pen, type Rgba } from '@latticekit/draw';
+import type { HeightField, Tile } from '@latticekit/iso';
 import { stakes, type Pick } from './pick.js';
 import { place } from './place.js';
 

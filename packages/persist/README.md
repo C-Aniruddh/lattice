@@ -1,14 +1,14 @@
-# @lattice/persist
+# @latticekit/persist
 
 > Saves that survive: versioned state, an explicit migration chain, pluggable storage, debounced writes and integrity checks.
 
 Part of **[Lattice](https://github.com/C-Aniruddh/lattice)** — the grid underneath.
 
 ```bash
-npm i @lattice/persist
+npm i @latticekit/persist
 ```
 
-`@lattice/persist` keeps a player's game across a version bump, a crashed tab and a browser
+`@latticekit/persist` keeps a player's game across a version bump, a crashed tab and a browser
 that lies about its storage — by making the save an explicitly **versioned envelope**, the
 upgrade an explicit **chain of one-step migrations**, and every failure a **reported value**
 instead of a thrown exception on boot.
@@ -21,7 +21,7 @@ This runs in Node with no shims. It is a real script, and the output below it is
 actually printed.
 
 ```ts
-import { asEpochMillis } from '@lattice/core';
+import { asEpochMillis } from '@latticekit/core';
 import {
   createStore,
   defaultChecksum,
@@ -29,7 +29,7 @@ import {
   memoryStorage,
   migrations,
   type Recognize,
-} from '@lattice/persist';
+} from '@latticekit/persist';
 
 interface V1 { readonly version: 1; readonly coins: number }
 interface V2 { readonly version: 2; readonly wallet: { readonly coin: number } }
@@ -129,7 +129,7 @@ const auto = store.autosave(() => game.state, { schedule: scheduleFrom(loop.real
 installFlushTriggers(auto, { visibility: document, page: window });
 ```
 
-`scheduleFrom(loop.real)`, **never** `loop.real.after`. `@lattice/loop` schedules in seconds
+`scheduleFrom(loop.real)`, **never** `loop.real.after`. `@latticekit/loop` schedules in seconds
 and returns a `TimerId`; this package schedules in milliseconds and wants a `Cancel`. Passing
 the method directly does not compile — and cast through, it asks for a write every 4,000
 *seconds*, so the game autosaves once every 67 minutes while `store.status` reports `ok` the
@@ -236,7 +236,7 @@ Both are injected and neither has a default.
   bug in this package's reach: every save would load with an elapsed of zero, offline progress
   would pay out nothing, and *nothing would look broken*.
 - **`schedule: Schedule`** is optional on `autosave`, and when it is absent you drive `tick()`
-  yourself. `persist` may not import `@lattice/loop` — siblings on layer 1, and the DAG forbids
+  yourself. `persist` may not import `@latticekit/loop` — siblings on layer 1, and the DAG forbids
   the edge — so a browser game passes `scheduleFrom(loop.real)` and a Node test passes a
   function that records its callbacks and runs them by hand. `Schedule` counts in
   **milliseconds**, like `minWriteIntervalMs` and every other duration here; `SecondsTimeline`

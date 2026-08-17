@@ -58,7 +58,7 @@
  * `Float64` in the buffer and in every checkpoint, because a checkpoint that rounds is a
  * checkpoint that does not reproduce the run it was taken from.
  */
-import { clamp, fbm2, hash2, noise2 } from '@lattice/core';
+import { clamp, fbm2, hash2, noise2 } from '@latticekit/core';
 
 /** Tiles on a side, vertices on a side, and cells in one half of the buffer. The grid is square
  *  because a rectangular one still projects to a diamond; the canyon is made long and thin by
@@ -68,7 +68,7 @@ import { clamp, fbm2, hash2, noise2 } from '@lattice/core';
  *  neighbouring tiles share their corners exactly and a cliff cannot open a seam. */
 export const CELLS = 112, N = CELLS + 1, CELL_COUNT = N * N;
 /**
- * World pixels per height unit — `@lattice/iso HeightField.stepPx`, and the exhibit's whole
+ * World pixels per height unit — `@latticekit/iso HeightField.stepPx`, and the exhibit's whole
  * answer to "the Grand Canyon is six thousand feet deep and this reads as a ditch".
  *
  * `TILE_H / 4` is the kit's suggested first guess and it renders this canyon as a scratch. What it

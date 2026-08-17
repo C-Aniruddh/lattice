@@ -41,8 +41,8 @@
  * and `bootstrap` publishes it as `boot.worstMs` beside `boot.cadenceMs`. Four exhibits wrote this
  * meter by hand and produced three different wrong answers; this one now reads the shared one.
  */
-import { renderFrame } from '@lattice/draw';
-import { drive } from '@lattice/ui';
+import { renderFrame } from '@latticekit/draw';
+import { drive } from '@latticekit/ui';
 import { bootstrap, controlPanel, knobs } from '../../_shared/src/index.js';
 import { CANYON } from './palette.js';
 import { STEPS, createDeepTime } from './deeptime.js';

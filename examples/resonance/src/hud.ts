@@ -1,5 +1,5 @@
 /**
- * The overlay — **`@lattice/ui` over the canvas, because `docs/GALLERY.md` makes it a rule**, and
+ * The overlay — **`@latticekit/ui` over the canvas, because `docs/GALLERY.md` makes it a rule**, and
  * because in this exhibit the strings are the instrument and an instrument wants real buttons.
  *
  * There is no canvas text anywhere here. Worth saying rather than assuming: six labelled pads
@@ -19,7 +19,7 @@
  *
  * ## The first frame has to say that it is silent on purpose
  *
- * Nothing exists before `Audio.unlock()`, and `@lattice/audio` deliberately installs no listener of
+ * Nothing exists before `Audio.unlock()`, and `@latticekit/audio` deliberately installs no listener of
  * its own. A visitor therefore arrives at a dark cave that makes no sound, which is
  * indistinguishable from a broken exhibit unless something says otherwise. {@link HudState.woke}
  * drives one pulsing line that is on screen until the first gesture and gone after it, and the
@@ -30,9 +30,9 @@
  * "did `play` return true". They are different questions, and this exhibit is unplayable if the
  * second is yes and the first is no, so it says so in the same place.
  */
-import type { Disposer } from '@lattice/core';
-import { paletteVars, type Palette as WorldPalette } from '@lattice/draw';
-import { applyPalette, createOverlay, pulse, setText, show, type Overlay } from '@lattice/ui';
+import type { Disposer } from '@latticekit/core';
+import { paletteVars, type Palette as WorldPalette } from '@latticekit/draw';
+import { applyPalette, createOverlay, pulse, setText, show, type Overlay } from '@latticekit/ui';
 
 /**
  * What the exhibit tells the overlay once per update — a **pull**, so there is exactly one place
@@ -49,7 +49,7 @@ export interface HudState {
 }
 
 /** The palette is the world's live one, pushed to the DOM and never mutated here; `now` is
- *  milliseconds and must be the clock `@lattice/loop` was given, or the overlay's cadence is a
+ *  milliseconds and must be the clock `@latticekit/loop` was given, or the overlay's cadence is a
  *  second clock racing the first. */
 export interface HudOptions {
   readonly palette: WorldPalette; readonly total: number; readonly now: () => number;

@@ -22,7 +22,7 @@
  *   digest rather than vanishing behind an opaque image.
  */
 
-import { hashNumber, hashStep, hashString } from '@lattice/core';
+import { hashNumber, hashStep, hashString } from '@latticekit/core';
 import type { Rgba } from './color.js';
 import { expectPositive } from './surface.js';
 import type {

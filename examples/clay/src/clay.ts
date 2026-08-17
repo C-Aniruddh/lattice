@@ -60,8 +60,8 @@
  *
  * Pure: no DOM, no clock, no `Math.random`. The seed arrives as a number.
  */
-import { fbm2, noise2 } from '@lattice/core';
-import type { HeightField, TileSource } from '@lattice/iso';
+import { fbm2, noise2 } from '@latticekit/core';
+import type { HeightField, TileSource } from '@latticekit/iso';
 
 /**
  * Tiles on a side, and vertices on a side. Heights live on **vertices**, so there is one more of

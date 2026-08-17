@@ -1,5 +1,5 @@
 /**
- * `@lattice/audio` — sound without assets. Layer 1, depends only on `@lattice/core`.
+ * `@latticekit/audio` — sound without assets. Layer 1, depends only on `@latticekit/core`.
  *
  * A table of oscillator recipes becomes the sound of a game: no files, no `AudioContext` until
  * the player touches something, a hard ceiling on how loud a burst can get, and one continuous
@@ -40,7 +40,7 @@
  * because a visualiser needs a real device and `onScheduled` gives a HUD the beat without one;
  * a module-level singleton, which would make two games on one page impossible; any use of
  * `localStorage` — {@link Mixer.snapshot} returns a value and the game hands it to
- * `@lattice/persist`; and an auto-unlock listener of its own, because `@lattice/input` owns the
+ * `@latticekit/persist`; and an auto-unlock listener of its own, because `@latticekit/input` owns the
  * DOM event surface and the game calls {@link Audio.unlock}.
  */
 

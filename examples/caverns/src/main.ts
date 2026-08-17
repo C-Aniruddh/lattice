@@ -47,10 +47,10 @@
  * their headers and are uncapped: delete any one and the cave still generates, still sorts, still
  * runs — it changes what the exhibit looks like and nothing else.
  */
-import { clamp, damp } from '@lattice/core';
-import { heightAt, tileBounds, type Rect } from '@lattice/iso';
-import { renderFrame, spriteHeightPx, type Passes, type Pen } from '@lattice/draw';
-import { drive } from '@lattice/ui';
+import { clamp, damp } from '@latticekit/core';
+import { heightAt, tileBounds, type Rect } from '@latticekit/iso';
+import { renderFrame, spriteHeightPx, type Passes, type Pen } from '@latticekit/draw';
+import { drive } from '@latticekit/ui';
 import { bootstrap, controlPanel, createBucket, knobs, type RangeControl } from '../../_shared/src/index.js';
 import { CAVE } from './palette.js';
 import { BRAZIERS, CX, CY, H, W, createCavern, openAt, type Flame, type Formation, type Lit } from './cavern.js';
@@ -200,7 +200,7 @@ boot.scope.add(hud.destroy);
  * copy of it that exists, which is exactly the shadow copy non-negotiable 11 exists to remove.
  */
 const darkness: RangeControl = {
-  kind: 'range', key: 'dark', label: 'darkness', param: '@lattice/draw LightField.begin darkness',
+  kind: 'range', key: 'dark', label: 'darkness', param: '@latticekit/draw LightField.begin darkness',
   note: 'Per frame, not per field — the same number a game would hand Palette.lerp.',
   min: 0, max: 1, step: 0.02, value: boot.params.num('dark', dark),
   wrong: { below: 0.5, says: 'Under a half the pools have nothing left to cut: the cave is a lit floor with decorative fires on it, and there is no exhibit.' },

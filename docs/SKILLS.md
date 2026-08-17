@@ -1,7 +1,7 @@
 # The skills package
 
 The last thing Lattice ships is a set of **agent skills** — so that someone who runs
-`npm i @lattice/iso` and has never seen this repository gets an agent that is genuinely good
+`npm i @latticekit/iso` and has never seen this repository gets an agent that is genuinely good
 at the kit, rather than one that guesses at it from type signatures.
 
 This is not documentation in a different hat. The kit's hardest-won knowledge is not its API;
@@ -21,12 +21,12 @@ that says "see the constitution" is a skill that fails for everyone it was writt
 
 So each skill is **self-contained**: it carries the knowledge it needs inline. Where it points
 at a file, that file must be one npm actually ships — every package's `files` field includes
-`README.md`, so `node_modules/@lattice/iso/README.md` is a real path on a user's disk and the
+`README.md`, so `node_modules/@latticekit/iso/README.md` is a real path on a user's disk and the
 package READMEs are load-bearing distribution rather than repo decoration.
 
 It also means the skills package is **distributed separately from the libraries** and
 installed the way skills are installed — a plugin, a marketplace entry, or a directory a user
-drops in. It must not be a dependency of any `@lattice/*` package, and no package may assume
+drops in. It must not be a dependency of any `@latticekit/*` package, and no package may assume
 it exists.
 
 ---
@@ -34,7 +34,7 @@ it exists.
 ## What the skills are for
 
 Skills are organized by **what a person is trying to do**, never by package boundary. Nobody
-sits down to "use `@lattice/iso`"; they sit down to put a building where someone tapped. A
+sits down to "use `@latticekit/iso`"; they sit down to put a building where someone tapped. A
 skill that mirrors the dependency graph is a table of contents, and the agent already has one.
 
 | skill | fires when the task is | the knowledge it carries |
@@ -188,7 +188,7 @@ step the preflight was protecting, and it is not optional when the browser is pr
 ## Distribution
 
 A marketplace entry, installed the way plugins are installed, carrying the parent and every
-specialist. It is **not** a dependency of any `@lattice/*` package and no package may assume it
+specialist. It is **not** a dependency of any `@latticekit/*` package and no package may assume it
 exists — the libraries have to work for someone who never heard of it.
 
 The skills are written against **the published packages**, not this workspace, for the reason

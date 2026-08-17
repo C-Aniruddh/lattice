@@ -1,10 +1,10 @@
-# RFC — `@lattice/draw`
+# RFC — `@latticekit/draw`
 
 | | |
 |---|---|
 | **status** | proposed (cycle 1, task A3) |
-| **package** | `@lattice/draw` |
-| **depends on** | `@lattice/core`, `@lattice/iso` |
+| **package** | `@latticekit/draw` |
+| **depends on** | `@latticekit/core`, `@latticekit/iso` |
 | **environment** | browser for the Canvas2D backend; the rest runs unchanged in Node |
 | **budget** | 12 KB gzipped, ≤ 8 ms frame |
 
@@ -12,7 +12,7 @@
 
 ## 1. The one sentence
 
-**`@lattice/draw` turns one color and one grid footprint into a stylised isometric solid on
+**`@latticekit/draw` turns one color and one grid footprint into a stylised isometric solid on
 a surface it does not own** — so the same code paints the world, a shop thumbnail, and a
 golden test, and a WebGL backend can replace the Canvas2D one without a sprite noticing.
 
@@ -36,7 +36,7 @@ this package, and nothing above it, ever holds a `CanvasRenderingContext2D`.
 This is written before the API, and the API below exists to serve it.
 
 ```ts
-import { beginFrame, createCanvas2dSurface, endFrame, isoBox, isoTile } from '@lattice/draw';
+import { beginFrame, createCanvas2dSurface, endFrame, isoBox, isoTile } from '@latticekit/draw';
 
 const surface = createCanvas2dSurface(canvasEl);
 const pen = beginFrame({ surface, camera, palette, t, clear: 'sky' });
@@ -158,19 +158,19 @@ transcription rather than a request. What changed on my side as a result is list
 block, because two of the changes deleted code from this RFC rather than adding it.
 
 ```ts
-/** From @lattice/core. */
+/** From @latticekit/core. */
 export interface Rng {
   u32(): number;
   float(): number;
 }
 
-/** From @lattice/iso. Mutable, because every hot-path conversion writes into a caller's point. */
+/** From @latticekit/iso. Mutable, because every hot-path conversion writes into a caller's point. */
 export interface Vec2 {
   x: number;
   y: number;
 }
 
-/** From @lattice/iso. The kit's rectangle, min/max. `draw` culls and measures with it. */
+/** From @latticekit/iso. The kit's rectangle, min/max. `draw` culls and measures with it. */
 export interface Rect {
   minX: number;
   minY: number;
@@ -178,7 +178,7 @@ export interface Rect {
   maxY: number;
 }
 
-/** From @lattice/iso. Half-open: `gx0 ≤ gx < gx1`. */
+/** From @latticekit/iso. Half-open: `gx0 ≤ gx < gx1`. */
 export interface TileRange {
   gx0: number;
   gy0: number;
@@ -186,7 +186,7 @@ export interface TileRange {
   gy1: number;
 }
 
-/** From @lattice/iso. A footprint with a height, in **world pixels**. */
+/** From @latticekit/iso. A footprint with a height, in **world pixels**. */
 export interface Volume {
   readonly w: number;
   readonly d: number;
@@ -194,7 +194,7 @@ export interface Volume {
   readonly hPx: number;
 }
 
-/** From @lattice/iso — the subset @lattice/draw depends on, and no more. */
+/** From @latticekit/iso — the subset @latticekit/draw depends on, and no more. */
 export interface Camera {
   readonly zoom: number;
   readonly viewW: number;
@@ -221,7 +221,7 @@ export interface Camera {
 }
 
 /**
- * From @lattice/iso. Grid → screen including elevation, allocation-free.
+ * From @latticekit/iso. Grid → screen including elevation, allocation-free.
  *
  * `zPx` is **world pixels**, not storeys. Every height that crosses into `iso` is in pixels;
  * every height a sprite author writes is in levels. `draw` is the converter, and the two units
@@ -236,7 +236,7 @@ export declare function gridToScreen(
 ): Vec2;
 
 /**
- * From @lattice/iso. The six-point screen outline of a box, in the order
+ * From @latticekit/iso. The six-point screen outline of a box, in the order
  * **north-top, east-top, east-base, south-base, west-base, west-top**.
  *
  * `draw` strokes a box in exactly this order. See 3.7 — it is the one genuine coupling
@@ -251,7 +251,7 @@ export declare function boxSilhouette(
 ): Float64Array;
 
 /**
- * From @lattice/iso. Fed ground footprints, hands back a **permutation of integers**.
+ * From @latticekit/iso. Fed ground footprints, hands back a **permutation of integers**.
  *
  * It holds rectangles, never items: `add` returns an insertion index and `indexAt(i)` gives
  * it back in paint order, so what sits at each position is the caller's business. That is the
@@ -272,7 +272,7 @@ export declare class DepthSorter {
 }
 
 /**
- * From @lattice/iso. Walks a sorted `DepthSorter` **backwards** — the exact reverse of paint
+ * From @latticekit/iso. Walks a sorted `DepthSorter` **backwards** — the exact reverse of paint
  * order — and returns the insertion index of the last-painted item whose `test` passes.
  *
  * `draw` must hand it the same sorter instance that produced the paint order and must not
@@ -283,7 +283,7 @@ export declare function pickSorted(
   test: (index: number) => boolean,
 ): number;
 
-/** From @lattice/iso. Even-odd ray cast, for a pick test built on `boxSilhouette`. */
+/** From @latticekit/iso. Even-odd ray cast, for a pick test built on `boxSilhouette`. */
 export declare function pointInPolygon(
   sx: number,
   sy: number,
@@ -1788,7 +1788,7 @@ the reason is what stops the next agent adding it back.
 ## 5. Invariants a reviewer can test
 
 1. **Nothing outside `canvas2d.ts` mentions a canvas.** `grep -rn 'CanvasRenderingContext2D\|HTMLCanvasElement\|OffscreenCanvas' packages/draw/src` returns hits in `canvas2d.ts` only. *Fails when:* a solid reaches for the context to do something the `Surface` will not let it.
-2. **`record.ts` imports in Node with no DOM.** `node --input-type=module -e "import('@lattice/draw/record')"` under a stripped global object resolves. *Fails when:* the recording backend is bundled with the browser one.
+2. **`record.ts` imports in Node with no DOM.** `node --input-type=module -e "import('@latticekit/draw/record')"` under a stripped global object resolves. *Fails when:* the recording backend is bundled with the browser one.
 3. **Surface coordinates are CSS pixels.** The same scene drawn at `pixelRatio` 1 and 2 records identical op coordinates. *Fails when:* a primitive multiplies by the ratio itself, which is trap 7 waiting to happen.
 4. **A solid strokes once.** `isoBox` with `outline !== false` records exactly one `stroke` op, closed, with six points. With `outline: false`, zero. *Fails when:* someone strokes each face and the art goes cross-hatched.
 5. **`shade(c, 1) === c`, exactly, for 256 random colors**, and `shade(c, f)` for `f < 1` is strictly closer to `SHADE_TINT` in hue than `c` is. *Fails when:* the neutral case drifts, and every unlit face is subtly wrong.

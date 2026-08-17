@@ -1,4 +1,4 @@
-# RFC: `@lattice/loop`
+# RFC: `@latticekit/loop`
 
 **Status:** proposed · **Task:** A4 · **Owner:** lattice-architect · **Layer:** 1 (`core` only)
 
@@ -6,7 +6,7 @@
 
 ## 1. The one sentence
 
-**`@lattice/loop` is the only part of the kit that knows what time it is: it advances a
+**`@latticekit/loop` is the only part of the kit that knows what time it is: it advances a
 game's rules at a fixed rate off an injected wall clock whether or not anything is being
 painted, and hands the renderer a blend factor so the pictures can run at whatever rate the
 display manages.**
@@ -27,7 +27,7 @@ This is 90% of what anyone does with this package, and every decision below was 
 keep it this short.
 
 ```ts
-import { createLoop, browserFrames } from '@lattice/loop';
+import { createLoop, browserFrames } from '@latticekit/loop';
 
 const loop = createLoop({
   clock: { now: () => performance.now() },        // the one global clock read in the whole app
@@ -95,7 +95,7 @@ authority — the fixed step is taken as `step: loop`, never retyped as a number
  *
  * This clock is **not** the calendar and must never be used as one. It may or may not
  * advance while the machine is asleep — that is platform-dependent — which is precisely why
- * `@lattice/sim` keeps its own epoch timestamp and why this package credits nothing. See §4.1.
+ * `@latticekit/sim` keeps its own epoch timestamp and why this package credits nothing. See §4.1.
  */
 export interface Clock {
   now(): number;
@@ -249,8 +249,8 @@ export interface LoopOptions {
    * not painting** belongs — economy, HUD data, autosave decisions, quest settlement.
    *
    * `tick` is a **non-negative integer**, starts at 0, increments by exactly one per call,
-   * and never skips or repeats for the life of the loop. `@lattice/input` keys its event
-   * buckets by it and `@lattice/persist` keys its replay envelope by it: the index *is* the
+   * and never skips or repeats for the life of the loop. `@latticekit/input` keys its event
+   * buckets by it and `@latticekit/persist` keys its replay envelope by it: the index *is* the
    * alignment between an input log and a session, so it is a guarantee, not a convenience.
    *
    * Must not: read a clock, read live input listeners (sample them into a buffer instead),
@@ -273,7 +273,7 @@ export interface LoopOptions {
    *
    * `nowMs` is this pump's single reading of the injected clock — the same value the loop
    * used for its own accounting (§6.7), handed over so that a frame-integrated presentation
-   * value can take a delta without reading a clock of its own. `@lattice/input`'s camera
+   * value can take a delta without reading a clock of its own. `@latticekit/input`'s camera
    * needs exactly this. It is monotonic and **has no epoch**: it is not the calendar, cannot
    * be stored, and must not be compared across a reload (§4.1a).
    *
@@ -304,7 +304,7 @@ export interface LoopOptions {
    *
    * **Diagnostics and presentation only.** It is not an offline-earnings feed: this number
    * is monotonic-clock time, which may not include the machine's sleep, and crediting it
-   * would double-count against `@lattice/sim`, which has already integrated the same
+   * would double-count against `@latticekit/sim`, which has already integrated the same
    * interval from its own timestamp. Legitimate uses: a "welcome back" panel, a perf
    * warning, deciding to skip an expensive re-layout. See §4.1.
    */
@@ -340,7 +340,7 @@ export interface Loop {
    * The same step in milliseconds — `stepSeconds * 1000`, computed once and stable for the
    * life of the loop.
    *
-   * **This number is a compatibility constant, not a detail.** `@lattice/persist` writes it
+   * **This number is a compatibility constant, not a detail.** `@latticekit/persist` writes it
    * into a recorded input log and refuses to migrate a log whose `stepMs` differs from the
    * running loop's, because a log keyed by tick index means nothing if a tick is a different
    * length than it was when the log was made. Changing `hz` in a shipped game is therefore a
@@ -381,7 +381,7 @@ export interface Loop {
    * `nowMs`, computed once for the pump.
    *
    * Same prohibitions as `LoopOptions.render`: a render subscriber may not mutate simulation
-   * state. This is the crossing that `@lattice/ui`'s `drive` exists to make un-mistakable.
+   * state. This is the crossing that `@latticekit/ui`'s `drive` exists to make un-mistakable.
    */
   onRender(fn: (alpha: number, time: number, nowMs: number) => void): Disposer;
 
@@ -431,7 +431,7 @@ Control calls take effect at the **next** pump boundary — `pause()` from insid
 does not truncate the pump it was called from — except `stop()`, which takes effect
 immediately, because a game stopping itself on a fatal error must not be updated again.
 
-#### 3.3a The subscription shape, confirmed for `@lattice/ui`
+#### 3.3a The subscription shape, confirmed for `@latticekit/ui`
 
 **Yes: `onUpdate` and `onRender` exist, each returns a disposer, and `drive(ui, loop)` can be
 written against them. Keep it.** That is the whole answer; the rest is the detail `ui` needs
@@ -441,7 +441,7 @@ This is the exact interface `ui` should declare. `Loop` satisfies it, and it is 
 thing `drive` needs — no `start`, no `stats`, nothing `ui` has any business calling:
 
 ```ts
-// declared in @lattice/ui, satisfied by @lattice/loop's `Loop`
+// declared in @latticekit/ui, satisfied by @latticekit/loop's `Loop`
 export interface Driveable {
   onUpdate(fn: (dt: number, tick: number) => void): () => void;
   onRender(fn: (alpha: number, time: number, nowMs: number) => void): () => void;
@@ -466,7 +466,7 @@ Three consequences worth having in writing, because `drive` depends on all three
   `ui`'s first draft installed its own `setInterval` beside `update` — the exact second clock
   §6.3 is about — and removing it is worth more than any API here. §6.13 records why.
 
-#### 3.3b Coalesced off-frame work, confirmed for `@lattice/iso`
+#### 3.3b Coalesced off-frame work, confirmed for `@latticekit/iso`
 
 **Yes: `loop.coalesce(fn)` covers "schedule work that must not run twice per pump", and the
 navigation-field rebuild is the case it is named for.**
@@ -543,7 +543,7 @@ export function createTimeline(): Timeline;
  * One easing vocabulary for the whole kit, owned by layer 0. This package resolves a name
  * through `core`'s `EASINGS` table and defines no curve of its own — see the note below.
  */
-import type { Easing, EasingName } from '@lattice/core';
+import type { Easing, EasingName } from '@latticekit/core';
 
 export type TweenId = number;
 
@@ -669,7 +669,7 @@ export interface FrameStats {
 
 ### 3.7 `replay` — **yes, the driver is mine** (a seventh module, `src/replay.ts`)
 
-`@lattice/persist` asked whether this package will own the thing that steps a recorded
+`@latticekit/persist` asked whether this package will own the thing that steps a recorded
 session forward, feeds buffered inputs at their recorded tick indices, and compares
 checkpoints. **Yes.** Their least-certain decision — that refusing would leave them "a module
 that records into a void" — is correct, and the refusal would leave constitution rule 1
@@ -689,7 +689,7 @@ imports upward and nobody duplicates a format.
 ```ts
 /**
  * A recorded session, seen from here: a length, inputs addressable by tick, and optional
- * checkpoints. `@lattice/persist`'s zero-allocation cursor satisfies this; so does an array
+ * checkpoints. `@latticekit/persist`'s zero-allocation cursor satisfies this; so does an array
  * in a test. This package never learns what a log looks like on disk.
  */
 export interface ReplaySource {
@@ -761,7 +761,7 @@ test in the kit that fails when someone adds `Math.random()` to a system months 
 
 It does not prove the picture matched. Two caveats, both carried openly rather than hidden:
 
-- **The camera is outside the contract, deliberately.** `@lattice/input` runs two clocks:
+- **The camera is outside the contract, deliberately.** `@latticekit/input` runs two clocks:
   gestures deliver on ticks, the camera integrates on frames, which is what keeps a drag
   under the finger when a step is long. So a log reproduces the same world and the same
   tiles, not the same glide. That trade is right — a camera that stuttered to prove a point
@@ -825,7 +825,7 @@ Seven functions. Everything else is a type or a constant. Seven modules: the fiv
 
 ### 4.1 Offline accrual — and the line between `loop` and `sim`
 
-**`@lattice/loop` credits nothing. Ever.** It has no `offlineSeconds`, no "welcome back"
+**`@latticekit/loop` credits nothing. Ever.** It has no `offlineSeconds`, no "welcome back"
 event, no `awayMs` on any callback, and it will not grow one.
 
 The clamp in step 4 of the pump does not defer the excess to a later frame — that only moves
@@ -836,7 +836,7 @@ and the other 3,599.75 seconds cease to exist as far as this package is concerne
 
 They are not lost, because they were never this package's to lose:
 
-| | `@lattice/loop` | `@lattice/sim` |
+| | `@latticekit/loop` | `@latticekit/sim` |
 |---|---|---|
 | owns | time the player is **watching** | time the player was **not** |
 | clock | monotonic, injected, may freeze in sleep | epoch timestamp stored **in the save** |
@@ -872,7 +872,7 @@ Three corollaries worth writing on the wall:
 #### 4.1a Who stamps "now" on a save — `loop` says: not me
 
 Raised by the demo designer (A10, gap 7): three packages could each reasonably own the
-saved-at timestamp. **`@lattice/loop`'s answer is unambiguous and it is a refusal.**
+saved-at timestamp. **`@latticekit/loop`'s answer is unambiguous and it is a refusal.**
 
 `loop` receives an injected clock and has no opinion about the calendar. It cannot stamp a
 save even if asked: its `Clock` is monotonic and **has no epoch** — `performance.now()`
@@ -1022,7 +1022,7 @@ The fix is structural and it is why `FrameSource` exists: two sources, one that 
 that only ticks. A builder who "simplifies" `browserFrames` down to rAF alone will pass every
 test that runs in the foreground.
 
-**And it would stop the kit saving.** `@lattice/persist` schedules its debounced autosave
+**And it would stop the kit saving.** `@latticekit/persist` schedules its debounced autosave
 through `loop.real.after`, and every timer in this package advances only when a pump arrives.
 So the interval half of `browserFrames` is what keeps autosave alive in a hidden tab — which
 is precisely when tabs get closed. Delete it and the failure mode is not a stutter: the game
@@ -1157,7 +1157,7 @@ and treat the rounded number as authored data, not as a continuation.
 
 ### 6.13 A second clock beside `update`
 
-`@lattice/ui`'s first draft had `createOverlay` install its own `setInterval`. It was the
+`@latticekit/ui`'s first draft had `createOverlay` install its own `setInterval`. It was the
 right instinct — the overlay must not freeze with the renderer — aimed at the wrong
 mechanism, and it would have shipped the kit two clocks: one advancing the world on the fixed
 step, one advancing the HUD on a period that shares no factor with it. That is §6.3 with the

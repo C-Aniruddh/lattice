@@ -1,6 +1,6 @@
-# RFC — `@lattice/iso`
+# RFC — `@latticekit/iso`
 
-**Status:** proposed · **Task:** A2 · **Layer:** 1 · **Depends on:** `@lattice/core` · **Environment:** isomorphic
+**Status:** proposed · **Task:** A2 · **Layer:** 1 · **Depends on:** `@latticekit/core` · **Environment:** isomorphic
 
 > Every code block in this document is written as ambient declarations (`export declare …`).
 > Pasted whole into a `.ts` file under the repo's `tsconfig.base.json` it compiles clean —
@@ -10,7 +10,7 @@
 
 ## 1. The one sentence
 
-**`@lattice/iso` owns the three coordinate spaces of a 2:1 tile game — grid, world and screen —
+**`@latticekit/iso` owns the three coordinate spaces of a 2:1 tile game — grid, world and screen —
 and every operation that is only correct because it knows which space it is in: projection,
 elevation, camera, depth order, footprints, picking, and paths that can be *sampled* as well
 as followed.**
@@ -73,7 +73,7 @@ up the road in the demo's ending, and the `reach` number the entire economy is b
 
 ### The allocation contract, which is not negotiable
 
-> **Routed from `@lattice/draw` (A3), as a blocking requirement: no function in this package
+> **Routed from `@latticekit/draw` (A3), as a blocking requirement: no function in this package
 > returns a point.** Confirmed — it never did, and this block exists so that no builder has to
 > read three sections to be sure. `draw` has packed colors into `uint32` and put polygon
 > corners into a scratch `Float64Array`; a projection returning `{ x, y }` would put the source
@@ -99,14 +99,14 @@ If a reviewer finds a function here that returns a fresh point, it is a defect, 
 
 ### 3.0 Shared types
 
-`Vec2` and `ReadonlyVec2` come from `@lattice/core`, which delivered them in exactly the shape
+`Vec2` and `ReadonlyVec2` come from `@latticekit/core`, which delivered them in exactly the shape
 this package and `ui` asked for: `Vec2` assignable to `ReadonlyVec2` and not the reverse, so
 there is one type callers declare and one that appears only in signatures, and no
 `MutableVec2` anywhere in the kit. `iso` imports them and re-exports neither — one definition,
 one owner. They are reproduced here only so this document type-checks on its own:
 
 ```ts
-// from @lattice/core — not redeclared by iso.
+// from @latticekit/core — not redeclared by iso.
 export interface Vec2 { x: number; y: number; }
 export interface ReadonlyVec2 { readonly x: number; readonly y: number; }
 
@@ -117,7 +117,7 @@ export interface ReadonlyVec2 { readonly x: number; readonly y: number; }
 
 /**
  * A position in **grid** space, fractional or integer. Mutable, for the same reason as
- * {@link Vec2}. *(Named by `@lattice/input`, which needs it on every event it emits.)*
+ * {@link Vec2}. *(Named by `@latticekit/input`, which needs it on every event it emits.)*
  *
  * The fields are `gx`/`gy`, not `x`/`y`, and that is the whole point: invariant I‑zero of this
  * package is that the three spaces are never conflated, and a grid position that arrives in a
@@ -240,7 +240,7 @@ export declare const HALF_W: 32;
 export declare const HALF_H: 16;
 
 /*
- * There is deliberately no `LEVEL_H` here. It is `@lattice/draw`'s, and §4.3 has the
+ * There is deliberately no `LEVEL_H` here. It is `@latticekit/draw`'s, and §4.3 has the
  * argument — including the two rulings that went the other way first.
  */
 
@@ -415,7 +415,7 @@ export interface Camera {
    * World-space point at the center of the viewport, and the scale. **Read-only, and not
    * merely by convention.**
    *
-   * *(Routed from `@lattice/input`, and they are right.)* Every one of these is a getter over
+   * *(Routed from `@latticekit/input`, and they are right.)* Every one of these is a getter over
    * private state on the object `createCamera` returns; there is no setter and no public
    * field to assign. That is why this package exports a `Camera` **interface** and a factory
    * rather than a class — a class with public fields documents the rule, and an interface
@@ -433,7 +433,7 @@ export interface Camera {
   /**
    * Viewport size in **CSS pixels** — never device pixels, never a canvas.
    *
-   * Requested by `@lattice/input` and `@lattice/draw` both. A pointer event arrives in CSS
+   * Requested by `@latticekit/input` and `@latticekit/draw` both. A pointer event arrives in CSS
    * pixels, so a camera that worked in device pixels would make every input path multiply by
    * a ratio this package must not name; `devicePixelRatio` is `draw`'s business at the point
    * it sets a transform, and nowhere else.
@@ -457,7 +457,7 @@ export interface Camera {
    * Where a world x sits **across** the viewport: `-1` at the left edge, `0` at the center,
    * `+1` at the right, and it keeps going beyond them rather than clamping.
    *
-   * The third member of the projection family, and it exists because `@lattice/audio` needs
+   * The third member of the projection family, and it exists because `@latticekit/audio` needs
    * it and may not depend on this package: a sound's stereo pan is `normalizedX` of the
    * thing that made it. Unclamped on purpose — how far a pan is allowed to go is a mixing
    * policy (`audio` caps at ±0.6, because full-width panning on headphones is unpleasant and
@@ -512,7 +512,7 @@ export interface Camera {
 
   /**
    * The conservative **grid** rectangle covering the viewport — the terrain loop's bounds.
-   * *(Named by `@lattice/draw`, which asked for it; it is the culling entry point.)*
+   * *(Named by `@latticekit/draw`, which asked for it; it is the culling entry point.)*
    *
    * Computed by projecting the four **screen** corners into grid space and taking the
    * min/max — because the visible region is a diamond in grid space, not a rectangle. A
@@ -601,7 +601,7 @@ export declare function gridToScreen(
  * allocation in the whole renderer.
  *
  * Fill it, sort it, walk it forwards to paint, walk it backwards to pick. What sits at each
- * position is the caller's business — `@lattice/draw` keeps the items, this keeps the order.
+ * position is the caller's business — `@latticekit/draw` keeps the items, this keeps the order.
  */
 export declare class DepthSorter {
   /** @param capacity Items to pre-allocate for. Grows by doubling; sized right it never grows. */
@@ -739,7 +739,7 @@ export interface TileGridOptions {
  *
  * One array per *layer*, not one struct per tile: a game needing terrain, buildings and
  * movement cost makes three `TileGrid`s. Structure-of-arrays is why a pathfinder can scan a
- * cost layer without dragging terrain colors through the cache, and why `@lattice/persist`
+ * cost layer without dragging terrain colors through the cache, and why `@latticekit/persist`
  * can save the whole map as one buffer.
  */
 export declare class TileGrid implements MutableTileSource {
@@ -795,7 +795,7 @@ export declare class ChunkGrid implements MutableTileSource {
 }
 
 /**
- * A read-only tile source backed by a function — procedural terrain from `@lattice/core`'s
+ * A read-only tile source backed by a function — procedural terrain from `@latticekit/core`'s
  * noise, or a view that combines two grids.
  *
  * The third storage strategy, and it costs one export rather than a class: callers who want
@@ -903,10 +903,10 @@ export declare function slopeAt(field: HeightField, gx: number, gy: number): num
  * at `zPx = 0`**, and the last member of the conversion family: `gridToWorld`, `worldToGrid`,
  * `worldToTile`, `gridToScreen`, `screenToTile`.
  *
- * *(Named by `@lattice/input`, which was right that `pickTile` — the earlier name — was the
+ * *(Named by `@latticekit/input`, which was right that `pickTile` — the earlier name — was the
  * odd one out in a package whose every other conversion is spelled `aToB`.)*
  *
- * **Floors, never rounds** (trap T1). `@lattice/input` resolves this on every pointer event
+ * **Floors, never rounds** (trap T1). `@latticekit/input` resolves this on every pointer event
  * against the camera as the tick opened, so it is on that package's hottest path: two
  * multiplies, two adds and two floors, no allocation, no branch.
  */
@@ -939,7 +939,7 @@ export declare function screenToTileOnHeights(
  * elevation and height in **world pixels**.
  *
  * The units differ because height has no tile — a storey is an art proportion and belongs to
- * `@lattice/draw`, not here. Mixing them up produces buildings a hundred tiles tall, which is
+ * `@latticekit/draw`, not here. Mixing them up produces buildings a hundred tiles tall, which is
  * at least an obvious failure.
  */
 export interface Volume {
@@ -956,7 +956,7 @@ export interface Volume {
  *
  * Six, not eight: in a 2:1 projection a box's outline is north-top, east-top, east-base,
  * south-base, west-base, west-top — the seventh and eighth corners always project inside
- * them. The order matches the order `@lattice/draw` strokes a solid in, and that agreement is
+ * them. The order matches the order `@latticekit/draw` strokes a solid in, and that agreement is
  * a **cross-package contract**: if draw ever paints a different outline from the one this
  * returns, hit-testing and pixels diverge and no test in either package notices.
  *
@@ -1228,7 +1228,7 @@ dividend of §3.8's central claim, and it is why there is no incremental replann
 
 ### 3.9 `anchor` — attaching a durable thing to the world
 
-> **Routed from `@lattice/ui`:** nothing in the kit anchors a *persistent* overlay — a name
+> **Routed from `@latticekit/ui`:** nothing in the kit anchors a *persistent* overlay — a name
 > tag, a construction ring, a health bar — to a world entity across pan and zoom. `ui` covers
 > the one-shot float via an injected `project` hook; the durable case had no owner.
 >
@@ -1261,8 +1261,8 @@ export interface Anchor extends GridPoint {
  * Project an anchor to a screen point, now, for this camera. Allocation-free; call it once
  * per anchored thing per frame and never store the result.
  *
- * This is the function `@lattice/ui` should be handed as its `project` hook and the one
- * `@lattice/draw` should call for a world-space label. Both get the same pixel, which is the
+ * This is the function `@latticekit/ui` should be handed as its `project` hook and the one
+ * `@latticekit/draw` should call for a world-space label. Both get the same pixel, which is the
  * point — a HUD tag and a canvas ring on the same building must not disagree by a subpixel.
  */
 export declare function anchorToScreen(camera: Camera, a: Readonly<Anchor>, out: Vec2): Vec2;
@@ -1282,7 +1282,7 @@ export declare function anchorVisible(camera: Camera, a: Readonly<Anchor>, margi
  *
  * Sugar over {@link Camera.normalizedX}, and the third of the three things a world position
  * has to become — a screen point for drawing, a screen point for a DOM overlay, and a pan for
- * a sound. `@lattice/audio` cannot compute this because the mapping needs a camera and audio
+ * a sound. `@latticekit/audio` cannot compute this because the mapping needs a camera and audio
  * may not depend on `iso`; the demo should not compute it because then every game rewrites
  * it. It lives here, next to the other two, and it is one line.
  */
@@ -1297,13 +1297,13 @@ by whatever disposes the entity (trap T19).
 
 ### 3.10 Determinism: what this package may not compute
 
-`@lattice/core`'s RFC establishes a two-tier rule, and it constrains this package more than it
+`@latticekit/core`'s RFC establishes a two-tier rule, and it constrains this package more than it
 constrains most. ECMA-262 specifies `+ - * /`, `Math.sqrt`, `Math.imul` and the bitwise
 operators exactly; it explicitly does **not** require correctly-rounded `sin`, `cos`, `atan2`,
 `pow`, `exp` or `log`. Anything whose result is hashed, persisted or replayed must stay in
 tier A.
 
-**No function in `@lattice/iso` uses a trigonometric, exponential or logarithmic function.**
+**No function in `@latticekit/iso` uses a trigonometric, exponential or logarithmic function.**
 That is a testable claim (I17) and it costs nothing, because the geometry here is linear:
 
 | where it is tempting | what is used instead |
@@ -1394,7 +1394,7 @@ two thirds and one third.
 No inertia, no drag handling, no pinch, no edge-scroll, no keyboard pan, no smooth follow, no
 screen shake. `Camera` is a transform plus a clamp, and every method is a pure function of its
 arguments and current state. Feel needs a clock and a pointer, and both live upstream:
-`@lattice/input`'s `cameracontrol` owns it and drives this camera through `panByScreen` and
+`@latticekit/input`'s `cameracontrol` owns it and drives this camera through `panByScreen` and
 `zoomAt`. A camera that eases itself cannot be stepped deterministically in a replay.
 
 ### 4.5 Steering, avoidance, and anything that owns a walker
@@ -1419,7 +1419,7 @@ with `draw` (§4.10) enforceable rather than merely agreed.
 
 ### 4.7 Serialization
 
-No `toJSON`, no save format, no versioning. `TileGrid.data` is public so `@lattice/persist` can
+No `toJSON`, no save format, no versioning. `TileGrid.data` is public so `@latticekit/persist` can
 take the buffer whole; owning the format is persist's job, and a map that serializes itself will
 grow a second, incompatible migration chain.
 
@@ -1451,7 +1451,7 @@ callback, they are rebuilding `draw`'s bucket inside `iso`, and the two will div
 
 ### 4.11 Directional selection, focus rings and reticles
 
-`@lattice/input` has cut its `gamepad` module, on the argument that a pad cannot answer *where*
+`@latticekit/input` has cut its `gamepad` module, on the argument that a pad cannot answer *where*
 without a reticle the kit never designed. The consequence lands here: picking has exactly one
 caller shape — a screen position — so there is no `nextSelectableFrom(index, direction)`, no
 focus order over a `DepthSorter`, and no notion of a selected item at all. Worth recording
@@ -1513,7 +1513,7 @@ contract above is already fixed, so what moves is code and not a decision.
 | I12 | Every consecutive pair in a returned `Path` differs by at most 1 on each axis, and with `cutCorners: false` no diagonal step has both shared orthogonal neighbors impassable. | An agent walks through the corner where two walls meet. |
 | I13 | The same `find` call with the same cost function returns a byte-identical `Path` across runs and engines. | Two replays of one seed diverge after the first junction — float costs, or a heap with an unspecified tie-break. |
 | I14 | Following `FlowField.step` from any tile with `costAt ≥ 0` reaches a goal in at most `costAt / STEP_ORTHO` steps and never revisits a tile. | Two adjacent tiles point at each other and an agent vibrates in place for ever. |
-| I15 | A warm frame — `clear`, 400 `add`s, `sort`, 400 `indexAt`s, 3,200 `toScreenX`/`Y` calls, 50 `pathSample`s, one `pickSorted`, one `find` — allocates zero bytes, asserted in `*.bench.ts` against a heap-delta measurement. | The number climbs the day someone returns `{x, y}` from a conversion, which is the failure `@lattice/draw` cannot survive. |
+| I15 | A warm frame — `clear`, 400 `add`s, `sort`, 400 `indexAt`s, 3,200 `toScreenX`/`Y` calls, 50 `pathSample`s, one `pickSorted`, one `find` — allocates zero bytes, asserted in `*.bench.ts` against a heap-delta measurement. | The number climbs the day someone returns `{x, y}` from a conversion, which is the failure `@latticekit/draw` cannot survive. |
 | I16 | No file in `src/` references `window`, `document`, `Canvas`, `Math.random`, `Date.now` or `performance.now`. Enforced by `npm run lint`. | The camera grew a `resizeToCanvas` helper. |
 | I17 | No file in `src/` references `Math.sin`, `cos`, `tan`, `atan2`, `pow`, `exp` or `log`. `sqrt` and `hypot`-free arithmetic are permitted. Enforced by `npm run lint` alongside I16. | A facing angle reaches a save file and two engines disagree in the last bit (§3.10). |
 | I26 | No public function returns a freshly constructed object. Every one returns a primitive, `void`, `boolean`, or an out-parameter it was given. Checkable by reading the `.d.ts`: no return type is a bare interface the caller did not pass in. | `draw` cannot meet constitution rule 7, and its own allocation invariant becomes unachievable. |
@@ -1614,7 +1614,7 @@ binary heap whose tie-break is the insertion counter, not "whatever the heap doe
 **T13 — Round the camera translation once, not each sprite.** Sub-pixel camera positions make
 vector art shimmer. The fix is to round the *camera translate* to whole device pixels once per
 frame; rounding each sprite's screen position independently makes sprites jitter relative to
-each other, which is worse than the shimmer. The rounding happens in `@lattice/draw`, where the
+each other, which is worse than the shimmer. The rounding happens in `@latticekit/draw`, where the
 device pixel ratio lives — this package deliberately hands out unrounded floats so that the
 choice is available.
 
@@ -1705,7 +1705,7 @@ routings sharpened them:
 
 Things a game developer would otherwise hand-roll on top of Lattice. None is mine to build.
 
-**`@lattice/core` (A1) — nothing outstanding. All of it closed, one way or the other.**
+**`@latticekit/core` (A1) — nothing outstanding. All of it closed, one way or the other.**
 
 - **`Vec2` — granted, in the shape asked for.** `Vec2` assignable to `ReadonlyVec2` and not the
   reverse, one type to declare and one that appears only in signatures, no `MutableVec2` in the
@@ -1728,7 +1728,7 @@ Things a game developer would otherwise hand-roll on top of Lattice. None is min
 - `clamp` and `lerp` are assumed to exist in `core/math`; if not, say so and they become
   internals.
 
-**`@lattice/draw` (A3) — the silhouette contract.** `boxSilhouette` returns the six-point outline
+**`@latticekit/draw` (A3) — the silhouette contract.** `boxSilhouette` returns the six-point outline
 in the order north-top, east-top, east-base, south-base, west-base, west-top. `draw`'s solid kit
 must stroke a box in that same order, or hit-testing and pixels diverge with no test in either
 package noticing. This needs to be one shared assertion, and it is the only genuine coupling
@@ -1736,12 +1736,12 @@ between the two packages. `draw` also owns the storey height (`LEVEL_H ≈ 26`, 
 32 — a one-tile-tall storey reads as a cube and cubes read as programmer art; settled in its
 favor at §4.3) and the whole-device-pixel rounding of the camera translate (T13).
 
-**`@lattice/input` (A5) — the camera controller.** Drag, inertia, pinch, edge-scroll and keyboard
+**`@latticekit/input` (A5) — the camera controller.** Drag, inertia, pinch, edge-scroll and keyboard
 pan belong there and must drive this camera only through `panByScreen`, `zoomAt` and
 `centerOn` — never by assigning `zoom`, which would skip the clamp and the pointer anchor.
 Input's tap/drag discrimination is what decides whether `pickSorted` is called at all.
 
-**`@lattice/draw` (A3) — the light layer is the demo's premise and it is not mine.** The demo
+**`@latticekit/draw` (A3) — the light layer is the demo's premise and it is not mine.** The demo
 ranks "an emissive glow and a night mask" second only to path sampling, and `iso` contributes
 only the geometry: a lamp's pool of light is a world circle, and where it lands on screen is
 `anchorToScreen` plus `zoom`. That the pool must be an *ellipse* — a circle on the ground plane
@@ -1756,10 +1756,10 @@ the closed-form crowd may well answer every question the kit gets.
 
 **Nobody owns flow-field invalidation *scheduling*.** The *detection* is now solved —
 `MutableTileSource.version` versus `FlowField.builtAtVersion` — but the rebuild is a Dijkstra
-sweep and should not run inside the frame that placed the wall. `@lattice/loop`'s scheduler
+sweep and should not run inside the frame that placed the wall. `@latticekit/loop`'s scheduler
 should own "do this expensive thing on the next idle tick, coalescing duplicates", and if it
 does, the whole rockfall beat is the three lines at the end of §3.8.
 
-**`@lattice/persist` (A7) — map serialization.** `TileGrid.data` and `ChunkGrid.forEachChunk`
+**`@latticekit/persist` (A7) — map serialization.** `TileGrid.data` and `ChunkGrid.forEachChunk`
 exist so persist can take the buffers whole. Persist should own the version and the migration;
 a base-64 or delta encoding of a chunk grid is worth having as a first-class adapter.

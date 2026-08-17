@@ -38,9 +38,9 @@
  * Every shape here is a triangle or a quad because `Surface.poly` takes **convex** polygons, by
  * contract: a jagged ceiling submitted as one concave outline is the fastest way to find that out.
  */
-import { hash2, noise2, toUnit } from '@lattice/core';
-import type { TileRange } from '@lattice/iso';
-import { isoTerrain, mix, shade, withAlpha, type Ink, type Pen } from '@lattice/draw';
+import { hash2, noise2, toUnit } from '@latticekit/core';
+import type { TileRange } from '@latticekit/iso';
+import { isoTerrain, mix, shade, withAlpha, type Ink, type Pen } from '@latticekit/draw';
 import { STEP_PX, type Cavern } from './cavern.js';
 
 /** Floor at or under this many height units holds water. Read off the same grid the terrain is

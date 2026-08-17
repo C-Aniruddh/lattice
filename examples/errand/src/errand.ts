@@ -37,9 +37,9 @@
  * links with different seeds are two worlds with two histories, `?seed=` is always a fresh start,
  * and the wrong-world case is not handled because it cannot be reached.
  */
-import { expectObject, expectRange, hashString, type Now } from '@lattice/core';
-import type { Path } from '@lattice/iso';
-import { browserStorage, createStore, migrations, type Store } from '@lattice/persist';
+import { expectObject, expectRange, hashString, type Now } from '@latticekit/core';
+import type { Path } from '@latticekit/iso';
+import { browserStorage, createStore, migrations, type Store } from '@latticekit/persist';
 import { H, START, W } from './valley.js';
 
 /** How far along the errand you are. The four values, in order, are the four verbs that move it. */

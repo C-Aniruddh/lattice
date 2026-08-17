@@ -36,7 +36,7 @@
  * Isomorphic: no clock, no randomness, no platform.
  */
 
-import { clamp, isSerializable, expectFinite, expectNonEmpty, type EpochMillis } from '@lattice/core';
+import { clamp, isSerializable, expectFinite, expectNonEmpty, type EpochMillis } from '@latticekit/core';
 import type { Economy, StockVec } from './graph.js';
 import { zeroStocks } from './graph.js';
 import { buildFlow, integrate, type Flow, type GateRatios } from './flow.js';

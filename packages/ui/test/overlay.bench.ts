@@ -10,7 +10,7 @@
  */
 
 import { bench, describe } from 'vitest';
-import { DAY, NIGHT, lerpPalette } from '@lattice/draw';
+import { DAY, NIGHT, lerpPalette } from '@latticekit/draw';
 import { createCadence } from '../src/cadence.js';
 import { el, setText } from '../src/el.js';
 import { createOverlay } from '../src/overlay.js';

@@ -1,7 +1,7 @@
 /**
  * What a handler is handed, and the one place a pixel becomes a tile.
  *
- * The first test is a **contract with `@lattice/iso`**: this package resolves through a frozen
+ * The first test is a **contract with `@latticekit/iso`**: this package resolves through a frozen
  * copy of the camera's transform, but the flooring — the half that is genuinely easy to get
  * wrong, and the half that decides which diamond a pixel falls in — is `iso`'s `worldToTile`.
  * Asserting agreement with `iso.screenToTile` over a grid of points is what keeps the
@@ -10,8 +10,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createCamera, screenToTile } from '@lattice/iso';
-import type { GridPoint } from '@lattice/iso';
+import { createCamera, screenToTile } from '@latticekit/iso';
+import type { GridPoint } from '@latticekit/iso';
 import { TickFrame, fill } from '../src/events.js';
 import { down, harness, move, up, watch } from './harness.js';
 

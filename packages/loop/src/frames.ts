@@ -21,7 +21,7 @@
  * painted frame, it *looks* alive. The report that eventually arrives is "my production
  * resets when I switch tabs", weeks later, from a player.
  *
- * **And it would stop the kit saving.** `@lattice/persist` schedules its debounced autosave
+ * **And it would stop the kit saving.** `@latticekit/persist` schedules its debounced autosave
  * through `loop.real`, and every timer in this package advances only when a pump arrives. The
  * interval half of this function is therefore what keeps autosave alive in a hidden tab —
  * which is precisely when tabs get closed. A one-line "simplification" down to rAF alone
@@ -30,7 +30,7 @@
  * reason.
  */
 
-import { expectFinite } from '@lattice/core';
+import { expectFinite } from '@latticekit/core';
 
 /**
  * Period of the non-painting pump, in milliseconds. Default for
@@ -40,7 +40,7 @@ import { expectFinite } from '@lattice/core';
  * throttles harder still after five minutes. This is a **floor on how stale a hidden game is
  * allowed to get**, not a frame rate, and lowering it buys nothing the platform will honor.
  * It is also the granularity a hidden-tab timer actually has, which is why a sub-second
- * debounce in `@lattice/persist` is meaningless in the background.
+ * debounce in `@latticekit/persist` is meaningless in the background.
  */
 export const DEFAULT_IDLE_PUMP_MS = 1000;
 

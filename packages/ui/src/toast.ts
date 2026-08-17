@@ -15,7 +15,7 @@
  * drained by somebody.
  */
 
-import { expectFinite, type Disposer } from '@lattice/core';
+import { expectFinite, type Disposer } from '@latticekit/core';
 import { el } from './el.js';
 import { createKeyedLatch } from './latch.js';
 import { internalsOf, type Overlay } from './overlay.js';
@@ -56,7 +56,7 @@ export interface ToastHost {
    * Show one **at most once per key for this session**, and say whether this call was the one
    * that showed it.
    *
-   * The case that named it, from `@lattice/persist`: storage may be non-persistent — private
+   * The case that named it, from `@latticekit/persist`: storage may be non-persistent — private
    * browsing, a quota-constrained device, a user who has blocked site data — and the autosave
    * rediscovers this every thirty seconds for the rest of the session. Shown every time, "your
    * browser will not keep this save" becomes furniture: the player learns the shape of a toast
@@ -70,7 +70,7 @@ export interface ToastHost {
    * deduplicating in exactly the case it was written for.
    *
    * The scope is **this session and this host**, in memory. "Once ever, across reloads" is a
-   * boolean in your saved state, and `@lattice/persist` owns saved state:
+   * boolean in your saved state, and `@latticekit/persist` owns saved state:
    * `if (!save.warnedAboutStorage) save.warnedAboutStorage = toasts.once('storage-not-persistent', …)`.
    *
    * @throws TypeError if `key` is not a non-empty string.

@@ -7,7 +7,7 @@
  * screenshot looks like a placeholder).
  */
 
-import { createRng } from '@lattice/core';
+import { createRng } from '@latticekit/core';
 import { describe, expect, it } from 'vitest';
 import {
   FACE_LEFT,

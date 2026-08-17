@@ -37,9 +37,9 @@
  * | 15.4 – 19 | the garden: lamps, planes, urns, benches — and two pavilions on the near arc | near, large, cut by the bottom edge |
  * | 38.6 | the waterfront colonnade, running off both edges of the frame | far, small, hazed by the light field |
  */
-import { hash2, toUnit } from '@lattice/core';
-import { heightAt, type GridPoint, type HeightField } from '@lattice/iso';
-import { drawSprite, type Pen, type SpriteDef } from '@lattice/draw';
+import { hash2, toUnit } from '@latticekit/core';
+import { heightAt, type GridPoint, type HeightField } from '@latticekit/iso';
+import { drawSprite, type Pen, type SpriteDef } from '@latticekit/draw';
 import type { Bucket } from '../../_shared/src/index.js';
 import { PC, SQUASH } from './plaza.js';
 import { bench, fountain, lamp, pavilion, pillar, stall, tree, urn } from './scenery.js';

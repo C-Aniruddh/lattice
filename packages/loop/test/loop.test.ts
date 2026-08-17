@@ -271,7 +271,7 @@ describe('catch-up', () => {
     clock.advance(3_600_000);
     frames.pump();
     // 3,600,000,000 µs accumulated, clamped to 250,000 µs. The rest ceases to exist here —
-    // `@lattice/sim` has already integrated the same interval from its own epoch timestamp.
+    // `@latticekit/sim` has already integrated the same interval from its own epoch timestamp.
     expect(dropped).toEqual([(3_600_000_000 - 250_000) / 1e6]);
     expect(dropped).toEqual([3599.75]);
     expect(loop.stats.droppedSeconds).toBe(3599.75);

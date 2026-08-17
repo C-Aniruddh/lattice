@@ -14,7 +14,7 @@ npx vite examples/_shared      # http://localhost:5183 — the harness, which is
 ```
 
 Nothing here may move into `packages/`. No exhibit may depend on the landing page and the
-landing page may not depend on an exhibit. `@lattice/ui` is deliberately not a controls library
+landing page may not depend on an exhibit. `@latticekit/ui` is deliberately not a controls library
 and the panel is not an attempt to make it one.
 
 ---
@@ -210,7 +210,7 @@ so. `fit()` reads `surface.pixelRatio` back off the surface.
 
 ---
 
-## Is this a `@lattice/kit` package or an examples folder?
+## Is this a `@latticekit/kit` package or an examples folder?
 
 **Keep it in `examples/` — and the reason is not that it is too small to be a package. It is that
 the question is wrong, because the thirty lines are two different things wearing one name.**
@@ -225,8 +225,8 @@ either: **it is two packages that can be wired together wrongly without either o
 The fix belongs inside the packages that own the two ends. `createInput` should take the loop
 rather than a bare number. `LightField.begin` should refuse a pen that is not carrying it. Each of
 those is a few lines inside an existing package and it deletes the trap for **every** user of
-Lattice, not for fourteen exhibits. A `@lattice/kit` package that wires them correctly would fix
-this only for people who use `@lattice/kit`, which is precisely the people least likely to hit it.
+Lattice, not for fourteen exhibits. A `@latticekit/kit` package that wires them correctly would fix
+this only for people who use `@latticekit/kit`, which is precisely the people least likely to hit it.
 
 **(b) Policy that is genuinely a choice.** Where the canvas mounts. Whether the loop autostarts.
 What the camera opens on. Whether resize listens to `window` or a `ResizeObserver`. What the URL
@@ -343,7 +343,7 @@ Reported as findings, in the order they cost the most.
    would make bloom a live knob and delete a whole class of `commit: 'change'`.
 7. **`input` cannot be told an overlay is legitimate.** The `covered-by-overlay` diagnostic fires
    on the first tap on any HUD that overlaps the canvas — which is this panel, and every
-   `@lattice/ui` panel. The gallery filters it by class name in `bootstrap`, which is a workaround
+   `@latticekit/ui` panel. The gallery filters it by class name in `bootstrap`, which is a workaround
    the kit should not require. Want `InputOptions.overlays` or an `ignoreCover(element)` seam.
 8. **`LightField.resize` is redundant with `begin`** and its doc comment does not say so. Either
    delete it or state that it is an optimization, not a requirement — and correct

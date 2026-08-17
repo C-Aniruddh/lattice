@@ -1,12 +1,12 @@
 /**
- * `@lattice/loop` — the only part of the kit that knows what time it is.
+ * `@latticekit/loop` — the only part of the kit that knows what time it is.
  *
  * It advances a game's rules at a fixed rate off an **injected** wall clock whether or not
  * anything is being painted, and hands the renderer a blend factor so the pictures can run at
  * whatever rate the display manages.
  *
  * ```ts
- * import { createLoop, browserFrames } from '@lattice/loop';
+ * import { createLoop, browserFrames } from '@latticekit/loop';
  *
  * const loop = createLoop({
  *   clock: { now: () => performance.now() },        // the one global clock read in the whole app
@@ -94,7 +94,7 @@ export type { Job, Loop, LoopOptions, LoopPhase } from './loop.js';
  * Re-exported rather than redeclared: a second identical alias here would be a second thing to
  * keep in step, and `Scope.add` from `core` must accept what `onUpdate` returns without a cast.
  */
-export type { Disposer } from '@lattice/core';
+export type { Disposer } from '@latticekit/core';
 
 // ── timers, on two timelines ────────────────────────────────────────────────────
 //

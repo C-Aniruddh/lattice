@@ -15,10 +15,10 @@
  * | verb | here | leaning on |
  * |---|---|---|
  * | **walk** | {@link goTo} and the update handler | `PathFinder.find`, `pathSimplify`, `pathSample` |
- * | **talk** | arrival opens `hud.say`; the dialog's button calls {@link answer} | `@lattice/ui` `panel` |
+ * | **talk** | arrival opens `hud.say`; the dialog's button calls {@link answer} | `@latticekit/ui` `panel` |
  * | **take** | `answer` at stage 1. Nothing is spliced — `present()` stops saying `true` | `errand.ts` |
  * | **use** | `answer` at stage 2, which changes what `makeCost` returns for one tile | `iso.path` |
- * | **save** | `auto`, and the two moments below that are allowed to write | `@lattice/persist` |
+ * | **save** | `auto`, and the two moments below that are allowed to write | `@latticekit/persist` |
  *
  * ## The two things this file is most exposed to
  *
@@ -35,10 +35,10 @@
  * once a second. The envelope is about sixty bytes and the HUD prints its size, because the whole
  * argument for a three-number save is that it is small enough to write while somebody is watching.
  */
-import { asEpochMillis, type EpochMillis } from '@lattice/core';
-import { Path, PathFinder, boxSilhouette, gridToWorldX, gridToWorldY, pathDirAt, pathSample, pathSimplify, pointInPolygon } from '@lattice/iso';
-import { installFlushTriggers, scheduleFrom } from '@lattice/persist';
-import { drive } from '@lattice/ui';
+import { asEpochMillis, type EpochMillis } from '@latticekit/core';
+import { Path, PathFinder, boxSilhouette, gridToWorldX, gridToWorldY, pathDirAt, pathSample, pathSimplify, pointInPolygon } from '@latticekit/iso';
+import { installFlushTriggers, scheduleFrom } from '@latticekit/persist';
+import { drive } from '@latticekit/ui';
 import { bootstrap, controlPanel, createBucket, knobs } from '../../_shared/src/index.js';
 import { AFTERNOON } from './palette.js';
 import { BOUNDS, GATE, MILLER, START, WELL, createValley, makeCost } from './valley.js';

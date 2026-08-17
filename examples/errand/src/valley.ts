@@ -53,8 +53,8 @@
  * every tile where `(gx + gy) % 7 === 0` is left open, which is a field gate every seven tiles on
  * every side of every field.
  */
-import { hash2, hashString, noise2 } from '@lattice/core';
-import { TileGrid, tileBounds, type Rect, type TileCost } from '@lattice/iso';
+import { hash2, hashString, noise2 } from '@latticekit/core';
+import { TileGrid, tileBounds, type Rect, type TileCost } from '@latticekit/iso';
 
 /**
  * The valley in tiles: square, and **much** larger than any frame of it.

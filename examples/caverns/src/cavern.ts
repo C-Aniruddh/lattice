@@ -32,9 +32,9 @@
  * rest black. Ordering them by a hash of their own coordinates spreads the first hundred over the
  * whole cave, deterministically, for one comparator.
  */
-import { fbm2, hash2, hashString, smoothstep, toUnit } from '@lattice/core';
-import { TILE_H, TileGrid, footprintBase, slopeAt, type HeightField } from '@lattice/iso';
-import type { Variant } from '@lattice/draw';
+import { fbm2, hash2, hashString, smoothstep, toUnit } from '@latticekit/core';
+import { TILE_H, TileGrid, footprintBase, slopeAt, type HeightField } from '@latticekit/iso';
+import type { Variant } from '@latticekit/draw';
 
 /** The grid. 128 square is 8,192 × 4,336 world pixels — more than five times the long axis of a
  *  1440-wide viewport, which is `docs/GALLERY.md` § Scale's extent row with room to spare. */

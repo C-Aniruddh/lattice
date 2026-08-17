@@ -1,7 +1,7 @@
 /**
  * The numbers on the overlay, and the two buttons that are the brush's second control.
  *
- * **`@lattice/ui` over the canvas, because `docs/GALLERY.md` makes it a rule.** There is no canvas
+ * **`@latticekit/ui` over the canvas, because `docs/GALLERY.md` makes it a rule.** There is no canvas
  * text anywhere in this exhibit. The *structure* of the overlay is `readout.ts` and is art per
  * § *Static markup is art*; what is left here is what that section calls logic and always will be —
  * code that reads state and writes it into the tree, plus the handlers that change what the exhibit
@@ -23,9 +23,9 @@
  * `boot.worstMs` and `boot.cadenceMs`, never a meter written here. Four exhibits hand-rolled that
  * readout before `loop` grew `stats.worstGapMs` and produced three different wrong answers.
  */
-import { fmtInteger, type Disposer } from '@lattice/core';
-import { paletteVars, type Palette as WorldPalette } from '@lattice/draw';
-import { applyPalette, createOverlay, roll, setText } from '@lattice/ui';
+import { fmtInteger, type Disposer } from '@latticekit/core';
+import { paletteVars, type Palette as WorldPalette } from '@latticekit/draw';
+import { applyPalette, createOverlay, roll, setText } from '@latticekit/ui';
 import { buildReadout } from './readout.js';
 
 /** Height units to feet. An art scale, and the only place this exhibit names a real-world unit —
@@ -36,7 +36,7 @@ const FEET = 34;
  * `read` is a pull and not a push, so there is exactly one place the HUD can be a frame behind the
  * world. `onMode` is the visitor pressing RAISE or CUT — `true` means cut, and the mode it changes
  * is the exhibit's, which is what makes this module logic and `readout.ts` markup. `now` is
- * milliseconds, and it must be the clock `@lattice/loop` was given.
+ * milliseconds, and it must be the clock `@latticekit/loop` was given.
  */
 export interface HudOptions {
   readonly palette: WorldPalette;

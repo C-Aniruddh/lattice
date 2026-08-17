@@ -14,7 +14,7 @@
  */
 
 import { bench, describe } from 'vitest';
-import { createRng, hash2, hash3, hashStep, hashString, mix32, noise2, fbm2 } from '@lattice/core';
+import { createRng, hash2, hash3, hashStep, hashString, mix32, noise2, fbm2 } from '@latticekit/core';
 
 const rng = createRng(0xbeef);
 let sink = 0;

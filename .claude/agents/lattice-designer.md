@@ -21,7 +21,7 @@ What the demo must be:
   able to finish it, and want to have finished it.
 - **Small.** A few hundred lines. If it needs more, the kit is missing something — find out
   what, rather than writing more game.
-- **Built only from `@lattice/*`.** No other runtime dependency, no assets of any kind. If
+- **Built only from `@latticekit/*`.** No other runtime dependency, no assets of any kind. If
   you need a sprite, it is drawn; if you need a sound, it is synthesised.
 - **Deterministic.** Same seed, same world, every time.
 

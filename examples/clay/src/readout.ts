@@ -17,13 +17,13 @@
  * deliberately does not license are both absent: no handler is attached here, and no part of this
  * tree's *shape* depends on anything the visitor did.
  *
- * The buttons are the interesting ones. `@lattice/ui` ships `roll`, `panel`, `toasts`, `floats`,
+ * The buttons are the interesting ones. `@latticekit/ui` ships `roll`, `panel`, `toasts`, `floats`,
  * `thumbnails` and `acknowledge`, and **no button, no segmented control and no toggle of any kind**
  * — so the one control this exhibit has besides the drag itself is a bare `<button>` pair and every
  * millimetre of it is in `index.html`. `Canyon` reported the same absence about a slider. Two
  * exhibits needing two different primitives that are not there is the finding, not a coincidence.
  */
-import { el, type Overlay } from '@lattice/ui';
+import { el, type Overlay } from '@latticekit/ui';
 
 /** The nodes `hud.ts` writes into, and nothing else. */
 export interface Plate {

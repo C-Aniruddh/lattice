@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Surface } from '@lattice/draw';
+import type { Surface } from '@latticekit/draw';
 import { createOverlay, type Overlay } from '../src/overlay.js';
 import { setBrand } from '../src/theme.js';
 import { thumbnails, type ThumbSpec } from '../src/thumb.js';

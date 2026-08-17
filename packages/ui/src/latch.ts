@@ -77,7 +77,7 @@ export interface KeyedLatch {
  * condition every thirty seconds.
  *
  * Held in memory, for this host, for this session. "Once ever, across reloads" is a boolean in
- * the game's saved state and `@lattice/persist` owns saved state; a UI package writing storage
+ * the game's saved state and `@latticekit/persist` owns saved state; a UI package writing storage
  * behind the save layer's back is a second owner of the same truth.
  */
 export function createKeyedLatch(): KeyedLatch {

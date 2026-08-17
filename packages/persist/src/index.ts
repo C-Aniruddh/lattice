@@ -1,5 +1,5 @@
 /**
- * `@lattice/persist` — saves that survive a version bump, a crashed tab and a browser that
+ * `@latticekit/persist` — saves that survive a version bump, a crashed tab and a browser that
  * lies about its storage.
  *
  * It does that by making the save an explicitly **versioned envelope**, the upgrade an

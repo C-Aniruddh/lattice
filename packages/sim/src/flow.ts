@@ -48,7 +48,7 @@
  * Isomorphic: no clock, no randomness, no platform.
  */
 
-import { expectFinite } from '@lattice/core';
+import { expectFinite } from '@latticekit/core';
 import type { Economy, Stocks, StockVec } from './graph.js';
 
 /**

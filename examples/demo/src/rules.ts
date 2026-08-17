@@ -12,7 +12,7 @@
  * **is** the save's field order, so the workaround put a field in every save file whose only job
  * was to be multiplied by and then divided by.
  */
-import { clamp01, smooth } from '@lattice/core';
+import { clamp01, smooth } from '@latticekit/core';
 import {
   capacityShare,
   costOfNext,
@@ -22,7 +22,7 @@ import {
   type Economy,
   type Flow,
   type GateRatios,
-} from '@lattice/sim';
+} from '@latticekit/sim';
 import { SPACING } from './valley.js';
 
 export type Node = 'coin';

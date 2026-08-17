@@ -37,8 +37,8 @@
  * frond mostly is when you are looking down at it from a dimetric camera — and the problem is
  * gone rather than worked around with an epsilon.
  */
-import { hash2, hashStep, noise2, toUnit, type Vec2 } from '@lattice/core';
-import { gridToScreen } from '@lattice/iso';
+import { hash2, hashStep, noise2, toUnit, type Vec2 } from '@latticekit/core';
+import { gridToScreen } from '@latticekit/iso';
 import {
   LEVEL_H,
   defineSprite,
@@ -55,7 +55,7 @@ import {
   type SolidWriter,
   type SpriteDef,
   type Variant,
-} from '@lattice/draw';
+} from '@latticekit/draw';
 import type { Bucket } from '../../_shared/src/index.js';
 import type { Tree } from './island.js';
 import { softGlow } from './palette.js';

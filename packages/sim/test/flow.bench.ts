@@ -1,5 +1,5 @@
 import { bench, describe } from 'vitest';
-import { asEpochMillis } from '@lattice/core';
+import { asEpochMillis } from '@latticekit/core';
 
 import { defineEconomy, zeroStocks } from '../src/graph.js';
 import { NO_GATES, buildFlow, createFlow, integrate, ratesOf } from '../src/flow.js';

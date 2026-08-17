@@ -10,7 +10,7 @@
  * `docs/GALLERY.md` settles the `hud.ts` case one way and the CSS case the other: a HUD that *"reads
  * game state, formats it, and owns the button"* is logic, while *"its appearance is the CSS, which
  * is art, and that is the seam rule 7 already asks for."* This file is the third thing that seam
- * implies. `@lattice/ui` ships no stylesheet at all, so a class name is not decoration around the
+ * implies. `@latticekit/ui` ships no stylesheet at all, so a class name is not decoration around the
  * appearance — **it is the appearance's only attachment point**, and `.card`, `.obj-tag`,
  * `.say-row` and the rest exist for no other reason than that `index.html` styles them.
  *
@@ -23,7 +23,7 @@
  * the only way a stage moves, and a handler that advances a state machine does not belong in a file
  * whose whole claim is that it decides nothing. `hud.ts` attaches it, in one line.
  */
-import { el, roll, type Overlay, type Panel, type Roll } from '@lattice/ui';
+import { el, roll, type Overlay, type Panel, type Roll } from '@latticekit/ui';
 import { BRIEF, CARRYING } from './script.js';
 
 /** The handles `hud.ts` writes into. Every one of them is a node or a roll; none of them is state. */

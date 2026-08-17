@@ -48,9 +48,9 @@
  * `softEllipse` calls in `sprites.ts` and no per-frame pass at all. A night exhibit should pay for
  * the field. This one has nothing to light.
  */
-import { hash2, noise2, toUnit } from '@lattice/core';
-import { gridToScreen, type TileRange } from '@lattice/iso';
-import { isoTile, mix, shade, withAlpha, type Ink, type Pen } from '@lattice/draw';
+import { hash2, noise2, toUnit } from '@latticekit/core';
+import { gridToScreen, type TileRange } from '@latticekit/iso';
+import { isoTile, mix, shade, withAlpha, type Ink, type Pen } from '@latticekit/draw';
 import { CROP, GRASS, MAX_HEIGHT_PX, VCX, VCY, WATER, type Valley } from './valley.js';
 
 /** The slot each ground kind is painted out of, indexed by the kind itself. */

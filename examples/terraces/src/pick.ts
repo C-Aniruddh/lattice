@@ -18,7 +18,7 @@
  * | terrain-aware | `screenToTileOnHeights(camera, sx, sy, field, maxHeightPx, out)` | nothing |
  *
  * The naive one is not a straw man and that is worth being explicit about: it is the exact
- * inverse of the projection at `z = 0`, and it is what `@lattice/input` puts in `gx`/`gy` on
+ * inverse of the projection at `z = 0`, and it is what `@latticekit/input` puts in `gx`/`gy` on
  * **every action event it fires**, because `input` resolves a pointer through `worldToTile` and
  * has no way to be handed a heightfield. An exhibit that read `event.gx` would therefore ship
  * this bug without ever choosing to, which is why the caller re-picks from `sx`/`sy`. See the
@@ -32,7 +32,7 @@
  * {@link Pick.errorPx} projects both answers **at their own ground heights** and measures the gap
  * between them, which is that same quantity, and it is comparable across zoom.
  */
-import { gridToWorldX, gridToWorldY, heightAt, screenToTile, screenToTileOnHeights, type Camera, type HeightField, type Tile } from '@lattice/iso';
+import { gridToWorldX, gridToWorldY, heightAt, screenToTile, screenToTileOnHeights, type Camera, type HeightField, type Tile } from '@latticekit/iso';
 
 /**
  * Everything the frame, the markers and the overlay read. One object, mutated in place: it is

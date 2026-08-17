@@ -66,7 +66,7 @@
  * Isomorphic: no clock, no randomness, no platform.
  */
 
-import { expectFinite } from '@lattice/core';
+import { expectFinite } from '@latticekit/core';
 
 /** The dyadic denominator the sqrt chain reaches: `e = n / 64` for integer `n`. */
 const DYADIC_DENOMINATOR = 64;

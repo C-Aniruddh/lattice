@@ -10,7 +10,7 @@
  * seam — so the merge would quietly cost the demo its premise.
  */
 
-import { HALF_H, HALF_W } from '@lattice/iso';
+import { HALF_H, HALF_W } from '@latticekit/iso';
 import type { Ink } from './color.js';
 import { SHADE_TINT, withAlpha } from './color.js';
 import { levelsToPx } from './solids.js';

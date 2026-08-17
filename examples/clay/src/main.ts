@@ -33,7 +33,7 @@
  *
  * ## `ActionEvent.gx/gy` is a flat-ground answer, and this exhibit is the worst case for it
  *
- * `@lattice/input` resolves a pointer through `worldToTile`, which is the exact inverse of the
+ * `@latticekit/input` resolves a pointer through `worldToTile`, which is the exact inverse of the
  * projection **on the plane z = 0** — the only plane it inverts. It has no seam for a `HeightField`
  * and no way to be handed one, so `gx`/`gy` on every gesture and every action it fires assume the
  * ground is flat. `Terraces` measured that error at 281 px and 14 tiles on a static hillside.
@@ -56,9 +56,9 @@
  * still finds its way, and every walker still replans the routes the brush crossed — it simply
  * cannot be seen. `npm run gallery` checks it.
  */
-import { renderFrame } from '@lattice/draw';
-import { screenToTileOnHeights, type Tile } from '@lattice/iso';
-import { drive } from '@lattice/ui';
+import { renderFrame } from '@latticekit/draw';
+import { screenToTileOnHeights, type Tile } from '@latticekit/iso';
+import { drive } from '@latticekit/ui';
 import { bootstrap, controlPanel, createBucket, knobs } from '../../_shared/src/index.js';
 import { CLAY } from './palette.js';
 import { MAX_UNITS, N, STEP_PX, createClay, flow, sculpt } from './clay.js';
@@ -104,7 +104,7 @@ const brush = { gx: 80, gy: 80, radius: RADIUS, down: false, sx: 0, sy: 0 }, at:
 const passes = passesFor(clay, bucket, brush);
 let mode = false, units = 0;
 
-// A raw listener, because `@lattice/input` has six gestures and none of them is a hover — the ring
+// A raw listener, because `@latticekit/input` has six gestures and none of them is a hover — the ring
 // has to follow a cursor that is not pressing anything, and `Terraces` reported the same gap.
 const onMove = (event: PointerEvent): void => { brush.sx = event.clientX; brush.sy = event.clientY; };
 boot.canvas.addEventListener('pointermove', onMove);

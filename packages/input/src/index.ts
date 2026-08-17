@@ -1,5 +1,5 @@
 /**
- * `@lattice/input` — every way a person can touch a game, as one replayable stream of intents
+ * `@latticekit/input` — every way a person can touch a game, as one replayable stream of intents
  * in tile coordinates, bucketed to simulation ticks, behind one object that unbinds all of it.
  *
  * ```ts
@@ -88,7 +88,7 @@ export type { DomInputSystem, InputOptions } from './dom.js';
 // so an unowned listener is unconstructable.
 
 export type { InputScope } from './scope.js';
-export type { Disposer } from '@lattice/core';
+export type { Disposer } from '@latticekit/core';
 
 // ── what a handler is handed ────────────────────────────────────────────────────────────────
 //
@@ -155,5 +155,5 @@ export type { InputRecording, ReplayCursor } from './record.js';
 // types they need are re-exported here. A caller should not have to know which package owns a
 // two-field record to write an out-parameter.
 
-export type { GridPoint } from '@lattice/iso';
-export type { Vec2 } from '@lattice/core';
+export type { GridPoint } from '@latticekit/iso';
+export type { Vec2 } from '@latticekit/core';

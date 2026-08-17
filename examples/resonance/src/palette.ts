@@ -39,7 +39,7 @@
  * — a set rebuilt inside the render callback bumps `rev` every frame, and `rev` is what every
  * cache in the kit keys on.
  */
-import { extendStops, hex, type Palette, type Stops } from '@lattice/draw';
+import { extendStops, hex, type Palette, type Stops } from '@latticekit/draw';
 
 const SLOTS = ['sky', 'ground', 'ink', 'brand', 'metal', 'glass', 'warn', 'ok', 'bad', 'night'] as const;
 

@@ -20,12 +20,12 @@ required epoch timestamp, so a frame delta has nowhere to go — and a builder w
 ## A whole economy
 
 ```ts
-import { asEpochMillis } from '@lattice/core';
+import { asEpochMillis } from '@latticekit/core';
 import {
   advance, buildFlow, costOfNext, createFlow, defineEconomy,
   elapsedSeconds, maxBuyable, project, zeroStocks,
-} from '@lattice/sim';
-import type { CostCurve, Ledger } from '@lattice/sim';
+} from '@latticekit/sim';
+import type { CostCurve, Ledger } from '@latticekit/sim';
 
 type Node = 'lamp' | 'coin';
 type Gate = 'night';
@@ -145,9 +145,9 @@ and a game would cross the boundary without noticing.
 ## Offline, and the exploit that lives in the obvious way to write it
 
 ```ts
-import { asEpochMillis } from '@lattice/core';
-import { advanceOver, solveCrossingOver } from '@lattice/sim';
-import type { CatchUp, Economy, Flow, Ledger, OfflineCurve, Phase } from '@lattice/sim';
+import { asEpochMillis } from '@latticekit/core';
+import { advanceOver, solveCrossingOver } from '@latticekit/sim';
+import type { CatchUp, Economy, Flow, Ledger, OfflineCurve, Phase } from '@latticekit/sim';
 
 export const CURVE: OfflineCurve = {
   uncappedSeconds: 3 * 3600,      // credited in full below this
@@ -194,8 +194,8 @@ restart begins in the uncapped region again, which makes each one cheaper in rea
 last:
 
 ```ts
-import { offlineCredit } from '@lattice/sim';
-import type { OfflineCurve } from '@lattice/sim';
+import { offlineCredit } from '@latticekit/sim';
+import type { OfflineCurve } from '@latticekit/sim';
 
 const c: OfflineCurve = { uncappedSeconds: 3 * 3600, exponent: 0.625, flatAfterSeconds: 24 * 3600 };
 const t = 20 * 3600;
@@ -304,4 +304,4 @@ price is a fact about one build.
 | replays and cross-engine agreement | `determinism` |
 | the world the economy is about | `world` |
 
-Long form, on disk: `node_modules/@lattice/sim/README.md`.
+Long form, on disk: `node_modules/@latticekit/sim/README.md`.

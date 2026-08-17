@@ -27,7 +27,7 @@
  * after construction.
  */
 
-import { expectFinite } from '@lattice/core';
+import { expectFinite } from '@latticekit/core';
 
 /**
  * The host's clock, injected.
@@ -40,7 +40,7 @@ import { expectFinite } from '@lattice/core';
  *
  * This clock is **not** the calendar and must never be used as one. It may or may not
  * advance while the machine is asleep — that is platform-dependent — which is precisely why
- * `@lattice/sim` keeps its own epoch timestamp and why this package credits nothing. There is
+ * `@latticekit/sim` keeps its own epoch timestamp and why this package credits nothing. There is
  * deliberately no second method here and no `loop.epoch`: the moment this package can tell
  * you the date, half the kit starts asking it and the determinism rule becomes advisory.
  */

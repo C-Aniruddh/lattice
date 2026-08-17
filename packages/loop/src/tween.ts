@@ -35,7 +35,7 @@
  * ten-thousandth short never fires its "arrived" callback.
  */
 
-import { EASINGS, expectFinite, type Easing, type EasingName } from '@lattice/core';
+import { EASINGS, expectFinite, type Easing, type EasingName } from '@latticekit/core';
 
 /** Opaque, never reused within a session. Shared allocator, like {@link TimerId}. */
 export type TweenId = number;
@@ -189,7 +189,7 @@ function resolveEase(ease: Easing | EasingName | undefined): Easing {
   const curve = CURVES[ease];
   if (curve === undefined) {
     throw new RangeError(
-      `tween.ease: '${String(ease)}' is not a curve in @lattice/core's EASINGS — expected one of ${Object.keys(EASINGS).join(', ')}. This package defines no curves of its own, so a name that is not in that table would have to silently mean linear`,
+      `tween.ease: '${String(ease)}' is not a curve in @latticekit/core's EASINGS — expected one of ${Object.keys(EASINGS).join(', ')}. This package defines no curves of its own, so a name that is not in that table would have to silently mean linear`,
     );
   }
   return curve;

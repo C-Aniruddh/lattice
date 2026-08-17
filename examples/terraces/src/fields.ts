@@ -42,9 +42,9 @@
  * The consequence is honest and intended: pan uphill and the terraces you approach come out of
  * the mist, which is what aerial perspective does.
  */
-import { clamp01, hash2, noise2, toUnit } from '@lattice/core';
-import { HALF_H, HALF_W, TILE_H, TILE_W, type Rect, type TileRange } from '@lattice/iso';
-import { isoTerrain, mix, shade, withAlpha, type Pen, type Rgba } from '@lattice/draw';
+import { clamp01, hash2, noise2, toUnit } from '@latticekit/core';
+import { HALF_H, HALF_W, TILE_H, TILE_W, type Rect, type TileRange } from '@latticekit/iso';
+import { isoTerrain, mix, shade, withAlpha, type Pen, type Rgba } from '@latticekit/draw';
 import { H, RISE, STEP_PX, W, type Hill } from './hill.js';
 import { place } from './place.js';
 

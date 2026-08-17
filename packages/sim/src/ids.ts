@@ -16,7 +16,7 @@
  * Isomorphic and Tier A: integer addition and comparison, nothing else.
  */
 
-import { expectSafeInteger } from '@lattice/core';
+import { expectSafeInteger } from '@latticekit/core';
 
 declare const entityBrand: unique symbol;
 

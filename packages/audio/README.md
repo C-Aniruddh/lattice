@@ -1,11 +1,11 @@
-# @lattice/audio
+# @latticekit/audio
 
 > Sound without assets: WebAudio synthesis from a declarative table, with voice limiting, buses, a continuous bed and an opt-in sequencer.
 
 Part of **[Lattice](https://github.com/C-Aniruddh/lattice)** — the grid underneath.
 
 ```bash
-npm i @lattice/audio
+npm i @latticekit/audio
 ```
 
 A table of oscillator recipes becomes the sound of a game: no files, no `AudioContext` until
@@ -25,7 +25,7 @@ This runs in Node with no `AudioContext` anywhere. It is
 package produces, the suite fails.
 
 ```ts
-import { createAudio, createBed, validateSounds, type SoundDef } from '@lattice/audio';
+import { createAudio, createBed, validateSounds, type SoundDef } from '@latticekit/audio';
 
 const SOUNDS = {
   tap:     { bus: 'ui',  minGapMs: 40, layers: [{ wave: 'sine', hz: 1180, gain: 0.05, hold: 0.03, cutoff: 2400 }] },
@@ -215,7 +215,7 @@ audio.mixer.gain('music');            // 0.4 — mute never overwrote the level
 ```
 
 **This package stores nothing.** `snapshot()` returns a small versioned value and `restore()`
-takes one back; hand it to `@lattice/persist` as a *device-scoped* preference, not as save
+takes one back; hand it to `@latticekit/persist` as a *device-scoped* preference, not as save
 state — a player who hits START OVER must not get their sound turned back on.
 
 ```ts
@@ -257,7 +257,7 @@ been driven to in the meantime.
 ## The deck — opt-in
 
 ```ts
-import { createDeck, validateSong } from '@lattice/audio';
+import { createDeck, validateSong } from '@latticekit/audio';
 
 const deck = createDeck(audio);     // a game that never imports this does not ship it
 deck.play(THEME);
@@ -335,8 +335,8 @@ written beside it in `docs/rfc/audio.md` §4.
 | `PannerNode`, HRTF, distance models | 3D machinery for a 2D game, priced per voice. Stereo pan on *transients* only, capped at ±0.6 — hard pan is fatiguing on headphones |
 | `AnalyserNode`, FFT | needs a real device, so anything built on it is invisible to tests. `onScheduled` gives a HUD the beat instead |
 | a module-level singleton | two games on one page becomes impossible, and test order starts to matter |
-| `localStorage` | `snapshot`/`restore` return a value; `@lattice/persist` owns storage |
-| its own `pointerdown` listener | `@lattice/input` owns the DOM event surface, and a listener installed at import time is exactly the boot-time side effect rule 1 exists to prevent |
+| `localStorage` | `snapshot`/`restore` return a value; `@latticekit/persist` owns storage |
+| its own `pointerdown` listener | `@latticekit/input` owns the DOM event surface, and a listener installed at import time is exactly the boot-time side effect rule 1 exists to prevent |
 | ducking (music dipping under an alert) | the nearest miss. It needs a policy — which sounds duck, how far, how long — and the demo should tell us rather than a guess. First thing for v2 |
 
 **Screen-x → pan is not computed here.** That mapping needs a camera, and this package is layer
@@ -348,7 +348,7 @@ written beside it in `docs/rfc/audio.md` §4.
 
 No `Math.random`, no `Date.now`, no `performance.now`. Time arrives as audio-clock seconds from
 the device or from `AudioOptions.now`; the sequencer's variation comes from `hash3` in
-`@lattice/core`, which is stateless, so a track muted at load cannot shift what every other
+`@latticekit/core`, which is stateless, so a track muted at load cannot shift what every other
 track plays.
 
 Exactly **one** module reads a host global — `src/host.ts`, marked `@browser-only`, holding the

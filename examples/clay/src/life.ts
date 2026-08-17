@@ -67,8 +67,8 @@
  *
  * Pure: no DOM, no clock. Time arrives as `dt`.
  */
-import { Path, PathFinder, pathSample, pxToUnits, slopeAt, type GridPoint, type PathOptions, type TileCost } from '@lattice/iso';
-import type { Rng } from '@lattice/core';
+import { Path, PathFinder, pathSample, pxToUnits, slopeAt, type GridPoint, type PathOptions, type TileCost } from '@latticekit/iso';
+import type { Rng } from '@latticekit/core';
 import { CELLS, N, type Clay } from './clay.js';
 
 /**

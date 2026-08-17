@@ -1,5 +1,5 @@
 /**
- * `@lattice/draw` — one color and one grid footprint into a stylised isometric solid, on a
+ * `@latticekit/draw` — one color and one grid footprint into a stylised isometric solid, on a
  * surface it does not own.
  *
  * The two halves of that sentence are the two things this package is for. *One color* is the

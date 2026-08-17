@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { v2 } from '@lattice/core';
+import { v2 } from '@latticekit/core';
 import {
   boxSilhouette,
   pointInPolygon,

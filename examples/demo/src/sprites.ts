@@ -32,8 +32,8 @@
  * written here, and the tell that it was wrong is that the *picking* half of the same seam had no
  * channel at all: silhouettes were computed at sea level while the lamps were painted up the hill.
  */
-import { hash2, noise2, toUnit, type Vec2 } from '@lattice/core';
-import { gridToScreen } from '@lattice/iso';
+import { hash2, noise2, toUnit, type Vec2 } from '@latticekit/core';
+import { gridToScreen } from '@latticekit/iso';
 import {
   FLAG_POWERED,
   LEVEL_H,
@@ -50,7 +50,7 @@ import {
   type Ink,
   type Pen,
   type SpriteDef,
-} from '@lattice/draw';
+} from '@latticekit/draw';
 import { smoke } from './ambient.js';
 import { steady } from './palette.js';
 

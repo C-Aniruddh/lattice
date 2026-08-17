@@ -1,5 +1,5 @@
 /**
- * @lattice/sim — Idle-economy mathematics in closed form: cost curves, the flow integrator,
+ * @latticekit/sim — Idle-economy mathematics in closed form: cost curves, the flow integrator,
  * offline accrual, capacity gating, and the instant a stock runs out.
  *
  * **`sim` is the arithmetic of an idle economy in closed form — a production graph you can

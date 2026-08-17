@@ -199,7 +199,7 @@ export interface FrameStats {
    * Total sim seconds discarded by the catch-up clamp.
    *
    * **Diagnostics only.** This is monotonic-clock time, which may not include the machine's
-   * sleep, and crediting it would double-count against `@lattice/sim`, which has already
+   * sleep, and crediting it would double-count against `@latticekit/sim`, which has already
    * integrated the same interval from its own stored epoch timestamp. The loop advances
    * callbacks; `sim` advances value. Legitimate uses: a perf warning, a "welcome back" panel
    * that says nothing about numbers, deciding to skip an expensive re-layout.

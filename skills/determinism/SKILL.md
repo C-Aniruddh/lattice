@@ -52,7 +52,7 @@ the file reaches the next iteration.
 This is the one that catches people building a world.
 
 ```ts wrong
-import { createRng } from '@lattice/core';
+import { createRng } from '@latticekit/core';
 
 // Deterministic in the sense that a replay from tick zero reproduces it, and completely
 // useless for a world you can pan around: what it produces depends on the ORDER chunks were
@@ -64,7 +64,7 @@ export function mintChunk(): number[] {
 ```
 
 ```ts
-import { fbm2, hash2, toUnit } from '@lattice/core';
+import { fbm2, hash2, toUnit } from '@latticekit/core';
 
 const SEED = 0x5eed;
 
@@ -85,7 +85,7 @@ makes in a fixed order, and a hash for anything addressed by position.
 When you do want a stream, fork it by **identity**:
 
 ```ts
-import { createRng } from '@lattice/core';
+import { createRng } from '@latticekit/core';
 
 const world = createRng('valley-3');
 export const trees = world.derive('scenery');
@@ -124,8 +124,8 @@ bytes are the subject, and a save truncated mid-combining-sequence must fail.
 ## Running a replay
 
 ```ts
-import { replay } from '@lattice/loop';
-import type { ReplaySource } from '@lattice/loop';
+import { replay } from '@latticekit/loop';
+import type { ReplaySource } from '@latticekit/loop';
 
 interface Game {
   update(dt: number, tick: number): void;

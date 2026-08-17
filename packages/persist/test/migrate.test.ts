@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { expectObject, expectRecordOfFinite } from '@lattice/core';
+import { expectObject, expectRecordOfFinite } from '@latticekit/core';
 import { migrations, type ChainBuilder, type Increment, type Recognize } from '../src/migrate.js';
 
 interface V1 {

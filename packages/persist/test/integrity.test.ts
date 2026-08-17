@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hashString } from '@lattice/core';
+import { hashString } from '@latticekit/core';
 import { defaultChecksum, type Checksum } from '../src/integrity.js';
 
 describe('defaultChecksum', () => {

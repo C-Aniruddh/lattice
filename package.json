@@ -26,7 +26,7 @@
     "cover": "vitest run --coverage",
     "lint": "node tools/lint.mjs",
     "verify": "npm run build && npm run lint && npm run docs && npm run test && npm run gallery",
-    "dev": "npm run dev --workspace=@lattice/demo",
+    "dev": "npm run dev --workspace=@latticekit/demo",
     "size": "node tools/size.mjs",
     "gallery": "node tools/gallery.mjs",
     "docs": "node tools/check-docs.mjs"

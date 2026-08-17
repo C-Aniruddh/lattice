@@ -36,7 +36,7 @@
  * test both answers come from.
  */
 
-import { clamp, createScope, type Disposer, type Scope } from '@lattice/core';
+import { clamp, createScope, type Disposer, type Scope } from '@latticekit/core';
 
 import { createMixer, effectiveGain, type Mixer } from './bus.js';
 import { defaultContext } from './host.js';

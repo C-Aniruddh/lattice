@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { hash2, toUnit } from '@lattice/core';
+import { hash2, toUnit } from '@latticekit/core';
 import { TileGrid, tileSourceOf } from '../src/tilemap.js';
 import type { MutableTileSource } from '../src/tilemap.js';
 import type { TileRange } from '../src/projection.js';

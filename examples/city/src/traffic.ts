@@ -14,9 +14,9 @@
  * tidy one: it needs the street grid from `city.ts`, and `city.ts` imports `sprites.ts`. One more
  * file is cheaper than an import cycle nobody can see.
  */
-import { hash2, toUnit } from '@lattice/core';
-import type { GridPoint } from '@lattice/iso';
-import { isoBox, mix, pxToLevels, withAlpha, type Pen } from '@lattice/draw';
+import { hash2, toUnit } from '@latticekit/core';
+import type { GridPoint } from '@latticekit/iso';
+import { isoBox, mix, pxToLevels, withAlpha, type Pen } from '@latticekit/draw';
 import { at } from './sprites.js';
 import { BLOCK, BLOCKS, PERIOD, STREET } from './city.js';
 

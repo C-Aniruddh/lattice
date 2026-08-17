@@ -1,11 +1,11 @@
-# @lattice/draw
+# @latticekit/draw
 
 > One color and one grid footprint into a stylised isometric solid, on a surface it does not own.
 
 Part of **[Lattice](https://github.com/C-Aniruddh/lattice)** — the grid underneath.
 
 ```bash
-npm i @lattice/draw
+npm i @latticekit/draw
 ```
 
 The two halves of that sentence are the two things this package is for.
@@ -19,7 +19,7 @@ ever holds a `CanvasRenderingContext2D`. So the same code paints the world, a sh
 a golden test — and a WebGL backend can replace the Canvas2D one without a sprite noticing.
 
 ```ts
-import { beginFrame, createCanvas2dSurface, endFrame, isoBox, isoTile } from '@lattice/draw';
+import { beginFrame, createCanvas2dSurface, endFrame, isoBox, isoTile } from '@latticekit/draw';
 
 const surface = createCanvas2dSurface(canvasEl);
 const pen = beginFrame({ surface, camera, palette, t, clear: 'sky' });
@@ -40,12 +40,12 @@ possible on a machine that has no browser.
 ```ts
 import {
   DepthSorter, boxSilhouette, createCamera, footprintBase, pickSorted, pointInPolygon, tileSourceOf,
-} from '@lattice/iso';
+} from '@latticekit/iso';
 import {
   BASE_SLOTS, DAY, NIGHT, VARIANT_ZERO, beginFrame, createLightField, createPalette,
   createRecordingSurface, defineSprite, drawSprite, endFrame, glowDot, hexOf, hsl, isoTerrain,
   renderFrame, spriteBounds, spriteHeightPx, spriteVolume,
-} from '@lattice/draw';
+} from '@latticekit/draw';
 
 // ── the art: a sprite a game owns, without forking the kit ─────────────────────
 const WATER_TOWER = defineSprite({

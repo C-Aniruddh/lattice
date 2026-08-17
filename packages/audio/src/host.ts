@@ -1,7 +1,7 @@
 /**
  * `@browser-only` — the whole of this package's contact with a host. Two functions.
  *
- * This is the only module in `@lattice/audio` that reads a global, and it is deliberately the
+ * This is the only module in `@latticekit/audio` that reads a global, and it is deliberately the
  * only one: everything else takes a context and a clock as parameters, which is why the rest
  * of the package imports cleanly into a Node test and why the declared-adapter count printed
  * by `npm run lint` stays at one. That count going up is the earliest sign the kit is drifting
@@ -13,7 +13,7 @@
  * real global to cover a policy branch.
  */
 
-import type { Disposer } from '@lattice/core';
+import type { Disposer } from '@latticekit/core';
 
 /** The two names a browser has ever given the constructor, and nothing else. */
 interface AudioGlobals {

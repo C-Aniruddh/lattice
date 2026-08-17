@@ -1,6 +1,6 @@
 ---
 name: lattice
-description: Build a playable isometric game from one sentence, end to end — scaffold, code, run it in a browser, look at it, fix it. Use when someone says they want to make a game, build a game, make an isometric/tile/city-builder/idle/incremental game, or describes a game idea and wants it to exist ("a game where you rebuild a lighthouse", "a little town builder", "an idle game about bees"). Also use for "set up a Lattice project" or "start a new game with @lattice". Owns the /lattice command.
+description: Build a playable isometric game from one sentence, end to end — scaffold, code, run it in a browser, look at it, fix it. Use when someone says they want to make a game, build a game, make an isometric/tile/city-builder/idle/incremental game, or describes a game idea and wants it to exist ("a game where you rebuild a lighthouse", "a little town builder", "an idle game about bees"). Also use for "set up a Lattice project" or "start a new game with @latticekit". Owns the /lattice command.
 ---
 
 # /lattice — one sentence in, a game out
@@ -138,7 +138,7 @@ Short sentences about their game. Not about the tooling.
 
 | instead of | say |
 |---|---|
-| "Installing @lattice/draw and 6 peer packages…" | "Getting the drawing kit." |
+| "Installing @latticekit/draw and 6 peer packages…" | "Getting the drawing kit." |
 | "TS2345: Argument of type 'Readonly<Vec2>'…" | *(nothing — fix it)* |
 | "The Vite dev server is listening on :5173" | "It's running — I'm looking at it now." |
 | "Should I add a save system?" | *(decide. If the game has progress, it saves.)* |

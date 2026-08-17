@@ -1,7 +1,7 @@
 /**
  * `@browser-only` — the one module in this package that names a global.
  *
- * `@lattice/ui` is a browser package: `HTMLElement` is in half its signatures and there is no
+ * `@latticekit/ui` is a browser package: `HTMLElement` is in half its signatures and there is no
  * pretending otherwise. But *naming a type* and *reaching for an ambient object* are different
  * risks, and only the second one makes a module untestable. Everything else here takes its
  * document, its element or its clock as an argument; this file is where `document`,
@@ -16,11 +16,11 @@
  *    the DOM lib and `NodeJS.Timeout` under `@types/node`, and a package that spells either of
  *    them out has picked a host.
  * 2. **Every accessor says what is missing.** A `undefined is not an object` from deep inside a
- *    toast is an afternoon; `createOverlay: no document — @lattice/ui is a browser package` is
+ *    toast is an afternoon; `createOverlay: no document — @latticekit/ui is a browser package` is
  *    a line of the caller's own code.
  */
 
-import type { Disposer } from '@lattice/core';
+import type { Disposer } from '@latticekit/core';
 
 /**
  * The document the overlay builds into when the caller named no parent.
@@ -33,7 +33,7 @@ export function hostDocument(): Document {
   const doc: unknown = globalThis.document;
   if (doc === undefined || doc === null) {
     throw new Error(
-      '@lattice/ui: no document — this is a browser package. Pass `parent` if you have an element from another document, or run this in a browser.',
+      '@latticekit/ui: no document — this is a browser package. Pass `parent` if you have an element from another document, or run this in a browser.',
     );
   }
   return doc as Document;
@@ -79,7 +79,7 @@ export function hostPixelRatio(): number {
 export function hostInterval(fn: () => void, ms: number): Disposer {
   const start: unknown = globalThis.setInterval;
   if (typeof start !== 'function') {
-    throw new Error("@lattice/ui: driver 'standalone' needs setInterval, and this host has none");
+    throw new Error("@latticekit/ui: driver 'standalone' needs setInterval, and this host has none");
   }
   const stop: unknown = globalThis.clearInterval;
   const id: unknown = (start as (f: () => void, d: number) => unknown)(fn, ms);
@@ -105,7 +105,7 @@ export function hostFrameLoop(fn: () => void): Disposer {
   const request: unknown = globalThis.requestAnimationFrame;
   if (typeof request !== 'function') {
     throw new Error(
-      "@lattice/ui: driver 'standalone' needs requestAnimationFrame, and this host has none",
+      "@latticekit/ui: driver 'standalone' needs requestAnimationFrame, and this host has none",
     );
   }
   const cancel: unknown = globalThis.cancelAnimationFrame;

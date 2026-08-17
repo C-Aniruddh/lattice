@@ -25,7 +25,7 @@
  * Pick it wrong — even slightly bluer than the sky — and the far band separates from the air
  * above it and the world looks like a sheet of paper laid on a backdrop.
  */
-import { extendStops, hex, type Stops } from '@lattice/draw';
+import { extendStops, hex, type Stops } from '@latticekit/draw';
 
 const SLOTS = ['sky', 'ground', 'ink', 'brand', 'metal', 'glass', 'warn', 'ok', 'bad', 'night'] as const;
 

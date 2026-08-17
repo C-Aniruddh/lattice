@@ -50,8 +50,8 @@
  * ±16.7 million tiles and honest about it — some 200,000 screens at the opening zoom.
  * {@link keyOf} packs an address into one double and is the tighter limit, at ±33 million tiles.
  */
-import { fbm2, hashBytes, hashString, noise2 } from '@lattice/core';
-import { HALF_H, HALF_W, TILE_H, type Camera, type HeightField } from '@lattice/iso';
+import { fbm2, hashBytes, hashString, noise2 } from '@latticekit/core';
+import { HALF_H, HALF_W, TILE_H, type Camera, type HeightField } from '@latticekit/iso';
 
 /** Tiles on a side of a chunk. A power of two, so `gx >> 4` is the floor division — exact for
  *  negative coordinates, where `/ 16 | 0` truncates toward zero and folds the two chunks either

@@ -10,7 +10,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { EASINGS, type EasingName } from '@lattice/core';
+import { EASINGS, type EasingName } from '@latticekit/core';
 import { createTweens } from '../src/tween.js';
 
 describe('createTweens', () => {

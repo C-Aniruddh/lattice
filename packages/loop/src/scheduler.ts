@@ -45,7 +45,7 @@
  * randomness, no platform.
  */
 
-import { expectFinite } from '@lattice/core';
+import { expectFinite } from '@latticekit/core';
 
 /**
  * Opaque, never reused within a session, and cheap: a number, not an object.

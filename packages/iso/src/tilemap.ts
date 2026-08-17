@@ -27,7 +27,7 @@
  *
  * **One array per *layer*, not one struct per tile.** A game needing terrain, buildings and
  * movement cost makes three grids. Structure-of-arrays is why a pathfinder can scan a cost
- * layer without dragging terrain colors through the cache, and why `@lattice/persist` can
+ * layer without dragging terrain colors through the cache, and why `@latticekit/persist` can
  * take a whole map as one buffer.
  *
  * **Reads are forgiving, writes are not.** `get` outside the map returns the map's
@@ -124,7 +124,7 @@ function makeStore(bits: 8 | 16 | 32, length: number): Uint8Array | Uint16Array 
  * A fixed rectangle of tiles in one flat typed array. The island.
  *
  * Bounded on purpose: knowing the extent is what makes the index arithmetic two multiplies
- * and what lets `@lattice/persist` write the map as a single buffer with no framing.
+ * and what lets `@latticekit/persist` write the map as a single buffer with no framing.
  */
 export class TileGrid implements MutableTileSource {
   /** Width in tiles. */

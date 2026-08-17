@@ -33,10 +33,10 @@
  * and nothing that would read one.
  */
 
-import { createScope, expectInt } from '@lattice/core';
-import type { Scope, Vec2 } from '@lattice/core';
-import { screenToTile } from '@lattice/iso';
-import type { Camera, GridPoint } from '@lattice/iso';
+import { createScope, expectInt } from '@latticekit/core';
+import type { Scope, Vec2 } from '@latticekit/core';
+import { screenToTile } from '@latticekit/iso';
+import type { Camera, GridPoint } from '@latticekit/iso';
 import { compileActions, nameList, undeclared } from './actions.js';
 import type { ActionBinding, ActionEntry, ActionMap, CompiledActions } from './actions.js';
 import { createCameraControl } from './cameracontrol.js';
@@ -82,7 +82,7 @@ export interface HeadlessInputOptions<A extends string> {
    * The recognizer counts ticks and multiplies by this; it never reads a clock. A step that is
    * not the loop's does not fail, it lies by a constant ratio — a long press at the wrong moment,
    * a fling at the wrong speed, and a recorded log a replay refuses months later. That is why
-   * this is a {@link FixedStep} and no longer a bare number: `@lattice/loop`'s `Loop` satisfies
+   * this is a {@link FixedStep} and no longer a bare number: `@latticekit/loop`'s `Loop` satisfies
    * it, `16` does not compile, and `fixedStep(hz)` covers the headless cases.
    */
   readonly step: FixedStep;
@@ -393,7 +393,7 @@ export function createSystem<A extends string>(
   const camera = options.camera;
   if (camera === null || typeof camera !== 'object' || typeof camera.toWorldX !== 'function') {
     throw new TypeError(
-      `${label}.camera: expected an @lattice/iso Camera — every coordinate this package reports is resolved through it, so there is no useful default`,
+      `${label}.camera: expected an @latticekit/iso Camera — every coordinate this package reports is resolved through it, so there is no useful default`,
     );
   }
   const stepMs = resolveStep(options.step, `${label}.step`);
@@ -408,7 +408,7 @@ export function createSystem<A extends string>(
       sink(diagnostic);
       return;
     }
-    console.warn(`[@lattice/input] ${diagnostic.code}: ${diagnostic.message}`);
+    console.warn(`[@latticekit/input] ${diagnostic.code}: ${diagnostic.message}`);
   };
 
   // Mutable, because `setProfile` replaces them together. Every reader goes through these two

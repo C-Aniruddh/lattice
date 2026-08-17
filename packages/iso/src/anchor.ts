@@ -12,7 +12,7 @@
  * anchor computed against a camera would be stale the next time anyone pans, so none is.
  */
 
-import type { Vec2 } from '@lattice/core';
+import type { Vec2 } from '@latticekit/core';
 import type { Camera } from './camera.js';
 import type { GridPoint } from './projection.js';
 import { HALF_H, HALF_W } from './projection.js';
@@ -43,8 +43,8 @@ export interface Anchor extends GridPoint {
  * Project an anchor to a screen point, now, for this camera. Allocation-free; call it once
  * per anchored thing per frame and never store the result.
  *
- * This is the function `@lattice/ui` should be handed as its `project` hook and the one
- * `@lattice/draw` should call for a world-space label. Both get the same pixel, which is the
+ * This is the function `@latticekit/ui` should be handed as its `project` hook and the one
+ * `@latticekit/draw` should call for a world-space label. Both get the same pixel, which is the
  * point: a HUD tag and a canvas ring on the same building must not disagree by a subpixel,
  * and they will if each derives its own.
  */
@@ -79,7 +79,7 @@ export function anchorVisible(camera: Camera, a: Readonly<Anchor>, marginPx = 0)
  * Stereo pan for a sound made at this anchor: `-1` hard left, `0` center, `+1` hard right,
  * **unclamped** beyond the viewport edges.
  *
- * The third of the three things a world position has to become. `@lattice/audio` cannot
+ * The third of the three things a world position has to become. `@latticekit/audio` cannot
  * compute it because the mapping needs a camera and `audio` may not depend on this package;
  * the game should not compute it because then every game rewrites it. How far a pan is
  * allowed to travel is a mixing policy and belongs to whoever owns the mixer — clamp it

@@ -7,7 +7,7 @@
  *
  * **This is a gallery instrument and never a kit feature.** Nothing here may move into
  * `packages/`, no exhibit may depend on the landing page, and the landing page may not depend on
- * an exhibit. `@lattice/ui` is deliberately not a controls library and this is not an attempt to
+ * an exhibit. `@latticekit/ui` is deliberately not a controls library and this is not an attempt to
  * make it one — the panel is DOM the gallery owns, styled by the gallery, thrown away if the
  * gallery is.
  *
@@ -17,7 +17,7 @@
  * into. An exhibit may take any one of them without the others.
  *
  * See `README.md` beside this file for the argument about which half of this belongs in a
- * `@lattice/kit` package and which half does not.
+ * `@latticekit/kit` package and which half does not.
  */
 
 export { bootstrap } from './bootstrap.js';

@@ -38,8 +38,8 @@
  * the class and not on the interface. A game with a heightfield therefore cannot iterate it
  * through the type the heightfield hands it. See the README.
  */
-import { fbm2, hash2, hashString, noise2, toUnit } from '@lattice/core';
-import { TILE_H, TileGrid, footprintBase, type HeightField } from '@lattice/iso';
+import { fbm2, hash2, hashString, noise2, toUnit } from '@latticekit/core';
+import { TILE_H, TileGrid, footprintBase, type HeightField } from '@latticekit/iso';
 
 /** Tiles across, and the same down. Sized so the world box is roughly four times the viewport on
  *  its long axis at the opening zoom, with the hill leaving every edge of the frame. */

@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
  * time and a strict port turns "somebody else is already running theirs" into a crash rather than
  * into a different number in the banner.
  *
- * `@lattice/*` is deliberately not aliased to package source: the workspace symlinks resolve it
+ * `@latticekit/*` is deliberately not aliased to package source: the workspace symlinks resolve it
  * to each package's `dist`, which is what a visitor who installed the kit gets. `npm run build`
  * first.
  */

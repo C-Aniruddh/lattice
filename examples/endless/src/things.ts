@@ -45,8 +45,8 @@
  * two of its eight fronds and on the exact frame a sway carries one across. A flat quad is what a
  * frond mostly is from a dimetric camera, and the problem is gone rather than epsilon'd.
  */
-import { hash2, hashStep, noise2, toUnit, type Vec2 } from '@lattice/core';
-import { gridToScreen, type DepthSorter } from '@lattice/iso';
+import { hash2, hashStep, noise2, toUnit, type Vec2 } from '@latticekit/core';
+import { gridToScreen, type DepthSorter } from '@latticekit/iso';
 import {
   LEVEL_H,
   VARIANT_ZERO,
@@ -63,7 +63,7 @@ import {
   type SolidWriter,
   type SpriteDef,
   type Variant,
-} from '@lattice/draw';
+} from '@latticekit/draw';
 import { BIAS, STEP_PX, cell, dFar, dNear, sMax, sMin, seed } from './chunks.js';
 import { hazeFrom } from './terrain.js';
 

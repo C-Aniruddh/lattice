@@ -24,9 +24,9 @@
  * after a drag, which is the point. Each costs one projection and a two-segment stroke, and the
  * off-screen ones are rejected on their x before anything else is computed.
  */
-import { clamp01, hash2, noise2, toUnit, type Vec2 } from '@lattice/core';
-import { gridToScreen, heightAt } from '@lattice/iso';
-import { mix, wash, withAlpha, type Pen } from '@lattice/draw';
+import { clamp01, hash2, noise2, toUnit, type Vec2 } from '@latticekit/core';
+import { gridToScreen, heightAt } from '@latticekit/iso';
+import { mix, wash, withAlpha, type Pen } from '@latticekit/draw';
 import { MAIN_V, bedAt, type Island } from './island.js';
 import { softGlow } from './palette.js';
 import { skyWash } from './sky.js';

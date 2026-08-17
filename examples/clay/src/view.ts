@@ -33,9 +33,9 @@
  * visitor who wants to go and look somewhere else pans with the arrow keys or pinches out, because
  * the brush has claimed the drag. See `main.ts`.
  */
-import { clamp } from '@lattice/core';
-import { rectFromSize, type Camera, type Rect } from '@lattice/iso';
-import type { Passes, Pen } from '@lattice/draw';
+import { clamp } from '@latticekit/core';
+import { rectFromSize, type Camera, type Rect } from '@latticekit/iso';
+import type { Passes, Pen } from '@latticekit/draw';
 import type { Bucket } from '../../_shared/src/index.js';
 import { MAX_UNITS, STEP_PX, type Clay } from './clay.js';
 import { drawBrush, paintClay } from './ground.js';

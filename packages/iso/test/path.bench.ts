@@ -13,7 +13,7 @@
  */
 
 import { bench, describe } from 'vitest';
-import { createRng } from '@lattice/core';
+import { createRng } from '@latticekit/core';
 import { FlowField, Path, PathFinder, pathDirAt, pathProject, pathSample, pathSimplify } from '../src/path.js';
 import type { TileCost } from '../src/path.js';
 import { TileGrid } from '../src/tilemap.js';

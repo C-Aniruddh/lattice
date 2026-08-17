@@ -13,9 +13,9 @@
  * loop and input system are `bootstrap()` from `examples/_shared`, which exists because the
  * thirty lines it replaces contain two mistakes that are silent when you make them.
  */
-import { FLAG_POWERED, LEVEL_H, drawSprite, renderFrame, spriteVolume, type Passes, type Pen } from '@lattice/draw';
-import { HALF_H, boxSilhouette, pointInPolygon, tileBounds, type GridPoint, type Rect, type Volume } from '@lattice/iso';
-import { drive } from '@lattice/ui';
+import { FLAG_POWERED, LEVEL_H, drawSprite, renderFrame, spriteVolume, type Passes, type Pen } from '@latticekit/draw';
+import { HALF_H, boxSilhouette, pointInPolygon, tileBounds, type GridPoint, type Rect, type Volume } from '@latticekit/iso';
+import { drive } from '@latticekit/ui';
 import { bootstrap, controlPanel, createBucket, knobs } from '../../_shared/src/index.js';
 import { BLUE, hourAt, nightfall } from './palette.js';
 import { CURB_PX, W, createCity, type Lot } from './city.js';

@@ -21,8 +21,8 @@
  * varied per instance from `Variant.seed` — so column 19 leans the way column 19 leans on every
  * reload, and after every re-sort.
  */
-import { hash2, noise2, toUnit } from '@lattice/core';
-import { gridToScreen } from '@lattice/iso';
+import { hash2, noise2, toUnit } from '@latticekit/core';
+import { gridToScreen } from '@latticekit/iso';
 import {
   LEVEL_H,
   defineSprite,
@@ -35,7 +35,7 @@ import {
   withAlpha,
   type Ink,
   type Pen,
-} from '@lattice/draw';
+} from '@latticekit/draw';
 
 /** Scratch for the one conversion an animator needs. Module scope, so no frame allocates one. */
 const pt = { x: 0, y: 0 };

@@ -1,4 +1,4 @@
-# RFC — `@lattice/audio`
+# RFC — `@latticekit/audio`
 
 > Status: proposed. Owner: lattice-architect (task A6). Implements: `.lattice/kit.json` → `packages.audio`.
 > Reviewer: hold the built package against §5 and §6.
@@ -9,7 +9,7 @@
 
 ## 1. The one sentence
 
-**`@lattice/audio` turns a table of oscillator recipes into the sound of a game — with no files,
+**`@latticekit/audio` turns a table of oscillator recipes into the sound of a game — with no files,
 no `AudioContext` until the player touches something, a hard ceiling on how loud a burst can get,
 and one continuous bed that follows a number the game already has.**
 
@@ -24,7 +24,7 @@ This is what a game does with this package roughly all of the time: declare a ta
 first gesture, and play by name.
 
 ```ts
-import { createAudio, createBed } from '@lattice/audio';
+import { createAudio, createBed } from '@latticekit/audio';
 
 const audio = createAudio({ sounds: {
   tap:     { bus: 'ui',  minGapMs: 40, layers: [{ wave: 'sine', hz: 1180, gain: 0.05, hold: 0.03, cutoff: 2400 }] },
@@ -289,7 +289,7 @@ implemented as "set gain to 0" is the bug where turning the music back on return
 volume; it is very common and it is why these are two calls and not one.
 
 **What persists, and where it lives:** this package stores nothing. `snapshot()` returns a small
-plain value and `restore()` takes one back, and the game hands that value to `@lattice/persist`.
+plain value and `restore()` takes one back, and the game hands that value to `@latticekit/persist`.
 Three reasons, in order of weight:
 
 1. **Layering.** `audio` and `persist` are both layer 1. There is no edge between them and adding
@@ -314,7 +314,7 @@ export interface Mixer {
   /** Independent of gain. Muting master silences everything and preserves every bus's level. */
   setMuted(bus: BusName, muted: boolean): void;
   /**
-   * The whole mixer as a value to hand to `@lattice/persist`. Not an output parameter and not on
+   * The whole mixer as a value to hand to `@latticekit/persist`. Not an output parameter and not on
    * any hot path: this is called when a settings panel closes, not per frame.
    */
   snapshot(): MixerState;
@@ -736,7 +736,7 @@ needs an argument that beats the one written next to it.
    nothing exists until a gesture. `createAudio` is the only door.
 6. **Any use of `localStorage`.** §3.2. `snapshot`/`restore` return a value; `persist` owns storage.
 7. **Attaching its own `pointerdown`/`touchstart` listener to auto-unlock.** Tempting, and it is
-   half a line. But `@lattice/input` owns the DOM event surface, a package that installs a global
+   half a line. But `@latticekit/input` owns the DOM event surface, a package that installs a global
    listener fights the game's handler ordering and its `passive` choices, and a listener installed
    at import time is exactly the boot-time side effect rule 1 exists to prevent. The game calls
    `unlock()`.
@@ -815,7 +815,7 @@ except where marked.
     `deck.pump()` and `bed.set()` do nothing, the context is closed, and a second `dispose()` is a
     no-op.
 20. **No banned globals.** `npm run lint` finds no `Math.random`, `Date.now` or `performance.now` in
-    `packages/audio/src`, and no import of any package other than `@lattice/core`.
+    `packages/audio/src`, and no import of any package other than `@latticekit/core`.
 21. **Requires a device:** every scheduled node is disconnected once its `end` has passed — after a
     hundred plays and a full release tail, the context's node count returns to its post-`unlock`
     baseline, and a bed's node count does not grow with `set` calls.

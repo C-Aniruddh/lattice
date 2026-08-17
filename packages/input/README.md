@@ -1,4 +1,4 @@
-# @lattice/input
+# @latticekit/input
 
 > Every way a person can touch a game — finger, mouse, pen, key — as **one replayable stream of
 > intents in tile coordinates**, bucketed to simulation ticks, behind **one object** that unbinds
@@ -7,7 +7,7 @@
 Part of **[Lattice](https://github.com/C-Aniruddh/lattice)** — the grid underneath.
 
 ```bash
-npm i @lattice/input
+npm i @latticekit/input
 ```
 
 ---
@@ -58,8 +58,8 @@ Everything below runs in Node with no DOM and no shim, and is executed by
 [`test/readme.test.ts`](./test/readme.test.ts) on every commit.
 
 ```ts
-import { createCamera } from '@lattice/iso';
-import { createHeadlessInput, createLog, fixedStep, record, replay } from '@lattice/input';
+import { createCamera } from '@latticekit/iso';
+import { createHeadlessInput, createLog, fixedStep, record, replay } from '@latticekit/input';
 
 const camera = createCamera(800, 600); //          CSS pixels, centered on (0, 0)
 const input = createHeadlessInput({
@@ -133,7 +133,7 @@ const again = createHeadlessInput({ /* the same options */ });
 replay(again, log); //  identical gestures, identical ticks, identical tiles
 ```
 
-`@lattice/persist` stores that log verbatim and compares three fields before it will agree to
+`@latticekit/persist` stores that log verbatim and compares three fields before it will agree to
 replay it — `version`, `stepMs` and `profile`. Read them off a fresh log rather than typing them
 at the call site, so the recorded and the current cannot drift apart:
 
@@ -271,12 +271,12 @@ world:
 
 | how the node came to take the press | reported? |
 |---|---|
-| `pointer-events` set **inline**, on it or an ancestor — which is what `@lattice/ui` writes on every node it grants | no |
+| `pointer-events` set **inline**, on it or an ancestor — which is what `@latticekit/ui` writes on every node it grants | no |
 | listed in `createInput({ overlays: [hud] })` | no |
 | `auto` from a stylesheet, with an inline `none` above it that lost the specificity fight | **yes** — this is the bug |
 | `auto` from a stylesheet, with nothing declared anywhere | **yes** |
 
-The first row is why a `@lattice/ui` panel is silent with no configuration at all: that package
+The first row is why a `@latticekit/ui` panel is silent with no configuration at all: that package
 ships **no stylesheet** and writes the grant per node, so "somebody named this node" is a fact
 already recorded in the DOM. `overlays` is the escape for a HUD styled entirely from CSS, which
 cannot be told apart from a spacer any other way. It is read when a cover is found rather than at
@@ -377,4 +377,4 @@ the recognizer, the action map, the buffer, the log, the camera controller — r
 Node, which is how every invariant in the RFC is tested with no shim and how a replay runs
 headless.
 
-Depends on `@lattice/core` and `@lattice/iso`, and on nothing else.
+Depends on `@latticekit/core` and `@latticekit/iso`, and on nothing else.

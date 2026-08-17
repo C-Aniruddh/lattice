@@ -15,9 +15,9 @@
  * in front of it, which is what makes a curb look like a step down rather than like a change of
  * color.
  */
-import { hash2, noise2, toUnit, type Vec2 } from '@lattice/core';
-import { gridToScreen, type TileRange } from '@lattice/iso';
-import { isoBox, isoPatch, isoTile, mix, shade, withAlpha, type Pen } from '@lattice/draw';
+import { hash2, noise2, toUnit, type Vec2 } from '@latticekit/core';
+import { gridToScreen, type TileRange } from '@latticekit/iso';
+import { isoBox, isoPatch, isoTile, mix, shade, withAlpha, type Pen } from '@latticekit/draw';
 import { BLOCK, BLOCKS, CURB, PERIOD, STREET, W } from './city.js';
 import { snap } from './palette.js';
 

@@ -19,7 +19,7 @@
  * The road is *found*, never authored — `PathFinder` over a cost that combines terrain with slope
  * — so it contours around the steep ground rather than climbing straight up it.
  */
-import { clamp01, fbm2, hash2, hashString, noise2, toUnit } from '@lattice/core';
+import { clamp01, fbm2, hash2, hashString, noise2, toUnit } from '@latticekit/core';
 import {
   Path,
   PathFinder,
@@ -33,7 +33,7 @@ import {
   type HeightField,
   type TileCost,
   type TileRange,
-} from '@lattice/iso';
+} from '@latticekit/iso';
 
 /**
  * The map, in tiles. **96 rather than 64 is the whole of § Scale's extent row.**

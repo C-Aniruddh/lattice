@@ -28,14 +28,14 @@ A valley at dusk. Tap a tile and a lamp goes up there, and the night opens aroun
 whole program — there is no scene file, no asset pipeline and no build step beyond `tsc`.
 
 ```ts
-import { DepthSorter, createCamera } from '@lattice/iso';
+import { DepthSorter, createCamera } from '@latticekit/iso';
 import {
   BASE_SLOTS, VARIANT_ZERO, beginFrame, createCanvas2dSurface, createLightField,
   createPalette, defineSprite, drawSprite, endFrame, isoTile, renderFrame, spriteHeightPx,
-} from '@lattice/draw';
-import type { Variant } from '@lattice/draw';
-import { browserFrames, createLoop } from '@lattice/loop';
-import { createInput } from '@lattice/input';
+} from '@latticekit/draw';
+import type { Variant } from '@latticekit/draw';
+import { browserFrames, createLoop } from '@latticekit/loop';
+import { createInput } from '@latticekit/input';
 
 // A sprite is a footprint and a function. `massing` draws the object; `emit` is the light it
 // throws, which runs only when the frame is actually dark.
@@ -291,7 +291,7 @@ npm run dev        # the demo game, on :5173
 Or install what you need. Every package brings only the ones below it in the DAG:
 
 ```bash
-npm i @lattice/iso     # brings @lattice/core, and nothing else
+npm i @latticekit/iso     # brings @latticekit/core, and nothing else
 ```
 
 | if you want | read |

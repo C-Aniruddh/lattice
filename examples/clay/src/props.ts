@@ -30,9 +30,9 @@
  * their real size and the camera's zoom does the choosing, which is the whole argument for vector
  * art over three sprite sheets.
  */
-import { hash2, toUnit } from '@lattice/core';
-import { HALF_H, HALF_W, TILE_H, TILE_W, heightAt, pxToUnits, slopeAt, type Camera, type Rect } from '@lattice/iso';
-import { isoBox, isoCylinder, isoPost, isoRoof, mix, pxToLevels, shade, withAlpha, type Pen } from '@lattice/draw';
+import { hash2, toUnit } from '@latticekit/core';
+import { HALF_H, HALF_W, TILE_H, TILE_W, heightAt, pxToUnits, slopeAt, type Camera, type Rect } from '@latticekit/iso';
+import { isoBox, isoCylinder, isoPost, isoRoof, mix, pxToLevels, shade, withAlpha, type Pen } from '@latticekit/draw';
 import type { Bucket } from '../../_shared/src/index.js';
 import { CELLS, N, STEP_PX, type Clay } from './clay.js';
 import { LEAVES } from './palette.js';

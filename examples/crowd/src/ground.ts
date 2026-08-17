@@ -21,9 +21,9 @@
  * already there. What is drawn is the metre of water that touches stone, which is the only part
  * of a lagoon anybody looks at.
  */
-import { hash2, noise2, toUnit } from '@lattice/core';
-import { gridToScreen, heightAt, type TileRange } from '@lattice/iso';
-import { isoTerrain, mix, shade, withAlpha, type Ink, type Pen } from '@lattice/draw';
+import { hash2, noise2, toUnit } from '@latticekit/core';
+import { gridToScreen, heightAt, type TileRange } from '@latticekit/iso';
+import { isoTerrain, mix, shade, withAlpha, type Ink, type Pen } from '@latticekit/draw';
 import { PAVE, PC, WATER, isle, type Plaza } from './plaza.js';
 
 const pt = { x: 0, y: 0 };

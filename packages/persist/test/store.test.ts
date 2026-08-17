@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { asEpochMillis, createRng, type EpochMillis } from '@lattice/core';
+import { asEpochMillis, createRng, type EpochMillis } from '@latticekit/core';
 import { memoryStorage, type StorageAdapter } from '../src/adapters.js';
 import { defaultChecksum } from '../src/integrity.js';
 import { migrations, type Recognize } from '../src/migrate.js';

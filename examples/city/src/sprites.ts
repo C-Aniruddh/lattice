@@ -39,8 +39,8 @@
  *   `pxToLevels` and add it to every storey height, exactly as the massing's are already offset,
  *   or the beacon blinks at street level while its mast is fourteen floors up.
  */
-import { hash2, noise2, toUnit, type Vec2 } from '@lattice/core';
-import { gridToScreen } from '@lattice/iso';
+import { hash2, noise2, toUnit, type Vec2 } from '@latticekit/core';
+import { gridToScreen } from '@latticekit/iso';
 import {
   FLAG_POWERED,
   LEVEL_H,
@@ -54,7 +54,7 @@ import {
   type Pen,
   type SolidWriter,
   type Variant,
-} from '@lattice/draw';
+} from '@latticekit/draw';
 import { steam } from './ambient.js';
 import { snap } from './palette.js';
 

@@ -1,14 +1,14 @@
 /**
  * Recording, refusing, and playing back.
  *
- * The refusals carry the weight here. `@lattice/persist` compares the same three fields and
+ * The refusals carry the weight here. `@latticekit/persist` compares the same three fields and
  * refuses on the same reasoning, and the reasoning is worth repeating: a migrated input log is
  * a log that no longer replays, so a "repaired" mismatch produces a **confident wrong answer**
  * — which is worse than no answer, because it looks like it has been tested.
  */
 
 import { describe, expect, it } from 'vitest';
-import { createCamera } from '@lattice/iso';
+import { createCamera } from '@latticekit/iso';
 import { createHeadlessInput } from '../src/system.js';
 import { createLog, record, replay, replayCursor } from '../src/record.js';
 import { LOG_VERSION } from '../src/sample.js';
@@ -130,7 +130,7 @@ describe('replayCursor', () => {
     const freshSeen = watch(fresh);
     const cursor = replayCursor(fresh, log);
     const updates: number[] = [];
-    // The shape `@lattice/loop`'s replay driver drives: `applyAt(tick)` exactly once per tick,
+    // The shape `@latticekit/loop`'s replay driver drives: `applyAt(tick)` exactly once per tick,
     // in ascending order, before that tick's update.
     for (let tick = 0; tick < cursor.ticks; tick++) {
       cursor.applyAt(tick);
@@ -213,7 +213,7 @@ describe('a log whose samples are not samples', () => {
       TypeError,
     );
     // The claim is exactly one level deep: `submit` already asks whether a `down` is well formed,
-    // and `@lattice/persist` owns whether this is the log that was saved.
+    // and `@latticekit/persist` owns whether this is the log that was saved.
     expect(() => replay(h.input, { ...createLog(h.input), samples: [down(1, 0, 0)] })).not.toThrow();
   });
 

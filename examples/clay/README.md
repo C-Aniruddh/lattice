@@ -5,7 +5,7 @@ on it resettle under your hand.** `iso.height` · `iso.path`
 
 ```bash
 npm run build                       # the exhibits render against each package's dist, not its src
-npm run dev --workspace=@lattice/example-clay
+npm run dev --workspace=@latticekit/example-clay
 # http://localhost:5196/  ·  ?seed=riverbed
 ```
 
@@ -230,7 +230,7 @@ Two things beside the relief, both of which were needed:
 
 ## `ActionEvent.gx/gy` is a flat-ground answer, and this is the worst case for it
 
-`@lattice/input` resolves a pointer through `worldToTile`, the exact inverse of the projection **on
+`@latticekit/input` resolves a pointer through `worldToTile`, the exact inverse of the projection **on
 the plane `z = 0`** — the only plane it inverts. It has no seam for a `HeightField` and no way to be
 handed one, so `gx`/`gy` on every gesture and every action it fires assume the ground is flat.
 `Terraces` measured that at 281 px and 14 tiles on a static hillside and filed it as **K44**.
@@ -391,7 +391,7 @@ Ranked by how much time each cost.
    an unbounded procedural world, but `screenToTileOnHeights` uses `has` as its *only* off-map test,
    so the two compose into a pick that never returns `false`. A `boundedTileSource(get, w, h)` beside
    it would close it; as it stands, every bounded heightfield exhibit hand-writes the same six lines.
-5. **`@lattice/ui` has no button, no toggle and no segmented control.** `Canyon` reported the same
+5. **`@latticekit/ui` has no button, no toggle and no segmented control.** `Canyon` reported the same
    absence about a slider. Two exhibits needing two different missing primitives is a finding rather
    than a coincidence: the package ships `roll`, `panel`, `toasts`, `floats`, `thumbnails` and
    `acknowledge`, and an exhibit's *one control* is usually none of those. Every millimetre of this
@@ -402,7 +402,7 @@ Ranked by how much time each cost.
 7. **No hover gesture (`input`).** Six gestures and none of them is a pointer that is not pressing.
    The brush ring has to follow the cursor, so this exhibit adds a raw `pointermove` listener —
    `Terraces` reported the same gap for the same reason.
-8. **`bootstrap` exposes no `now()` (`examples/_shared`).** `@lattice/ui` requires the clock `loop`
+8. **`bootstrap` exposes no `now()` (`examples/_shared`).** `@latticekit/ui` requires the clock `loop`
    was given and the kit bans reading `performance.now()` in exhibit source, so the overlay is driven
    from `boot.loop.realTime * 1000`. Reported by `Terraces` too.
 

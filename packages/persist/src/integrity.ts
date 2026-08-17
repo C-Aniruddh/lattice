@@ -7,7 +7,7 @@
  * never normalize its input (because the bytes are the subject, not the text).
  */
 
-import { hashString } from '@lattice/core';
+import { hashString } from '@latticekit/core';
 
 /**
  * A checksum over the exact payload text.
@@ -34,7 +34,7 @@ import { hashString } from '@lattice/core';
 export type Checksum = (text: string) => string;
 
 /**
- * `hashString` from `@lattice/core`, rendered as eight lowercase hex digits.
+ * `hashString` from `@latticekit/core`, rendered as eight lowercase hex digits.
  *
  * Deliberately not a bespoke CRC or FNV implementation: `core` split `hash` into its own
  * module precisely so `persist`, `draw` and `iso` would not each grow a private 32-bit hash.

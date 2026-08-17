@@ -11,9 +11,9 @@
  * a sprite grows a mast at level 3.
  */
 
-import type { Vec2 } from '@lattice/core';
-import { boxSilhouette, gridToScreen, pointInPolygon } from '@lattice/iso';
-import type { Rect, Volume } from '@lattice/iso';
+import type { Vec2 } from '@latticekit/core';
+import { boxSilhouette, gridToScreen, pointInPolygon } from '@latticekit/iso';
+import type { Rect, Volume } from '@latticekit/iso';
 import { describe, expect, it } from 'vitest';
 import { rgba } from '../src/color.js';
 import { createLightField } from '../src/light.js';

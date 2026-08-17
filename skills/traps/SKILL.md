@@ -50,7 +50,7 @@ interfaces differing only in `readonly` are mutually assignable — and a `Reado
 happily into a parameter typed `Vec2`, where the callee writes to it.
 
 ```ts wrong
-import { v2, v2Add } from '@lattice/core';
+import { v2, v2Add } from '@latticekit/core';
 
 const ORIGIN: Readonly<{ x: number; y: number }> = Object.freeze(v2(0, 0));
 // Compiles. Throws a TypeError on the one frame this path executes.
@@ -58,8 +58,8 @@ v2Add(ORIGIN as { x: number; y: number }, ORIGIN as { x: number; y: number }, v2
 ```
 
 ```ts
-import { v2, v2Len } from '@lattice/core';
-import type { ReadonlyVec2 } from '@lattice/core';
+import { v2, v2Len } from '@latticekit/core';
+import type { ReadonlyVec2 } from '@latticekit/core';
 
 // `ReadonlyVec2` builds a real barrier — a phantom property whose types conflict in exactly one
 // direction. It erases at runtime and costs nothing.
@@ -121,7 +121,7 @@ A modal polled "should this be open?" every 900 ms while quests settled every 1,
 settle and the next one the derived condition was briefly true again, so the modal **reopened
 after the player had confirmed** — and the obvious recovery, pressing confirm again, overwrote the
 company name they had just typed. **One-shot UI is driven off a latch or an event, never off a
-poll of derived state.** And one `createLoop` per game: `@lattice/ui` starts no timer of its own
+poll of derived state.** And one `createLoop` per game: `@latticekit/ui` starts no timer of its own
 precisely so a second one cannot exist.
 
 ### A light field that was never attached to the pen
@@ -356,4 +356,4 @@ Two corollaries that keep catching people:
 | replays and what may be hashed | `determinism` |
 | what is actually slow, and what not to optimize | `performance` |
 
-Every package also ships its README: `node_modules/@lattice/<name>/README.md`.
+Every package also ships its README: `node_modules/@latticekit/<name>/README.md`.

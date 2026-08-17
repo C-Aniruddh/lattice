@@ -10,7 +10,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createCamera } from '@lattice/iso';
+import { createCamera } from '@latticekit/iso';
 import { createHeadlessInput } from '../src/system.js';
 import { record, replay } from '../src/record.js';
 import type { Diagnostic } from '../src/sample.js';

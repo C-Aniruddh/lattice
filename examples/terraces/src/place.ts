@@ -10,7 +10,7 @@
  * ## The seam
  *
  * `iso.gridToScreen(camera, gx, gy, zPx, out)` is the public projection and it is correct. It is
- * also **not the projection `@lattice/draw` uses**: every primitive in the solid kit adds
+ * also **not the projection `@latticekit/draw` uses**: every primitive in the solid kit adds
  * `pen.snapX` / `pen.snapY` to each corner it produces, which is the sub-pixel correction that
  * lands the world origin on a whole device pixel and stops one-pixel strokes shimmering across a
  * pan. `draw` has an internal `put` that does both; it is not in the package's barrel.
@@ -21,9 +21,9 @@
  * crawls against its own tile while the camera moves. Adding it by hand is what this file is, and
  * that it has to exist at all is filed as a kit finding.
  */
-import type { Vec2 } from '@lattice/core';
-import { gridToScreen } from '@lattice/iso';
-import type { Pen } from '@lattice/draw';
+import type { Vec2 } from '@latticekit/core';
+import { gridToScreen } from '@latticekit/iso';
+import type { Pen } from '@latticekit/draw';
 
 /** Scratch, so a projection per corner per crop row per tile allocates nothing. Never retained:
  *  read both components out before the next call, exactly as `Pen.xy` asks. */

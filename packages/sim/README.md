@@ -1,4 +1,4 @@
-# @lattice/sim
+# @latticekit/sim
 
 > Idle-economy mathematics in closed form: cost curves, the flow integrator, offline accrual,
 > capacity gating, and the instant a stock runs out.
@@ -6,7 +6,7 @@
 Part of **[Lattice](https://github.com/C-Aniruddh/lattice)** — the grid underneath.
 
 ```bash
-npm i @lattice/sim
+npm i @latticekit/sim
 ```
 
 **`sim` is the arithmetic of an idle economy in closed form — a production graph you can integrate
@@ -78,12 +78,12 @@ hours, and while they are away lamps run dry one after another — and the game 
 *when*, in the clock they actually lived through.
 
 ```ts
-import { asEpochMillis } from '@lattice/core';
+import { asEpochMillis } from '@latticekit/core';
 import {
   advanceOver, buildFlow, costOfNext, createFlow, defineEconomy,
   maxBuyable, offlineCredit, project, solveCrossingOver, zeroStocks,
-} from '@lattice/sim';
-import type { CatchUp, Ledger, OfflineCurve, Phase } from '@lattice/sim';
+} from '@latticekit/sim';
+import type { CatchUp, Ledger, OfflineCurve, Phase } from '@latticekit/sim';
 
 // ── declare the economy once, at load ───────────────────────────────────────
 const prestige = 9;                          // a banked total. changes only when the player acts

@@ -17,9 +17,9 @@ block *is* the HUD's art direction — that is a feature, and it is why there is
 ## The whole thing
 
 ```ts
-import { fmtCompact } from '@lattice/core';
-import { browserFrames, createLoop } from '@lattice/loop';
-import { createOverlay, drive, el, interactive, roll, setText, toasts } from '@lattice/ui';
+import { fmtCompact } from '@latticekit/core';
+import { browserFrames, createLoop } from '@latticekit/loop';
+import { createOverlay, drive, el, interactive, roll, setText, toasts } from '@latticekit/ui';
 
 interface Model {
   readonly coin: number;
@@ -66,7 +66,7 @@ Five lines, five decisions already made:
 | `roll` | the number animates on paint and is *correct* on update: if `render` never runs the text is still right |
 | `ui.every` | the state cadence is the loop's `update`. This package starts **no timer and no rAF loop** |
 | `drive` | the pairing it is fatal to cross is a function body, not a comment |
-| `fmtCompact` | formatting comes from `@lattice/core`. This package has no `fmt` and never will |
+| `fmtCompact` | formatting comes from `@latticekit/core`. This package has no `fmt` and never will |
 
 ---
 
@@ -107,8 +107,8 @@ node has an inline declaration that outranks it.
 When a tap goes missing anyway:
 
 ```ts
-import { auditOverlay } from '@lattice/ui';
-import type { Overlay } from '@lattice/ui';
+import { auditOverlay } from '@latticekit/ui';
+import type { Overlay } from '@latticekit/ui';
 
 export function whyIsMyTapGone(ui: Overlay): readonly string[] {
   return auditOverlay(ui);   // one English sentence per problem
@@ -124,8 +124,8 @@ It catches a node granted `auto` by a stylesheet rather than by `interactive()`,
 ## Latches, because driving UI from a poll is the natural mistake
 
 ```ts
-import { acknowledge, panel, toasts } from '@lattice/ui';
-import type { Overlay } from '@lattice/ui';
+import { acknowledge, panel, toasts } from '@latticekit/ui';
+import type { Overlay } from '@latticekit/ui';
 
 export function wireMessages(ui: Overlay, read: () => { naming: boolean; storage: string }): void {
   const namer = panel(ui, { modal: true });
@@ -173,9 +173,9 @@ when they did not.
 ## Day and night reaching the HUD
 
 ```ts
-import { DAY, NIGHT, createPalette, paletteVars } from '@lattice/draw';
-import { applyPalette } from '@lattice/ui';
-import type { Overlay } from '@lattice/ui';
+import { DAY, NIGHT, createPalette, paletteVars } from '@latticekit/draw';
+import { applyPalette } from '@latticekit/ui';
+import type { Overlay } from '@latticekit/ui';
 
 const palette = createPalette(DAY);
 let pushedRev = -1;
@@ -262,5 +262,5 @@ that still takes taps behind the dialog, and nothing at all for a keyboard-only 
 | what the numbers mean | `economy` |
 | the status a message is reporting | `saving` |
 
-Long form, on disk: `node_modules/@lattice/ui/README.md` — including the full list of class names
+Long form, on disk: `node_modules/@latticekit/ui/README.md` — including the full list of class names
 your stylesheet may hold on to.

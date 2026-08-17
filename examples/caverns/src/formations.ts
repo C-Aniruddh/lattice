@@ -36,8 +36,8 @@
  * `pen.light?.add` — the same place `island`'s fireflies ended up, for the same reason. That two
  * exhibits independently routed around the same hook is the finding, and it is in the report.
  */
-import { noise2 } from '@lattice/core';
-import { gridToScreen } from '@lattice/iso';
+import { noise2 } from '@latticekit/core';
+import { gridToScreen } from '@latticekit/iso';
 import {
   LEVEL_H,
   defineSprite,
@@ -49,7 +49,7 @@ import {
   withAlpha,
   type Pen,
   type SpriteDef,
-} from '@lattice/draw';
+} from '@latticekit/draw';
 import type { Bucket } from '../../_shared/src/index.js';
 import type { Cavern, Flame, Lit } from './cavern.js';
 import { flame, gutter, pool, snap } from './ambient.js';

@@ -27,9 +27,9 @@
  * what makes the two halves of the day feel like one day rather than like two backgrounds: they
  * rise from the same point on the left, cross at the same height, and set into the same water.
  */
-import { clamp, clamp01, hash2, noise2, toUnit, type Vec2 } from '@lattice/core';
-import { gridToScreen } from '@lattice/iso';
-import { mix, shade, withAlpha, type Pen, type Rgba } from '@lattice/draw';
+import { clamp, clamp01, hash2, noise2, toUnit, type Vec2 } from '@latticekit/core';
+import { gridToScreen } from '@latticekit/iso';
+import { mix, shade, withAlpha, type Pen, type Rgba } from '@latticekit/draw';
 import { SKY_V } from './island.js';
 import { softGlow } from './palette.js';
 

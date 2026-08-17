@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
  * therefore outside Vite's default filesystem allow-list. Without it the boot module 403s and the
  * page is blank with one line in the terminal nobody reads twice.
  *
- * `@lattice/*` is deliberately **not** aliased to package source. The workspace symlinks resolve it
+ * `@latticekit/*` is deliberately **not** aliased to package source. The workspace symlinks resolve it
  * to each package's `dist`, which is what a visitor who installed the kit would get. `npm run
  * build` at the repo root first.
  *

@@ -1,5 +1,5 @@
 /**
- * The mixer: three buses, one master, and a snapshot the game hands to `@lattice/persist`.
+ * The mixer: three buses, one master, and a snapshot the game hands to `@latticekit/persist`.
  *
  * ## Why gain and mute are two values and not one
  *
@@ -12,7 +12,7 @@
  * ## Why this module stores nothing
  *
  * `snapshot()` returns a small plain value and `restore()` takes one back; the game hands
- * that value to `@lattice/persist`. Three reasons, in order of weight. **Layering**: `audio`
+ * that value to `@latticekit/persist`. Three reasons, in order of weight. **Layering**: `audio`
  * and `persist` are both layer 1, so an edge between them is a design error rather than a
  * convenience. **A device preference is not save state**: a player who hits START OVER must
  * not get their sound turned back on, and a mute must not ride along in an export — that is a
@@ -22,7 +22,7 @@
  * Tier A, no clock, no platform. The device is reached only through the `apply` callback.
  */
 
-import { clamp } from '@lattice/core';
+import { clamp } from '@latticekit/core';
 
 import { BUS_NAMES, RAMP_SEC, type BusName } from './sounds.js';
 
@@ -65,7 +65,7 @@ export interface Mixer {
    */
   setMuted(bus: BusName, muted: boolean): void;
   /**
-   * The whole mixer as a value to hand to `@lattice/persist`.
+   * The whole mixer as a value to hand to `@latticekit/persist`.
    *
    * Not an output parameter and not on any hot path: this is called when a settings panel
    * closes, not per frame.

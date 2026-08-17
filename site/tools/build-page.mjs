@@ -42,31 +42,15 @@ const esc = (s) =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /**
- * The five British spellings in `.lattice/kit.json`, corrected on the way onto the page.
+ * `.lattice/kit.json` is the single source of this page's prose, and it is printed verbatim.
  *
- * `AGENTS.md` requires American spelling throughout, "prose and identifiers alike", and the
- * manifest has drifted from that in five places. The page has to print one or the other and
- * cannot print both, so it prints the house style and the table below is the complete, auditable
- * list of what it changed — nobody has to diff two files to find out.
- *
- * **Prose only.** {@link say} is never applied to an export name, a module name or a package
- * name: `createIdSource` contains none of these strings and `TileSource` contains "Source", but
- * a rule that touched symbols at all would be a reference that lies about what you can import.
- * The underlying five are a finding against `kit.json` and are in this page's report.
+ * A spelling-correction table used to sit here. `AGENTS.md` requires American spelling "prose
+ * and identifiers alike", the manifest had drifted from that in seven places, and this page
+ * house-styled them on the way out — a workaround for a bug in a file the page does not own.
+ * The manifest has since been fixed at source, so the table is gone and the page prints what
+ * it reads. If a British spelling appears on this page again, the bug is in `kit.json` and
+ * that is where it gets fixed, rather than corrected here a second time.
  */
-const SPELLING = [
-  [/\bcolour\b/g, 'color'],
-  [/\bcolours\b/g, 'colors'],
-  [/\brecogniser\b/g, 'recognizer'],
-  [/\bparameterising\b/g, 'parameterizing'],
-  [/\bparameterisation\b/g, 'parameterization'],
-  [/\bNormalised\b/g, 'Normalized'],
-  [/\bmaths\b/g, 'math'],
-  [/\bnormalised\b/g, 'normalized'],
-];
-
-/** House-style a run of prose from the manifest. Never a symbol. */
-const say = (text) => SPELLING.reduce((out, [from, to]) => out.replace(from, to), String(text));
 
 /** kB with two decimals, the way `npm run size` prints it. */
 const kb = (n) => `${n.toFixed(2)} kB`;
@@ -193,12 +177,12 @@ function packageHtml(name) {
     .sort((a, b) => (entries.has(b) ? 1 : 0) - (entries.has(a) ? 1 : 0) || a.localeCompare(b))
     .map((s) => `<code${entries.has(s) ? ' class="entry"' : ''}>${esc(s)}</code>`)
     .join('');
-  const deps = p.dependsOn.length === 0 ? 'nothing' : p.dependsOn.map((d) => `@lattice/${d}`).join(', ');
+  const deps = p.dependsOn.length === 0 ? 'nothing' : p.dependsOn.map((d) => `@latticekit/${d}`).join(', ');
   return `        <details class="pkg" id="pkg-${name}">
           <summary>
             <h3>${esc(p.name)}<span class="layer">LAYER ${layerOf(name)}</span></h3>
             <span class="sz">${p.exports.length} exports${size === undefined ? '' : ` &middot; ${esc(kb(size.gzipKb))}`}</span>
-            <span class="why">${esc(say(p.purpose))}</span>
+            <span class="why">${esc(p.purpose)}</span>
           </summary>
           <div class="pkg-body">
             <div class="scroller"><table>
@@ -212,7 +196,7 @@ function packageHtml(name) {
             </table></div>
             <div>
               <h4>What it promises</h4>
-              <ul>${p.invariants.map((i) => `<li>${esc(say(i))}</li>`).join('')}</ul>
+              <ul>${p.invariants.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>
             </div>
             <div>
               <h4>${p.exports.length} exports &mdash; entry points first</h4>
@@ -319,7 +303,7 @@ ${JSON.stringify(
       <dt>page worst 10s</dt><dd id="m-worst">&mdash;</dd>
       <dt>scenes live</dt><dd id="live">0</dd>
     </dl>
-    <p class="note" style="max-width:34ch">This page measures itself with <code>@lattice/loop</code>. The worst figure is
+    <p class="note" style="max-width:34ch">This page measures itself with <code>@latticekit/loop</code>. The worst figure is
     <code>worstGapMs</code>, not <code>worstFrameMs</code> &mdash; a pump that is fast between long pauses is not a page
     that is fast. It reads <code>hidden</code> in a background tab, because a frame time of 0.0&nbsp;ms means
     <code>requestAnimationFrame</code> stopped, not that anything got quicker.</p>
@@ -340,7 +324,7 @@ ${proof.map((p) => `  <div><dt>${esc(p.key)}</dt><dd>${esc(p.value)}${p.unit ===
       <p class="lede">Lattice is a kit, not an engine. There is no scene graph you have to adopt, no editor,
       no runtime that owns your <code>main</code>. You import the two or three packages you need and call
       them from your own loop.</p>
-      <p>It installs with <strong>no transitive dependencies at all</strong>. <code>@lattice/core</code> depends
+      <p>It installs with <strong>no transitive dependencies at all</strong>. <code>@latticekit/core</code> depends
       on nothing; every other package depends only on the ones below it, and the graph is a DAG that points one
       way. All nine together are <strong>${esc(kb(fig('gzipTotal')))} gzipped</strong> &mdash; smaller than the hero
       image on most framework sites.</p>
@@ -364,7 +348,7 @@ ${packageNames
   .map((n) => {
     const p = kit.packages[n];
     const s = sizeOf(n);
-    return `            <tr><td><a href="#pkg-${n}"><code>${esc(p.name)}</code></a></td><td>${layerOf(n)}</td><td>${esc(say(p.purpose))}</td><td class="num">${s === undefined ? '&mdash;' : esc(kb(s.gzipKb))}</td></tr>`;
+    return `            <tr><td><a href="#pkg-${n}"><code>${esc(p.name)}</code></a></td><td>${layerOf(n)}</td><td>${esc(p.purpose)}</td><td class="num">${s === undefined ? '&mdash;' : esc(kb(s.gzipKb))}</td></tr>`;
   })
   .join('\n')}
           </tbody>
@@ -454,7 +438,7 @@ ${gallery.live.map(tileHtml).join('\n')}
       <p class="note">That is a real file &mdash; <a href="${src('site/example/hello.ts')}"><code>site/example/hello.ts</code></a> &mdash;
       and the page's build typechecks it against the built packages before printing it. If a signature in the kit
       changes, this page fails to build instead of quietly showing something that no longer works.</p>
-      <p class="shell-cmd"><span class="prompt">npm i</span> <span class="arg">@lattice/core @lattice/iso @lattice/draw @lattice/loop @lattice/input</span></p>
+      <p class="shell-cmd"><span class="prompt">npm i</span> <span class="arg">@latticekit/core @latticekit/iso @latticekit/draw @latticekit/loop @latticekit/input</span></p>
     </div>
   </section>
 
@@ -489,7 +473,7 @@ ${packageNames.map(packageHtml).join('\n')}
         <table>
           <thead><tr><th>claim</th><th>between</th><th>breaks as</th></tr></thead>
           <tbody>
-${kit.contracts.map((c) => `            <tr><td>${esc(say(c.claim))}</td><td>${c.packages.map((p) => `<code>${esc(p)}</code>`).join(' ')}</td><td>${esc(say(c.breaksAs))}</td></tr>`).join('\n')}
+${kit.contracts.map((c) => `            <tr><td>${esc(c.claim)}</td><td>${c.packages.map((p) => `<code>${esc(p)}</code>`).join(' ')}</td><td>${esc(c.breaksAs)}</td></tr>`).join('\n')}
           </tbody>
         </table>
       </div>
@@ -529,7 +513,7 @@ ${kit.contracts.map((c) => `            <tr><td>${esc(say(c.claim))}</td><td>${c
     </div>
     <div class="colophon">
       <h4>Colophon</h4>
-      <p style="margin:0">This page draws its own background with <code>@lattice/draw</code> and lights itself with
+      <p style="margin:0">This page draws its own background with <code>@latticekit/draw</code> and lights itself with
       <code>lerpPalette(DUSK, NIGHT, scroll)</code> &mdash; the kit's day cycle, running on a document instead of a
       canvas, repainted <span id="repaints">0</span> times so far. Set in IBM Plex, self-hosted &mdash; ${fontKb} kB of font, and the only asset this page has.
       ${esc(kit.license)}-licensed. Figures measured at <code>${esc(measured.commit)}</code> on ${esc(measured.measuredOn)}.</p>
@@ -556,9 +540,9 @@ The same content as JSON is at /api.json; the repository's own manifest is at /k
 
 ## Install
 
-    npm i @lattice/core @lattice/iso @lattice/draw @lattice/loop @lattice/input
+    npm i @latticekit/core @latticekit/iso @latticekit/draw @latticekit/loop @latticekit/input
 
-Add \`@lattice/audio\`, \`@lattice/persist\`, \`@lattice/sim\` and \`@lattice/ui\` as you need them.
+Add \`@latticekit/audio\`, \`@latticekit/persist\`, \`@latticekit/sim\` and \`@latticekit/ui\` as you need them.
 There are no peer dependencies and nothing transitive.
 
 ## The rules that bind every package
@@ -597,13 +581,13 @@ ${packageNames
     const s = sizeOf(n);
     return `### ${p.name}${s === undefined ? '' : ` (${kb(s.gzipKb)} gzipped)`}
 
-${say(p.purpose)}
+${p.purpose}
 
 - layer: ${layerOf(n)}; environment: ${p.environment}; depends on: ${p.dependsOn.length === 0 ? 'nothing' : p.dependsOn.join(', ')}
 - modules: ${p.modules.join(', ')}
 - start with: ${(p.entryPoints ?? []).length === 0 ? '(none declared)' : p.entryPoints.join(', ')}
 - invariants:
-${p.invariants.map((i) => `  - ${say(i)}`).join('\n')}
+${p.invariants.map((i) => `  - ${i}`).join('\n')}
 - exports (${p.exports.length}): ${p.exports.join(', ')}
 `;
   })
@@ -611,7 +595,7 @@ ${p.invariants.map((i) => `  - ${say(i)}`).join('\n')}
 
 ## Cross-package contracts
 
-${kit.contracts.map((c) => `- **${say(c.claim)}** (${c.packages.join(' + ')}) — breaks as: ${say(c.breaksAs)}. Tested in \`${c.test}\`.`).join('\n')}
+${kit.contracts.map((c) => `- **${c.claim}** (${c.packages.join(' + ')}) — breaks as: ${c.breaksAs}. Tested in \`${c.test}\`.`).join('\n')}
 
 ## A program that compiles
 
@@ -645,7 +629,7 @@ Specified but not yet built: ${gallery.pending.map((p) => `${p.name} (${p.idea})
   direct path is ${measured.figures.spriteDraw.value} for 400 sprites of 42 ops, 27% of the 8 ms budget.
 - **\`readonly\` is not a barrier.** TypeScript ignores property \`readonly\` when checking
   assignability, so a \`Readonly<Vec2>\` flows into a parameter typed \`Vec2\` and the callee writes
-  to your frozen constant. Import \`ReadonlyVec2\` from \`@lattice/core\`; never hand-write
+  to your frozen constant. Import \`ReadonlyVec2\` from \`@latticekit/core\`; never hand-write
   \`Readonly<Vec2>\` and assume it is the same thing.
 - **Tile lookup floors, never rounds**, and once elevation exists the projection is no longer
   invertible, so picking must be terrain-aware — \`screenToTileOnHeights\`, not \`screenToTile\`.
@@ -678,7 +662,7 @@ const api = {
   version: kit.version,
   license: kit.license,
   repository: REPO_URL,
-  install: 'npm i @lattice/core @lattice/iso @lattice/draw @lattice/loop @lattice/input',
+  install: 'npm i @latticekit/core @latticekit/iso @latticekit/draw @latticekit/loop @latticekit/input',
   measured: measured.figures,
   sizes: measured.sizes,
   budgets: kit.budgets,

@@ -28,7 +28,7 @@
  *    `save`/`restore` anywhere in this file, and therefore no imbalance to leave across a frame.
  */
 
-import { TAU } from '@lattice/core';
+import { TAU } from '@latticekit/core';
 import type { Rgba } from './color.js';
 import { cssOf } from './color.js';
 import { expectPositive } from './surface.js';

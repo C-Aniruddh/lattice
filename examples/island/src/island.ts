@@ -45,9 +45,9 @@
  * `footprintBase`, so the sprite, its shadow and its depth key are handed one number rather than
  * three that can drift.
  */
-import { clamp01, fbm2, hash2, hashString, noise2, toUnit } from '@lattice/core';
-import { TILE_H, TileGrid, footprintBase, slopeAt, type HeightField } from '@lattice/iso';
-import type { Variant } from '@lattice/draw';
+import { clamp01, fbm2, hash2, hashString, noise2, toUnit } from '@latticekit/core';
+import { TILE_H, TileGrid, footprintBase, slopeAt, type HeightField } from '@latticekit/iso';
+import type { Variant } from '@latticekit/draw';
 
 export const W = 240;
 export const H = 240;

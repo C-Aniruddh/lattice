@@ -38,7 +38,7 @@
  * shape made that possible.
  */
 
-import type { OfflineCurve } from '@lattice/sim';
+import type { OfflineCurve } from '@latticekit/sim';
 import type { Boot } from './bootstrap.js';
 import type { RangeControl, ToggleControl, TextControl } from './panel.js';
 
@@ -60,7 +60,7 @@ export interface Knob<T> {
   apply(value: T): void;
 }
 
-// ── @lattice/iso — the camera ────────────────────────────────────────────────────────────────
+// ── @latticekit/iso — the camera ────────────────────────────────────────────────────────────────
 
 /**
  * How far out the player may pull.
@@ -75,7 +75,7 @@ export function minZoom<A extends string>(boot: Boot<A>): RangeControl {
     kind: 'range',
     key: 'minZoom',
     label: 'zoom out limit',
-    param: '@lattice/iso CameraOptions.minZoom',
+    param: '@latticekit/iso CameraOptions.minZoom',
     min: 0.05,
     max: 2,
     step: 0.05,
@@ -96,7 +96,7 @@ export function maxZoom<A extends string>(boot: Boot<A>): RangeControl {
     kind: 'range',
     key: 'maxZoom',
     label: 'zoom in limit',
-    param: '@lattice/iso CameraOptions.maxZoom',
+    param: '@latticekit/iso CameraOptions.maxZoom',
     min: 0.5,
     max: 8,
     step: 0.1,
@@ -119,7 +119,7 @@ export function keepVisible<A extends string>(boot: Boot<A>): RangeControl {
     kind: 'range',
     key: 'keepVisible',
     label: 'keep on screen',
-    param: '@lattice/iso CameraOptions.keepVisible',
+    param: '@latticekit/iso CameraOptions.keepVisible',
     min: 0,
     max: 1,
     step: 0.05,
@@ -133,7 +133,7 @@ export function keepVisible<A extends string>(boot: Boot<A>): RangeControl {
   };
 }
 
-// ── @lattice/input — the gestures ────────────────────────────────────────────────────────────
+// ── @latticekit/input — the gestures ────────────────────────────────────────────────────────────
 
 /**
  * The travel above which a press is a drag and never a tap.
@@ -152,7 +152,7 @@ export function tapSlop<A extends string>(boot: Boot<A>): RangeControl {
     kind: 'range',
     key: 'tapSlop',
     label: 'tap slop',
-    param: '@lattice/input GestureProfile.tapSlopPx',
+    param: '@latticekit/input GestureProfile.tapSlopPx',
     note: 'Defaults: touch 9, mouse 4, pen 6.',
     min: 1,
     max: 30,
@@ -183,7 +183,7 @@ export function longPress<A extends string>(boot: Boot<A>): RangeControl {
     kind: 'range',
     key: 'longPress',
     label: 'long press',
-    param: '@lattice/input GestureProfile.longPressMs',
+    param: '@latticekit/input GestureProfile.longPressMs',
     min: 60,
     max: 1200,
     step: 10,
@@ -205,7 +205,7 @@ export function flingHalfLife<A extends string>(boot: Boot<A>): RangeControl {
     kind: 'range',
     key: 'flingHalfLife',
     label: 'glide half-life',
-    param: '@lattice/input GestureProfile.flingHalfLifeMs',
+    param: '@latticekit/input GestureProfile.flingHalfLifeMs',
     min: 0,
     max: 1500,
     step: 10,
@@ -227,7 +227,7 @@ export function flingFloor<A extends string>(boot: Boot<A>): RangeControl {
     kind: 'range',
     key: 'flingFloor',
     label: 'glide floor',
-    param: '@lattice/input GestureProfile.flingMinPxPerS',
+    param: '@latticekit/input GestureProfile.flingMinPxPerS',
     min: 1,
     max: 600,
     step: 5,
@@ -242,7 +242,7 @@ export function flingFloor<A extends string>(boot: Boot<A>): RangeControl {
   };
 }
 
-// ── @lattice/draw — the night, and the pixels ────────────────────────────────────────────────
+// ── @latticekit/draw — the night, and the pixels ────────────────────────────────────────────────
 
 /**
  * How much accumulated light is added back as warm spill.
@@ -257,7 +257,7 @@ export function lightBloom<A extends string>(boot: Boot<A>): RangeControl {
     kind: 'range',
     key: 'lightBloom',
     label: 'bloom',
-    param: '@lattice/draw LightFieldOpts.bloom',
+    param: '@latticekit/draw LightFieldOpts.bloom',
     min: 0,
     max: 1,
     step: 0.02,
@@ -284,7 +284,7 @@ export function lightScale<A extends string>(boot: Boot<A>): RangeControl {
     kind: 'range',
     key: 'lightScale',
     label: 'light buffer',
-    param: '@lattice/draw LightFieldOpts.scale',
+    param: '@latticekit/draw LightFieldOpts.scale',
     min: 0.1,
     max: 1,
     step: 0.05,
@@ -315,7 +315,7 @@ export function lightFalloff<A extends string>(boot: Boot<A>): RangeControl {
     kind: 'range',
     key: 'lightFalloff',
     label: 'pool edge',
-    param: '@lattice/draw LightFieldOpts.falloff',
+    param: '@latticekit/draw LightFieldOpts.falloff',
     note: 'The default only. LightField.add overrides it per light.',
     min: 1,
     max: 6,
@@ -339,7 +339,7 @@ export function snap<A extends string>(boot: Boot<A>): ToggleControl {
     kind: 'toggle',
     key: 'snap',
     label: 'pixel snap',
-    param: '@lattice/draw FrameOpts.snap',
+    param: '@latticekit/draw FrameOpts.snap',
     value: true,
     wrong: {
       when: false,
@@ -361,7 +361,7 @@ export function pixelRatio<A extends string>(boot: Boot<A>): RangeControl {
     kind: 'range',
     key: 'dpr',
     label: 'pixel ratio',
-    param: '@lattice/draw Canvas2dOpts.pixelRatio',
+    param: '@latticekit/draw Canvas2dOpts.pixelRatio',
     note: `This device reports ${String(devicePixelRatio)}; the kit clamps to 2.`,
     min: 0.25,
     max: 4,
@@ -377,7 +377,7 @@ export function pixelRatio<A extends string>(boot: Boot<A>): RangeControl {
   };
 }
 
-// ── @lattice/sim — the offline curve, which is the family that got the shape right ───────────
+// ── @latticekit/sim — the offline curve, which is the family that got the shape right ───────────
 
 /**
  * The softcap exponent on an absence.
@@ -397,7 +397,7 @@ export function offlineExponent(curve: Box<OfflineCurve>): RangeControl {
     kind: 'range',
     key: 'offlineExp',
     label: 'offline exponent',
-    param: '@lattice/sim OfflineCurve.exponent',
+    param: '@latticekit/sim OfflineCurve.exponent',
     note: 'Steps of 1/64, so every value here is Tier A: bit-identical on every engine.',
     min: 1 / 64,
     max: 1,
@@ -427,7 +427,7 @@ export function offlineUncapped(curve: Box<OfflineCurve>): RangeControl {
     kind: 'range',
     key: 'offlineFree',
     label: 'free window',
-    param: '@lattice/sim OfflineCurve.uncappedSeconds',
+    param: '@latticekit/sim OfflineCurve.uncappedSeconds',
     min: 60,
     max: 24 * 3600,
     step: 60,
@@ -451,7 +451,7 @@ export function offlineHorizon(curve: Box<OfflineCurve>): RangeControl {
     kind: 'range',
     key: 'offlineFlat',
     label: 'horizon',
-    param: '@lattice/sim OfflineCurve.flatAfterSeconds',
+    param: '@latticekit/sim OfflineCurve.flatAfterSeconds',
     min: 3600,
     max: 30 * 24 * 3600,
     step: 3600,
@@ -467,7 +467,7 @@ export function offlineHorizon(curve: Box<OfflineCurve>): RangeControl {
   };
 }
 
-// ── @lattice/audio — the ceiling ─────────────────────────────────────────────────────────────
+// ── @latticekit/audio — the ceiling ─────────────────────────────────────────────────────────────
 
 /**
  * The hard ceiling on one-shot voices in flight.
@@ -489,7 +489,7 @@ export function voiceCeiling(audio: Knob<number>): RangeControl {
     kind: 'range',
     key: 'voices',
     label: 'voice ceiling',
-    param: '@lattice/audio AudioOptions.maxVoices',
+    param: '@latticekit/audio AudioOptions.maxVoices',
     note: 'Rebuilds the engine on release: there is no setter, and the context cap is six.',
     min: 1,
     max: 32,
@@ -504,7 +504,7 @@ export function voiceCeiling(audio: Knob<number>): RangeControl {
   };
 }
 
-// ── @lattice/core — the world ────────────────────────────────────────────────────────────────
+// ── @latticekit/core — the world ────────────────────────────────────────────────────────────────
 
 /**
  * The seed.
@@ -519,7 +519,7 @@ export function seed<A extends string>(boot: Boot<A>): TextControl {
     kind: 'text',
     key: 'seed',
     label: 'seed',
-    param: '@lattice/core createRng(seed)',
+    param: '@latticekit/core createRng(seed)',
     note: 'Same seed, same world, same pixel. Changing it reloads.',
     value: boot.seed,
     placeholder: 'anything',

@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createCamera } from '@lattice/iso';
+import { createCamera } from '@latticekit/iso';
 import {
   GLIDE_STOP_PX_PER_S,
   PAN_KEYS,

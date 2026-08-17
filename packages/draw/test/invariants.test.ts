@@ -6,7 +6,7 @@
  * them can be observed by calling anything. A function that allocates behaves identically to one
  * that does not until a profiler is attached.
  *
- * So this file reads the source. It is the same instrument `@lattice/iso` uses, and the
+ * So this file reads the source. It is the same instrument `@latticekit/iso` uses, and the
  * allocation check in particular is a *source* check for the reason `iso` documented after
  * trying the alternatives: a heap delta cannot see the failure, because the objects a leaking
  * primitive creates are dead the instant they are made and a scavenge collects them before

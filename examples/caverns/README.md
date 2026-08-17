@@ -2,12 +2,12 @@
 
 **The light field alone.** A cave with nothing in it but darkness, one lantern you carry, eight
 braziers out in the dark and three hundred torches you can light. It is the only exhibit in the
-gallery whose subject is `@lattice/draw`'s `LightField`, and it exists partly as a stress test of
+gallery whose subject is `@latticekit/draw`'s `LightField`, and it exists partly as a stress test of
 it.
 
 ```bash
-npm run build            # from the repo root — the exhibit resolves @lattice/* to each package's dist
-npm run dev --workspace=@lattice/example-caverns
+npm run build            # from the repo root — the exhibit resolves @latticekit/* to each package's dist
+npm run dev --workspace=@latticekit/example-caverns
 # http://localhost:5190
 ```
 
@@ -158,12 +158,12 @@ That is a workaround in an art module, not a change to the kit, and it becomes r
 |---|---|---|
 | `main.ts` | logic | the boot, the lantern, the passes, the frame, the panel |
 | `cavern.ts` | logic | the cave field, the formations, and the list of places a flame can stand |
-| `hud.ts` | logic | `@lattice/ui` over the canvas. `POOLS` and `WORST` |
+| `hud.ts` | logic | `@latticekit/ui` over the canvas. `POOLS` and `WORST` |
 | `palette.ts` | `@art` | one stop set and seven slots the kit does not have |
 | `rock.ts` | `@art` | the floor, the walls, the standing water, the near band |
 | `formations.ts` | `@art` | five sprites, the flames, and every burning flame's light |
 | `ambient.ts` | `@art` | fire, dust, glow-worms, the lantern, and the two-pool recipe above |
-| `index.html` | `@art` | the overlay's whole appearance. `@lattice/ui` ships no stylesheet |
+| `index.html` | `@art` | the overlay's whole appearance. `@latticekit/ui` ships no stylesheet |
 
 `npm run gallery` reports **199 logic / 474 art**, against a cap of 200 on logic.
 

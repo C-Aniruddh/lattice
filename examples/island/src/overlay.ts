@@ -27,7 +27,7 @@
  * from `draw`'s live palette. That seam is the whole reason the package can be dropped into a
  * game whose art direction was decided first.
  */
-import { el, roll, type Overlay, type Roll } from '@lattice/ui';
+import { el, roll, type Overlay, type Roll } from '@latticekit/ui';
 
 /** The nodes `hud.ts` writes into, and nothing else. Handing back the whole tree would invite a
  *  reader to go looking for something to restructure, which is the half of this that is logic. */

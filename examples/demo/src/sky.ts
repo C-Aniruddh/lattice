@@ -28,7 +28,7 @@
  * screenshot names. All that is left here is the game's own half — which terrain type, how much
  * seeded grain, and the two second passes the kit deliberately does not do.
  */
-import { clamp01, hash2, noise2, toUnit, type Vec2 } from '@lattice/core';
+import { clamp01, hash2, noise2, toUnit, type Vec2 } from '@latticekit/core';
 import {
   HALF_H,
   HALF_W,
@@ -40,8 +40,8 @@ import {
   type GridPoint,
   type Rect,
   type TileRange,
-} from '@lattice/iso';
-import { isoTerrain, mix, shade, withAlpha, type Ink, type Pen, type Rgba } from '@lattice/draw';
+} from '@latticekit/iso';
+import { isoTerrain, mix, shade, withAlpha, type Ink, type Pen, type Rgba } from '@latticekit/draw';
 import { steady } from './palette.js';
 import { RIVER, SCREE, SEA, SHORE, type Valley } from './valley.js';
 

@@ -5,7 +5,7 @@
  * It does four things, and three of them are the kit running on its own marketing:
  *
  * 1. **The day cycle is the scroll bar.** `lerpPalette(DUSK, NIGHT, progress)` from
- *    `@lattice/draw` writes the document's `--lattice-*` custom properties, so the page darkens
+ *    `@latticekit/draw` writes the document's `--lattice-*` custom properties, so the page darkens
  *    as you descend using the same interpolation an exhibit uses for its sky. `lerpPalette`
  *    quantizes to `PALETTE_STEPS` internally, which is why this is affordable: the page is
  *    repainted about thirty times over a full scroll, not sixty times a second.
@@ -14,7 +14,7 @@
  * 3. **The gallery is live**, and pays for it: a tile's exhibit is a real page in an iframe,
  *    created the first time it comes near the viewport and `loop.stop()`ed the moment it leaves.
  *    An off-screen exhibit costs nothing because its loop is not running, which is a claim this
- *    page can make only because `@lattice/loop` puts the frame source behind an interface.
+ *    page can make only because `@latticekit/loop` puts the frame source behind an interface.
  * 4. **It shows its own frame cost**, and the number it shows is `worstGapMs` rather than
  *    `worstFrameMs`, because a pump that is fast between long pauses is not a page that is fast.
  *    `docs/PERFORMANCE.md` has the pair that read 4.6 ms and 69.2 ms at the same instant.
@@ -32,10 +32,10 @@
  * `undefined` in that case and {@link Scene.pause} degrades to unmounting the frame, which is
  * slower but correct.
  */
-import { DUSK, NIGHT, beginFrame, createCanvas2dSurface, createPalette, endFrame, isoTile, lerpPalette, mix, withAlpha } from '@lattice/draw';
-import { createCamera } from '@lattice/iso';
-import { browserFrames, createLoop } from '@lattice/loop';
-import { clamp01, hash2 } from '@lattice/core';
+import { DUSK, NIGHT, beginFrame, createCanvas2dSurface, createPalette, endFrame, isoTile, lerpPalette, mix, withAlpha } from '@latticekit/draw';
+import { createCamera } from '@latticekit/iso';
+import { browserFrames, createLoop } from '@latticekit/loop';
+import { clamp01, hash2 } from '@latticekit/core';
 
 /* ────────────────────────────────────────────────────────────────────────────────────────
  * What the visitor has told the browser they want.
@@ -294,7 +294,7 @@ class Scene {
    *
    * Scaling a *playable* frame is safe only because it is an iframe. Inside it, `clientX` and
    * `getBoundingClientRect` are both in the frame's own untransformed space, so
-   * `@lattice/input`'s `clientX - rect.left` — which does not divide by any scale — is still
+   * `@latticekit/input`'s `clientX - rect.left` — which does not divide by any scale — is still
    * right. The same transform applied to a bare canvas would offset every tap by 1/scale.
    */
   get scaledNow(): boolean {
@@ -468,7 +468,7 @@ if (hero !== undefined && heroHost !== null) {
 /**
  * Give the wheel back to the page.
  *
- * `@lattice/input` binds `wheel` on the canvas with `{ passive: false }` and calls
+ * `@latticekit/input` binds `wheel` on the canvas with `{ passive: false }` and calls
  * `preventDefault`, correctly — a game that lets the page scroll under a pinch is a broken game.
  * On a landing page that is exactly wrong, so a capture-phase listener on the frame's own
  * `window` takes the event before the canvas sees it and scrolls the parent instead. Capture

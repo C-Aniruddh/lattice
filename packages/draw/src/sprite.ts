@@ -36,9 +36,9 @@
  * in one line, and the signature is the only thing standing in its way.
  */
 
-import { Rng, createRng, hashStep } from '@lattice/core';
-import type { Camera, Rect, Volume } from '@lattice/iso';
-import { HALF_H, HALF_W } from '@lattice/iso';
+import { Rng, createRng, hashStep } from '@latticekit/core';
+import type { Camera, Rect, Volume } from '@latticekit/iso';
+import { HALF_H, HALF_W } from '@latticekit/iso';
 import type { Ink, Rgba } from './color.js';
 import type { LightField } from './light.js';
 import type { Palette } from './palette.js';

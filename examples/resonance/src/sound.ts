@@ -30,7 +30,7 @@
  * timbre is built by multiplying — Tier A — and the only equal-tempered arithmetic in the exhibit
  * is `puzzle.ts`'s one loop.
  */
-import { SEMITONE, type BedLayer, type SoundDef } from '@lattice/audio';
+import { SEMITONE, type BedLayer, type SoundDef } from '@latticekit/audio';
 import { STRINGS } from './puzzle.js';
 
 /**
@@ -54,7 +54,7 @@ const STEPS: readonly number[] = [0, 3, 5, 7, 10, 12];
 /**
  * The frequency of a scale step, by repeated multiplication rather than by `pow`. **Tier A.**
  *
- * `SEMITONE` is the twelfth root of two, written out as a literal by `@lattice/audio` precisely so
+ * `SEMITONE` is the twelfth root of two, written out as a literal by `@latticekit/audio` precisely so
  * that a game need not call `pow` — which ECMA-262 does not require to be correctly rounded, and
  * which `AGENTS.md` therefore files under Tier B. This walks the interval a semitone at a time
  * with `*`, which is exactly specified and bit-identical on every engine.

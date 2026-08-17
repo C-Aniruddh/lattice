@@ -21,8 +21,8 @@ Two rules before anything else:
 ## A game's whole sound
 
 ```ts
-import { createAudio, createBed, validateSounds } from '@lattice/audio';
-import type { SoundDef } from '@lattice/audio';
+import { createAudio, createBed, validateSounds } from '@latticekit/audio';
+import type { SoundDef } from '@latticekit/audio';
 
 const SOUNDS = {
   tap:     { bus: 'ui',  minGapMs: 40,
@@ -94,7 +94,7 @@ ceiling can no longer be validated statically — a feedback delay at 0.9 turns 
 runaway and no static check can see it.
 
 ```ts
-import { validateSounds } from '@lattice/audio';
+import { validateSounds } from '@latticekit/audio';
 
 export const clipping = validateSounds({
   chord: { minGapMs: 100, layers: [
@@ -132,7 +132,7 @@ Voices are counted by **scheduled end time**, never by an `onended` callback. A 
 runs for an hour ends up permanently at the ceiling and goes silent.
 
 ```ts
-import type { Audio } from '@lattice/audio';
+import type { Audio } from '@latticekit/audio';
 
 export function settings(audio: Audio<'tap'>): void {
   audio.setMaxVoices(12);     // a SETTER. Never rebuild the engine for this
@@ -222,8 +222,8 @@ been driven to in the meantime.
 ## Testing it with no speaker
 
 ```ts
-import { createAudio } from '@lattice/audio';
-import type { SoundDef, VoicePlan } from '@lattice/audio';
+import { createAudio } from '@latticekit/audio';
+import type { SoundDef, VoicePlan } from '@latticekit/audio';
 
 const SOUNDS = {
   collect: { bus: 'sfx', minGapMs: 45,
@@ -294,4 +294,4 @@ say so plainly in the HUD rather than pretending — pretending is a worse lie t
 | storing a player's volume settings | `saving` |
 | a meter or a beat indicator on screen | `hud` |
 
-Long form, on disk: `node_modules/@lattice/audio/README.md`.
+Long form, on disk: `node_modules/@latticekit/audio/README.md`.

@@ -6,8 +6,8 @@ are, red where a flat-ground pick believes you are. The HUD reads the gap betwee
 Drag uphill and watch it grow.
 
 ```bash
-npm run build          # from the repo root — the exhibit resolves @lattice/* to each package's dist
-npm run dev --workspace=@lattice/example-terraces
+npm run build          # from the repo root — the exhibit resolves @latticekit/* to each package's dist
+npm run dev --workspace=@latticekit/example-terraces
 # → http://localhost:5181
 ```
 
@@ -30,7 +30,7 @@ it names a whole *family* of candidates, one per elevation.
 | terrain-aware | `iso.screenToTileOnHeights` | nothing | a march down the heightfield from a ceiling, then twelve bisections |
 
 The naive answer is not a straw man. It is the *exact* inverse of the projection at `z = 0`, and it
-is what `@lattice/input` writes into `gx`/`gy` on **every action event it fires** — so an exhibit
+is what `@latticekit/input` writes into `gx`/`gy` on **every action event it fires** — so an exhibit
 that read `event.gx` would ship this bug without ever choosing to. That is why `main.ts` re-picks
 from `event.sx`/`event.sy` and why the first finding below is the one it is.
 
@@ -111,7 +111,7 @@ their shadowed foot.
 
 Ranked by how much pain each caused.
 
-**1. `@lattice/input` resolves every pointer on flat ground, and cannot be told otherwise.**
+**1. `@latticekit/input` resolves every pointer on flat ground, and cannot be told otherwise.**
 `ActionEvent` carries `gx`/`gy`, `input` fills them through `worldToTile`, and there is no seam
 anywhere in `InputOptions` for a `HeightField`. So the coordinates on the event are the *wrong*
 answer on any map with elevation — silently, plausibly, and by more the taller the terrain. `iso`
@@ -123,12 +123,12 @@ would be for `input` to *warn* once when a game reads `gx` — but it cannot kno
 
 **2. There is no hover.** `GestureMap` has six members and none of them is a pointer position with
 no button down. A tile highlight that follows the cursor is the single most common thing an
-isometric builder does, and it cannot be built from `@lattice/input` at all — this exhibit adds a
+isometric builder does, and it cannot be built from `@latticekit/input` at all — this exhibit adds a
 raw `pointermove` listener to `boot.canvas` and does its own coordinate work, which is precisely
 the `pointerToTile(ev, …)` that `hittest.ts`'s header says means you have the seam the wrong way
 round. It is right that game code should not convert coordinates; there is currently no other way.
 
-**3. `bootstrap` owns the loop's clock and exposes no `now()`.** `@lattice/ui`'s `createOverlay`
+**3. `bootstrap` owns the loop's clock and exposes no `now()`.** `@latticekit/ui`'s `createOverlay`
 requires *the clock `loop` was given*, and `bootstrap` builds the loop with
 `{ now: () => performance.now() }` and hands back neither the clock nor a reader. Every exhibit
 that mounts a `ui` overlay therefore writes `performance.now()` in its own source — the exact call
@@ -184,8 +184,8 @@ to be turned into a slider without reading the source.
 
 ## What this exhibit does not do
 
-No day cycle, no economy, no save, no sound. `@lattice/sim` and `@lattice/persist` have nothing to
-do here, and `@lattice/audio` is left out for the reason `island` gives: a page that starts making
+No day cycle, no economy, no save, no sound. `@latticekit/sim` and `@latticekit/persist` have nothing to
+do here, and `@latticekit/audio` is left out for the reason `island` gives: a page that starts making
 noise before it has been touched is worse than a silent one, and the gallery still has no shared
 answer for the unlock gesture. The light field is created by `bootstrap` and never used — this is a
 mid-afternoon exhibit and `LightField` costs nothing at zero darkness.

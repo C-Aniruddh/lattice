@@ -40,7 +40,7 @@
  *    learning anything about what is in the world.
  */
 
-import type { Disposer } from '@lattice/core';
+import type { Disposer } from '@latticekit/core';
 import { createSystem, internalsOf } from './system.js';
 import type { HeadlessInputOptions, InputSystem } from './system.js';
 import type { PointerKind } from './profile.js';
@@ -70,7 +70,7 @@ export interface InputOptions<A extends string> extends HeadlessInputOptions<A> 
    *
    * **Most games need this and do not know it, because most chrome already declares itself.**
    * The diagnostic's real test is whether *anything* between the pressed node and the document
-   * root sets `pointer-events` inline — see {@link createInput}. `@lattice/ui` does, on every
+   * root sets `pointer-events` inline — see {@link createInput}. `@latticekit/ui` does, on every
    * node it grants, so a `ui` panel is silent here with no configuration at all. This option is
    * for the HUD that is styled entirely from a stylesheet and therefore cannot be told apart
    * from the spacer the diagnostic exists to catch.
@@ -138,7 +138,7 @@ const REQUIRED_STYLE: readonly (readonly [string, string])[] = [
  *
  * A press that lands on something *over* the world is reported once as `covered-by-overlay`,
  * unless something between that node and the document root declared `pointer-events` inline or
- * the node is inside an {@link InputOptions.overlays} root. Every `@lattice/ui` panel satisfies
+ * the node is inside an {@link InputOptions.overlays} root. Every `@latticekit/ui` panel satisfies
  * the first without being configured.
  *
  * @throws TypeError if `element` is not an element with `addEventListener`.
@@ -402,12 +402,12 @@ export function createInput<A extends string = never>(
    *
    * | how a node came to take the press | inline `pointer-events` | verdict |
    * |---|---|---|
-   * | `@lattice/ui`'s `interactive(node)`, or a hand-written `style="pointer-events:auto"` | `auto` on it or an ancestor | chrome — somebody named this node |
+   * | `@latticekit/ui`'s `interactive(node)`, or a hand-written `style="pointer-events:auto"` | `auto` on it or an ancestor | chrome — somebody named this node |
    * | listed in {@link InputOptions.overlays} | — | chrome — the game said so |
    * | a spacer that lost `.spacer { pointer-events: none }` to `#ui > * { pointer-events: auto }` | `none` on an ancestor, nothing below | **the trap** |
    * | a bare `<div>` over the canvas with no declaration anywhere | none | reported, and correctly: nothing on the page ever said this should eat a tap |
    *
-   * `@lattice/ui` makes this free rather than lucky. It ships **no stylesheet at all** and writes
+   * `@latticekit/ui` makes this free rather than lucky. It ships **no stylesheet at all** and writes
    * `pointer-events` inline per node — `auto` on the ones it grants, `none` on the rest — so
    * every `ui` panel over a canvas is recognized here with no configuration, and the one
    * configuration that used to be needed (filtering the diagnostic on a class name, which is
@@ -469,7 +469,7 @@ export function createInput<A extends string = never>(
     diagnose({
       code: 'covered-by-overlay',
       message:
-        'createInput: a pointerdown inside the world element was delivered to something on top of it, so that press never reached the game — and nothing between that node and the document root declares pointer-events inline, so whatever made it take the press came from a stylesheet. That is how an invisible spacer swallows the world: a bare `.spacer { pointer-events: none }` loses to a rule like `#ui > * { pointer-events: auto }`. If this node is chrome, say so — @lattice/ui already does it for you (mount(node, { interactive: true }) writes the grant inline), or list its root in createInput({ overlays: [hud] }).',
+        'createInput: a pointerdown inside the world element was delivered to something on top of it, so that press never reached the game — and nothing between that node and the document root declares pointer-events inline, so whatever made it take the press came from a stylesheet. That is how an invisible spacer swallows the world: a bare `.spacer { pointer-events: none }` loses to a rule like `#ui > * { pointer-events: auto }`. If this node is chrome, say so — @latticekit/ui already does it for you (mount(node, { interactive: true }) writes the grant inline), or list its root in createInput({ overlays: [hud] }).',
       element: target === null ? element : (target as Element),
     });
   }

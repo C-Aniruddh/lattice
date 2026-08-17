@@ -12,9 +12,9 @@
  * Everything here is closed form in `pen.t` and a seeded hash of the instance's own index, so it
  * costs no state, allocates nothing, and is identical on every replay.
  */
-import { clamp01, hash2, noise2, toUnit, type Vec2 } from '@lattice/core';
-import { gridToScreen, heightAt } from '@lattice/iso';
-import { mix, withAlpha, type Pen } from '@lattice/draw';
+import { clamp01, hash2, noise2, toUnit, type Vec2 } from '@latticekit/core';
+import { gridToScreen, heightAt } from '@latticekit/iso';
+import { mix, withAlpha, type Pen } from '@latticekit/draw';
 import { steady } from './palette.js';
 import { GRASS, H, RIVER, W, type Valley } from './valley.js';
 

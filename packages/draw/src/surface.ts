@@ -21,7 +21,7 @@
  * half-scale campus. Here no caller can see the ratio, so no caller can apply it twice.
  */
 
-import type { Camera } from '@lattice/iso';
+import type { Camera } from '@latticekit/iso';
 import type { Ink, Rgba } from './color.js';
 import type { LightField } from './light.js';
 import type { Palette } from './palette.js';

@@ -13,7 +13,7 @@
  * |---|---|
  * | long press | fires at 432 ms, not 450 — inside the band where people are still deciding |
  * | fling velocity | 4% low, so every flick coasts short and the camera feels heavy |
- * | recorded log | carries `stepMs: 16`, and `@lattice/persist` refuses to replay it against a real 60 Hz loop **months later**, naming a mismatch nobody can explain |
+ * | recorded log | carries `stepMs: 16`, and `@latticekit/persist` refuses to replay it against a real 60 Hz loop **months later**, naming a mismatch nobody can explain |
  *
  * None of those surfaces where the mistake was made. That is the whole reason this module
  * exists: the previous signature was `stepMs: number`, it rejected only `0` and `NaN`, and every
@@ -22,7 +22,7 @@
  * ## Why it is a pair and not a branded number
  *
  * The obvious fix is a branded `Millis` that only the loop can mint. It is not available:
- * `@lattice/loop` sits beside this package rather than under it, so the edge cannot be imported
+ * `@latticekit/loop` sits beside this package rather than under it, so the edge cannot be imported
  * (non-negotiable 3), and its `Millis` is in any case a plain unbranded `number` whose own doc
  * comment says it "guards nothing".
  *
@@ -43,7 +43,7 @@
  * Pure: no clock, no DOM.
  */
 
-import { expectInt } from '@lattice/core';
+import { expectInt } from '@latticekit/core';
 
 /**
  * The upper bound on `hz`, mirroring `createLoop.hz` exactly.
@@ -72,7 +72,7 @@ const STEP_AGREEMENT = 1e-12;
 /**
  * A loop's fixed step, in both units it publishes.
  *
- * **Pass `loop`.** `@lattice/loop`'s `Loop` satisfies this exactly, and reading the step off the
+ * **Pass `loop`.** `@latticekit/loop`'s `Loop` satisfies this exactly, and reading the step off the
  * object that owns it is the only way the two cannot drift. Where there is no loop — a headless
  * replay, a test — build one with {@link fixedStep}.
  *
@@ -110,7 +110,7 @@ export interface FixedStep {
  * and both fields are derived from that count. `fixedStep(60).stepMs` is therefore `16.667` —
  * **not** `1000 / 60`, which is `16.6666…` and differs from what a real 60 Hz loop reports in the
  * twelfth decimal place. That difference is invisible in a gesture and fatal in a log, because
- * `@lattice/persist` compares the recorded `stepMs` for exact equality.
+ * `@latticekit/persist` compares the recorded `stepMs` for exact equality.
  *
  * @param hz Fixed steps per second, as an integer — the same argument, with the same bounds,
  *   that `createLoop` takes.

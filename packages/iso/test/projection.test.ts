@@ -8,8 +8,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { v2 } from '@lattice/core';
-import type { Vec2 } from '@lattice/core';
+import { v2 } from '@latticekit/core';
+import type { Vec2 } from '@latticekit/core';
 import {
   HALF_H,
   HALF_W,

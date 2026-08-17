@@ -36,9 +36,9 @@
  * whole cast is not a saving; it is the thing that stops the player reading as a cursor. A game
  * where the protagonist is drawn by different code from everyone else looks it, always.
  */
-import { TAU, hash2, toUnit } from '@lattice/core';
-import { Path, pathDirAt, pathSample, type GridPoint } from '@lattice/iso';
-import { contactShadow, isoBox, isoCylinder, isoPost, mix, shade, type Pen, type Rgba } from '@lattice/draw';
+import { TAU, hash2, toUnit } from '@latticekit/core';
+import { Path, pathDirAt, pathSample, type GridPoint } from '@latticekit/iso';
+import { contactShadow, isoBox, isoCylinder, isoPost, mix, shade, type Pen, type Rgba } from '@latticekit/draw';
 import { VCX, VCY } from './valley.js';
 import { haze } from './ground.js';
 

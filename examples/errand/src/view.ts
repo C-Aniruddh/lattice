@@ -34,8 +34,8 @@
  * - **`lodAt`.** The far band is already asked to be hazier, which is also permission for it to be
  *   cheaper — a tree there is one solid instead of five.
  */
-import { type GridPoint } from '@lattice/iso';
-import { renderFrame, type Passes, type Pen } from '@lattice/draw';
+import { type GridPoint } from '@latticekit/iso';
+import { renderFrame, type Passes, type Pen } from '@latticekit/draw';
 import { type Bucket } from '../../_shared/src/index.js';
 import { MAX_HEIGHT_PX, type Valley } from './valley.js';
 import { type Play, type Spot } from './errand.js';

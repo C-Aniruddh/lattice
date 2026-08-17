@@ -1,5 +1,5 @@
 {
-  "name": "@lattice/demo",
+  "name": "@latticekit/demo",
   "version": "0.1.0",
   "private": true,
   "description": "LAMP ROAD — the first gallery exhibit. A valley at dusk, and the proof that the seams fit.",
@@ -9,15 +9,15 @@
     "build": "vite build",
     "preview": "vite preview --port 5174 --strictPort"
   },
-  "$comment": "Eight of nine. @lattice/persist is the one that is absent, and that is a finding rather than an oversight: this exhibit has no save, per docs/GALLERY.md, so nothing in the gallery plan yet depends on it. @lattice/ui was declared and unimported for a whole iteration because the HUD was drawn into the canvas; it is the overlay now, which is what GALLERY.md made a rule.",
+  "$comment": "Eight of nine. @latticekit/persist is the one that is absent, and that is a finding rather than an oversight: this exhibit has no save, per docs/GALLERY.md, so nothing in the gallery plan yet depends on it. @latticekit/ui was declared and unimported for a whole iteration because the HUD was drawn into the canvas; it is the overlay now, which is what GALLERY.md made a rule.",
   "dependencies": {
-    "@lattice/audio": "^0.1.0",
-    "@lattice/core": "^0.1.0",
-    "@lattice/draw": "^0.1.0",
-    "@lattice/input": "^0.1.0",
-    "@lattice/iso": "^0.1.0",
-    "@lattice/loop": "^0.1.0",
-    "@lattice/sim": "^0.1.0",
-    "@lattice/ui": "^0.1.0"
+    "@latticekit/audio": "^0.1.0",
+    "@latticekit/core": "^0.1.0",
+    "@latticekit/draw": "^0.1.0",
+    "@latticekit/input": "^0.1.0",
+    "@latticekit/iso": "^0.1.0",
+    "@latticekit/loop": "^0.1.0",
+    "@latticekit/sim": "^0.1.0",
+    "@latticekit/ui": "^0.1.0"
   }
 }

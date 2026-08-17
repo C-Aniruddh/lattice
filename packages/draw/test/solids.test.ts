@@ -10,9 +10,9 @@
  * implementation, so this half can assert against `boxSilhouette` directly.
  */
 
-import { createRng } from '@lattice/core';
-import { HALF_H, HALF_W, boxSilhouette, createCamera } from '@lattice/iso';
-import type { Volume } from '@lattice/iso';
+import { createRng } from '@latticekit/core';
+import { HALF_H, HALF_W, boxSilhouette, createCamera } from '@latticekit/iso';
+import type { Volume } from '@latticekit/iso';
 import { describe, expect, it } from 'vitest';
 import { FACE_LEFT, FACE_RIGHT, outlineOf, rgba, shade, withAlpha } from '../src/color.js';
 import {

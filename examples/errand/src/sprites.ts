@@ -38,7 +38,7 @@
  * Nothing in that table changes what the exhibit is, and it is worth roughly two thirds of the
  * solids in a frame.
  */
-import { hash2, toUnit } from '@lattice/core';
+import { hash2, toUnit } from '@latticekit/core';
 import {
   LEVEL_H,
   contactShadow,
@@ -50,8 +50,8 @@ import {
   shade,
   withAlpha,
   type Pen,
-} from '@lattice/draw';
-import { gridToScreen } from '@lattice/iso';
+} from '@latticekit/draw';
+import { gridToScreen } from '@latticekit/iso';
 import { CROP, GATE, HEDGE, MILL, WALL, WELL, WOOD, houseAt } from './valley.js';
 import { band, haze } from './ground.js';
 

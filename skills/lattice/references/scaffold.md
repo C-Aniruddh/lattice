@@ -14,19 +14,19 @@ user's problem:
 npm init -y
 npm pkg set type=module
 npm i -D vite typescript
-npm i @lattice/core @lattice/iso @lattice/draw @lattice/loop @lattice/input
+npm i @latticekit/core @latticekit/iso @latticekit/draw @latticekit/loop @latticekit/input
 ```
 
 Then add only what the shape needs:
 
 | shape | also install |
 |---|---|
-| lit, build, crowd, terrain, explore | `@lattice/ui` |
-| idle | `@lattice/ui @lattice/sim @lattice/persist` |
-| listen | `@lattice/ui @lattice/audio` |
-| story | `@lattice/ui @lattice/persist` |
+| lit, build, crowd, terrain, explore | `@latticekit/ui` |
+| idle | `@latticekit/ui @latticekit/sim @latticekit/persist` |
+| listen | `@latticekit/ui @latticekit/audio` |
+| story | `@latticekit/ui @latticekit/persist` |
 
-Add `@lattice/audio` to any shape the moment you decide it makes noise, and `@lattice/persist`
+Add `@latticekit/audio` to any shape the moment you decide it makes noise, and `@latticekit/persist`
 the moment it has progress worth keeping. Both are one command; do not front-load them "just in
 case", because an installed package with no import is a lie about what the game is.
 
@@ -36,14 +36,15 @@ case", because an installed package with no import is a lie about what the game 
 hundred incomprehensible type errors.**
 
 ```bash
-node -e "const p=require('./node_modules/@lattice/core/package.json');console.log(p.description||'',p.keywords||[])"
+node -e "const p=require('./node_modules/@latticekit/core/package.json');console.log(p.description||'',p.keywords||[])"
 ```
 
 You want a description about deterministic primitives and keywords including `isometric` or
 `lattice`+`gamedev`. If you get something about a REST framework, dependency injection, or
-`inversify`, **you have installed a different package that happens to share the name** — the
-`@lattice` npm scope is not exclusively this project's. Stop and follow *Install did not work*
-below rather than trying to make the code compile against it.
+`inversify`, **you have installed a different package that happens to share the name** — that is
+the abandoned `@lattice/core` on npm, which belongs to somebody else and is exactly why this kit
+publishes under `@latticekit`. Check the scope in your `package.json` for a missing `kit`, then
+follow *Install did not work* below rather than trying to make the code compile against it.
 
 ### Install did not work
 
@@ -62,10 +63,11 @@ cd /tmp/lattice-kit && npm install && npm run build
 for p in core iso draw loop input ui sim persist audio; do (cd packages/$p && npm pack --pack-destination /tmp/lattice-tgz); done
 ```
 
-then back in the game folder, install the tarballs you need by path:
+then back in the game folder, install the tarballs you need by path. `npm pack` names a scoped
+tarball `<scope>-<name>-<version>.tgz`, so `@latticekit/core` lands as `latticekit-core-0.1.0.tgz`:
 
 ```bash
-npm i /tmp/lattice-tgz/lattice-core-*.tgz /tmp/lattice-tgz/lattice-iso-*.tgz ...
+npm i /tmp/lattice-tgz/latticekit-core-*.tgz /tmp/lattice-tgz/latticekit-iso-*.tgz ...
 ```
 
 Tarballs install exactly what the registry would have shipped — the `files` list, the `exports`
@@ -103,7 +105,7 @@ lying about a game that does not exist.
 Title it after their game. `overscroll-behavior: none` stops a phone pulling the page down
 while they drag the map, and it is one of about four lines here that are not obvious.
 
-The HUD's whole appearance goes in this file's `<style>`, because `@lattice/ui` ships no
+The HUD's whole appearance goes in this file's `<style>`, because `@latticekit/ui` ships no
 stylesheet at all — see the `hud` skill.
 
 ### `tsconfig.json`

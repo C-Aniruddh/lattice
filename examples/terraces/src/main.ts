@@ -10,7 +10,7 @@
  *
  * Because a correct implementation nobody has a reason to believe was hard is not an exhibit. The
  * naive pick is not a straw man either: it is `iso.screenToTile`, the exact inverse of the
- * projection on the plane `z = 0`, and it is what `@lattice/input` writes into `gx`/`gy` on every
+ * projection on the plane `z = 0`, and it is what `@latticekit/input` writes into `gx`/`gy` on every
  * action event it fires — so an exhibit that read `event.gx` would ship this bug without ever
  * choosing to. `pick.ts` has the geometry; the README has the finding.
  *
@@ -42,9 +42,9 @@
  * header: delete any one and the hill still generates, the march still runs, and both answers are
  * still computed and still differ by the same number of pixels. `npm run gallery` checks it.
  */
-import { gridToWorldX, gridToWorldY, heightAt, tileBounds, type Rect } from '@lattice/iso';
-import { renderFrame, type Passes } from '@lattice/draw';
-import { drive } from '@lattice/ui';
+import { gridToWorldX, gridToWorldY, heightAt, tileBounds, type Rect } from '@latticekit/iso';
+import { renderFrame, type Passes } from '@latticekit/draw';
+import { drive } from '@latticekit/ui';
 import { bootstrap, controlPanel, createBucket, knobs, type RangeControl, type ToggleControl } from '../../_shared/src/index.js';
 import { HILLSIDE } from './palette.js';
 import { H, OPEN_AT, RISE, STEP_PX, W, createHill, type Prop } from './hill.js';
@@ -80,7 +80,7 @@ const pick = createPick();
 pick.sx = innerWidth / 2, pick.sy = innerHeight / 2;
 let aware = boot.params.bool('aware', true), ceiling = boot.params.num('ceiling', hill.maxHeightPx);
 
-// A raw listener, because `@lattice/input` has six gestures and none of them is a hover — see the
+// A raw listener, because `@latticekit/input` has six gestures and none of them is a hover — see the
 // README. `clientX`/`clientY` need no rect subtraction only because `bootstrap` pins the canvas to
 // the viewport with `position: fixed; inset: 0`.
 const onMove = (event: PointerEvent): void => { pick.sx = event.clientX; pick.sy = event.clientY; };
@@ -136,13 +136,13 @@ boot.onRender((pen, _alpha, nowMs) => {
 
 const awareKnob: ToggleControl = {
   kind: 'toggle', key: 'aware', label: 'terrain-aware picking', value: aware, apply: (v) => { aware = v; },
-  param: '@lattice/iso screenToTileOnHeights', note: 'Off is screenToTile — the exact inverse of the projection on the plane z = 0, which is the only plane it inverts.',
+  param: '@latticekit/iso screenToTileOnHeights', note: 'Off is screenToTile — the exact inverse of the projection on the plane z = 0, which is the only plane it inverts.',
   wrong: { when: false, says: 'Taps now resolve on the sea-level plane, which is further from the viewer than the ground you are pointing at — several terraces up the hill from your finger, and no screenshot of it would look wrong.' },
 };
 
 const ceilingKnob: RangeControl = {
   kind: 'range', key: 'ceiling', label: 'march ceiling', value: ceiling, apply: (v) => { ceiling = v; },
-  param: '@lattice/iso screenToTileOnHeights.maxHeightPx', note: 'Where the terrain march starts. It walks down from here, so anything above it does not exist as far as picking is concerned.',
+  param: '@latticekit/iso screenToTileOnHeights.maxHeightPx', note: 'Where the terrain march starts. It walks down from here, so anything above it does not exist as far as picking is concerned.',
   min: 0, max: hill.maxHeightPx, step: 8, format: (v) => `${v.toFixed(0)} px`,
   wrong: { below: hill.maxHeightPx * 0.8, says: 'The march now begins below the upper terraces and misses them: the green diamond falls back down the hill exactly as far as the ceiling is short. At 0 it is the naive pick.' },
 };

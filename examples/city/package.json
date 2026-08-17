@@ -1,5 +1,5 @@
 {
-  "name": "@lattice/city",
+  "name": "@latticekit/city",
   "version": "0.1.0",
   "private": true,
   "description": "CITY BLOCK — a gallery exhibit. Dense setback massing and a rhythm of warm windows on a dark face.",
@@ -11,11 +11,11 @@
   },
   "$comment": "Six of nine. `sim`, `persist` and `audio` are absent and that is the exhibit rather than an oversight: a city block has no economy, no save, and — a finding — no sound, because ninety seconds of skyline did not earn an AudioContext that a browser will not start until the visitor clicks. `input` and `loop` arrive through examples/_shared's bootstrap and are declared here because they are what this exhibit runs on.",
   "dependencies": {
-    "@lattice/core": "^0.1.0",
-    "@lattice/draw": "^0.1.0",
-    "@lattice/input": "^0.1.0",
-    "@lattice/iso": "^0.1.0",
-    "@lattice/loop": "^0.1.0",
-    "@lattice/ui": "^0.1.0"
+    "@latticekit/core": "^0.1.0",
+    "@latticekit/draw": "^0.1.0",
+    "@latticekit/input": "^0.1.0",
+    "@latticekit/iso": "^0.1.0",
+    "@latticekit/loop": "^0.1.0",
+    "@latticekit/ui": "^0.1.0"
   }
 }

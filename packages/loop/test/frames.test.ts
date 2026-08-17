@@ -3,7 +3,7 @@
  *
  * The invariant this file exists for is I-23: **`browserFrames` keeps pumping with
  * `requestAnimationFrame` stubbed to never call back.** That is the hidden tab, and it is the
- * only thing keeping `@lattice/persist`'s autosave alive at the exact moment tabs get closed.
+ * only thing keeping `@latticekit/persist`'s autosave alive at the exact moment tabs get closed.
  * A "simplification" of `browserFrames` down to rAF alone passes every test that runs in the
  * foreground, so the test below is written so that it cannot.
  */

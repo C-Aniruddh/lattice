@@ -1,5 +1,5 @@
 /**
- * `@lattice/core` — deterministic primitives. Zero dependencies, zero DOM, layer 0.
+ * `@latticekit/core` — deterministic primitives. Zero dependencies, zero DOM, layer 0.
  *
  * Everything else in the kit is built on this file, and nothing in it is built on anything.
  * That is the whole design: `core` imports nothing, holds no module-level mutable state, and

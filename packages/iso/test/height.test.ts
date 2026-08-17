@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { v2 } from '@lattice/core';
+import { v2 } from '@latticekit/core';
 import { createCamera, gridToScreen } from '../src/camera.js';
 import { footprintBase } from '../src/footprint.js';
 import { tileBounds } from '../src/projection.js';
@@ -25,7 +25,7 @@ const ramp = (stepPx = 8): HeightField => ({
 
 describe('the elevation seam', () => {
   /**
-   * `iso`'s half of the geometry `@lattice/draw` has to agree with.
+   * `iso`'s half of the geometry `@latticekit/draw` has to agree with.
    *
    * Both packages have full coverage and neither had a test that mentioned the other, which is
    * exactly how a heightfield shipped with every sprite floating. These assertions are written

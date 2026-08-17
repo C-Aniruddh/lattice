@@ -38,7 +38,7 @@
  * have. This is the largest honest limitation in the package.
  */
 
-import { HALF_H, HALF_W } from '@lattice/iso';
+import { HALF_H, HALF_W } from '@latticekit/iso';
 import type { Ink, Rgba } from './color.js';
 import { withAlpha } from './color.js';
 import type { Pen, RenderTarget, Surface } from './surface.js';

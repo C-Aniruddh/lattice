@@ -3,9 +3,9 @@
 **Nothing on this page is a picture of Lattice. Everything on it is Lattice, running.**
 
 The hero is `examples/demo` in an iframe, playable. The ten gallery tiles are the ten exhibits,
-live, at their own viewports, scaled into a grid. The backdrop is drawn with `@lattice/draw`, the
+live, at their own viewports, scaled into a grid. The backdrop is drawn with `@latticekit/draw`, the
 page's color scheme is `lerpPalette(DUSK, NIGHT, scrollProgress)`, and the frame-time readout in
-the header is `@lattice/loop` measuring the page it is printed on.
+the header is `@latticekit/loop` measuring the page it is printed on.
 
 This directory is **not part of the kit**, is **not a workspace member**, and nothing in it may be
 imported by a package or by an exhibit. It reads `packages/*/dist` and `examples/*` and writes only

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fmtCompact } from '@lattice/core';
+import { fmtCompact } from '@latticekit/core';
 import { el } from '../src/el.js';
 import { createOverlay, type Overlay } from '../src/overlay.js';
 import { floats, roll, type ScreenPoint } from '../src/roll.js';

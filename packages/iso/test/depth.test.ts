@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createRng } from '@lattice/core';
+import { createRng } from '@latticekit/core';
 import { DepthSorter, pickSorted } from '../src/depth.js';
 import { createCamera } from '../src/camera.js';
 import type { Camera } from '../src/camera.js';

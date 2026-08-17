@@ -1,5 +1,5 @@
 import { bench, describe } from 'vitest';
-import { asEpochMillis } from '@lattice/core';
+import { asEpochMillis } from '@latticekit/core';
 import { memoryStorage } from '../src/adapters.js';
 import { migrations, type Recognize } from '../src/migrate.js';
 import { createStore, inspect } from '../src/store.js';

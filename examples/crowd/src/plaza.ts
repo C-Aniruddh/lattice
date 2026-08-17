@@ -35,8 +35,8 @@
  * rather than with a grid circle, so the outer promenade stays on stone for its whole lap. A grid
  * circle of the same size walks into the lagoon at the top and bottom of every revolution.
  */
-import { TAU, hashString } from '@lattice/core';
-import { Path, TileGrid, type HeightField, type Rect } from '@lattice/iso';
+import { TAU, hashString } from '@latticekit/core';
+import { Path, TileGrid, type HeightField, type Rect } from '@latticekit/iso';
 
 /** Map size, its centre, and the world pixels one height unit is worth. */
 export const W = 80, H = 80, PC = 40, STEP_PX = 5;

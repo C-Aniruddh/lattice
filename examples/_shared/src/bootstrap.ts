@@ -59,8 +59,8 @@
  * **It does not draw a HUD, own a palette schedule, or make any sound.** Those are the exhibit.
  */
 
-import { createRng, createScope, type Rng, type Scope, type Disposer } from '@lattice/core';
-import { DepthSorter, createCamera, rectCenterX, rectCenterY, type Camera, type Rect } from '@lattice/iso';
+import { createRng, createScope, type Rng, type Scope, type Disposer } from '@latticekit/core';
+import { DepthSorter, createCamera, rectCenterX, rectCenterY, type Camera, type Rect } from '@latticekit/iso';
 import {
   BASE_SLOTS,
   beginFrame,
@@ -75,9 +75,9 @@ import {
   type Pen,
   type Stops,
   type Surface,
-} from '@lattice/draw';
-import { createInput, type ActionEvent, type ActionMap, type DomInputSystem, type GestureMap, type ProfileOverrides } from '@lattice/input';
-import { browserFrames, createLoop, createTweens, type Loop, type Tweens } from '@lattice/loop';
+} from '@latticekit/draw';
+import { createInput, type ActionEvent, type ActionMap, type DomInputSystem, type GestureMap, type ProfileOverrides } from '@latticekit/input';
+import { browserFrames, createLoop, createTweens, type Loop, type Tweens } from '@latticekit/loop';
 import { PANEL_CLASS } from './panel.js';
 import { readParams, type Params } from './params.js';
 
@@ -178,7 +178,7 @@ export interface Boot<A extends string> {
    * object. This field is `loop.stats.worstGapMs`, which has neither problem.
    *
    * `0` until the first gap is measured, and the opening `loop.warmupFrames` are excluded — the
-   * page's load is not the scene's steady cost. See `@lattice/loop`'s `FrameStats`.
+   * page's load is not the scene's steady cost. See `@latticekit/loop`'s `FrameStats`.
    */
   readonly worstMs: number;
 

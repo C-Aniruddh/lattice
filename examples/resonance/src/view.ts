@@ -28,8 +28,8 @@
  * | solids | the bucket, culled by `DepthSorter.sort(camera)` — and formations are only minted within lamp reach | a formation in the dark is a shape nobody can see |
  * | **light pools** | {@link POOL_MAX}, hard | they are not free the way a sprite is, and a hundred and forty gates would each want one |
  */
-import { LEVEL_H, renderFrame, type Ink, type LightField, type Passes, type Pen } from '@lattice/draw';
-import { heightAt, type DepthSorter, type TileRange } from '@lattice/iso';
+import { LEVEL_H, renderFrame, type Ink, type LightField, type Passes, type Pen } from '@latticekit/draw';
+import { heightAt, type DepthSorter, type TileRange } from '@latticekit/iso';
 import { createBucket, type Bucket } from '../../_shared/src/index.js';
 import type { Cavern, Gate } from './cavern.js';
 import { rollPalette } from './palette.js';

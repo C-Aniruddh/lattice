@@ -34,7 +34,7 @@
  * The interval is a straight trade between rewind latency and resident memory, and it is the one
  * number here chosen by measurement rather than taste. The README has what it measured at.
  */
-import { hashBytes, hashString } from '@lattice/core';
+import { hashBytes, hashString } from '@latticekit/core';
 import { CELL_COUNT, seedState, step, type State } from './erosion.js';
 
 /** Epochs in the run, years in an epoch — a round million — and the checkpoint interval. */

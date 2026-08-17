@@ -1,7 +1,7 @@
 /**
  * Contract: the tick index means the same thing in three packages at once.
  *
- * `@lattice/loop` issues it, `@lattice/input` buckets events by it, `@lattice/persist` stores
+ * `@latticekit/loop` issues it, `@latticekit/input` buckets events by it, `@latticekit/persist` stores
  * it. It is the join that makes a replay possible, and **no single package can check that the
  * join holds** — each one is correct against its own idea of what a tick is, and all three
  * suites pass while a replay silently reports a wrong answer.
@@ -23,9 +23,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createLoop, manualClock, manualFrames } from '@lattice/loop';
-import { createCamera } from '@lattice/iso';
-import { createHeadlessInput } from '@lattice/input';
+import { createLoop, manualClock, manualFrames } from '@latticekit/loop';
+import { createCamera } from '@latticekit/iso';
+import { createHeadlessInput } from '@latticekit/input';
 
 /** A loop wired to clocks a test drives by hand, so an hour costs microseconds. */
 function harness(hz = 60) {

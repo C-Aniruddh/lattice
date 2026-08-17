@@ -7,8 +7,8 @@
  * and there is no canvas anywhere in Node.
  */
 
-import { createCamera } from '@lattice/iso';
-import type { Camera } from '@lattice/iso';
+import { createCamera } from '@latticekit/iso';
+import type { Camera } from '@latticekit/iso';
 import { BASE_SLOTS, createPalette } from '../src/palette.js';
 import type { Palette } from '../src/palette.js';
 import { createRecordingSurface } from '../src/record.js';

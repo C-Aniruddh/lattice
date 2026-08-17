@@ -1,5 +1,5 @@
 {
-  "name": "@lattice/example-terraces",
+  "name": "@latticekit/example-terraces",
   "version": "0.1.0",
   "private": true,
   "description": "TERRACES — a gallery exhibit. A hillside of stepped fields, and why picking must be terrain-aware.",
@@ -9,13 +9,13 @@
     "build": "vite build",
     "preview": "vite preview --port 5182 --strictPort"
   },
-  "$comment": "Five of nine. @lattice/iso is the row — `height`, `hittest` and the camera are the whole exhibit. @lattice/sim has no economy here and @lattice/persist has nothing that may outlive the tab, per docs/GALLERY.md. @lattice/audio is absent for the same reason island's is: a page that makes noise before it is touched is worse than a silent one, and the gallery still has no shared answer for the unlock gesture. @lattice/input arrives through the shared bootstrap, and — see README, kit finding 1 — is also the package this exhibit had to reach around, because it resolves every action's tile on flat ground.",
+  "$comment": "Five of nine. @latticekit/iso is the row — `height`, `hittest` and the camera are the whole exhibit. @latticekit/sim has no economy here and @latticekit/persist has nothing that may outlive the tab, per docs/GALLERY.md. @latticekit/audio is absent for the same reason island's is: a page that makes noise before it is touched is worse than a silent one, and the gallery still has no shared answer for the unlock gesture. @latticekit/input arrives through the shared bootstrap, and — see README, kit finding 1 — is also the package this exhibit had to reach around, because it resolves every action's tile on flat ground.",
   "dependencies": {
-    "@lattice/core": "^0.1.0",
-    "@lattice/draw": "^0.1.0",
-    "@lattice/input": "^0.1.0",
-    "@lattice/iso": "^0.1.0",
-    "@lattice/loop": "^0.1.0",
-    "@lattice/ui": "^0.1.0"
+    "@latticekit/core": "^0.1.0",
+    "@latticekit/draw": "^0.1.0",
+    "@latticekit/input": "^0.1.0",
+    "@latticekit/iso": "^0.1.0",
+    "@latticekit/loop": "^0.1.0",
+    "@latticekit/ui": "^0.1.0"
   }
 }

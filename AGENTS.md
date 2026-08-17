@@ -38,7 +38,7 @@ These are not preferences. A change that breaks one of these is reverted, not de
    That makes every one of them greppable, so an auditor can ask of each in turn whether it
    ever reaches a save file.
 
-2. **`@lattice/core` has no dependencies — and neither does anything else.** Not on npm, not
+2. **`@latticekit/core` has no dependencies — and neither does anything else.** Not on npm, not
    on each other except along the layering below, not on the DOM unless the package name
    says so. The entire kit installs in one `npm i` with nothing transitive.
 

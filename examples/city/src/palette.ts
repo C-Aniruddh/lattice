@@ -27,8 +27,8 @@
  * the sign color; `road` and `curb` are asphalt and concrete, which are neither `ground` nor
  * `metal` and look wrong borrowed from either.
  */
-import { clamp01 } from '@lattice/core';
-import { extendStops, hex, type LightField, type Palette, type Pen, type Stops } from '@lattice/draw';
+import { clamp01 } from '@latticekit/core';
+import { extendStops, hex, type LightField, type Palette, type Pen, type Stops } from '@latticekit/draw';
 
 /** The kit's ten, in the order the rows below are written. */
 const SLOTS = ['sky', 'ground', 'ink', 'brand', 'metal', 'glass', 'warn', 'ok', 'bad', 'night'] as const;

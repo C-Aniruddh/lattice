@@ -30,9 +30,9 @@
  * what bounds their number by the viewport instead of by the map: a 128×128 cave with a stored
  * worm field would post ten thousand pools, of which forty are on screen.
  */
-import { hash2, noise2, toUnit } from '@lattice/core';
-import { gridToScreen, type TileRange } from '@lattice/iso';
-import { LEVEL_H, mix, withAlpha, type LightField, type Pen } from '@lattice/draw';
+import { hash2, noise2, toUnit } from '@latticekit/core';
+import { gridToScreen, type TileRange } from '@latticekit/iso';
+import { LEVEL_H, mix, withAlpha, type LightField, type Pen } from '@latticekit/draw';
 import { STEP_PX, type Cavern, type Flame } from './cavern.js';
 
 /** Scratch, module scope. Nothing here is re-entrant and nothing retains either of them. */

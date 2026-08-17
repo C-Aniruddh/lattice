@@ -20,7 +20,7 @@
  * supports at no extra cost.
  */
 
-import { lerp } from '@lattice/core';
+import { lerp } from '@latticekit/core';
 import type { TileSource } from './tilemap.js';
 
 /**
@@ -74,7 +74,7 @@ export function unitsToPx(field: HeightField, units: number): number {
  *
  * **Units here are the game's, not `draw`'s storeys.** One height unit is `stepPx` world
  * pixels and is whatever the game decided a step of terrain is; one storey is `LEVEL_H` world
- * pixels and is an art proportion that lives in `@lattice/draw` with its own pair,
+ * pixels and is an art proportion that lives in `@latticekit/draw` with its own pair,
  * `levelsToPx`/`pxToLevels`. World pixels are the currency both convert through, and mixing
  * the two conversions gives a building that stands `stepPx / LEVEL_H` of the way up its own
  * hill — close enough to look like a shading bug.

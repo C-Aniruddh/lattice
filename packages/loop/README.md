@@ -1,4 +1,4 @@
-# @lattice/loop
+# @latticekit/loop
 
 > Time. A wall-clock game loop with fixed-step simulation and interpolated rendering, plus
 > scheduling, tweens and frame statistics.
@@ -6,10 +6,10 @@
 Part of **[Lattice](https://github.com/C-Aniruddh/lattice)** — the grid underneath.
 
 ```bash
-npm i @lattice/loop
+npm i @latticekit/loop
 ```
 
-**`@lattice/loop` is the only part of the kit that knows what time it is.** It advances a
+**`@latticekit/loop` is the only part of the kit that knows what time it is.** It advances a
 game's rules at a fixed rate off an *injected* wall clock whether or not anything is being
 painted, and hands the renderer a blend factor so the pictures can run at whatever rate the
 display manages.
@@ -19,7 +19,7 @@ display manages.
 ## The five-line version
 
 ```ts
-import { createLoop, browserFrames } from '@lattice/loop';
+import { createLoop, browserFrames } from '@latticekit/loop';
 
 const loop = createLoop({
   clock: { now: () => performance.now() },        // the one global clock read in the whole app
@@ -48,7 +48,7 @@ This is the example the rest of the README is about. **It has been run**; the ou
 copied from the run, not written by hand.
 
 ```ts
-import { createLoop, manualClock, manualFrames } from '@lattice/loop';
+import { createLoop, manualClock, manualFrames } from '@latticekit/loop';
 
 const clock = manualClock();          // in a game: { now: () => performance.now() }
 const frames = manualFrames();        // in a game: browserFrames()
@@ -191,7 +191,7 @@ The clamp does not defer the excess to a later frame — that only moves the spi
 along — and it does not hand it to anybody either. It is **dropped**, counted in
 `stats.droppedSeconds`, and reported to `onStall` for diagnostics.
 
-| | `@lattice/loop` | `@lattice/sim` |
+| | `@latticekit/loop` | `@latticekit/sim` |
 |---|---|---|
 | owns | time the player is **watching** | time the player was **not** |
 | clock | monotonic, injected, may freeze in sleep | epoch timestamp stored **in the save** |
@@ -286,7 +286,7 @@ loop.onUpdate((dt) => tweens.step(dt));          // on the fixed step, never in 
 
 tweens.start({
   from: panel.y, to: 0, seconds: 0.35,
-  ease: 'cubicOut',                              // a name from @lattice/core's EASINGS
+  ease: 'cubicOut',                              // a name from @latticekit/core's EASINGS
   slot: 'panel.y',                               // re-targeting mid-flight is the default
   onUpdate: (y) => { panel.y = y; },
   onDone: () => panel.enableButtons(),
@@ -311,7 +311,7 @@ tweens.start({
 
 ## Replay — the constitution, made falsifiable
 
-`@lattice/input` records a log keyed by tick, `@lattice/persist` stores and verifies it, and
+`@latticekit/input` records a log keyed by tick, `@latticekit/persist` stores and verifies it, and
 this is the only package that can press play.
 
 ```ts
@@ -334,7 +334,7 @@ delta, and nothing is painted. It is the one test in the kit that fails when som
 `Math.random()` to a system months from now, and there is a test in `test/replay.test.ts` that
 does exactly that and asserts the failure.
 
-**What it does not prove.** Not the picture. `@lattice/input` runs two clocks — gestures deliver
+**What it does not prove.** Not the picture. `@latticekit/input` runs two clocks — gestures deliver
 on ticks, the camera integrates on frames — so a log reproduces the same world and the same
 tiles, not the same glide. The rule that keeps that safe is the Tier B rule: a frame-integrated
 camera may reach pixels and must never reach a hash. And a replay is not a save: it reconstructs
@@ -348,7 +348,7 @@ a session from its start, it does not resume one.
 loop.stepMs;       // 16.667 at 60 Hz, 20 at 50 Hz. Computed once, stable for the loop's life.
 ```
 
-`@lattice/persist` writes this number into a recorded input log and refuses to migrate a log
+`@latticekit/persist` writes this number into a recorded input log and refuses to migrate a log
 whose `stepMs` differs from the running loop's, because a log keyed by tick index means nothing
 if a tick is a different length than it was when the log was made. **Changing `hz` in a shipped
 game is a breaking change to every recorded session**, exactly as changing a save schema is, and
@@ -375,14 +375,14 @@ That is why this package exports **no `Millis` or `Seconds` alias**. It used to,
 in `.lattice/kit.json` sat beside `Loop` and `Scheduler` with nothing marking the difference and
 was twice read as a brand that would refuse `{ stepMs: 16 }`. It would not have; `16` is a
 perfectly good `number`. Where a duration has one correct value that something else already
-knows, **take that thing rather than the number** — `@lattice/input` takes `step: loop`, not
+knows, **take that thing rather than the number** — `@latticekit/input` takes `step: loop`, not
 `stepMs`. `docs/rfc/durations.md` has the three tiers.
 
 ## The tick index is a cross-package contract
 
 `tick` is a non-negative integer, starts at 0, increments by exactly one per `update` call, and
 **never skips or repeats for the life of the loop, including across a `stop()` and `start()`**.
-`@lattice/input` buckets its events by it and `@lattice/persist` keys its replay envelope by it:
+`@latticekit/input` buckets its events by it and `@latticekit/persist` keys its replay envelope by it:
 the index *is* the alignment that makes replay possible.
 
 ---

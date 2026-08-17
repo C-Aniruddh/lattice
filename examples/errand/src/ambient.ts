@@ -15,9 +15,9 @@
  * nothing, and the walk is identical without it. Putting it in the logic modules would have bought
  * the exhibit nothing and cost it eight of the two hundred lines it has.
  */
-import { hash2, toUnit } from '@lattice/core';
-import { gridToScreen, pathSample, type GridPoint, type Path } from '@lattice/iso';
-import { LEVEL_H, mix, withAlpha, type Pen } from '@lattice/draw';
+import { hash2, toUnit } from '@latticekit/core';
+import { gridToScreen, pathSample, type GridPoint, type Path } from '@latticekit/iso';
+import { LEVEL_H, mix, withAlpha, type Pen } from '@latticekit/draw';
 import { WALL, type Valley } from './valley.js';
 
 const pt = { x: 0, y: 0 };

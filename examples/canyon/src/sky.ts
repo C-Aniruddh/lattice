@@ -24,9 +24,9 @@
  * which is the right shape for a gradient over the world and the wrong one for a gradient over
  * the viewport, so it is unused here and the projection is asked for the one line that matters.
  */
-import { clamp, hash2, toUnit, type Vec2 } from '@lattice/core';
-import { gridToScreen } from '@lattice/iso';
-import { mix, shade, withAlpha, type Pen } from '@lattice/draw';
+import { clamp, hash2, toUnit, type Vec2 } from '@latticekit/core';
+import { gridToScreen } from '@latticekit/iso';
+import { mix, shade, withAlpha, type Pen } from '@latticekit/draw';
 import { STEP_PX } from './erosion.js';
 import { hazeFar, rimScreenY, riverScreenY } from './strata.js';
 

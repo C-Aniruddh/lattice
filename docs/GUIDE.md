@@ -64,8 +64,8 @@ game is the bug that overwrote a player's typed company name in the game this ki
 ### Install
 
 ```bash
-npm i @lattice/core @lattice/iso @lattice/draw @lattice/loop @lattice/input
-npm i @lattice/audio @lattice/persist @lattice/sim
+npm i @latticekit/core @latticekit/iso @latticekit/draw @latticekit/loop @latticekit/input
+npm i @latticekit/audio @latticekit/persist @latticekit/sim
 ```
 
 Each brings only what is below it in the DAG, and nothing from npm. Everything with
@@ -77,30 +77,30 @@ Each brings only what is below it in the DAG, and nothing from npm. Everything w
 import {
   asEpochMillis, createRng, expectObject, expectRecordOfFinite, expectSerializable,
   fmtCompact, hash2, toUnit,
-} from '@lattice/core';
-import type { EpochMillis } from '@lattice/core';
-import { DepthSorter, TileGrid, createCamera } from '@lattice/iso';
-import type { TileRange } from '@lattice/iso';
+} from '@latticekit/core';
+import type { EpochMillis } from '@latticekit/core';
+import { DepthSorter, TileGrid, createCamera } from '@latticekit/iso';
+import type { TileRange } from '@latticekit/iso';
 import {
   BASE_SLOTS, DAY, FLAG_POWERED, NIGHT, VARIANT_ZERO, beginFrame, createCanvas2dSurface,
   createLightField, createPalette, defineSprite, drawSprite, endFrame, glowDot, isoTile,
   renderFrame, spriteHeightPx,
-} from '@lattice/draw';
-import type { Pen, Variant } from '@lattice/draw';
-import { browserFrames, createLoop } from '@lattice/loop';
-import { createInput } from '@lattice/input';
-import { createAudio } from '@lattice/audio';
+} from '@latticekit/draw';
+import type { Pen, Variant } from '@latticekit/draw';
+import { browserFrames, createLoop } from '@latticekit/loop';
+import { createInput } from '@latticekit/input';
+import { createAudio } from '@latticekit/audio';
 import {
   NO_GATES, advance, buildFlow, createFlow, defineEconomy, costOfNext, maxBuyable, zeroStocks,
-} from '@lattice/sim';
-import type { Ledger } from '@lattice/sim';
+} from '@latticekit/sim';
+import type { Ledger } from '@latticekit/sim';
 import {
   browserStorage, createStore, defaultChecksum, installFlushTriggers, migrations,
-} from '@lattice/persist';
-import type { Recognize, Schedule } from '@lattice/persist';
+} from '@latticekit/persist';
+import type { Recognize, Schedule } from '@latticekit/persist';
 ```
 
-Note the `@lattice/` scope on every one. **Inside a package** the rule is the opposite — import
+Note the `@latticekit/` scope on every one. **Inside a package** the rule is the opposite — import
 from the module, never from `./index.js` — but from outside, the barrel is the only entry point
 and everything else is private.
 
@@ -775,8 +775,8 @@ Replay is split across three packages along the DAG, and none of them imports an
 Recording is two lines around a session:
 
 ```ts
-import { record } from '@lattice/input';
-import { createRecorder } from '@lattice/persist';
+import { record } from '@latticekit/input';
+import { createRecorder } from '@latticekit/persist';
 
 const tape = record(input);                            // one small object per sample, while on
 const recorder = createRecorder({
@@ -801,9 +801,9 @@ would produce a confident wrong answer, which is worse than a refusal.
 Playing it back drives the same game from the same seed:
 
 ```ts
-import { replayCursor } from '@lattice/input';
-import { replay } from '@lattice/loop';
-import { createVerifier } from '@lattice/persist';
+import { replayCursor } from '@latticekit/input';
+import { replay } from '@latticekit/loop';
+import { createVerifier } from '@latticekit/persist';
 ```
 
 `createVerifier` refuses before the first tick if the kit build, the game build, the log version,
@@ -834,7 +834,7 @@ packages each have a headless door. There is no jsdom anywhere in this repo's su
 A whole frame, asserted, with no DOM:
 
 ```ts
-import { createRecordingSurface } from '@lattice/draw';
+import { createRecordingSurface } from '@latticekit/draw';
 
 function countOps(): number {
   const testSurface = createRecordingSurface(960, 540);
@@ -849,7 +849,7 @@ function countOps(): number {
 And a whole gesture, asserted, with no pointer:
 
 ```ts
-import { createHeadlessInput, fixedStep } from '@lattice/input';
+import { createHeadlessInput, fixedStep } from '@latticekit/input';
 
 function tapTile(): { gx: number; gy: number } | null {
   const headless = createHeadlessInput({

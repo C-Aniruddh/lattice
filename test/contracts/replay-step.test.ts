@@ -2,8 +2,8 @@
  * Contract: `stepMs` means the same thing to `loop` and to `persist`.
  *
  * This suite lives above the packages because **neither one can test this alone, and both of
- * their own suites pass while the product is broken.** `@lattice/loop` throws if a source's
- * `stepMs` disagrees with the loop it is being replayed on. `@lattice/persist` refuses a
+ * their own suites pass while the product is broken.** `@latticekit/loop` throws if a source's
+ * `stepMs` disagrees with the loop it is being replayed on. `@latticekit/persist` refuses a
  * `ReplayLog` whose `stepMs` differs from the current build's. Each is correct against its own
  * idea of what the number is. Nothing in either package checks that they are the *same* number,
  * measured the same way, in the same unit.
@@ -20,11 +20,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createLoop, manualClock, manualFrames, replay } from '@lattice/loop';
-import type { ReplaySource } from '@lattice/loop';
-import { createRecorder } from '@lattice/persist';
-import { createRng } from '@lattice/core';
-import type { ReplayCompat } from '@lattice/persist';
+import { createLoop, manualClock, manualFrames, replay } from '@latticekit/loop';
+import type { ReplaySource } from '@latticekit/loop';
+import { createRecorder } from '@latticekit/persist';
+import { createRng } from '@latticekit/core';
+import type { ReplayCompat } from '@latticekit/persist';
 
 /**
  * Build a loop at `hz` and report the `stepMs` it publishes.

@@ -1,5 +1,5 @@
 /**
- * The overlay — `@lattice/ui` over the canvas, per rule 7 of `docs/GALLERY.md`.
+ * The overlay — `@latticekit/ui` over the canvas, per rule 7 of `docs/GALLERY.md`.
  *
  * Logic, not art: it reads state, formats it, and owns nothing that draws. Its *appearance* is
  * the CSS in `index.html`, which is art and is uncounted, and that seam is the whole reason the
@@ -15,10 +15,10 @@
  * Three parameters rather than an options object, and no exported state interface: this HUD reads
  * three numbers, and a named type per number is how a forty-line overlay becomes a hundred.
  */
-import { fmtInteger, type Disposer } from '@lattice/core';
-import { paletteVars, type Palette } from '@lattice/draw';
-import type { Loop } from '@lattice/loop';
-import { applyPalette, createOverlay, el, roll, setText, toasts, type Overlay } from '@lattice/ui';
+import { fmtInteger, type Disposer } from '@latticekit/core';
+import { paletteVars, type Palette } from '@latticekit/draw';
+import type { Loop } from '@latticekit/loop';
+import { applyPalette, createOverlay, el, roll, setText, toasts, type Overlay } from '@latticekit/ui';
 
 /** What the exhibit tells the overlay, once per update: the hour, and how many it has woken. */
 export interface Hud { readonly hour: number; readonly woken: number; readonly buildings: number }

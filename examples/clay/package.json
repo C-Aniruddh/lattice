@@ -1,5 +1,5 @@
 {
-  "name": "@lattice/example-clay",
+  "name": "@latticekit/example-clay",
   "version": "0.1.0",
   "private": true,
   "description": "CLAY — a gallery exhibit. The ground is material: drag to raise it, and watch water, paths and everything standing on it resettle under your hand.",
@@ -9,13 +9,13 @@
     "build": "vite build",
     "preview": "vite preview --port 5197 --strictPort"
   },
-  "$comment": "Six of nine. @lattice/sim has no economy, @lattice/persist nothing to save — this exhibit deliberately has no undo and no store, because docs/GALLERY.md's Clay row says the trap is building a tool rather than an exhibit, and a save button is the first thing a tool grows. @lattice/audio is absent for the reason the gallery has not settled: a page that makes noise before a visitor has touched it is worse than a silent one. @lattice/input is here by name as well as through the shared bootstrap: the brush claims every drag gesture away from the camera controller, which is the one thing this exhibit could not do without it.",
+  "$comment": "Six of nine. @latticekit/sim has no economy, @latticekit/persist nothing to save — this exhibit deliberately has no undo and no store, because docs/GALLERY.md's Clay row says the trap is building a tool rather than an exhibit, and a save button is the first thing a tool grows. @latticekit/audio is absent for the reason the gallery has not settled: a page that makes noise before a visitor has touched it is worse than a silent one. @latticekit/input is here by name as well as through the shared bootstrap: the brush claims every drag gesture away from the camera controller, which is the one thing this exhibit could not do without it.",
   "dependencies": {
-    "@lattice/core": "^0.1.0",
-    "@lattice/draw": "^0.1.0",
-    "@lattice/input": "^0.1.0",
-    "@lattice/iso": "^0.1.0",
-    "@lattice/loop": "^0.1.0",
-    "@lattice/ui": "^0.1.0"
+    "@latticekit/core": "^0.1.0",
+    "@latticekit/draw": "^0.1.0",
+    "@latticekit/input": "^0.1.0",
+    "@latticekit/iso": "^0.1.0",
+    "@latticekit/loop": "^0.1.0",
+    "@latticekit/ui": "^0.1.0"
   }
 }

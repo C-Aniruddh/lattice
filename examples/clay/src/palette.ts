@@ -34,7 +34,7 @@
  * One stop set and no day cycle: this exhibit's variable is the ground under a finger, and a
  * second clock competing with it would be a second thing to watch.
  */
-import { extendStops, hex, type Stops } from '@lattice/draw';
+import { extendStops, hex, type Stops } from '@latticekit/draw';
 
 const SLOTS = ['sky', 'ground', 'ink', 'brand', 'metal', 'glass', 'warn', 'ok', 'bad', 'night'] as const;
 

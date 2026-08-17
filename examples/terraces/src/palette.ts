@@ -32,7 +32,7 @@
  * clear color the sky would have been comes out too blue and too cold against a warm hill. The
  * distance in front of you is lit air, not the zenith.
  */
-import { extendStops, hex, type Stops } from '@lattice/draw';
+import { extendStops, hex, type Stops } from '@latticekit/draw';
 
 const SLOTS = ['sky', 'ground', 'ink', 'brand', 'metal', 'glass', 'warn', 'ok', 'bad', 'night'] as const;
 

@@ -8,13 +8,13 @@
  *
  * Each test names the invariant it stands for. B6 is not a clean pass and says so in its own
  * title rather than in a comment somebody has to go looking for. B7 was the other one: it could
- * not be met from outside `@lattice/iso` and asserted the gap as a tripwire until
+ * not be met from outside `@latticekit/iso` and asserted the gap as a tripwire until
  * `DepthSorter.sorted` arrived. It is a clean pass now, and its block records why it could not
  * have been one before.
  */
 
 import { describe, expect, it } from 'vitest';
-import { DepthSorter, createCamera, pickSorted, type Camera } from '@lattice/iso';
+import { DepthSorter, createCamera, pickSorted, type Camera } from '@latticekit/iso';
 import { createBucket, type Bucket } from '../src/bucket.js';
 
 /** A sprite-shaped thing. `station` exists so a `pick` test has something to discriminate on. */
@@ -405,7 +405,7 @@ describe('B6 — a thousand frames of fill/sort/each/pick stay correct and stay 
 
 describe('B7 — an unsorted each throws instead of painting insertion order', () => {
   /**
-   * This was the one invariant that could not be met from outside `@lattice/iso`, and the
+   * This was the one invariant that could not be met from outside `@latticekit/iso`, and the
    * tripwire that said so lived here until the flag arrived.
    *
    * The reason it could not: `DepthSorter` published `count`, `clear`, `add`, `addPoint`, `sort`

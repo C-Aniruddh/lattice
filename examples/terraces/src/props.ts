@@ -26,9 +26,9 @@
  * shapes are simply drawn at their true size, and the zoom does the choosing, which is the whole
  * argument for vector art over three sprite sheets.
  */
-import { hash2, toUnit } from '@lattice/core';
-import { HALF_H, HALF_W, TILE_H, TILE_W, heightAt, type Camera, type Rect } from '@lattice/iso';
-import { isoBox, isoCylinder, isoPost, isoRoof, mix, pxToLevels, shade, withAlpha, type Ink, type Pen, type Rgba } from '@lattice/draw';
+import { hash2, toUnit } from '@latticekit/core';
+import { HALF_H, HALF_W, TILE_H, TILE_W, heightAt, type Camera, type Rect } from '@latticekit/iso';
+import { isoBox, isoCylinder, isoPost, isoRoof, mix, pxToLevels, shade, withAlpha, type Ink, type Pen, type Rgba } from '@latticekit/draw';
 import type { Bucket } from '../../_shared/src/index.js';
 import { H, W, type Hill, type Prop } from './hill.js';
 import { hazeAt } from './fields.js';

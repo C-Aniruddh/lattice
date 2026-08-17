@@ -62,7 +62,7 @@ is measurement noise. There is nothing for a collector to do.
 
 ---
 
-## `@lattice/core`
+## `@latticekit/core`
 
 ### vec2 — the per-entity path
 
@@ -113,7 +113,7 @@ does.
 
 ---
 
-## `@lattice/sim`
+## `@latticekit/sim`
 
 The economy's whole design rests on closed form rather than iteration, so these numbers are
 the argument for it rather than a report on it.
@@ -137,7 +137,7 @@ for that row.
 
 ---
 
-## `@lattice/loop`
+## `@latticekit/loop`
 
 | path | rate | per call |
 |---|---:|---:|
@@ -170,7 +170,7 @@ the readout was not. `terraces` shipped a HUD reading **0.0 ms** against a separ
 9.2 ms gap. Four exhibits ended up hand-rolling their own meter, and three of them reported a
 different wrong answer.
 
-So `@lattice/loop` now publishes **both instruments**, and the pump pair was not redefined:
+So `@latticekit/loop` now publishes **both instruments**, and the pump pair was not redefined:
 
 | field | measures | sees a pause between pumps? | contains the display period? |
 |---|---|---|---|
@@ -205,7 +205,7 @@ nothing at all**, so every frame-time figure it reports is either zero or stale.
 
 ---
 
-## `@lattice/audio`
+## `@latticekit/audio`
 
 Measured with no device, which is the honest way to measure the policy layer — it is the half
 that runs on every call whether or not a speaker exists.
@@ -223,7 +223,7 @@ exists precisely for the case where a game fires the same sound forty times in a
 
 ---
 
-## `@lattice/persist`
+## `@latticekit/persist`
 
 | operation | rate |
 |---|---:|
@@ -238,7 +238,7 @@ encode/decode figures are per *save*, which happens every few seconds at most.
 
 ---
 
-## `@lattice/input`
+## `@latticekit/input`
 
 Every row here is on a per-frame path. Nothing else in the package runs more than once per scene.
 
@@ -286,7 +286,7 @@ give the collector nothing to do.
 
 ---
 
-## `@lattice/draw`
+## `@latticekit/draw`
 
 **The draw calls are where an isometric game's frame time actually goes.** `core`'s tables above
 put vector maths and terrain hashing together at under half a percent of the budget and said so
@@ -399,7 +399,7 @@ each sprite hook receives: streams are held by seed and rewound in place, becaus
 explicit that one `Rng` per sprite per frame is precisely the small, short-lived, invisible-in-a-
 mean allocation the rule at the top of this file exists to prevent.
 
-## `@lattice/ui`
+## `@latticekit/ui`
 
 | operation | per call |
 |---|---:|

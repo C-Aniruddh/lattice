@@ -15,12 +15,12 @@
  * things it deliberately does not license are both absent: no handler is attached here, and no
  * part of this tree's *shape* depends on anything the model did.
  *
- * The bar is the interesting one. `@lattice/ui` ships `roll`, `panel`, `toasts`, `floats`,
+ * The bar is the interesting one. `@latticekit/ui` ships `roll`, `panel`, `toasts`, `floats`,
  * `thumbnails` and `acknowledge`, and **no slider, meter or track of any kind** — so the control
  * this whole exhibit is driven by is a bare `<input type="range">` and every millimetre of it is
  * in `index.html`. That is reported as a finding rather than worked around; see `hud.ts`.
  */
-import { el, type Overlay } from '@lattice/ui';
+import { el, type Overlay } from '@latticekit/ui';
 import { STEPS } from './deeptime.js';
 
 /** The six nodes `hud.ts` writes into, and nothing else. */

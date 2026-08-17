@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { asEpochMillis, createRng, hashParts, type RngSnapshot } from '@lattice/core';
+import { asEpochMillis, createRng, hashParts, type RngSnapshot } from '@latticekit/core';
 import { memoryStorage } from '../src/adapters.js';
 import { migrations, type Recognize } from '../src/migrate.js';
 import { createStore } from '../src/store.js';
@@ -21,7 +21,7 @@ interface World {
 
 const digest: Digest<World> = (state) => hashParts(state.coin, state.buildings);
 
-/** `@lattice/input` owns this shape; this package reads three fields and interprets none. */
+/** `@latticekit/input` owns this shape; this package reads three fields and interprets none. */
 interface Log extends ReplayCompat {
   readonly version: number;
   readonly stepMs: number;

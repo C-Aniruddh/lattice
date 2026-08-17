@@ -31,9 +31,9 @@
  * that separates meadow from wood, the wet sand at the waterline — is a multiplier handed in as
  * `tint`, and the only second passes are ones that read the color `isoTerrain` returned.
  */
-import { clamp01, hash2, noise2, toUnit } from '@lattice/core';
-import { HALF_H, type TileRange } from '@lattice/iso';
-import { isoTerrain, mix, shade, withAlpha, type Pen, type Rgba } from '@lattice/draw';
+import { clamp01, hash2, noise2, toUnit } from '@latticekit/core';
+import { HALF_H, type TileRange } from '@latticekit/iso';
+import { isoTerrain, mix, shade, withAlpha, type Pen, type Rgba } from '@latticekit/draw';
 import { BIAS, cell, dFar, dNear, field, sMax, sMin, seed } from './chunks.js';
 
 /** Biome ordinal → ground slot, in `chunks.ts`'s order: taiga, temperate, arid, jungle. */

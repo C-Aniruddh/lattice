@@ -94,7 +94,7 @@ for (const doc of DOCS) {
 }
 
 // The same strictness the packages are held to, plus the workspace path mapping so the
-// examples import `@lattice/iso` exactly as a reader would.
+// examples import `@latticekit/iso` exactly as a reader would.
 const tsconfig = join(OUT, 'tsconfig.json');
 writeFileSync(
   tsconfig,
@@ -106,7 +106,7 @@ writeFileSync(
         composite: false,
         incremental: false,
         baseUrl: '../..',
-        paths: { '@lattice/*': ['packages/*/src/index.ts'] },
+        paths: { '@latticekit/*': ['packages/*/src/index.ts'] },
         types: [],
       },
       include: ['*.ts'],

@@ -17,7 +17,7 @@
  */
 
 import { bench, describe } from 'vitest';
-import { createRng } from '@lattice/core';
+import { createRng } from '@latticekit/core';
 import { DepthSorter } from '../src/depth.js';
 import { createCamera } from '../src/camera.js';
 import type { Rect } from '../src/projection.js';

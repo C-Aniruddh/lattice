@@ -30,9 +30,9 @@ have the design backwards, not a missing export.
 This compiles and runs. Copy it, rename it, and change the world it builds — not the order.
 
 ```ts
-import { createScope } from '@lattice/core';
-import { DepthSorter, createCamera, tileBounds } from '@lattice/iso';
-import type { Rect } from '@lattice/iso';
+import { createScope } from '@latticekit/core';
+import { DepthSorter, createCamera, tileBounds } from '@latticekit/iso';
+import type { Rect } from '@latticekit/iso';
 import {
   BASE_SLOTS,
   beginFrame,
@@ -42,10 +42,10 @@ import {
   endFrame,
   isoTile,
   renderFrame,
-} from '@lattice/draw';
-import type { Passes } from '@lattice/draw';
-import { browserFrames, createLoop, createTweens } from '@lattice/loop';
-import { createInput } from '@lattice/input';
+} from '@latticekit/draw';
+import type { Passes } from '@latticekit/draw';
+import { browserFrames, createLoop, createTweens } from '@latticekit/loop';
+import { createInput } from '@latticekit/input';
 
 // ── the screen ────────────────────────────────────────────────────────────────────
 const host = document.getElementById('app') ?? document.body;
@@ -182,8 +182,8 @@ there is no loop — a headless test, a replay — use `fixedStep(60)`, which de
 `createLoop`'s own arithmetic so the two are bit-identical rather than merely close.
 
 ```ts
-import { createHeadlessInput, fixedStep } from '@lattice/input';
-import { createCamera } from '@lattice/iso';
+import { createHeadlessInput, fixedStep } from '@latticekit/input';
+import { createCamera } from '@latticekit/iso';
 
 const camera = createCamera(800, 600);
 const input = createHeadlessInput({ camera, step: fixedStep(60), actions: { collect: ['tap'] } });
@@ -226,8 +226,8 @@ a flicker. It was the loss of the most personal piece of data in the save.
 So: one `createLoop`, and everything else hangs off it.
 
 ```ts
-import { browserFrames, createLoop } from '@lattice/loop';
-import { createOverlay, drive } from '@lattice/ui';
+import { browserFrames, createLoop } from '@latticekit/loop';
+import { createOverlay, drive } from '@latticekit/ui';
 
 const now = (): number => performance.now();
 const loop = createLoop({ clock: { now }, frames: browserFrames() });
@@ -235,7 +235,7 @@ const ui = createOverlay({ now });    // the SAME clock. Two clocks in one HUD i
 drive(ui, loop);                      // update → ui.tick, render → ui.repaint
 ```
 
-`@lattice/ui` starts no timer and no rAF loop of its own, deliberately, for exactly this reason.
+`@latticekit/ui` starts no timer and no rAF loop of its own, deliberately, for exactly this reason.
 
 **`loop.realTime` is seconds; `createOverlay`'s `now` wants milliseconds.** If you need a
 millisecond clock inside a game whose only clock is the loop, it is `loop.realTime * 1000` —
@@ -329,5 +329,5 @@ One line. It pays for itself the first time you edit the file.
 | something that works and looks wrong | `traps` |
 
 Every package also ships its own README, and it is on disk:
-`node_modules/@lattice/loop/README.md` and its siblings are the long-form version of everything
+`node_modules/@latticekit/loop/README.md` and its siblings are the long-form version of everything
 above.

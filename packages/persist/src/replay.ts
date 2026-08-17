@@ -42,14 +42,14 @@
  *
  * ## What is not here, and where it went
  *
- * The **cursor** that plays a log back belongs to `@lattice/input`: this package stores the
+ * The **cursor** that plays a log back belongs to `@latticekit/input`: this package stores the
  * log verbatim, which necessarily means opaquely, and a package that cannot see inside a
  * structure cannot iterate it. The **driver** — constructing a game, restoring the rng
- * snapshot, turning the fixed-step crank — belongs to `@lattice/loop`, which this package may
+ * snapshot, turning the fixed-step crank — belongs to `@latticekit/loop`, which this package may
  * not import. `persist` hands over a log and a verifier; `loop` turns the crank.
  */
 
-import type { RngSnapshot } from '@lattice/core';
+import type { RngSnapshot } from '@latticekit/core';
 
 /** Ten seconds at 60 Hz. Long enough to be cheap, short enough to bracket a bug usefully. */
 const DEFAULT_CHECKPOINT_EVERY = 600;
@@ -57,7 +57,7 @@ const DEFAULT_CHECKPOINT_EVERY = 600;
 /**
  * The only three fields this package reads out of a recorded input log.
  *
- * `@lattice/input` owns the log's shape and `persist` may not import it — input is layer 2 and
+ * `@latticekit/input` owns the log's shape and `persist` may not import it — input is layer 2 and
  * this is layer 1, so the edge does not exist. This structural constraint is therefore the
  * entire coupling between them: three fields, compared for exact equality, never interpreted.
  * Everything else about a log is opaque here and is stored verbatim.
@@ -149,7 +149,7 @@ export interface RecorderOptions<T> {
 /**
  * Records checkpoints, and nothing else.
  *
- * It does not record inputs: `@lattice/input` already keeps a per-tick bucketed log keyed by
+ * It does not record inputs: `@latticekit/input` already keeps a per-tick bucketed log keyed by
  * an integer tick index, and a second recorder here would be a second copy of the same data
  * with its own ordering bugs. The game hands that log over once, at `stop`.
  *

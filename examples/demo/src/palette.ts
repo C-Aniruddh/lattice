@@ -23,7 +23,7 @@
  * frame would bump `rev`, and `rev` is what every cache in the kit keys on. The symptom of
  * getting that wrong is not a wrong color — it is a game that gets slower at dusk and stays slow.
  */
-import { extendStops, hex, type Rgba, type Stops } from '@lattice/draw';
+import { extendStops, hex, type Rgba, type Stops } from '@latticekit/draw';
 
 /**
  * Sixteen levels per channel, rounded. **Only ever for the two endpoint colors of a soft radial

@@ -1,4 +1,4 @@
-# `@lattice/iso`
+# `@latticekit/iso`
 
 **The three coordinate spaces of a 2:1 tile game — grid, world and screen — and every
 operation that is only correct because it knows which one it is in.**
@@ -10,7 +10,7 @@ described as "the wrong tile", "drawn through a wall", "the tap opened the build
 this package's fault and nobody else's.
 
 ```
-npm i @lattice/iso    # brings @lattice/core, and nothing else
+npm i @latticekit/iso    # brings @latticekit/core, and nothing else
 ```
 
 ---
@@ -21,13 +21,13 @@ This program runs as written — it is `test/readme.test.ts`, so the numbers bel
 away from the code above them.
 
 ```ts
-import { v2 } from '@lattice/core';
+import { v2 } from '@latticekit/core';
 import {
   DepthSorter, FlowField, Path, PathFinder, TileGrid,
   anchorToScreen, createCamera, footprintAnchor, heightAt,
   pathSample, pathSimplify, pickSorted, screenToTile, tileBounds,
-} from '@lattice/iso';
-import type { Anchor, GridPoint, Rect, Tile } from '@lattice/iso';
+} from '@latticekit/iso';
+import type { Anchor, GridPoint, Rect, Tile } from '@latticekit/iso';
 
 // ── the valley ──────────────────────────────────────────────────────────────
 const ground = new TileGrid(48, 48, { fill: 1 });          // 1 = ordinary ground
@@ -212,7 +212,7 @@ is exactly what `boxSilhouette` does.
 
 There is no allocator for `Rect`, `GridPoint`, `Tile`, `TileRange` or `Anchor`: they are plain
 field-only shapes, so write the literal once at setup and reuse it. `Vec2` comes from
-`@lattice/core`, and `v2()` is its allocator.
+`@latticekit/core`, and `v2()` is its allocator.
 
 ---
 
@@ -368,10 +368,10 @@ per floor, in order, which this API already supports.
 
 **Anything that draws**, including `LEVEL_H`. A storey is an art proportion, tuned beside
 face-shading constants; `iso`'s entire height vocabulary is world pixels, so there is no
-signature here a storey could enter through. It belongs to `@lattice/draw`.
+signature here a storey could enter through. It belongs to `@latticekit/draw`.
 
 **Camera feel.** No inertia, drag, pinch, edge-scroll, keyboard pan, smooth follow or shake.
-Those need a clock and a pointer, and both live in `@lattice/input`, which drives this camera
+Those need a clock and a pointer, and both live in `@latticekit/input`, which drives this camera
 through `panByScreen`, `zoomAt` and `centerOn`. A camera that eases itself cannot be stepped
 deterministically in a replay.
 
@@ -385,7 +385,7 @@ confirmed consumer, and one consumer owns its own container.
 
 ---
 
-## The contract with `@lattice/draw`
+## The contract with `@latticekit/draw`
 
 Two things above this package cannot be tested from inside it, and both are the kind where each
 side is individually correct and jointly broken:

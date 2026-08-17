@@ -29,7 +29,7 @@
  * package can see that from the inside.
  */
 
-import { HALF_H, HALF_W, isEdgeOn } from '@lattice/iso';
+import { HALF_H, HALF_W, isEdgeOn } from '@latticekit/iso';
 import type { Ink, Rgba } from './color.js';
 import { FACE_LEFT, FACE_RIGHT, FACE_TOP, outlineOf, shade, withAlpha } from './color.js';
 import type { Pen } from './surface.js';

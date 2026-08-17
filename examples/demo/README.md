@@ -5,14 +5,14 @@ and pilgrims who will not walk into the dark. Tap a marker, the lamp lights, the
 further, more of them come and they come back with coin. One to two minutes.
 
 ```bash
-npm run build          # the exhibit resolves @lattice/* to each package's dist, like a visitor
+npm run build          # the exhibit resolves @latticekit/* to each package's dist, like a visitor
 npm run dev            # http://localhost:5173
 ```
 
 `?seed=` chooses the valley — `?seed=two-peaks`, `?seed=harbour`, `?seed=anything`. Same seed,
 same valley, same pixel, every time. There is no save: every visitor sees the same first frame.
 
-The overlay is `@lattice/ui`, per `docs/GALLERY.md`, and it takes its colors from `draw`'s live
+The overlay is `@latticekit/ui`, per `docs/GALLERY.md`, and it takes its colors from `draw`'s live
 palette through `paletteVars` → `applyPalette`, so the HUD darkens with the valley at dusk. The
 whole of its appearance is the `<style>` block in `index.html`; `ui` ships no CSS by design and
 neither does `hud.ts`.

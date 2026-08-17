@@ -19,7 +19,7 @@
  * The sun is drawn low and left, once, with no arc: it is a light direction the ground shading
  * already agrees with, and a body on a track would be a second idea in a row that has one.
  */
-import { mix, shade, withAlpha, type Pen } from '@lattice/draw';
+import { mix, shade, withAlpha, type Pen } from '@latticekit/draw';
 
 /** Where the horizon sits, as a fraction of frame height, when the camera is level. It is not
  *  read from anywhere — it does not need to be, because the ground stops on its own and this

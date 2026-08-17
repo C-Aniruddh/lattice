@@ -31,9 +31,9 @@
  * § Scale's extent row; and narrow across it, so no pan ever finds an edge or a featureless
  * tableland, which is its edges row.
  */
-import { clamp } from '@lattice/core';
-import { rectFromSize, type Camera, type Rect } from '@lattice/iso';
-import type { Passes } from '@lattice/draw';
+import { clamp } from '@latticekit/core';
+import { rectFromSize, type Camera, type Rect } from '@latticekit/iso';
+import type { Passes } from '@latticekit/draw';
 import { paintCanyon } from './strata.js';
 import { drawBirds, drawSky } from './sky.js';
 import { STEP_PX } from './erosion.js';

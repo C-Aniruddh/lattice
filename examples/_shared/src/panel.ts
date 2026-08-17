@@ -70,7 +70,7 @@ interface ControlBase {
   /** What a visitor reads. Three or four words. */
   readonly label: string;
   /**
-   * The kit parameter this drives, as `@lattice/pkg Type.field`.
+   * The kit parameter this drives, as `@latticekit/pkg Type.field`.
    *
    * Rendered under the label. It is the difference between a settings screen and a map of the
    * kit's own surface, and a control that cannot fill it in is exhibit plumbing rather than a

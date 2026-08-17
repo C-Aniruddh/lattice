@@ -47,8 +47,8 @@
  * a caller holds a sorted order and is tempted to improve it.
  */
 
-import { TILE_H } from '@lattice/iso';
-import type { Camera, DepthSorter, Rect, TileRange } from '@lattice/iso';
+import { TILE_H } from '@latticekit/iso';
+import type { Camera, DepthSorter, Rect, TileRange } from '@latticekit/iso';
 import type { Pen } from './surface.js';
 
 /**

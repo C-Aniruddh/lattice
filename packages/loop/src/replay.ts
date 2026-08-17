@@ -1,7 +1,7 @@
 /**
  * The replay driver — what makes non-negotiable #1 falsifiable rather than aspirational.
  *
- * `@lattice/input` produces a log keyed by tick, `@lattice/persist` stores and verifies it,
+ * `@latticekit/input` produces a log keyed by tick, `@latticekit/persist` stores and verifies it,
  * and nothing else in the kit can press play. This module can, and everything it needs is
  * already here: the fixed step is what makes a tick index mean anything, `stepMs` is what makes
  * a log comparable, and `tick` is the join.
@@ -21,7 +21,7 @@
  *
  * It does not prove the picture matched, and two caveats are carried openly:
  *
- * - **The camera is outside the contract, deliberately.** `@lattice/input` runs two clocks —
+ * - **The camera is outside the contract, deliberately.** `@latticekit/input` runs two clocks —
  *   gestures deliver on ticks, the camera integrates on frames, which is what keeps a drag
  *   under the finger when a step is long. So a log reproduces the same world and the same
  *   tiles, not the same glide. The rule that keeps that safe is the Tier B rule: a
@@ -42,7 +42,7 @@
  * | replaying at a different `hz` | tick indices still line up and mean something completely different |
  */
 
-import { expectInt } from '@lattice/core';
+import { expectInt } from '@latticekit/core';
 import { manualClock } from './clock.js';
 import { manualFrames } from './frames.js';
 import { createLoop, DEFAULT_HZ } from './loop.js';
@@ -58,7 +58,7 @@ const PROGRESS_EVERY_TICKS = 1000;
  * A recorded session, seen from here: a length, inputs addressable by tick, and optional
  * checkpoints.
  *
- * `@lattice/persist`'s zero-allocation cursor satisfies this; so does an array in a test. This
+ * `@latticekit/persist`'s zero-allocation cursor satisfies this; so does an array in a test. This
  * package never learns what a log looks like on disk, which is the whole reason the driver can
  * live in layer 1.
  */
@@ -73,7 +73,7 @@ export interface ReplaySource {
    * against the replay loop's `stepMs` and a mismatch **throws** rather than being reported as
    * a divergence at tick 1 — a log recorded at 60 Hz and replayed at 50 has tick indices that
    * still line up and mean something completely different, and the two failures deserve
-   * different words. `@lattice/persist` refuses on the same comparison by name.
+   * different words. `@latticekit/persist` refuses on the same comparison by name.
    */
   readonly stepMs?: number;
 
@@ -176,7 +176,7 @@ export function replay(options: ReplayOptions): ReplayResult {
     typeof source.checkpointAt !== 'function'
   ) {
     throw new TypeError(
-      'replay.source: expected { ticks, applyAt(tick), checkpointAt(tick) } — the driver is defined against a structural source so that layer 1 never imports @lattice/persist',
+      'replay.source: expected { ticks, applyAt(tick), checkpointAt(tick) } — the driver is defined against a structural source so that layer 1 never imports @latticekit/persist',
     );
   }
   if (typeof options.update !== 'function') {

@@ -1,5 +1,5 @@
 {
-  "name": "@lattice/audio",
+  "name": "@latticekit/audio",
   "version": "0.1.0",
   "description": "Sound without assets: WebAudio synthesis from declarative sound definitions, with voice limiting, buses and a music sequencer.",
   "license": "MIT",
@@ -32,6 +32,6 @@
     "audio"
   ],
   "dependencies": {
-    "@lattice/core": "^0.1.0"
+    "@latticekit/core": "^0.1.0"
   }
 }

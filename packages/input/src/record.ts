@@ -61,7 +61,7 @@ export interface InputRecording {
 }
 
 /**
- * A recorded log, seen the way `@lattice/loop`'s replay driver sees it.
+ * A recorded log, seen the way `@latticekit/loop`'s replay driver sees it.
  *
  * Structurally identical to that package's `ReplaySource`, and deliberately not imported from
  * it. The driver calls {@link applyAt} exactly once per tick, in ascending order, **before**
@@ -87,7 +87,7 @@ export interface ReplayCursor {
   applyAt(tick: number): void;
   /**
    * Always `undefined`. Checkpoints are digests of **game state**, which this package cannot
-   * see and must not guess at; `@lattice/persist`'s `Recorder` owns them. Present so this
+   * see and must not guess at; `@latticekit/persist`'s `Recorder` owns them. Present so this
    * satisfies the driver's shape without a wrapper object at the call site.
    */
   checkpointAt(tick: number): number | undefined;
@@ -96,7 +96,7 @@ export interface ReplayCursor {
 /**
  * An empty log carrying this system's compatibility triple.
  *
- * The value to hand `@lattice/persist`'s `createVerifier` as `current.inputs`: read off a live
+ * The value to hand `@latticekit/persist`'s `createVerifier` as `current.inputs`: read off a live
  * system rather than typed out, so the recorded triple and the current one cannot disagree
  * without the system itself having changed.
  */
@@ -141,7 +141,7 @@ export function record<A extends string>(system: InputSystem<A>): InputRecording
 /**
  * Refuse a log this system cannot reproduce, naming the field that differs.
  *
- * ## The elements are checked too, and that is a contract with `@lattice/persist`
+ * ## The elements are checked too, and that is a contract with `@latticekit/persist`
  *
  * `persist` stores a log **verbatim** — it owns the envelope, the version and the integrity
  * digest, and it deliberately never inspects a sample. So this is the last place that can refuse
@@ -215,7 +215,7 @@ export function replay<A extends string>(system: InputSystem<A>, log: InputLog):
 }
 
 /**
- * A cursor over a log, for `@lattice/loop`'s replay driver.
+ * A cursor over a log, for `@latticekit/loop`'s replay driver.
  *
  * Unlike {@link replay}, this closes each tick with the **driver's** index rather than the
  * log's. The two agree for a session recorded from tick 0, which is every session a game
@@ -233,7 +233,7 @@ export function replay<A extends string>(system: InputSystem<A>, log: InputLog):
  * at the end would be confidently wrong.
  *
  * So the cursor remembers the system's epoch and refuses the first `applyAt` that finds it moved.
- * `@lattice/loop`'s driver does not have to know this exists; it is the same refusal a setter
+ * `@latticekit/loop`'s driver does not have to know this exists; it is the same refusal a setter
  * would have made, one tick later, from the only place that can still make it.
  *
  * @throws RangeError naming the mismatch if the compatibility triple differs.

@@ -23,7 +23,7 @@
  * every slot is: `hud.ts` pushes the whole palette to the DOM through `paletteVars`, so the overlay
  * is dyed out of the same six numbers the fields are.
  */
-import { extendStops, hex, type Stops } from '@lattice/draw';
+import { extendStops, hex, type Stops } from '@latticekit/draw';
 
 const SLOTS = ['sky', 'ground', 'ink', 'brand', 'metal', 'glass', 'warn', 'ok', 'bad', 'night'] as const;
 

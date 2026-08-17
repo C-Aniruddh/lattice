@@ -31,8 +31,8 @@
  * `pen.t`, because they are weather: they have to keep moving in a silent tab and in a browser
  * that refused a context, or the opening frame is a photograph of a cave.
  */
-import { clamp01, hash2, noise2, toUnit, type Vec2 } from '@lattice/core';
-import { gridToScreen, heightAt } from '@lattice/iso';
+import { clamp01, hash2, noise2, toUnit, type Vec2 } from '@latticekit/core';
+import { gridToScreen, heightAt } from '@latticekit/iso';
 import {
   GROUND_LIFT,
   glowDot,
@@ -43,7 +43,7 @@ import {
   pxToLevels,
   withAlpha,
   type Pen,
-} from '@lattice/draw';
+} from '@latticekit/draw';
 import { CX, CY, type Cavern, type Gate } from './cavern.js';
 
 /**

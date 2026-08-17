@@ -1,5 +1,5 @@
 /**
- * The HUD — **`@lattice/ui` over the canvas, and the seam that had never been run.**
+ * The HUD — **`@latticekit/ui` over the canvas, and the seam that had never been run.**
  *
  * This was drawn into the Overlay pass out of `draw`'s screen-space primitives, because `ui` had
  * not landed. It has now, and `docs/GALLERY.md` makes the DOM overlay a rule rather than a
@@ -29,8 +29,8 @@
  * properties this file writes. That is the boundary, and it is why the package can be dropped
  * into a game whose art direction was decided first.
  */
-import { fmtCompact, type Disposer } from '@lattice/core';
-import { paletteVars, type Palette as WorldPalette } from '@lattice/draw';
+import { fmtCompact, type Disposer } from '@latticekit/core';
+import { paletteVars, type Palette as WorldPalette } from '@latticekit/draw';
 import {
   applyPalette,
   createOverlay,
@@ -42,7 +42,7 @@ import {
   type Overlay,
   type Roll,
   type ToastHost,
-} from '@lattice/ui';
+} from '@latticekit/ui';
 
 export interface Hud {
   /** One line, always naming the next action. The entire tutorial. */
@@ -82,7 +82,7 @@ export interface HudOptions {
   readonly read: () => Hud;
   /** The button. The same call the world's tap makes, so there is one code path to be wrong. */
   readonly onLight: () => void;
-  /** Milliseconds, and it must be the clock `@lattice/loop` was given. Two clocks in one HUD is
+  /** Milliseconds, and it must be the clock `@latticekit/loop` was given. Two clocks in one HUD is
    *  a poll racing a settle. */
   readonly now: () => number;
 }

@@ -11,8 +11,8 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { createCamera } from '@lattice/iso';
-import type { GridPoint } from '@lattice/iso';
+import { createCamera } from '@latticekit/iso';
+import type { GridPoint } from '@latticekit/iso';
 import { createInput } from '../src/dom.js';
 import { record } from '../src/record.js';
 import { DEFAULT_PROFILE } from '../src/profile.js';
@@ -435,11 +435,11 @@ describe('I14 — the overlay diagnostic', () => {
 
 /**
  * K12: the diagnostic used to fire on the first tap on *any* HUD over the canvas, including
- * every `@lattice/ui` panel — which `GALLERY.md` makes mandatory, so every planned exhibit
+ * every `@latticekit/ui` panel — which `GALLERY.md` makes mandatory, so every planned exhibit
  * would have hit it. The discriminator is whether anything declared `pointer-events` inline.
  */
 describe('K12 — chrome that declared itself is not a cover', () => {
-  /** A node that `@lattice/ui`'s `mount(node, { interactive: true })` has granted. It writes the
+  /** A node that `@latticekit/ui`'s `mount(node, { interactive: true })` has granted. It writes the
    *  grant inline and ships no stylesheet, which is what makes this detectable at all. */
   function granted(w: FakeWorld, value = 'auto'): FakeElement {
     const node = new Element(w.doc, 'DIV');

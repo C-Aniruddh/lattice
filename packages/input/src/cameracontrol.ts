@@ -26,8 +26,8 @@
  * a parameter.
  */
 
-import { damp, expectFinite } from '@lattice/core';
-import type { Camera } from '@lattice/iso';
+import { damp, expectFinite } from '@latticekit/core';
+import type { Camera } from '@latticekit/iso';
 
 /**
  * `KeyboardEvent.code`s that pan the camera, and the screen direction each one means.

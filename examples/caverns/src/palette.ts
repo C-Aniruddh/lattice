@@ -34,7 +34,7 @@
  * indigo one keeps the rock's silhouette legible at the 8% that shows through, which is the
  * difference between a dark exhibit and an empty one.
  */
-import { extendStops, hex, type Stops } from '@lattice/draw';
+import { extendStops, hex, type Stops } from '@latticekit/draw';
 
 const SLOTS = ['sky', 'ground', 'ink', 'brand', 'metal', 'glass', 'warn', 'ok', 'bad', 'night'] as const;
 

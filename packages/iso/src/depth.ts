@@ -2,7 +2,7 @@
  * An order over a frame's ground footprints, and nothing else.
  *
  * **This package owns the comparator, the order, and the backwards walk that makes picking
- * correct. `@lattice/draw` owns the items, the passes and the bucket.** A draw list is a list
+ * correct. `@latticekit/draw` owns the items, the passes and the bucket.** A draw list is a list
  * of things to draw and `iso` must not know what a drawable is: the moment a sorter holds ids
  * it is modeling the caller's entities, and the moment it has passes it is a renderer. What
  * is genuinely ours is narrower and sharper — *given a set of ground footprints, what order do
@@ -169,7 +169,7 @@ export class DepthSorter {
    * What it deliberately does **not** claim is that the cull still matches the camera. A camera
    * that pans after `sort()` leaves the survivor set stale, and that is not this flag's
    * business: paint and pick read the same stale set from the same instance, so they still
-   * agree with each other, and agreement is the property the contract with `@lattice/draw`
+   * agree with each other, and agreement is the property the contract with `@latticekit/draw`
    * actually rests on.
    */
   get sorted(): boolean {
@@ -470,7 +470,7 @@ export class DepthSorter {
  * shipped, player-found bug, and it cannot recur as long as the sorter passed here is the one
  * that produced the paint order.
  *
- * **That last clause is a cross-package contract, not a hope.** `@lattice/draw` paints
+ * **That last clause is a cross-package contract, not a hope.** `@latticekit/draw` paints
  * `for i in 0..count: paint(items[order.indexAt(i)])` and must not reorder after `sort()`;
  * this walks that same instance backwards. The two cannot disagree unless that rule is
  * broken, which is why the contract is written down above both packages rather than left as a

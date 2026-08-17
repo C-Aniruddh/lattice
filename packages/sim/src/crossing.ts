@@ -55,7 +55,7 @@
  * and a fixed iteration count.
  */
 
-import { expectFinite } from '@lattice/core';
+import { expectFinite } from '@latticekit/core';
 import type { Economy, Stocks } from './graph.js';
 import type { Flow } from './flow.js';
 

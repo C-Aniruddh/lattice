@@ -11,7 +11,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { createRng } from '@lattice/core';
+import { createRng } from '@latticekit/core';
 import {
   DIR_DX,
   DIR_DY,

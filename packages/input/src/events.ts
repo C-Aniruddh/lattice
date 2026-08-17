@@ -26,8 +26,8 @@
  * and the cached boxes were minutes old.
  */
 
-import { worldToTile } from '@lattice/iso';
-import type { Camera, GridPoint } from '@lattice/iso';
+import { worldToTile } from '@latticekit/iso';
+import type { Camera, GridPoint } from '@latticekit/iso';
 import type { GestureName, ZoomSource } from './recognize.js';
 import type { PointerKind } from './profile.js';
 import type { ActionBinding } from './actions.js';

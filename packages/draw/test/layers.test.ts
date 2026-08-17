@@ -12,8 +12,8 @@
  * about what the player tapped.
  */
 
-import { DepthSorter, TILE_H, pickSorted } from '@lattice/iso';
-import type { Camera, Rect, TileRange } from '@lattice/iso';
+import { DepthSorter, TILE_H, pickSorted } from '@latticekit/iso';
+import type { Camera, Rect, TileRange } from '@latticekit/iso';
 import { describe, expect, it } from 'vitest';
 import { createLightField } from '../src/light.js';
 import { Layer, PASS_NAMES, renderFrame } from '../src/layers.js';

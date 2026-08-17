@@ -1,4 +1,4 @@
-# RFC: `@lattice/sim`
+# RFC: `@latticekit/sim`
 
 > Status: **proposed**. Owner: architect (A8). Implements nothing; a builder follows this.
 > Source material: `../foom-simple-ui/src/sim/{cost,flow,offline,resources}.ts`,
@@ -13,7 +13,7 @@
 Every signature below type-checks against this preamble:
 
 ```ts
-import type { EpochMillis } from '@lattice/core';   // see §7: core is asked to add it
+import type { EpochMillis } from '@latticekit/core';   // see §7: core is asked to add it
 // If core declines: `type EpochMillis = number;` here, and the seam loses its name.
 declare const entityBrand: unique symbol;
 ```
@@ -22,7 +22,7 @@ declare const entityBrand: unique symbol;
 
 ## 1. The one sentence
 
-**`@lattice/sim` is the arithmetic of an idle economy in closed form — a production graph you
+**`@latticekit/sim` is the arithmetic of an idle economy in closed form — a production graph you
 can integrate in one step, a cost curve you can invert, an offline warp on time, capacity
 gating, and the instant a stock runs out — with no tick, no clock and no state of its own.**
 
@@ -96,7 +96,7 @@ most of the new thinking is.
 ### 3.1 `graph` — declaring a production graph
 
 ```ts
-/** A stock vector, keyed by node id. Plain JSON: this is what `@lattice/persist` writes. */
+/** A stock vector, keyed by node id. Plain JSON: this is what `@latticekit/persist` writes. */
 export type Stocks<N extends string> = Readonly<Record<N, number>>;
 
 /** The mutable form. Every hot-path function writes into one of these instead of allocating. */
@@ -297,7 +297,7 @@ export declare function ratesOf<N extends string, G extends string>(
 ```ts
 /**
  * A stock vector and the instant it is true at. This is the whole of `sim`'s state, and it is a
- * value — JSON-round-trippable as-is, which is what `@lattice/persist` writes.
+ * value — JSON-round-trippable as-is, which is what `@latticekit/persist` writes.
  *
  * `atMs` is an **epoch** timestamp and nothing else will do. Not `loop.time`, not a duration
  * accumulated on the fixed step, not `performance.now()`. See the four rules below.
@@ -426,7 +426,7 @@ One consequence for the rest of this surface: **`capacityLoad` deliberately retu
 for zero supply. It is a derived read for a meter. It is not a stock, and a game that stores it
 has just written a `null` into its own save.
 
-#### The contract with `@lattice/loop` — ratified
+#### The contract with `@latticekit/loop` — ratified
 
 `loop`'s side, which I accept without amendment: **`loop` credits nothing, ever.** It clamps
 catch-up at 250 ms per pump and drops the excess; `loop.time` deliberately drifts below real
@@ -1385,7 +1385,7 @@ deterministic 60 iterations into a platform-dependent answer.
 
 ## 7. Routings — gaps and requests that belong to other packages
 
-**To `@lattice/core` (two, one of them blocking a seam):**
+**To `@latticekit/core` (two, one of them blocking a seam):**
 
 1. **Take `EpochMillis`, and consider branding it.** `loop`'s routed note 5 already asks for
    `export type EpochMillis = number; export type Now = () => EpochMillis;`. I need it and cannot
@@ -1398,7 +1398,7 @@ deterministic 60 iterations into a platform-dependent answer.
 2. **Adopted with thanks:** `guard`'s return-the-value shape is what lets `defineEconomy` name the
    offending node, and the Tier A/B rule is now the spine of §3.10. No objection to either.
 
-**To `@lattice/persist`:**
+**To `@latticekit/persist`:**
 
 3. **`SaveEnvelope.t` is not the accrual anchor** and should say so in its own doc. The number
    offline progress reads is `ledger.atMs`, stored verbatim inside the payload, never re-stamped
@@ -1419,7 +1419,7 @@ deterministic 60 iterations into a platform-dependent answer.
    that path only catches parse and checksum failures today, it should also catch a `RangeError`
    from state validation, or the two of us have built half a pipeline each.
 
-**To `@lattice/loop`:** ratified as written, with one nit — `persist`'s §4.8 says "`loop` owns the
+**To `@latticekit/loop`:** ratified as written, with one nit — `persist`'s §4.8 says "`loop` owns the
 clock", which predates `loop`'s refusal of the epoch. Both agree the *caller* passes the number;
 the orchestrator may want persist's wording aligned to "the game owns the calendar".
 

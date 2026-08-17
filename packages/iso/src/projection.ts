@@ -20,7 +20,7 @@
  * within an epsilon, and why a replay lands on the same pixel on every engine.
  */
 
-import type { Vec2 } from '@lattice/core';
+import type { Vec2 } from '@latticekit/core';
 
 // ─── the three shared value types ────────────────────────────────────────────────
 
@@ -123,7 +123,7 @@ export const HALF_H = 16;
 
 /*
  * There is deliberately no `LEVEL_H` here. A storey height is an art proportion, tuned beside
- * face-shading constants that mean nothing in this package, and it belongs to `@lattice/draw`.
+ * face-shading constants that mean nothing in this package, and it belongs to `@latticekit/draw`.
  * `iso`'s entire height vocabulary is world pixels — `gridToScreen` takes `zPx`, `Volume`
  * carries `zPx`/`hPx`, `heightAt` returns pixels — so there is no signature here a storey
  * could enter through, and exporting one would publish a number this package never reads.

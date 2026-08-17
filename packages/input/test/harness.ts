@@ -6,8 +6,8 @@
  * implementation of the thing under test, and the bug would live in both.
  */
 
-import { createCamera } from '@lattice/iso';
-import type { Camera } from '@lattice/iso';
+import { createCamera } from '@latticekit/iso';
+import type { Camera } from '@latticekit/iso';
 import { createHeadlessInput } from '../src/system.js';
 import type { HeadlessInputOptions, InputSystem } from '../src/system.js';
 import type { GestureName } from '../src/recognize.js';

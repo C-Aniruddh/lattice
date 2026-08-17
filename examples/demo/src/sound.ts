@@ -10,7 +10,7 @@
  * what make it a soundscape rather than a hum with a knob on it: a high shimmer that only speaks
  * in daylight, a low one that only speaks after dark, and the same number trading them over.
  */
-import { createAudio, createBed, type Audio, type Bed, type BedLayer, type SoundDef } from '@lattice/audio';
+import { createAudio, createBed, type Audio, type Bed, type BedLayer, type SoundDef } from '@latticekit/audio';
 
 export const SOUNDS = {
   /** The strike: a flint rasp under a rising tone. Laddered, so a run of taps reads as a run. */

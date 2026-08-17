@@ -1,11 +1,11 @@
 /**
- * The overlay's *behavior* — **`@lattice/ui` over the canvas, because `docs/GALLERY.md` makes it a
+ * The overlay's *behavior* — **`@latticekit/ui` over the canvas, because `docs/GALLERY.md` makes it a
  * rule**, and this exhibit is that rule's hardest case: a dialog box is the thing an author is most
  * tempted to draw into the canvas with four lines of `screenText`.
  *
  * It was never tempting, and the reason is worth writing down for whoever reads this next:
  *
- * | | `screenText` in the Overlay pass | `@lattice/ui` |
+ * | | `screenText` in the Overlay pass | `@latticekit/ui` |
  * |---|---|---|
  * | a paragraph of dialog | you write the line-breaking, at every zoom and every window width | the browser does it, and has since 1994 |
  * | two buttons | two rectangles you hit-test yourself, out of the same pointer stream the world is using | two `<button>`s, with focus, hover, a pressed state and Enter |
@@ -34,10 +34,10 @@
  * color is `index.html`, both of them art; what is here is the reading, the formatting, and the one
  * button that moves the game.
  */
-import type { Disposer } from '@lattice/core';
-import { paletteVars, type Palette as WorldPalette } from '@lattice/draw';
-import type { StoreStatus } from '@lattice/persist';
-import { applyPalette, createOverlay, panel, setText, show } from '@lattice/ui';
+import type { Disposer } from '@latticekit/core';
+import { paletteVars, type Palette as WorldPalette } from '@latticekit/draw';
+import type { StoreStatus } from '@latticekit/persist';
+import { applyPalette, createOverlay, panel, setText, show } from '@latticekit/ui';
 import { buildCards } from './cards.js';
 import type { SpotKind, Stage } from './errand.js';
 import { OBJECTIVES, TROUBLE, speechFor } from './script.js';
@@ -57,7 +57,7 @@ export interface HudRead { stage: Stage; savedAgo: number; bytes: number; worstM
  * @param onAct fires when the dialog's acting button is pressed, and is the only way a stage
  *   advances. The returned `say(kind, stage, acts)` takes `acts` from `advance()` and nothing else,
  *   because the HUD never decides whether a conversation has a consequence.
- * @param now must be the clock `@lattice/loop` was given. Two clocks in one HUD is a poll racing a
+ * @param now must be the clock `@latticekit/loop` was given. Two clocks in one HUD is a poll racing a
  *   settle, which is how a one-shot dialog reopens blank after a confirm.
  */
 export function createHud(palette: WorldPalette, now: () => number, onAct: (kind: SpotKind) => void, read: () => HudRead) {

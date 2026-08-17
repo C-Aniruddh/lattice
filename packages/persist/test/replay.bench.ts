@@ -1,5 +1,5 @@
 import { bench, describe } from 'vitest';
-import { hashParts } from '@lattice/core';
+import { hashParts } from '@latticekit/core';
 import { createRecorder, createVerifier, type Digest, type ReplayCompat, type ReplayLog } from '../src/replay.js';
 
 /**

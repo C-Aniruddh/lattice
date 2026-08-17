@@ -5,8 +5,8 @@ minted from the seed and its own coordinates as it comes into range, the ground 
 away, and nothing is ever loaded from anywhere.
 
 ```bash
-npm run build          # from the repo root — the exhibit resolves @lattice/* to each package's dist
-npm run dev --workspace=@lattice/example-endless
+npm run build          # from the repo root — the exhibit resolves @latticekit/* to each package's dist
+npm run dev --workspace=@latticekit/example-endless
 # → http://localhost:5194/     try ?seed=atlas, ?seed=hollow, ?seed=lattice
 ```
 

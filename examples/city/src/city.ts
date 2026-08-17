@@ -16,8 +16,8 @@
  * city whose tall things cluster has a *peak*, and a peak is what makes thirty-six objects read
  * as one composition.
  */
-import { clamp01, hash2, hashString, toUnit } from '@lattice/core';
-import { LEVEL_H, spriteHeightPx, type SpriteDef, type Variant } from '@lattice/draw';
+import { clamp01, hash2, hashString, toUnit } from '@latticekit/core';
+import { LEVEL_H, spriteHeightPx, type SpriteDef, type Variant } from '@latticekit/draw';
 import { crown, drum, kiosk, park, pencil, rowHouses, shedWide, signal, site, slab, spire, streetLamp, twins, vent, walkup } from './sprites.js';
 
 /** Tiles of buildable block, tiles of street between them, and how many blocks each way. */

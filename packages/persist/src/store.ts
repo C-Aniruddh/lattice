@@ -15,7 +15,7 @@
  * at boot and should be as loud as possible.
  */
 
-import { asEpochMillis, isSerializable, type EpochMillis, type Now } from '@lattice/core';
+import { asEpochMillis, isSerializable, type EpochMillis, type Now } from '@latticekit/core';
 import type { StorageAdapter } from './adapters.js';
 import { defaultChecksum, type Checksum } from './integrity.js';
 import type { MigrationChain } from './migrate.js';
@@ -215,7 +215,7 @@ export type Cancel = () => void;
 /**
  * Run `fn` after `afterMs` have passed, and hand back a way to cancel it.
  *
- * Injected, never created. `persist` may not import `@lattice/loop` — they are siblings on
+ * Injected, never created. `persist` may not import `@latticekit/loop` — they are siblings on
  * layer 1 and the DAG forbids the edge — and it may not reach for a timer of its own, because
  * a package that creates a timer is a package that owns a leak. A browser game wraps
  * `loop.real` with {@link scheduleFrom}; a Node test passes a function that records its
@@ -223,7 +223,7 @@ export type Cancel = () => void;
  * with no fake timers.
  *
  * **The unit is milliseconds**, as the parameter name says and as `minWriteIntervalMs`,
- * `EpochMillis` and `elapsedSince` all say. `@lattice/loop` schedules in **seconds**, so
+ * `EpochMillis` and `elapsedSince` all say. `@latticekit/loop` schedules in **seconds**, so
  * `loop.real.after` is not a `Schedule` and must never be passed as one — use
  * {@link scheduleFrom}.
  *
@@ -237,7 +237,7 @@ export type Schedule = (afterMs: number, fn: () => void) => Cancel;
  * A seconds-based timeline, structurally — `loop.real` and `loop.sim` both satisfy it.
  *
  * Declared rather than imported, exactly as `StorageLike` declares `localStorage` and
- * `ListenerTarget` declares `document`: `@lattice/loop` is a sibling on layer 1 and the DAG
+ * `ListenerTarget` declares `document`: `@latticekit/loop` is a sibling on layer 1 and the DAG
  * forbids the edge, so the coupling is two method signatures and nothing else.
  *
  * `delay` is in **seconds** and the returned handle is an opaque id, which is the whole reason
@@ -297,7 +297,7 @@ export function scheduleFrom(timeline: SecondsTimeline): Schedule {
 /**
  * What is wrong with this store right now, as a **condition rather than a message**.
  *
- * `@lattice/ui` latches player-facing notices on this value, so the contract is narrow:
+ * `@latticekit/ui` latches player-facing notices on this value, so the contract is narrow:
  *
  * - **It is stable while the condition is.** A bare member of this union, always. It never
  *   carries a timestamp, an attempt count, a byte size or a version number. Interpolating a
@@ -600,7 +600,7 @@ export function inspect(text: string): Envelope | null {
  * elapsed is not a thing a simulation should have to defend against.
  *
  * **Not clamped from above.** An offline cap is a balance decision — how much of eight hours
- * away a game chooses to pay out — and it belongs to `@lattice/sim`, not here. This function
+ * away a game chooses to pay out — and it belongs to `@latticekit/sim`, not here. This function
  * reports the gap; `sim` decides what it is worth. Read `OpenResult.savedAt` directly if you
  * want to detect the backwards clock and say something about it.
  */

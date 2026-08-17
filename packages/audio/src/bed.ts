@@ -27,7 +27,7 @@
  * *doing* is assertable in Node with no device at all.
  */
 
-import { clamp, type Disposer } from '@lattice/core';
+import { clamp, type Disposer } from '@latticekit/core';
 
 import { internalsOf, type Audio } from './engine.js';
 import type { Renderer, ToneHandle } from './render.js';

@@ -9,7 +9,7 @@
  * a hot lens appears between every adjacent pair and it looks like a driver bug.
  */
 
-import { HALF_W } from '@lattice/iso';
+import { HALF_W } from '@latticekit/iso';
 import { describe, expect, it } from 'vitest';
 import { rgba, withAlpha } from '../src/color.js';
 import { createLightField } from '../src/light.js';

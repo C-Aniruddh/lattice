@@ -9,14 +9,14 @@
  *
  * **A profile is part of a replay's identity.** The same finger movements under a tap slop of
  * 8 px and of 12 px are a different sequence of actions, so {@link profileFingerprint} goes
- * into every recorded log and `@lattice/persist` refuses a replay whose fingerprint differs
+ * into every recorded log and `@latticekit/persist` refuses a replay whose fingerprint differs
  * rather than migrating it. That is why this module owns a canonical encoding and not merely
  * a set of numbers.
  *
  * Pure: no clock, no DOM, no allocation outside the two constructors.
  */
 
-import { expectFinite, expectInt } from '@lattice/core';
+import { expectFinite, expectInt } from '@latticekit/core';
 
 /**
  * What the player is touching the game with.
@@ -306,7 +306,7 @@ function positive(value: number, label: string): number {
 /**
  * The profile as one comparable string — the third member of a log's compatibility triple.
  *
- * `@lattice/persist` compares this for **exact equality** and refuses a replay that differs
+ * `@latticekit/persist` compares this for **exact equality** and refuses a replay that differs
  * rather than migrating it, so it has to be canonical: a fixed field order (never
  * `Object.keys`, whose order is an implementation detail of how the object was built) and
  * `String(number)`, which round-trips every double exactly.

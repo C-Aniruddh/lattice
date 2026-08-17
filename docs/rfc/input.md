@@ -1,6 +1,6 @@
-# RFC — `@lattice/input`
+# RFC — `@latticekit/input`
 
-Status: **proposed**. Owner: lattice-architect (task A5). Depends on `@lattice/core`, `@lattice/iso`.
+Status: **proposed**. Owner: lattice-architect (task A5). Depends on `@latticekit/core`, `@latticekit/iso`.
 Environment: **browser** (`window`, `document`, `Element.setPointerCapture`). The recognizer inside it is not.
 
 Routings folded in during design, each answered explicitly rather than hedged:
@@ -11,7 +11,7 @@ and the call on gamepad support (§4.2).
 
 ## 1. The one sentence
 
-**`@lattice/input` turns every way a person can touch a game — finger, mouse, pen, key —
+**`@latticekit/input` turns every way a person can touch a game — finger, mouse, pen, key —
 into one replayable stream of intents expressed in tile coordinates and bucketed to
 simulation ticks, and hands back one object that unbinds all of it.**
 
@@ -74,7 +74,7 @@ subtly different.
 ## 3. The public surface
 
 ```ts
-import type { Camera, Vec2, GridPoint } from '@lattice/iso';
+import type { Camera, Vec2, GridPoint } from '@latticekit/iso';
 ```
 
 > `Camera` is `iso`'s. `Vec2` is `{ x: number; y: number }` and `GridPoint` is

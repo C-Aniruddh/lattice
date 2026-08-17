@@ -1,5 +1,5 @@
 /**
- * The overlay — **`@lattice/ui` over the canvas, because `docs/GALLERY.md` makes it a rule.**
+ * The overlay — **`@latticekit/ui` over the canvas, because `docs/GALLERY.md` makes it a rule.**
  *
  * There is no canvas text anywhere in this exhibit, which is worth saying rather than assuming:
  * an exhibit whose whole claim is a pair of *numbers* is exactly the shape that would have
@@ -36,9 +36,9 @@
  * here. That seam is the whole reason the package drops into a game whose art direction was
  * decided first.
  */
-import type { Disposer } from '@lattice/core';
-import { paletteVars, type Palette as WorldPalette } from '@lattice/draw';
-import { applyPalette, createOverlay, el, roll, setText, type Overlay } from '@lattice/ui';
+import type { Disposer } from '@latticekit/core';
+import { paletteVars, type Palette as WorldPalette } from '@latticekit/draw';
+import { applyPalette, createOverlay, el, roll, setText, type Overlay } from '@latticekit/ui';
 
 /**
  * What the exhibit tells the overlay, once per update. A pull, not a push, so there is exactly
@@ -55,7 +55,7 @@ export interface Hud { readonly pools: number; readonly torches: number; readonl
 /**
  * `palette` is read on the state cadence and pushed to the DOM, never mutated. `onMore` lights a
  * hundred more torches and `onDouse` gives the dark back. `now` is milliseconds and **must be the
- * clock `@lattice/loop` was given** — two clocks in one HUD is a poll racing a settle.
+ * clock `@latticekit/loop` was given** — two clocks in one HUD is a poll racing a settle.
  */
 export interface HudOptions {
   readonly palette: WorldPalette; readonly read: () => Hud;

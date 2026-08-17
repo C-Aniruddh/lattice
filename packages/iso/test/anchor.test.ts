@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { v2 } from '@lattice/core';
+import { v2 } from '@latticekit/core';
 import { anchorPan, anchorToScreen, anchorVisible } from '../src/anchor.js';
 import type { Anchor } from '../src/anchor.js';
 import { createCamera, gridToScreen } from '../src/camera.js';

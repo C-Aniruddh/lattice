@@ -35,7 +35,7 @@ import {
   v2Rotate,
   createRng,
   type Vec2,
-} from '@lattice/core';
+} from '@latticekit/core';
 
 /** Enough distinct inputs to defeat hoisting, few enough to stay in L1. */
 const N = 1024;

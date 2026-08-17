@@ -49,7 +49,7 @@ const fail = (file, line, rule, message) => problems.push({ file, line, rule, me
 const adapters = [];
 
 /**
- * The only modules of `@lattice/core` permitted a Tier B call site.
+ * The only modules of `@latticekit/core` permitted a Tier B call site.
  *
  * `damp` needs `exp`; `v2Rotate`, `v2Angle` and `v2FromAngle` need `cos`/`sin`/`atan2`.
  * That is the complete list, and it is a list rather than a marker because layer 0 is the
@@ -132,7 +132,7 @@ const observedExports = new Map();
  * The names a package actually publishes — read from `index.ts` alone.
  *
  * The first version of this swept every `export` under `src/`, which put a package's internals
- * in the manifest beside its API: `@lattice/audio` listed `createVoiceRequest` and
+ * in the manifest beside its API: `@latticekit/audio` listed `createVoiceRequest` and
  * `fillRequest` next to `play`. That is worse than an incomplete manifest, because an agent
  * navigating by `kit.json` cannot tell which of those it is allowed to call, and the ones it
  * picks wrongly are exactly the ones that will be renamed without a major version.
@@ -248,7 +248,7 @@ for (const [id] of Object.entries(kit.packages)) {
         const enumerated = id === 'core' && !TIER_B_MODULES.has(basename(file, '.ts'));
         const window = rawLines.slice(Math.max(0, n - 4), n + 1).join('\n');
         if (enumerated) {
-          fail(rel, at, 'determinism', `Math.${transcendental[1]} in @lattice/core outside ${[...TIER_B_MODULES].join('/')} — layer 0 is what every other package's determinism rests on, and its Tier B sites are enumerated rather than self-declared`);
+          fail(rel, at, 'determinism', `Math.${transcendental[1]} in @latticekit/core outside ${[...TIER_B_MODULES].join('/')} — layer 0 is what every other package's determinism rests on, and its Tier B sites are enumerated rather than self-declared`);
         } else if (!window.includes('@tier-b')) {
           fail(rel, at, 'determinism', `Math.${transcendental[1]} is not correctly rounded by spec — mark the site \`@tier-b\` (presentation only, never hashed or persisted) or use Tier A arithmetic`);
         }
@@ -276,12 +276,12 @@ for (const [id] of Object.entries(kit.packages)) {
       }
 
       // 4. Layering, via the declared dependency set.
-      const cross = line.match(/from\s+'@lattice\/([a-z0-9-]+)'/);
+      const cross = line.match(/from\s+'@latticekit\/([a-z0-9-]+)'/);
       if (cross) {
         const dep = cross[1];
         if (dep === id) fail(rel, at, 'layering', 'a package must not import itself by name');
         else if (!allowedDeps.get(id).has(dep)) {
-          fail(rel, at, 'layering', `@lattice/${id} (layer ${layerOf.get(id)}) may not import @lattice/${dep} (layer ${layerOf.get(dep)}) — kit.json does not declare the edge`);
+          fail(rel, at, 'layering', `@latticekit/${id} (layer ${layerOf.get(id)}) may not import @latticekit/${dep} (layer ${layerOf.get(dep)}) — kit.json does not declare the edge`);
         }
       }
 
@@ -338,7 +338,7 @@ for (const [id, names] of observedExports) {
     else {
       const missing = names.filter((n) => !declared.includes(n));
       const gone = declared.filter((n) => !names.includes(n));
-      fail('.lattice/kit.json', 0, 'manifest', `@lattice/${id} is out of date — run \`npm run lint -- --fix\`${missing.length ? `; new: ${missing.slice(0, 6).join(', ')}` : ''}${gone.length ? `; removed: ${gone.slice(0, 6).join(', ')}` : ''}`);
+      fail('.lattice/kit.json', 0, 'manifest', `@latticekit/${id} is out of date — run \`npm run lint -- --fix\`${missing.length ? `; new: ${missing.slice(0, 6).join(', ')}` : ''}${gone.length ? `; removed: ${gone.slice(0, 6).join(', ')}` : ''}`);
     }
   }
 }

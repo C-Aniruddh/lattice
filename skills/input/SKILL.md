@@ -24,9 +24,9 @@ The two properties that shape everything else:
 ## The five lines a game writes
 
 ```ts
-import { createInput } from '@lattice/input';
-import type { Camera } from '@lattice/iso';
-import type { Loop } from '@lattice/loop';
+import { createInput } from '@latticekit/input';
+import type { Camera } from '@latticekit/iso';
+import type { Loop } from '@latticekit/loop';
 
 export function wire(canvas: HTMLCanvasElement, camera: Camera, loop: Loop): void {
   const input = createInput({
@@ -78,7 +78,7 @@ The error always points the same way — up the slope from the finger — becaus
 has the smaller `gx + gy`.
 
 ```ts wrong
-import type { ActionEvent } from '@lattice/input';
+import type { ActionEvent } from '@latticekit/input';
 declare function buildAt(gx: number, gy: number): void;
 
 // Correct on flat ground. On a hill, wrong by more the higher the hill, and nothing reports it.
@@ -88,9 +88,9 @@ export function onPlace(e: ActionEvent<'place'>): void {
 ```
 
 ```ts
-import { screenToTileOnHeights } from '@lattice/iso';
-import type { Camera, HeightField, Tile } from '@lattice/iso';
-import type { ActionEvent } from '@lattice/input';
+import { screenToTileOnHeights } from '@latticekit/iso';
+import type { Camera, HeightField, Tile } from '@latticekit/iso';
+import type { ActionEvent } from '@latticekit/input';
 
 const hit: Tile = { gx: 0, gy: 0 };
 declare function buildAt(gx: number, gy: number): void;
@@ -122,10 +122,10 @@ broken brush rather than as a wrong coordinate.
 are the same permutation or the game is lying about what the player tapped.
 
 ```ts
-import { boxSilhouette, pickSorted, pointInPolygon } from '@lattice/iso';
-import type { Camera, DepthSorter, Volume } from '@lattice/iso';
-import { spriteVolume } from '@lattice/draw';
-import type { SpriteDef, Variant } from '@lattice/draw';
+import { boxSilhouette, pickSorted, pointInPolygon } from '@latticekit/iso';
+import type { Camera, DepthSorter, Volume } from '@latticekit/iso';
+import { spriteVolume } from '@latticekit/draw';
+import type { SpriteDef, Variant } from '@latticekit/draw';
 
 interface Thing {
   readonly def: SpriteDef;
@@ -187,7 +187,7 @@ pinch, two-finger pinch and the zoom keys, because the camera does not care whic
 neither does a game.
 
 ```ts
-import type { InputSystem } from '@lattice/input';
+import type { InputSystem } from '@latticekit/input';
 
 export function placementMode(input: InputSystem<'place'>): () => void {
   const scope = input.scope();          // a scene holds this, not an array of disposers
@@ -219,8 +219,8 @@ yourself; it is a known gap, not something you are missing.
 ## Continuous input is asked for, never pushed
 
 ```ts
-import type { InputSystem } from '@lattice/input';
-import type { Tile } from '@lattice/iso';
+import type { InputSystem } from '@latticekit/input';
+import type { Tile } from '@latticekit/iso';
 
 const tile: Tile = { gx: 0, gy: 0 };
 
@@ -252,7 +252,7 @@ derivation.
 | fling floor | — | **near 0 and every drag drifts, so the camera can never be placed exactly** |
 
 ```ts
-import type { InputSystem } from '@lattice/input';
+import type { InputSystem } from '@latticekit/input';
 
 export function retune(input: InputSystem<'place'>): void {
   // REPLACES the override set rather than patching it, so setProfile({}) returns to defaults
@@ -277,7 +277,7 @@ every log; that is a new system, not a knob.
 ## Rebinding a key
 
 ```ts
-import type { InputSystem } from '@lattice/input';
+import type { InputSystem } from '@latticekit/input';
 
 export function rebind(input: InputSystem<'place' | 'cancel'>): readonly string[] {
   input.setActions({ place: ['tap', 'key:KeyN'], cancel: ['key:Escape'] });
@@ -299,12 +299,12 @@ something else.
 
 | how the node came to take the press | reported? |
 |---|---|
-| `pointer-events` set **inline**, on it or an ancestor — which `@lattice/ui` writes on every node it grants | no |
+| `pointer-events` set **inline**, on it or an ancestor — which `@latticekit/ui` writes on every node it grants | no |
 | listed in `createInput({ overlays: [hud] })` | no |
 | `auto` from a stylesheet, with an inline `none` above it that lost the specificity fight | **yes — this is the bug** |
 | `auto` from a stylesheet, with nothing declared anywhere | **yes** |
 
-So a `@lattice/ui` panel is silent with no configuration at all. `overlays` is the escape for a
+So a `@latticekit/ui` panel is silent with no configuration at all. `overlays` is the escape for a
 HUD styled entirely from CSS, which cannot be told apart from a spacer any other way.
 
 ---
@@ -332,4 +332,4 @@ in your HUD is already safe.
 | a button in the HUD rather than a tap on the world | `hud` |
 | recording and replaying a session | `determinism` |
 
-Long form, on disk: `node_modules/@lattice/input/README.md`.
+Long form, on disk: `node_modules/@latticekit/input/README.md`.

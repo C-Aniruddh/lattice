@@ -16,8 +16,8 @@
  * its build timers froze twenty minutes ago.
  */
 
-import type { Disposer } from '@lattice/core';
-import { expectFinite } from '@lattice/core';
+import type { Disposer } from '@latticekit/core';
+import { expectFinite } from '@latticekit/core';
 
 /** Work registered on a cadence. The argument is wall-clock milliseconds from the overlay's
  *  injected clock — never a delta, and never `requestAnimationFrame`'s own timestamp. */

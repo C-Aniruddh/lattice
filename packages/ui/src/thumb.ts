@@ -1,5 +1,5 @@
 /**
- * The one real bridge from `@lattice/draw` to the DOM.
+ * The one real bridge from `@latticekit/draw` to the DOM.
  *
  * It draws nothing itself. It hands you a `Surface` — the same interface the world is painted
  * through — and turns what you painted into a `data:` URL for an `<img src>`, cached by a key
@@ -17,8 +17,8 @@
  *    the frame the shop opens, on exactly the hardware least able to absorb it.
  */
 
-import { clamp, expectFinite } from '@lattice/core';
-import { createOffscreenSurface, hex, type Surface } from '@lattice/draw';
+import { clamp, expectFinite } from '@latticekit/core';
+import { createOffscreenSurface, hex, type Surface } from '@latticekit/draw';
 import { hostPixelRatio } from './host.js';
 import { internalsOf, type Overlay } from './overlay.js';
 
@@ -32,7 +32,7 @@ export interface ThumbSpec {
    *  test and the bytes are identical across machines. */
   readonly dpr?: number;
   /**
-   * Painted before `paint` runs. A `#rgb`, `#rrggbb` or `#rrggbbaa` string — `@lattice/draw`'s
+   * Painted before `paint` runs. A `#rgb`, `#rrggbb` or `#rrggbbaa` string — `@latticekit/draw`'s
    * color model parses those and nothing else, and a second parser here would be this package
    * holding a second opinion about what a color is. Default: transparent.
    */
@@ -59,7 +59,7 @@ export interface ThumbCache {
    *
    * @throws TypeError if `key` is empty.
    * @throws RangeError if `width`, `height` or `dpr` is not finite and positive.
-   * @throws Error, from `@lattice/draw`, if the host cannot give the canvas a 2D context.
+   * @throws Error, from `@latticekit/draw`, if the host cannot give the canvas a 2D context.
    */
   url(key: string, spec: ThumbSpec): string;
   /** Drop everything. Called for you by `setBrand`. */

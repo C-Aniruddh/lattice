@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 /**
  * The landing page's dev server and build.
  *
- * `@lattice/*` is deliberately **not** aliased to package source, for the same reason the
+ * `@latticekit/*` is deliberately **not** aliased to package source, for the same reason the
  * exhibits do not alias it: the workspace symlinks resolve to each package's `dist`, which is
  * what somebody who ran `npm i` would get. `npm run build` at the repo root first, or the page
  * bundles nothing.

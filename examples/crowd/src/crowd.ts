@@ -32,8 +32,8 @@
  * walker costs two searches where it should cost one — reported as a finding rather than worked
  * around, because working around it would mean a per-walker cache and the exhibit would be over.
  */
-import { hash2, mod, toUnit } from '@lattice/core';
-import { pathDirAt, pathSample, type GridPoint, type Path } from '@lattice/iso';
+import { hash2, mod, toUnit } from '@latticekit/core';
+import { pathDirAt, pathSample, type GridPoint, type Path } from '@latticekit/iso';
 
 /**
  * Which loop walker `i` walks, by `i % 16`.

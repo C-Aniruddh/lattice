@@ -53,7 +53,7 @@
  * anybody either: it is dropped, counted in `stats.droppedSeconds`, and reported to `onStall`
  * for diagnostics. An hour in a background tab arrives as one enormous `elapsed`, becomes
  * 250 ms of ticks, and the other 3,599.75 seconds cease to exist as far as this file is
- * concerned. They were never its to lose — `@lattice/sim` has already integrated the same
+ * concerned. They were never its to lose — `@latticekit/sim` has already integrated the same
  * interval from its own stored epoch timestamp. **The loop advances callbacks; `sim` advances
  * value.**
  *
@@ -63,7 +63,7 @@
  * file contributes the cadence and nothing else.
  */
 
-import { expectFinite, expectInt, type Disposer } from '@lattice/core';
+import { expectFinite, expectInt, type Disposer } from '@latticekit/core';
 import type { Clock } from './clock.js';
 import type { FrameSource, Pump } from './frames.js';
 import { createTimeline, type Scheduler } from './scheduler.js';
@@ -207,8 +207,8 @@ export interface LoopOptions {
    * Everything was working; only the painting had stopped.
    *
    * `tick` is a **non-negative integer**, starts at 0, increments by exactly one per call, and
-   * never skips or repeats for the life of the loop. `@lattice/input` keys its event buckets
-   * by it and `@lattice/persist` keys its replay envelope by it: the index *is* the alignment
+   * never skips or repeats for the life of the loop. `@latticekit/input` keys its event buckets
+   * by it and `@latticekit/persist` keys its replay envelope by it: the index *is* the alignment
    * between an input log and a session, so it is a guarantee, not a convenience.
    *
    * Must not: read a clock, read live input listeners (sample them into a buffer instead),
@@ -302,7 +302,7 @@ export interface LoopOptions {
    *
    * **Diagnostics and presentation only.** It is not an offline-earnings feed: this number is
    * monotonic-clock time, which may not include the machine's sleep, and crediting it would
-   * double-count against `@lattice/sim`, which has already integrated the same interval from
+   * double-count against `@latticekit/sim`, which has already integrated the same interval from
    * its own timestamp. Legitimate uses: a perf warning, deciding to skip an expensive
    * re-layout, a "welcome back" panel that mentions no numbers.
    */
@@ -359,8 +359,8 @@ export interface Loop {
    *
    * A non-negative integer that starts at 0 and increases by exactly one per `update` call,
    * for the life of the loop — **including across a `stop()` and `start()`**, because an index
-   * that repeated would silently corrupt the join that `@lattice/input`'s event buckets and
-   * `@lattice/persist`'s replay envelope are both keyed on.
+   * that repeated would silently corrupt the join that `@latticekit/input`'s event buckets and
+   * `@latticekit/persist`'s replay envelope are both keyed on.
    */
   readonly tick: number;
 
@@ -371,7 +371,7 @@ export interface Loop {
    * The same step in milliseconds — `stepUs / 1000`, computed once and stable for the life of
    * the loop.
    *
-   * **This number is a compatibility constant, not a detail.** `@lattice/persist` writes it
+   * **This number is a compatibility constant, not a detail.** `@latticekit/persist` writes it
    * into a recorded input log and refuses to migrate a log whose `stepMs` differs from the
    * running loop's, because a log keyed by tick index means nothing if a tick is a different
    * length than it was when the log was made. Changing `hz` in a shipped game is therefore a
@@ -404,7 +404,7 @@ export interface Loop {
    * The fixed rate this loop was built with. See {@link LoopOptions.hz}.
    *
    * Baked, and the setter is `new`: `stepMs` is written into every recorded input log and
-   * `@lattice/persist` refuses to migrate a log whose step differs from the running loop's.
+   * `@latticekit/persist` refuses to migrate a log whose step differs from the running loop's.
    */
   readonly hz: number;
 

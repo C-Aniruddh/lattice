@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createCamera } from '@lattice/iso';
+import { createCamera } from '@latticekit/iso';
 import { createHeadlessInput } from '../src/system.js';
 import { createLog, record, replay } from '../src/record.js';
 import { fixedStep } from '../src/step.js';

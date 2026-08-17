@@ -23,9 +23,9 @@
  *
  * `?seed=` turns the paving grain and dresses every column, awning and tree. Same seed, same piazza.
  */
-import { heightAt, tileBounds, type GridPoint } from '@lattice/iso';
-import { renderFrame, type Passes, type Pen } from '@lattice/draw';
-import { drive } from '@lattice/ui';
+import { heightAt, tileBounds, type GridPoint } from '@latticekit/iso';
+import { renderFrame, type Passes, type Pen } from '@latticekit/draw';
+import { drive } from '@latticekit/ui';
 import { bootstrap, controlPanel, createBucket, knobs } from '../../_shared/src/index.js';
 import { GOLDEN } from './palette.js';
 import { H, HEART, PC, W, createPlaza } from './plaza.js';
@@ -115,12 +115,12 @@ controlPanel(
   [
     { kind: 'group', label: 'the crowd' },
     { kind: 'range', key: 'n', label: 'walkers', min: 0, max: 3000, step: 20, value: crowd.count,
-      param: '@lattice/iso pathSample(path, sPx, out)',
+      param: '@latticekit/iso pathSample(path, sPx, out)',
       note: 'Two calls per walker per frame, and nothing else scales with it. Nothing is allocated, spawned or despawned when it moves.',
       wrong: { above: 1800, says: 'The frame goes; the crowd does not. What costs is fifteen draw calls a person — the closed form that placed them is the one part of this that never shows up in a profile.' },
       apply: (v) => { crowd.count = v; } },
     { kind: 'range', key: 'v', label: 'walking pace', min: 0, max: 140, step: 2, value: crowd.speed,
-      param: '@lattice/iso Path.arcLength',
+      param: '@latticekit/iso Path.arcLength',
       note: 'World pixels per second along the curve — not grid units, which is why nobody speeds up on the diagonals.',
       wrong: { below: 0, says: 'Time stops and the crowd does not. Every walker is still exactly where φ·i puts it, because that is all a position ever was.' },
       apply: (v) => { crowd.speed = v; } },

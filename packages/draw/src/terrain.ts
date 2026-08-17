@@ -44,7 +44,7 @@
  * names. The exhibit this module was extracted from had it inverted.
  */
 
-import type { HeightField } from '@lattice/iso';
+import type { HeightField } from '@latticekit/iso';
 import type { Ink, Rgba } from './color.js';
 import { shade } from './color.js';
 import { put } from './solids.js';

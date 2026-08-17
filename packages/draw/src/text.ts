@@ -37,7 +37,7 @@
  * mistake this note exists to prevent — squashes the text horizontally on every long wall.
  */
 
-import { HALF_H, HALF_W } from '@lattice/iso';
+import { HALF_H, HALF_W } from '@latticekit/iso';
 import type { Ink } from './color.js';
 import { levelsToPx } from './solids.js';
 import type { Pen, TextStyle } from './surface.js';

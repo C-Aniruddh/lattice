@@ -7,7 +7,7 @@
  * `Math.atan2` visible in a return value, and a function that allocates behaves identically to
  * one that does not until a profiler is attached.
  *
- * So this file reads the source. It is the same instrument `@lattice/core` uses for its own
+ * So this file reads the source. It is the same instrument `@latticekit/core` uses for its own
  * Tier B audit, and it is deliberately blunt: a regex over the stripped source, with the
  * comment and string content blanked so that a doc comment mentioning `window` does not fail
  * the rule it is documenting.
@@ -179,7 +179,7 @@ describe('I26: the allocation contract', () => {
   const FACTORIES = new Set(['createCamera', 'tileSourceOf']);
 
   it('returns a primitive, void, or a parameter it was given — never a fresh object', () => {
-    // The rule `@lattice/draw` cannot meet constitution rule 7 without. `{ x, y }` returned
+    // The rule `@latticekit/draw` cannot meet constitution rule 7 without. `{ x, y }` returned
     // sixty times a second times four hundred sprites is a garbage collector pause with a
     // pleasant API.
     const primitive = new Set(['number', 'boolean', 'void', 'string']);

@@ -1,5 +1,5 @@
 /**
- * The overlay — **`@lattice/ui` over the canvas, because `docs/GALLERY.md` makes it a rule.**
+ * The overlay — **`@latticekit/ui` over the canvas, because `docs/GALLERY.md` makes it a rule.**
  *
  * It is worth saying rather than assuming, because this is exactly the exhibit that would have
  * drawn its readout into the canvas and never noticed: the number belongs beside the two markers
@@ -43,9 +43,9 @@
  * **This module owns no stylesheet.** Every color, cut corner and transition is in `index.html`,
  * reading the properties written here, and all of it is uncounted art.
  */
-import type { Disposer } from '@lattice/core';
-import { paletteVars, type Palette as WorldPalette } from '@lattice/draw';
-import { applyPalette, createOverlay, el, roll, setText, type Overlay } from '@lattice/ui';
+import type { Disposer } from '@latticekit/core';
+import { paletteVars, type Palette as WorldPalette } from '@latticekit/draw';
+import { applyPalette, createOverlay, el, roll, setText, type Overlay } from '@latticekit/ui';
 
 /** What the exhibit tells the overlay, once per update. A pull, not a push, so there is exactly
  *  one place the HUD can be a frame behind the world and it is the `read` call.
@@ -64,7 +64,7 @@ export interface HudOptions {
   readonly read: () => Hud;
   /** Flip terrain-aware picking. The one control, and the whole exhibit. */
   readonly onToggle: () => void;
-  /** Milliseconds, and it must be the clock `@lattice/loop` was given — `boot.loop.realTime`,
+  /** Milliseconds, and it must be the clock `@latticekit/loop` was given — `boot.loop.realTime`,
    *  never a second reading of `performance.now()`. Two clocks in one HUD is a poll racing a
    *  settle, and the kit bans the raw call besides. */
   readonly now: () => number;

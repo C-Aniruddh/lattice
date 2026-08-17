@@ -9,7 +9,7 @@ gap**: no consumer, no planned consumer, and all fifteen planned exhibits fit a 
 
 ## 1. The decision
 
-> **Delete it. `ChunkGrid` and `ChunkGridOptions` come out of `@lattice/iso`, and the unbounded
+> **Delete it. `ChunkGrid` and `ChunkGridOptions` come out of `@latticekit/iso`, and the unbounded
 > world stays — carried by `tileSourceOf`, which is where it already lives.**
 
 The reason is not "nothing uses it". Three things use nothing today and all three should stay. The
@@ -256,7 +256,7 @@ naming a reader nobody checked for.
 // measurement without a canvas.
 ```
 
-**Checked:** `packages/ui/src/thumb.ts:21` imports `createOffscreenSurface` from `@lattice/draw`.
+**Checked:** `packages/ui/src/thumb.ts:21` imports `createOffscreenSurface` from `@latticekit/draw`.
 Nothing in `packages/ui/src` — and nothing in `examples/` — references `createRecordingSurface`,
 `RecordingSurface`, `RecordingTarget`, `Op`, `OpName` or `ESTIMATED_ADVANCE_RATIO`. The comment is
 false, and `docs/rfc/demo.md` independently reached the same finding: *"a comment asserting a

@@ -1,4 +1,4 @@
-# RFC — `@lattice/persist`
+# RFC — `@latticekit/persist`
 
 > Status: proposed. Owner: architect. Implements to `.lattice/kit.json → packages.persist`.
 > Nothing in this document is implemented yet. A builder should be able to write the package
@@ -18,7 +18,7 @@
 
 ## 1. The one sentence
 
-**`@lattice/persist` keeps a player's game across a version bump, a crashed tab and a browser
+**`@latticekit/persist` keeps a player's game across a version bump, a crashed tab and a browser
 that lies about its storage — by making the save an explicitly versioned envelope, the upgrade
 an explicit chain of one-step migrations, and every failure a reported value instead of a
 thrown exception on boot.**
@@ -40,7 +40,7 @@ This is the 90% case: a game with a save format now on its second version, runni
 browser. It is written before the API below, and the API exists to serve it.
 
 ```ts
-import { migrations, createStore, browserStorage, installFlushTriggers } from '@lattice/persist';
+import { migrations, createStore, browserStorage, installFlushTriggers } from '@latticekit/persist';
 
 const chain = migrations(1, isV1)
   .step(2, 'one coin counter became a wallet of currencies', v1 => ({ version: 2, wallet: { coin: v1.coins } }), isV2)
@@ -99,7 +99,7 @@ absent.
 export type Checksum = (text: string) => string;
 
 /**
- * `hashString` from `@lattice/core`, rendered as eight lowercase hex digits.
+ * `hashString` from `@latticekit/core`, rendered as eight lowercase hex digits.
  *
  * Deliberately not a bespoke CRC or FNV implementation: `core` split `hash` into its own
  * module precisely so `persist`, `draw` and `iso` would not each grow a private 32-bit hash.
@@ -183,7 +183,7 @@ export type Increment<N extends number, Counter extends readonly unknown[] = []>
  *
  * Not `(value: unknown) => value is T`. A boolean predicate has already discarded the thing
  * that was wrong by the time it returns, so it cannot produce the message non-negotiable #9
- * demands — it can only ever say "no". This is the same shape `@lattice/core`'s `guard`
+ * demands — it can only ever say "no". This is the same shape `@latticekit/core`'s `guard`
  * module took for the same reason, and it composes directly with it:
  *
  * ```ts
@@ -395,9 +395,9 @@ export interface Rejected {
   readonly truncated: boolean;
 }
 
-/** From `@lattice/core`. Reproduced so this block stands alone; the implementation imports it. */
+/** From `@latticekit/core`. Reproduced so this block stands alone; the implementation imports it. */
 type EpochMillis = number;
-/** From `@lattice/core`. The game's calendar: wall-clock milliseconds since the epoch. */
+/** From `@latticekit/core`. The game's calendar: wall-clock milliseconds since the epoch. */
 type Now = () => EpochMillis;
 
 /** Undo a scheduled callback. Calling it twice is not an error. */
@@ -406,7 +406,7 @@ export type Cancel = () => void;
 /**
  * Run `fn` after `afterMs` have passed, and hand back a way to cancel it.
  *
- * Injected, never created. `persist` may not import `@lattice/loop` — they are siblings on
+ * Injected, never created. `persist` may not import `@latticekit/loop` — they are siblings on
  * layer 1 and the DAG forbids the edge — and it may not reach for `setTimeout`, because a
  * package that creates a timer is a package that owns a leak. A browser game passes
  * `loop.real.after`; a Node test passes a function that runs `fn` immediately or on a queue it
@@ -417,7 +417,7 @@ export type Schedule = (afterMs: number, fn: () => void) => Cancel;
 /**
  * What is wrong with this store right now, as a **condition rather than a message**.
  *
- * `@lattice/ui` latches player-facing notices on this value, so the contract is narrow and
+ * `@latticekit/ui` latches player-facing notices on this value, so the contract is narrow and
  * strict:
  *
  * - **It is stable while the condition is.** A bare member of this union, always. It never
@@ -642,13 +642,13 @@ and the divergence check live here, which half of the job does not, and — the 
 this package — why a replay is the **one thing here that is never migrated**.
 
 ```ts
-/** From `@lattice/core`. Reproduced so this block stands alone; the implementation imports it. */
+/** From `@latticekit/core`. Reproduced so this block stands alone; the implementation imports it. */
 interface RngSnapshot { readonly seed: number; readonly state: number }
 
 /**
  * The only three fields this package reads out of a recorded input log.
  *
- * `@lattice/input` owns the log's shape and `persist` may not import it — input is layer 2 and
+ * `@latticekit/input` owns the log's shape and `persist` may not import it — input is layer 2 and
  * this is layer 1, so the edge does not exist. This structural constraint is therefore the
  * entire coupling between them: three fields, compared for exact equality, never interpreted.
  * Everything else about a log is opaque here and is stored verbatim (§4.9).
@@ -725,7 +725,7 @@ export interface RecorderOptions<T> {
 /**
  * Records checkpoints, and nothing else.
  *
- * It does not record inputs: `@lattice/input` already keeps a per-tick bucketed log keyed by an
+ * It does not record inputs: `@latticekit/input` already keeps a per-tick bucketed log keyed by an
  * integer tick index, and a second recorder here would be a second copy of the same data with
  * its own ordering bugs. The game hands that log over once, at `stop`.
  */
@@ -969,7 +969,7 @@ simulation-driven `tick` has the same failure if the simulation pauses, which is
 
 ### 4.7 This package owns the envelope. It does not own your schema — but it names who does
 
-Take the position plainly: **`@lattice/persist` owns `{ v, t, n, c, d }`, the chain, the
+Take the position plainly: **`@latticekit/persist` owns `{ v, t, n, c, d }`, the chain, the
 coalescing and the failure taxonomy. It has no opinion about the shape of `d`.** It cannot: the
 kit forbids dependencies, so there is no schema library here, and a schema DSL written in-house
 would be a bigger package than this one.

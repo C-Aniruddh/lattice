@@ -1,5 +1,5 @@
 /**
- * The readout — `@lattice/ui` over the canvas, and the exhibit's actual argument.
+ * The readout — `@latticekit/ui` over the canvas, and the exhibit's actual argument.
  *
  * A live walker count beside a live frame cost is half the claim. The other half is the strip of
  * controls at the bottom of this file, and it is the only part of the exhibit a visitor can *do*
@@ -25,9 +25,9 @@
  * There is no canvas text anywhere in this exhibit, which `docs/GALLERY.md` rule 7 makes a rule and
  * which this file is the whole of.
  */
-import type { Disposer } from '@lattice/core';
-import { paletteVars, type Palette as WorldPalette } from '@lattice/draw';
-import { applyPalette, createOverlay, el, roll, setText, type Overlay } from '@lattice/ui';
+import type { Disposer } from '@latticekit/core';
+import { paletteVars, type Palette as WorldPalette } from '@latticekit/draw';
+import { applyPalette, createOverlay, el, roll, setText, type Overlay } from '@latticekit/ui';
 
 /** What the frame knows and the overlay shows. Pulled once per update, never pushed. */
 export interface Readout {

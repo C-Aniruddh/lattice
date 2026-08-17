@@ -1,5 +1,5 @@
 {
-  "name": "@lattice/persist",
+  "name": "@latticekit/persist",
   "version": "0.1.0",
   "description": "Saves that survive: versioned state, an explicit migration chain, pluggable storage, debounced writes and integrity checks.",
   "license": "MIT",
@@ -32,6 +32,6 @@
     "persist"
   ],
   "dependencies": {
-    "@lattice/core": "^0.1.0"
+    "@latticekit/core": "^0.1.0"
   }
 }

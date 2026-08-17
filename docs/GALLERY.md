@@ -41,7 +41,7 @@ not belong in an exhibit.
 5. **Deterministic.** Same seed, same world. Every exhibit takes its seed from the URL so a
    visitor can share exactly what they saw.
 6. **Zero assets, like everything else here.** Drawn and synthesized, no exceptions.
-7. **The overlay is `@lattice/ui`, not canvas text.** This is a rule rather than a preference,
+7. **The overlay is `@latticekit/ui`, not canvas text.** This is a rule rather than a preference,
    and it exists because an audit found that **not one of the rows below named `ui` at
    all**. A whole package reached 100% coverage with no consumer in the entire plan — and the
    one UI-shaped artifact in the gallery, the control panel, lives in `examples/_shared`
@@ -585,7 +585,7 @@ It also turns each exhibit into an experiment a visitor can run:
   slider for something the kit does not expose, that is a finding.
 
 It lives in `examples/_shared/`, not in `packages/`. It is a gallery instrument, not a kit
-feature, and `@lattice/ui` is deliberately not a controls library.
+feature, and `@latticekit/ui` is deliberately not a controls library.
 
 ---
 

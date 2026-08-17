@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { asEpochMillis } from '@lattice/core';
+import { asEpochMillis } from '@latticekit/core';
 import { memoryStorage, type StorageLike } from '../src/adapters.js';
 import { migrations, type Recognize } from '../src/migrate.js';
 import { createStore, type Autosave, type WriteResult } from '../src/store.js';

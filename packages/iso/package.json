@@ -1,5 +1,5 @@
 {
-  "name": "@lattice/iso",
+  "name": "@latticekit/iso",
   "version": "0.1.0",
   "description": "Isometric space: the projection, the camera, depth sorting, tile maps, footprints, hit-testing, and grid pathfinding.",
   "license": "MIT",
@@ -32,6 +32,6 @@
     "iso"
   ],
   "dependencies": {
-    "@lattice/core": "^0.1.0"
+    "@latticekit/core": "^0.1.0"
   }
 }

@@ -28,9 +28,9 @@
  * the light composite, because bioluminescence is a source and not a lit surface. That buffer is
  * refilled every frame and read once; nothing in it outlives the frame that wrote it.
  */
-import { clamp01, hash2, noise2, toUnit } from '@lattice/core';
-import type { TileRange } from '@lattice/iso';
-import { isoTerrain, mix, shade, withAlpha, type Ink, type Pen } from '@lattice/draw';
+import { clamp01, hash2, noise2, toUnit } from '@latticekit/core';
+import type { TileRange } from '@latticekit/iso';
+import { isoTerrain, mix, shade, withAlpha, type Ink, type Pen } from '@latticekit/draw';
 import { H, W, type Cavern } from './cavern.js';
 import { snapGlow } from './props.js';
 

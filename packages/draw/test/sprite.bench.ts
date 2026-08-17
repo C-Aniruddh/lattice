@@ -16,9 +16,9 @@
  * merely noticed.
  */
 
-import { hashStep, hashString } from '@lattice/core';
-import { TileGrid, createCamera } from '@lattice/iso';
-import type { HeightField } from '@lattice/iso';
+import { hashStep, hashString } from '@latticekit/core';
+import { TileGrid, createCamera } from '@latticekit/iso';
+import type { HeightField } from '@latticekit/iso';
 import { bench, describe } from 'vitest';
 import { isoTerrain } from '../src/terrain.js';
 import { BASE_SLOTS, DAY, NIGHT, createPalette } from '../src/palette.js';
