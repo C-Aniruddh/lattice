@@ -112,6 +112,36 @@ The cases worth settling in advance, from the only exhibit that exists:
 | `valley.ts` | **logic**, though it reads as art | it is the landform *and* the map — the road, the stations, and the height field that hit-testing and the economy both read. Delete it and nothing runs |
 | `hud.ts` | **logic** | it reads game state, formats it, and owns the button that lights a lamp. Its *appearance* is the CSS, which is art, and that is the seam rule 7 already asks for |
 | `main.ts`, `rules.ts` | **logic** | wiring, state, the frame, the economy |
+| **static HUD markup in `index.html`** | **art** | see below. It sits beside the CSS, which was already uncounted, and for the same reason |
+
+### Static markup is art. Building it in TypeScript does not make it logic.
+
+The row above was added after an exhibit reported its `hud.ts` falling from **107 lines to 18**
+by moving the panel's structure into `index.html` and leaving behind only the code that writes
+values into it. That is a large enough difference to be either a loophole or a correction, and
+it is a correction — but it needs a boundary, or every exhibit will discover that its game fits
+inside a `<template>`.
+
+The boundary is the same one rule 7 already draws for CSS: **appearance is art, and the reading
+of state is logic.** Applied to markup:
+
+| | verdict |
+|---|---|
+| a fixed tree of elements, written once, with fixed labels and classes | **art** |
+| the same tree assembled by `el()` calls in a `.ts` file, still fixed, still written once | **art** — the language it is written in is not the test |
+| code that reads game state and writes it into that tree | **logic**, always |
+| markup **generated from data** — one row per resource, a list whose length the game decides | **logic**, always. The moment the shape depends on state it is a rendering decision |
+| a handler that changes what the game does | **logic** |
+
+The test to apply, which is just § Which module is which read literally: **would deleting it
+change only how the exhibit looks?** A `<div class="readout">` with the word `POOLS` in it —
+yes. The line that puts `86` inside it — no, that is the exhibit telling you something.
+
+Two things this deliberately does not license. It does not license moving a decision into an
+`onclick` attribute, and it does not license a `<template>` whose contents are chosen by the
+game. If you find yourself writing markup that only makes sense once you know what the player
+did, you have moved logic and the tool cannot see it — which is worse than being over the cap,
+because the cap is a budget and this is the honesty the whole classification rests on.
 
 ### The one command
 

@@ -2442,6 +2442,172 @@
         "decide deliberately: discard the first N frames, start the window at the first steady frame, or label it — but not silently, because the cost row made this number the score"
       ],
       "notes": "Filed by examples/crowd. A consequence of the cost row rather than a pre-existing bug."
+    },
+    {
+      "id": "K44",
+      "phase": "gaps",
+      "role": "lattice-architect",
+      "title": "ActionEvent.gx/gy is a flat-ground answer, and elevation has no seam to correct it",
+      "package": "input",
+      "paths": [
+        "packages/input/src/**",
+        "packages/iso/src/height.ts",
+        "docs/SEAMS.md"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "every ActionEvent carries gx/gy computed as though the ground were flat, and there is no way to hand input a HeightField so that it is not",
+        "SEAMS.md settles that iso does the math and input owns the gesture, and this is the case where that split has no wire: the gesture arrives, the math it needs is elevation-aware, and nothing carries the height field across",
+        "so a game with terrain gets a wrong tile from the default path and nothing warns it. examples/terraces measures the error at 281 px and 14-16 tiles on its own hillside, and demo shipped a 212-237 px version of the same bug",
+        "this is the exhibit terraces exists to demonstrate — and it is demonstrating a bug the kit ships by default rather than one a caller can make",
+        "decide the seam: either input takes an optional HeightField and gx/gy become terrain-aware, or ActionEvent stops offering gx/gy where a height field exists and the caller is routed to an iso call that requires one",
+        "whichever is chosen, the flat answer must not be the silent default on sloped ground"
+      ],
+      "notes": "Filed by examples/terraces, the first consumer of iso.height. The most serious correctness finding of the gallery phase: a silent wrong answer on the kit’s most common interaction."
+    },
+    {
+      "id": "K45",
+      "phase": "gaps",
+      "role": "lattice-perf",
+      "title": "renderFrame's terrain margin grows a box, but elevation only moves a tile along gx+gy",
+      "package": "draw",
+      "paths": [
+        "packages/draw/src/layers.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "the Terrain pass receives a tile box widened by maxHeightPx so a summit whose base is off-screen still paints — correct, and necessary",
+        "but height displaces a tile only along gx+gy, and the margin is applied to both axes of a box, so the widened region grows quadratically in a direction elevation never uses",
+        "measured in examples/terraces on terrain 1470 px tall: 26,569 tiles visited for a frame that paints 1,201",
+        "the exhibit works around it by walking u = gx+gy / v = gx-gy directly, reaching the same coverage in 3,081 visits — and notes that ascending u is strictly far-to-near, where row-major is only accidentally so",
+        "a pass that hands the caller a box costs every tall-terrain exhibit the same 8x. Either the margin follows the axis elevation actually uses, or the pass hands over the u/v walk"
+      ],
+      "notes": "Filed by examples/terraces while closing a 93.9 ms worst frame. Two thirds of that number was this."
+    },
+    {
+      "id": "K46",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "HeightField.heights is a TileSource, which cannot be iterated",
+      "package": "iso",
+      "paths": [
+        "packages/iso/src/height.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "a consumer that wants to walk the field — to paint it, to find its extremes, to build a derived map — can only sample it point by point through the accessor",
+        "examples/terraces hit this painting a hillside; examples/canyon steps a whole field every tick and will hit it harder",
+        "either TileSource gains an iteration contract or HeightField exposes its extent and a read path that does not cost a call per tile"
+      ],
+      "notes": "Filed by examples/terraces."
+    },
+    {
+      "id": "K47",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "draw publishes no projection, so an exhibit that needs one re-derives it",
+      "package": "draw",
+      "paths": [
+        "packages/draw/src/**"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "pen.snapX / pen.snapY exist and the transform they belong to is not published, so an exhibit placing anything by hand re-derives what the pen already knows",
+        "combines with K41: an exhibit told to cull before the sort must hand-roll HALF_W / HALF_H as well",
+        "the shape wanted is a read-only projection off the pen — world to screen and back, including the snap"
+      ],
+      "notes": "Filed by examples/terraces; overlaps K41 from examples/crowd, which asked for the same thing from the other side."
+    },
+    {
+      "id": "K48",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "Camera cannot express \"no bounds\", and its default is not unbounded",
+      "package": "iso",
+      "paths": [
+        "packages/iso/src/camera.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "omitting bounds does not mean unbounded: the default is ±10,000 world px, about ±312 tiles, and its own comment calls that \"effectively unbounded\"",
+        "examples/endless crosses it in fourteen screens of travel",
+        "keepVisible clamps against bounds, so an author cannot escape by leaving bounds off — the two options are a wrong clamp or a made-up enormous number",
+        "the exhibit ships ±4e7 and says so in its source, which is a magic number standing in for a missing state",
+        "bounds: undefined should mean unbounded, and the current default should be either deleted or named as the opinion it is"
+      ],
+      "notes": "Filed by examples/endless, the first streaming consumer of iso. The comment calling ±10,000 effectively unbounded is the tell — it was true for every map that existed when it was written."
+    },
+    {
+      "id": "K49",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "massing and animate receive different Rng streams, so an animator cannot re-derive its own shape",
+      "package": "draw",
+      "paths": [
+        "packages/draw/src/sprite.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "a sprite whose massing chose a height and a lean cannot recover either in animate by drawing in the same order — it gets a different stream and therefore different numbers",
+        "so a moving crown sits beside the static one it is supposed to belong to. This is live today in examples/island/src/trees.ts, the palm, around lines 158-163",
+        "endless worked around it with toUnit(hashStep(v.seed, i)), which is position-in-variant addressing rather than stream order",
+        "the kit could offer exactly that as variantAt(v, i) — a value addressed by index, identical in both hooks, which is what both callers actually wanted",
+        "this compounds K33: emit has no clock, animate is the only place motion can live, and animate cannot see what massing decided"
+      ],
+      "notes": "Filed by examples/endless, with a live instance named in another exhibit’s source. Two hooks over one sprite that cannot agree on the sprite."
+    },
+    {
+      "id": "K50",
+      "phase": "gaps",
+      "role": "lattice-designer",
+      "title": "Streaming on render freezes the world in a background tab",
+      "package": "examples/_shared",
+      "paths": [
+        "examples/_shared/src/bootstrap.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "loop’s own table is right — pixels on render, anything that must not freeze on update — and endless shipped the bug first anyway",
+        "a streamed world is the first thing in this repo where the distinction is load-bearing rather than tidy, because the symptom is not a stutter but a world that stops existing",
+        "bootstrap exists to remove the steps that are silent when wrong, and this is one: it belongs in its header beside stepMs and the light field"
+      ],
+      "notes": "Filed by examples/endless, which reports having written it wrong before writing it right."
+    },
+    {
+      "id": "K51",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "Every streaming game will write the same six lines of screen-diamond culling",
+      "package": "iso",
+      "paths": [
+        "packages/iso/src/camera.ts"
+      ],
+      "dependsOn": [
+        "K41"
+      ],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "renderFrame’s visible box over-covers the screen diamond about 2x; free on a bounded map, 5,000 wasted tiles at the zoom-out limit on an edgeless one",
+        "a screen rect IS a pair of intervals in (gx+gy, gx-gy), which is six lines and the same insight terraces used to turn 26,569 tile visits into 3,081",
+        "two exhibits derived it independently within a day of each other, which is the threshold for it belonging in the package",
+        "lands with K41 and K45 — all three are the same missing thing seen from three sides: iso knows the projection and will not tell anyone"
+      ],
+      "notes": "Filed by examples/endless; the same arithmetic examples/terraces used for K45."
     }
   ]
 }
