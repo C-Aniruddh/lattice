@@ -2608,6 +2608,130 @@
         "lands with K41 and K45 — all three are the same missing thing seen from three sides: iso knows the projection and will not tell anyone"
       ],
       "notes": "Filed by examples/endless; the same arithmetic examples/terraces used for K45."
+    },
+    {
+      "id": "K52",
+      "phase": "gaps",
+      "role": "lattice-perf",
+      "title": "The light field is priced by pool area, and area scales with zoom squared",
+      "package": "draw",
+      "paths": [
+        "packages/draw/src/light.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "a pool radius is given in tiles, so its screen area grows with the square of the zoom and a player pinching in multiplies the field’s fill cost without adding a light",
+        "this is the variable that reconciles two measurements that looked contradictory: caverns at 704 pools for ~0.2 ms, city at 30 pools for 9.5 ms at maximum zoom — same subsystem, fifty times apart",
+        "neither author could see it alone, which is the argument for it belonging in the package: an exhibit measures its own scene and cannot know it is on the wrong side of a quadratic",
+        "city’s workaround divides the caller’s LightFieldOpts.scale by the zoom: 18.1 ms to 8.6 ms at 2.6x",
+        "interacts with scale being a live panel knob, so a compensation folded in silently would fight the control the panel exposes — decide the layering deliberately"
+      ],
+      "notes": "Filed by examples/city, reconciled against examples/caverns. GALLERY.md § Scale’s lights bullet has been rewritten twice on this and was wrong both times."
+    },
+    {
+      "id": "K53",
+      "phase": "gaps",
+      "role": "lattice-perf",
+      "title": "polyRamp allocates a gradient on every call, uncached",
+      "package": "draw",
+      "paths": [
+        "packages/draw/src/canvas2d.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "createLinearGradient on every call, with no cache at all — 4,298 allocations per frame measured in examples/city, because post and cylinder are both built on it",
+        "same class as K39 and in the same file, but with no cache rather than a broken one, and plausibly the larger number of the two",
+        "non-negotiable 7: the hot path allocates nothing"
+      ],
+      "notes": "Filed by examples/city, found by the same instrumentation that confirmed K39."
+    },
+    {
+      "id": "K54",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "Loop.resetStats is all-or-nothing, so a rolling worst frame costs every other reader",
+      "package": "loop",
+      "paths": [
+        "packages/loop/src/loop.ts"
+      ],
+      "dependsOn": [
+        "K40"
+      ],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "GALLERY.md § Scale asks every exhibit for a ROLLING worst frame; the only way to get one today is a timer calling resetStats(), which zeroes fps and frameMs for every other consumer",
+        "examples/city’s control panel stat line read 0.0ms · 0fps one second in five, and the exhibit removed knobs.frameTime from the shared panel rather than ship two readouts that disagree — a shared instrument deleted because the stats API could not serve two readers",
+        "four exhibits have now built four different instruments for this one number and at least two of them report a figure that is not true",
+        "wants a resetWorst(), or a worstFrameMs carrying its own window — the exhibit estimates three lines"
+      ],
+      "notes": "Filed by examples/city. Lands with K40 and K43; all three are the same gate being measured by everyone separately."
+    },
+    {
+      "id": "K55",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "Camera.zoom is not settable, so framing a deliberate overflow is ceremony",
+      "package": "iso",
+      "paths": [
+        "packages/iso/src/camera.ts"
+      ],
+      "dependsOn": [
+        "K48"
+      ],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "GALLERY.md § Scale requires the world to overflow the viewport, and fitBounds is the only door to a zoom",
+        "so an exhibit hands fitBounds a viewport-shaped rectangle whose spans are viewport / zoom — the zoom spelled as the number it is — then overwrites the centre it picked",
+        "a setZoom(z, anchor) removes the ceremony without weakening the pointer-anchoring rule that made zoom construction-time in the first place"
+      ],
+      "notes": "Filed by examples/city while framing to the new § Scale extent row. A rule this repo added made an existing API awkward."
+    },
+    {
+      "id": "K56",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "tileBounds' height argument is wrong for a camera fence",
+      "package": "iso",
+      "paths": [
+        "packages/iso/src/tilemap.ts",
+        "packages/iso/src/camera.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "tileBounds extends minY upward by the height it is given, which is right for framing — the tallest building must fit — and wrong for a fence",
+        "passing the map’s tallest building lets a player park the viewport in the sky above the far corner and still satisfy keepVisible",
+        "the fit and the fence want different rectangles and there is one function; either it grows a second form or the camera stops taking the same rect for both jobs"
+      ],
+      "notes": "Filed by examples/city."
+    },
+    {
+      "id": "K57",
+      "phase": "gaps",
+      "role": "lattice-designer",
+      "title": "The light field is not occluded, and a night city is its worst case",
+      "package": "draw",
+      "paths": [
+        "packages/draw/src/light.ts",
+        "docs/GALLERY.md"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "draw declares this as its own largest limitation, and examples/city is the case that makes it visible: a street-level pool composites over the roof of the tower in front of it, so a dense block grows pale ellipses fourteen storeys up",
+        "the exhibit got from ~130 pools to ~30 with halved radii, and measured scale: 1 as buying nothing but 5 ms",
+        "not fixable from an exhibit. Decide whether it is fixable at all, or whether the answer is a documented placement discipline — a pool whose footprint reaches a roofline behind it is a placement error rather than an engine limitation",
+        "observed still visible in the shipped opening frame, so whatever is decided has to be checkable"
+      ],
+      "notes": "Filed by examples/city; confirmed by the orchestrator looking at the opening frame."
     }
   ]
 }

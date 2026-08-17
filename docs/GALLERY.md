@@ -266,19 +266,27 @@ The way out is never "put fewer things in it" as a first move. It is:
   lever on a distant thing is how many faces it is made of, not whether it exists. The far band
   is already asked to be dimmer and hazier, which is also permission for it to be *simpler*.
   Fidelity at a distance nobody can resolve is the one saving that costs nothing to take.
-- **Count the lights separately — after measuring them.** They are not free the way sprites are,
-  and yet the frame interval in `Caverns` **does not move at all across a sevenfold change in
-  light count**: 104, 304 and 704 pools all sit pinned to the display cadence, with the whole
-  light subsystem costing about 0.2 ms against a run with the dark switched off. The field's
-  cost is its *buffer*, not its light count. So cut lights for the **look** — a scene reads as
-  lit by scarcity and falloff rather than by how many sources it has — and for speed only once a
-  measurement says to.
+- **Light is priced by *area*, not by count — and area scales with zoom².** Two exhibits look
+  like they contradict each other and do not: `Caverns` runs **704 pools for about 0.2 ms**,
+  while `City` measured **30 pools costing 9.5 ms at maximum zoom**. Same subsystem, same
+  version. A pool's radius is specified in *tiles*, so its screen area grows with the square of
+  the zoom, and a player pinching in multiplies the field's fill cost without adding a single
+  light.
 
-  Those figures replace an earlier table which showed light count costing 0.9 ms across the same
-  sweep. That table was not wrong about the sweep; it was taken **while the ramp-cache bug below
-  was churning**, so it was measuring allocation, not light. Worth keeping visible as a lesson
-  about measurement: a sweep can be internally consistent, reproducible, and still be a
-  measurement of something other than its own variable.
+  So: **cut lights for the look, not for speed.** A scene reads as lit by scarcity and falloff
+  rather than by how many sources it has, and that is reason enough. But if the field is
+  genuinely costing you, the lever is pool *radius* and `LightFieldOpts.scale` — and if your
+  exhibit lets a player zoom, dividing `scale` by the zoom is what keeps the cost flat. `City`
+  went 18.1 ms → 8.6 ms at 2.6× that way. That compensation arguably belongs in `draw` rather
+  than in every exhibit, and is filed.
+
+  These figures replace an earlier table showing light count costing 0.9 ms across a sweep. That
+  table was not wrong about the sweep; it was taken **while the ramp-cache bug below was
+  churning**, so it was measuring allocation rather than light. It is left visible as a lesson:
+  a sweep can be internally consistent, reproducible, and still be a measurement of something
+  other than its own variable — and the second version of this bullet was *still* wrong, because
+  two honest measurements of "what does light cost" disagreed by fifty times and neither author
+  could see the variable that separated them.
 
 Only when all four are spent is reducing the count the right answer — and at that point the
 number is a finding about `draw`, not a defeat, and it gets reported.
@@ -315,10 +323,17 @@ constant-color contact shadows down with it.
 
 It is being fixed in `draw`. Until it lands, and as a habit afterward:
 
-**Snap the color, not the motion.** Quantize an animated color to a handful of levels — nine was
-enough in `Crowd` — and leave position, scale, radius and timing continuous. Nobody can resolve
-nine brightness levels on an eight-pixel flame core, and the frame-time difference is the whole
-of the tail.
+**Snap the color, not the motion.** Quantize an animated color to a handful of levels — eight to
+twelve has been enough in three exhibits — and leave position, scale, radius and timing
+continuous. Nobody can resolve nine brightness levels on an eight-pixel flame core, and the
+frame-time difference is the whole of the tail.
+
+**And look past the flicker for the real source.** `City` measured **27.2% of all soft ellipses
+missing** with no flickering light at all. The cause was `palette.lerp` advancing every frame for
+its day cycle, which makes *every color in the scene* a new key — a whole-scene version of the
+same bug, invisible because nothing in the exhibit appeared to be animating a color. Any exhibit
+with a palette that moves continuously has this. Snapping the lerp to a few dozen stops over its
+cycle is one line, and it took that exhibit to 0.26% missing.
 
 This one is filed here rather than only in a task because of *where* it hides: an exhibit calls
 `glowDot`, which calls `softEllipse`, which consults a cache the author has never heard of. It
