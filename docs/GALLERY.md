@@ -267,10 +267,18 @@ The way out is never "put fewer things in it" as a first move. It is:
   is already asked to be dimmer and hazier, which is also permission for it to be *simpler*.
   Fidelity at a distance nobody can resolve is the one saving that costs nothing to take.
 - **Count the lights separately — after measuring them.** They are not free the way sprites are,
-  and yet `Caverns` runs **692 light pools at a worst frame of 5.6 ms**, the whole light
-  subsystem accounting for about 0.2 ms of it, because the field's cost is its *buffer* and not
-  its light count. Cut lights for the **look** — a scene reads as lit by scarcity and falloff
-  rather than by how many sources it has — and for speed only once a measurement says to.
+  and yet the frame interval in `Caverns` **does not move at all across a sevenfold change in
+  light count**: 104, 304 and 704 pools all sit pinned to the display cadence, with the whole
+  light subsystem costing about 0.2 ms against a run with the dark switched off. The field's
+  cost is its *buffer*, not its light count. So cut lights for the **look** — a scene reads as
+  lit by scarcity and falloff rather than by how many sources it has — and for speed only once a
+  measurement says to.
+
+  Those figures replace an earlier table which showed light count costing 0.9 ms across the same
+  sweep. That table was not wrong about the sweep; it was taken **while the ramp-cache bug below
+  was churning**, so it was measuring allocation, not light. Worth keeping visible as a lesson
+  about measurement: a sweep can be internally consistent, reproducible, and still be a
+  measurement of something other than its own variable.
 
 Only when all four are spent is reducing the count the right answer — and at that point the
 number is a finding about `draw`, not a defeat, and it gets reported.
@@ -301,7 +309,9 @@ miss allocates a `<canvas>`, a context, a gradient and a fill. Worse, the cache 
 *wholesale*, so past ninety-six unique colors the contact shadows, the light pools, the sky and
 every sprite lose their entries too, as collateral. Measured in `Crowd`: **3.74 misses a frame,
 a full cache drop every 26 frames, about 3.7 MB/s of garbage** — from twenty-seven flames and a
-fountain.
+fountain. Measured again in `Caverns`, where it **scales with the light count**: 4.3 misses a
+frame at 104 pools, **15.9 at 704**, clearing the whole map every six frames and taking 550
+constant-color contact shadows down with it.
 
 It is being fixed in `draw`. Until it lands, and as a habit afterward:
 
