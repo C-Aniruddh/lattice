@@ -164,6 +164,37 @@ export interface Boot<A extends string> {
   /** The light options currently in force — what `draw` will not tell you. */
   readonly lightOpts: Readonly<Required<LightFieldOpts>>;
 
+  /**
+   * **The number `docs/GALLERY.md` § Scale's cost row gates this exhibit on**: the worst gap
+   * between two painted frames in the last ten seconds, in milliseconds.
+   *
+   * Read this rather than `loop.stats.worstFrameMs`, and rather than writing the meter again.
+   * Four exhibits hand-rolled a worst-frame readout before `loop` grew one and **produced three
+   * different wrong answers between them** — two reading `0.0 ms` on scenes with a measured
+   * 9.2 ms gap, one reading its own warm-up spike for the whole session. The reasons were all
+   * the same reason: `worstFrameMs` is the *pump's own work*, so a collection or a style
+   * recalculation landing between two pumps is not in it, and it never decays, so rolling it
+   * needs a `resetStats()` on a timer that zeroes `fps` for every other reader of the same
+   * object. This field is `loop.stats.worstGapMs`, which has neither problem.
+   *
+   * `0` until the first gap is measured, and the opening `loop.warmupFrames` are excluded — the
+   * page's load is not the scene's steady cost. See `@lattice/loop`'s `FrameStats`.
+   */
+  readonly worstMs: number;
+
+  /**
+   * The display's period as the loop actually observed it — the *shortest* gap in the same
+   * window.
+   *
+   * {@link Boot.worstMs} is meaningless without it: a frame gap contains a whole display period,
+   * so 8.4 ms is a perfect frame on the 120 Hz laptop this gallery is built on and 16.8 ms is a
+   * perfect one on a 60 Hz panel. **The verdict is the ratio, not the number** — a worst gap
+   * under about one and a half cadences dropped no frames — and a HUD that shows the pair lets a
+   * visitor check the arithmetic on their own machine instead of trusting a threshold that was
+   * calibrated on somebody else's.
+   */
+  readonly cadenceMs: number;
+
   /** Fixed-step. `input.tick` has already run; `tweens` step after you. */
   onUpdate(fn: (dt: number, tick: number) => void): Disposer;
   /**
@@ -229,6 +260,23 @@ function resolveMount(mount: string | HTMLElement | undefined): HTMLElement {
  */
 const PREVIOUS_BOOT = '__latticeExhibitBoot';
 
+/**
+ * Where the live boot parks itself so an exhibit can be **measured without being edited**.
+ *
+ * The cost row makes the worst frame a gate, and checking a gate means reading a number off an
+ * exhibit somebody else owns and is mid-flight on. Every alternative is worse: adding a readout
+ * to the exhibit changes the thing being measured and puts a reviewer's diff in an author's file,
+ * and re-measuring with a `requestAnimationFrame` loop in the console measures the console's rAF
+ * rather than the exhibit's loop, which is how you end up comparing two instruments and learning
+ * nothing about either.
+ *
+ * `document.getElementById('app').__latticeBoot.loop.stats` in a devtools console, and that is
+ * the whole feature. It is a *read* handle by convention only — nothing here can stop somebody
+ * driving an exhibit through it, and nothing here should: this is the gallery's own debug surface
+ * and it ships to a page whose entire purpose is being looked at.
+ */
+const LIVE_BOOT = '__latticeBoot';
+
 /** The gallery's pixel-ratio band. Below 0.25 nothing is legible; above 4 a phone drops frames
  *  for a difference no display can show. The panel's `dpr` knob lives inside it. */
 const MIN_RATIO = 0.25;
@@ -254,7 +302,7 @@ export function bootstrap<A extends string = never>(options: BootOptions<A> = {}
   // responding to its own source while the *first* instance keeps rendering. The handle lives on
   // the DOM node rather than in a module variable because a module variable is exactly what a
   // hot reload throws away, and it covers a stray second `bootstrap()` call for free.
-  const hosted = host as HTMLElement & { [PREVIOUS_BOOT]?: () => void };
+  const hosted = host as HTMLElement & { [PREVIOUS_BOOT]?: () => void; [LIVE_BOOT]?: Boot<A> };
   hosted[PREVIOUS_BOOT]?.();
   host.style.cssText = `position:fixed;inset:0;margin:0;overflow:hidden;background:${options.background ?? '#0a0d18'}`;
   const canvas = document.createElement('canvas');
@@ -448,6 +496,12 @@ export function bootstrap<A extends string = never>(options: BootOptions<A> = {}
     get lightOpts() {
       return lightOpts;
     },
+    get worstMs() {
+      return loop.stats.worstGapMs;
+    },
+    get cadenceMs() {
+      return loop.stats.cadenceMs;
+    },
 
     onUpdate(fn) {
       updateHandlers.push(fn);
@@ -537,6 +591,7 @@ export function bootstrap<A extends string = never>(options: BootOptions<A> = {}
   };
 
   hosted[PREVIOUS_BOOT] = boot.dispose;
+  hosted[LIVE_BOOT] = boot;
   // Belt to the braces above: when Vite invalidates *this* module and nothing re-boots, the
   // hook is what releases the loop, the listeners and the light buffers promptly rather than at
   // the next boot that may never come.

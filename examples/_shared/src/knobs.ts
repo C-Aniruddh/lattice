@@ -541,3 +541,24 @@ export function seed<A extends string>(boot: Boot<A>): TextControl {
 export function frameTime<A extends string>(boot: Boot<A>): () => string {
   return () => `${boot.loop.stats.frameMs.toFixed(1)}ms · ${String(Math.round(boot.loop.stats.fps))}fps`;
 }
+
+/**
+ * The cost readout § Scale's cost row actually asks for, for {@link PanelOptions.stats}.
+ *
+ * **Prefer this to {@link frameTime} on any exhibit being judged on the cost row.** `frameMs` is
+ * a one-eighth exponential average by contract, and an average is the one shape that row rejects:
+ * an average of 16 ms with every eighth frame at 40 ms is a visible stutter and a healthy-looking
+ * number. This shows the worst gap between two painted frames in the last ten seconds, with the
+ * display's own period beside it so the figure means the same thing on a 60 Hz panel and a
+ * 120 Hz one — `21.4 / 16.7 ms` is a dropped frame and `8.4 / 8.3 ms` is not, and neither
+ * reading can be judged without its second half.
+ *
+ * Reads `—` while `loop.stats.warmingUp`, because the opening frames are a page load rather than
+ * a scene and a confident `0.0 ms` there is the reassuring answer that started all of this.
+ */
+export function cost<A extends string>(boot: Boot<A>): () => string {
+  return () => {
+    if (boot.loop.stats.warmingUp) return `— · ${String(Math.round(boot.loop.stats.fps))}fps`;
+    return `${boot.worstMs.toFixed(1)} / ${boot.cadenceMs.toFixed(1)} ms worst · ${String(Math.round(boot.loop.stats.fps))}fps`;
+  };
+}

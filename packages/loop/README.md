@@ -397,11 +397,56 @@ ever.
 | field | says |
 |---|---|
 | `fps` | paints in the last completed second of real time. `0` until the first second elapses |
-| `frameMs` / `updateMs` / `renderMs` | smoothed costs, one-eighth EMA (a negative power of two, so the arithmetic is exact) |
-| `worstFrameMs` | the frame players actually felt, which averages hide |
+| `frameMs` / `updateMs` / `renderMs` | smoothed **pump** costs, one-eighth EMA (a negative power of two, so the arithmetic is exact) |
+| `worstFrameMs` | worst pump cost since the last `resetStats()`. Never decays |
+| `worstGapMs` | **worst gap between two painted frames in the last `windowMs`.** The honest one |
+| `cadenceMs` | the display's period, as this loop observed it. `worstGapMs` is unreadable without it |
+| `absences` | gaps of `absenceMs` or more — a hidden tab, not a slow frame. Excluded, and counted here |
+| `warmingUp` | the opening `warmupFrames` gaps are still being discarded |
 | `overBudget` | pumps costing more than `budgetMs` |
 | `stepsLastPump` | sustained above 1 means the game cannot keep up |
 | `droppedSeconds` | diagnostics only — never an earnings feed |
+
+### There are two instruments here, and one of them is blind
+
+`frameMs` and `worstFrameMs` are the **pump's own wall time** — the loop reads the clock on the
+way into a pump and on the way out, and the difference is the work it did. **A garbage collection,
+a style recalculation, or anything else that lands *between* two pumps is in neither reading.**
+That is not hypothetical: one gallery exhibit measured 23.1 ms worst on one machine and 13.1 ms on
+another *for the same build*, because whether the pause lands inside a pump is machine-dependent
+and the readout is not; another shipped a HUD reading `0.0 ms` against a real worst gap of 9.2 ms.
+
+`worstGapMs` is the wall time from one painted frame to the next, so everything in between is
+inside it by construction. It is measured from the loop's own single clock reading at the top of
+each `'paint'` pump — no `performance.now()`, no rAF timestamp, so a manual-clock test asserts it
+to the millisecond.
+
+```ts
+const clock = manualClock();
+const frames = manualFrames();
+const loop = createLoop({ clock, frames, warmupFrames: 0 });
+loop.start();
+frames.pump('paint');
+clock.advance(16);
+frames.pump('paint');
+clock.advance(90);   // a pause between pumps: nothing the loop invoked is running
+frames.pump('paint');
+
+loop.stats.worstGapMs;    // 90 — the player saw one picture for 90 ms
+loop.stats.worstFrameMs;  // 0  — the pump did no work, and truthfully says so
+```
+
+**Read `worstGapMs` next to `cadenceMs`, never next to `budgetMs`.** A gap contains a whole
+display period that is not work: 16.7 ms is a perfect frame on a 60 Hz panel and 8.3 ms is a
+perfect one at 120 Hz. The cadence is the *shortest* gap in the window, because nothing paints
+faster than the panel refreshes, so the verdict is the ratio — under about one and a half cadences
+dropped no frames. `budgetMs` is a work budget and belongs to `overBudget`, which counts pumps.
+
+Two exclusions, both deliberate and both visible. A gap of `absenceMs` or more (default one
+second) is a hidden tab rather than a slow frame; it is excluded and counted in `absences`, and it
+re-bases the next gap so the reading recovers on the following paint instead of sitting at zero.
+And the opening `warmupFrames` gaps (default 10) are a page load rather than a scene, so they are
+discarded while `warmingUp` is `true` — pass `warmupFrames: 0` to measure the load too.
 
 `stats.stepsLastPump` above 1 and a growing `realTime - time` are the tells for the spiral of
 death in its disguised form. The clamp turns a hang into a game running in slow motion, so a

@@ -92,6 +92,57 @@ export const DEFAULT_MAX_CATCH_UP_MS = 250;
 /** A pump costing more than this counts against `stats.overBudget`. Matches `kit.json`'s budget. */
 export const DEFAULT_BUDGET_MS = 8;
 
+/**
+ * How far back the rolling worst-frame figures look, in ms. Default 10,000.
+ *
+ * Ten seconds because that is the window `docs/GALLERY.md` § Scale gates every exhibit on, and
+ * because five separate exhibits hand-rolled exactly this before it existed here. Resolved into
+ * ten buckets, so the reported worst covers between nine and ten seconds at any instant — never
+ * more than the window, occasionally a tenth less, and never a stale number from four minutes
+ * ago the way a high-water mark is.
+ *
+ * **The window is the loop's, not the caller's, and that is the point.** The only way to roll a
+ * high-water mark from outside is a timer calling `resetStats()`, which zeroes `fps` and
+ * `frameMs` for every *other* reader — the `city` exhibit's control panel read `0.0ms · 0fps`
+ * one second in five, and it resolved that by deleting a shared panel knob rather than shipping
+ * two readouts that disagreed. A rolling figure that costs another consumer its reading is not a
+ * rolling figure, it is a shared mutable clock.
+ */
+export const DEFAULT_WINDOW_MS = 10_000;
+
+/**
+ * Paint intervals discarded at the start of a run, before {@link FrameStats.worstGapMs}
+ * begins recording. Default 10 — about a sixth of a second at 60 Hz.
+ *
+ * The first frames of a page are its load: compilation, the first fill into a fresh canvas, the
+ * first layout. They are real and a visitor does feel them, and they are excluded anyway because
+ * the number they otherwise poison is a gate on the **scene's steady cost** — `crowd` read
+ * 16.3 ms on arrival against 12.0 ms thereafter, which meant every exhibit showed its worst
+ * number at the exact moment a visitor was forming an opinion.
+ *
+ * It is a discard rather than a secret: it is readable off {@link Loop.warmupFrames},
+ * `stats.warmingUp` is `true` while it is in force so a HUD can say so, and `0` here turns it
+ * off. Do turn it off to measure a page load, which is a different question with a different
+ * answer.
+ */
+export const DEFAULT_WARMUP_FRAMES = 10;
+
+/**
+ * A gap between paints at or above this is an **absence**, not a frame. Default 1,000 ms.
+ *
+ * A hidden tab paints nothing — `browserFrames` keeps the `'tick'` pump running and rAF stops
+ * entirely — so the gap across a tab switch is the visitor's absence measured in milliseconds.
+ * Counting one makes the readout report a 96-second worst frame, which is the first thing every
+ * hand-rolled version of this did.
+ *
+ * One second rather than the 250 ms two exhibits picked, because 250 ms also discards a genuine
+ * quarter-second hitch, which is a catastrophic frame and precisely the thing worth reporting.
+ * The cost of the looser bound is that tabbing away for under a second reads as one bad frame;
+ * it ages out of the window in ten seconds and `stats.absences` is there to explain a quiet
+ * reading either way.
+ */
+export const DEFAULT_ABSENCE_MS = 1000;
+
 /** The largest `hz` whose step is still at least one microsecond. See {@link LoopOptions.hz}. */
 const MAX_HZ = 1_000_000;
 
@@ -214,9 +265,37 @@ export interface LoopOptions {
   /**
    * Pump cost above which `stats.overBudget` increments. Default {@link DEFAULT_BUDGET_MS}.
    *
+   * This is a **work** budget and it belongs to `stats.overBudget` alone. Do not compare it to
+   * `stats.worstGapMs`, which contains a whole display period that is not work.
+   *
    * @throws RangeError if negative or not finite.
    */
   readonly budgetMs?: number;
+
+  /**
+   * How far back `stats.worstGapMs` looks, in ms. Default
+   * {@link DEFAULT_WINDOW_MS}.
+   *
+   * @throws RangeError if it is not a finite number greater than zero.
+   */
+  readonly windowMs?: number;
+
+  /**
+   * Paint intervals to discard before `stats.worstGapMs` starts recording. Default
+   * {@link DEFAULT_WARMUP_FRAMES}; `0` measures the page load too.
+   *
+   * @throws RangeError unless it is a non-negative integer. Fractional frames do not exist and a
+   * fractional value here is always a millisecond figure written in the wrong unit.
+   */
+  readonly warmupFrames?: number;
+
+  /**
+   * A gap between paints at or above this is an absence rather than a frame. Default
+   * {@link DEFAULT_ABSENCE_MS}.
+   *
+   * @throws RangeError if it is not a finite number greater than zero.
+   */
+  readonly absenceMs?: number;
 
   /**
    * Called once per pump that hit the catch-up ceiling, with the seconds thrown away.
@@ -320,6 +399,34 @@ export interface Loop {
    * pumps and therefore these timers, so a flush on `visibilitychange` is still necessary.
    */
   readonly real: Scheduler;
+
+  /**
+   * The fixed rate this loop was built with. See {@link LoopOptions.hz}.
+   *
+   * Baked, and the setter is `new`: `stepMs` is written into every recorded input log and
+   * `@lattice/persist` refuses to migrate a log whose step differs from the running loop's.
+   */
+  readonly hz: number;
+
+  /** The catch-up ceiling in force. See {@link LoopOptions.maxCatchUpMs}. */
+  readonly maxCatchUpMs: number;
+
+  /** The work budget `stats.overBudget` counts against. See {@link LoopOptions.budgetMs}. */
+  readonly budgetMs: number;
+
+  /** How far back the rolling worst figures look. See {@link LoopOptions.windowMs}. */
+  readonly windowMs: number;
+
+  /**
+   * How many opening paint intervals are discarded. See {@link LoopOptions.warmupFrames}.
+   *
+   * Readable because a HUD quoting `worstGapMs` is quoting a filtered number, and the size
+   * of the filter is exactly the thing a reader is entitled to check.
+   */
+  readonly warmupFrames: number;
+
+  /** The gap above which a paint interval is an absence. See {@link LoopOptions.absenceMs}. */
+  readonly absenceMs: number;
 
   /** Live figures. The **same object every read** — copy the fields you keep. */
   readonly stats: FrameStats;
@@ -472,6 +579,30 @@ export function createLoop(options: LoopOptions): Loop {
     );
   }
 
+  const windowMs = options.windowMs ?? DEFAULT_WINDOW_MS;
+  expectFinite(windowMs, 'createLoop.windowMs');
+  if (windowMs <= 0) {
+    throw new RangeError(
+      `createLoop.windowMs: expected a finite number of milliseconds > 0, got ${String(windowMs)} — a zero window is a worst-frame figure with nothing in it, which reads as a healthy scene forever`,
+    );
+  }
+
+  const warmupFrames = options.warmupFrames ?? DEFAULT_WARMUP_FRAMES;
+  expectInt(warmupFrames, 'createLoop.warmupFrames');
+  if (warmupFrames < 0) {
+    throw new RangeError(
+      `createLoop.warmupFrames: expected a non-negative integer count of painted frames, got ${String(warmupFrames)} — it is a frame count, not a duration; pass 0 to measure the page load as well`,
+    );
+  }
+
+  const absenceMs = options.absenceMs ?? DEFAULT_ABSENCE_MS;
+  expectFinite(absenceMs, 'createLoop.absenceMs');
+  if (absenceMs <= 0) {
+    throw new RangeError(
+      `createLoop.absenceMs: expected a finite number of milliseconds > 0, got ${String(absenceMs)} — at or below zero every interval is an absence and stats.worstGapMs never records anything`,
+    );
+  }
+
   const onStall = options.onStall;
   const onError = options.onError;
 
@@ -499,6 +630,10 @@ export function createLoop(options: LoopOptions): Loop {
     updateMs: 0,
     renderMs: 0,
     worstFrameMs: 0,
+    worstGapMs: 0,
+    cadenceMs: 0,
+    absences: 0,
+    warmingUp: warmupFrames > 0,
     overBudget: 0,
     stepsLastPump: 0,
     ticks: 0,
@@ -510,6 +645,77 @@ export function createLoop(options: LoopOptions): Loop {
   let renderSeeded = false;
   let fpsWindowStartMs = 0;
   let fpsWindowRenders = 0;
+
+  // ── the rolling window ────────────────────────────────────────────────────────────────────
+  //
+  // Two fixed-size rings, allocated once here and never again: the worst paint gap and the *best*
+  // paint gap per bucket. Non-negotiable 7 is why they are typed arrays with a rotating cursor
+  // rather than an array of deltas — a rolling window over frame gaps that pushed and shifted
+  // would allocate on the one path that is counted, which is the failure the window exists to
+  // measure.
+  //
+  // Ten buckets is the resolution: a bucket is retired whole when the clock passes its end, so
+  // the reported figure covers between nine and ten seconds of a ten-second window. That
+  // imprecision is stated in `stats.ts` rather than hidden, and it is the same imprecision four
+  // exhibits arrived at independently when they wrote this by hand.
+  const WINDOW_BUCKETS = 10;
+  const bucketMs = windowMs / WINDOW_BUCKETS;
+  const gapWorst = new Float64Array(WINDOW_BUCKETS);
+  const gapBest = new Float64Array(WINDOW_BUCKETS).fill(Infinity);
+  let bucketAt = 0;
+  let bucketEndsMs = 0;
+  /** Clock reading at the top of the last `'paint'` pump. `havePaint` because 0 is a legal one. */
+  let lastPaintMs = 0;
+  let havePaint = false;
+  let warmupLeft = warmupFrames;
+
+  /** Empty every bucket. Called on a reset and whenever a gap swallowed the whole window. */
+  const clearWindow = (atMs: number): void => {
+    gapWorst.fill(0);
+    gapBest.fill(Infinity);
+    bucketAt = 0;
+    bucketEndsMs = atMs + bucketMs;
+    stats.worstGapMs = 0;
+    stats.cadenceMs = 0;
+  };
+
+  /**
+   * Retire every bucket the clock has passed.
+   *
+   * The bounded branch is the one that matters: a tab hidden for an hour returns with a gap of
+   * 3.6 million milliseconds, and stepping a bucket at a time would spin 3,600 times inside the
+   * first pump back. Past a whole window there is nothing left to retire *individually* — every
+   * bucket is stale — so the window is emptied in one `fill` and re-based on the new reading.
+   */
+  const rotateWindow = (nowMs: number): void => {
+    if (nowMs < bucketEndsMs) return;
+    if (nowMs - bucketEndsMs >= windowMs) {
+      clearWindow(nowMs);
+      return;
+    }
+    while (nowMs >= bucketEndsMs) {
+      bucketAt = (bucketAt + 1) % WINDOW_BUCKETS;
+      gapWorst[bucketAt] = 0;
+      gapBest[bucketAt] = Infinity;
+      bucketEndsMs += bucketMs;
+    }
+  };
+
+  /** Fold the ten buckets into the two published figures. Ten comparisons, no allocation. */
+  const summarizeWindow = (): void => {
+    let worst = 0;
+    let best = Infinity;
+    for (let i = 0; i < WINDOW_BUCKETS; i += 1) {
+      const high = gapWorst[i] ?? 0;
+      if (high > worst) worst = high;
+      const low = gapBest[i] ?? Infinity;
+      if (low < best) best = low;
+    }
+    stats.worstGapMs = worst;
+    // `0` rather than `Infinity` for "nothing measured yet", which is the promise `fps` already
+    // makes and the only value a HUD can format without a special case.
+    stats.cadenceMs = best === Infinity ? 0 : best;
+  };
 
   let running = false;
   let speed = 1;
@@ -698,6 +904,40 @@ export function createLoop(options: LoopOptions): Loop {
     stats.stepsLastPump = steps;
     stats.ticks += steps;
 
+    // The gap between two *pictures*, which is the only figure here that can see a pause the loop
+    // did not cause. `nowMs` is this pump's single accounting read, taken at the top, so
+    // `nowMs - lastPaintMs` spans the previous pump's work *and* everything the machine chose to
+    // do afterwards — a collection, a style recalculation, a compositor stall. The pump figures
+    // above are bounded by their own two readings and structurally cannot contain any of it.
+    //
+    // Measured off the injected clock and the frame source's own `kind`, so nothing here reads a
+    // global: the determinism rule is untouched and a manual-clock test asserts exact
+    // milliseconds rather than a tolerance.
+    rotateWindow(nowMs);
+    if (rendered) {
+      if (havePaint) {
+        const gapMs = nowMs - lastPaintMs;
+        if (!(gapMs > 0)) {
+          // A clock that did not move between two paints. I-6 territory: not a frame, not an
+          // absence, and recording it as a cadence of zero would make every ratio meaningless.
+        } else if (gapMs >= absenceMs) {
+          // Not a slow frame — a hidden tab, a dragged window, a sleeping machine. Counted so the
+          // exclusion is visible, never recorded, and `lastPaintMs` below re-bases the next gap so
+          // the readout recovers on the very next paint rather than reading 0.0 for a window.
+          stats.absences += 1;
+        } else if (warmupLeft > 0) {
+          warmupLeft -= 1;
+          stats.warmingUp = warmupLeft > 0;
+        } else {
+          if (gapMs > (gapWorst[bucketAt] ?? 0)) gapWorst[bucketAt] = gapMs;
+          if (gapMs < (gapBest[bucketAt] ?? Infinity)) gapBest[bucketAt] = gapMs;
+        }
+      }
+      lastPaintMs = nowMs;
+      havePaint = true;
+    }
+    summarizeWindow();
+
     const windowMs = nowMs - fpsWindowStartMs;
     if (windowMs >= FPS_WINDOW_MS) {
       stats.fps = (fpsWindowRenders * 1000) / windowMs;
@@ -727,6 +967,12 @@ export function createLoop(options: LoopOptions): Loop {
     },
     stepSeconds,
     stepMs,
+    hz,
+    maxCatchUpMs,
+    budgetMs,
+    windowMs,
+    warmupFrames,
+    absenceMs,
     sim,
     real,
     stats,
@@ -791,6 +1037,13 @@ export function createLoop(options: LoopOptions): Loop {
       running = true;
       lastMs = now;
       if (fpsWindowStartMs === 0) fpsWindowStartMs = lastMs;
+      // The gap across a `stop()` is not a frame — a loop stopped for a scene transition comes
+      // back owing nothing, which is the same promise `start()` already makes about the wait
+      // before the first pump. The window is re-based for the same reason; the warm-up count is
+      // *not* re-armed, because it is about the first frames of this loop's life and re-arming it
+      // would let a restart quietly discard frames a visitor is looking at. `resetStats()` re-arms.
+      havePaint = false;
+      clearWindow(now);
       frames.start(pump);
     },
 
@@ -827,6 +1080,7 @@ export function createLoop(options: LoopOptions): Loop {
       stats.updateMs = 0;
       stats.renderMs = 0;
       stats.worstFrameMs = 0;
+      stats.absences = 0;
       stats.overBudget = 0;
       stats.stepsLastPump = 0;
       stats.ticks = 0;
@@ -837,6 +1091,10 @@ export function createLoop(options: LoopOptions): Loop {
       renderSeeded = false;
       fpsWindowRenders = 0;
       fpsWindowStartMs = lastMs;
+      havePaint = false;
+      warmupLeft = warmupFrames;
+      stats.warmingUp = warmupFrames > 0;
+      clearWindow(lastMs);
     },
   };
 

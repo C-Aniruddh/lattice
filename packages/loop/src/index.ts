@@ -77,7 +77,15 @@ export type { BrowserFramesOptions, FrameHost, FrameSource, ManualFrames, Pump, 
 
 // ── the loop ────────────────────────────────────────────────────────────────────
 
-export { createLoop, DEFAULT_BUDGET_MS, DEFAULT_HZ, DEFAULT_MAX_CATCH_UP_MS } from './loop.js';
+export {
+  createLoop,
+  DEFAULT_ABSENCE_MS,
+  DEFAULT_BUDGET_MS,
+  DEFAULT_HZ,
+  DEFAULT_MAX_CATCH_UP_MS,
+  DEFAULT_WARMUP_FRAMES,
+  DEFAULT_WINDOW_MS,
+} from './loop.js';
 export type { Job, Loop, LoopOptions, LoopPhase } from './loop.js';
 
 /**
@@ -108,6 +116,13 @@ export { createTweens } from './tween.js';
 export type { TweenId, TweenOptions, Tweens } from './tween.js';
 
 // ── measurement ─────────────────────────────────────────────────────────────────
+//
+// Two instruments, because one of them is blind. `frameMs` and `worstFrameMs` are the **pump's
+// own work** — the wall time between the loop's two clock readings — and a collection or a style
+// recalculation that lands *between* two pumps is in neither of them. `worstGapMs` is the wall
+// time from one painted frame to the next, so everything the machine did in between is inside it
+// by construction; `cadenceMs` is the display's period as this loop observed it, and a gap is
+// only legible next to it.
 
 export type { FrameStats } from './stats.js';
 
