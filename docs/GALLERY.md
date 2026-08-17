@@ -635,6 +635,32 @@ competitor can make and no visitor can misread.
 That single decision does the persuading. A visitor does not need to be told the renderer is
 fast; they are watching eighteen of them.
 
+### The copy doctrine: if it is on screen doing the thing, delete the sentence about it
+
+The first build was reviewed as **too verbose — it speaks too much and shows too little**, and
+that is a specific failure rather than a stylistic one. The page kept *narrating* capabilities
+that were running six inches away. A caption reading "each tile is the exhibit itself, rendering
+live" sits above ten exhibits rendering live; the sentence adds nothing and costs the reader the
+belief that the page trusts its own work.
+
+**So: every sentence that describes something visible is deleted.** What survives is what a
+visitor cannot see — how to install it, what it costs, what it does not do.
+
+Three things came out on that reasoning, and each is worth recording so they do not creep back:
+
+| removed | why |
+|---|---|
+| *"Nothing here is a screenshot."* | Announcing that a thing is real is what an unreal thing does. Let them drag it |
+| **"Is this ready?"** | Legitimate content, wrong venue. Stability tables, versioning policy and browser floors are what a README is *for*; on a landing page they are a page-length apology |
+| **the test count, and the public-symbol count** | Nobody adopts a library because it has 2,599 tests. Working is the assumed baseline, not an achievement, and a number nobody asked for reads as a project arguing with itself |
+
+**The numbers that stay are the ones a visitor is actually deciding on**: what it weighs, what it
+costs per frame, what it drags in, and how much of it they have to write themselves. Those are
+consequences the reader will feel. Test counts are process, and process is not a feature.
+
+The register that replaces it: **short, declarative, and outnumbered by what is running.** If a
+paragraph can be replaced by a thing on screen, replace it. If it cannot, cut it to one line.
+
 ### What the page has to land, in order
 
 1. **The first frame.** A world, moving, before any text is read. Saturated, framed to fill,
