@@ -2833,6 +2833,49 @@
         "the same hazard applies to the non-empty-directory question, which is the other place the parent skill blocks on an answer"
       ],
       "notes": "Found by the blind validation run on 2026-08-18, in exactly the environment the run existed to test. The skill behaved correctly by its own specification; the specification did not contemplate an agent with no user attached."
+    },
+    {
+      "id": "S13",
+      "phase": "skills",
+      "role": "lattice-designer",
+      "title": "An agent picked 'ink' as a roof colour and got black buildings",
+      "package": "skills",
+      "paths": [
+        "skills/art/SKILL.md",
+        "packages/draw/src/palette.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "found in the blind e2e run: codex wrote isoRoof(..., seed % 2 ? 'warn' : 'ink'), so half the market's roofs render near-black and the town reads as burnt",
+        "'ink' is the outline and text slot. Nothing in its name says so, and a slot list read by an agent choosing a roof colour offers it beside 'warn' and 'ground' as an equal",
+        "the art skill must name which slots are FILLS and which are OUTLINES, in a table, before it lists any of them",
+        "this is the sharpest evidence yet for the looking loop: a black roof is invisible to a compiler, passes every test, and is obvious in one glance. Codex could not look, and shipped it"
+      ],
+      "notes": "Found by the blind validation run on 2026-08-18. The agent did nothing unreasonable — it read a slot list and chose a name."
+    },
+    {
+      "id": "S14",
+      "phase": "skills",
+      "role": "lattice-designer",
+      "title": "The scale doctrine does not reach an agent building from one sentence",
+      "package": "skills",
+      "paths": [
+        "skills/starting/SKILL.md",
+        "skills/art/SKILL.md",
+        "skills/world/SKILL.md"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "the market square built blind is a diorama: a small world dead centre, visible corners on all four sides, and roughly two thirds of the opening frame empty background",
+        "that is precisely the failure docs/GALLERY.md § Scale exists to name, and every exhibit in this repo was rebuilt against it",
+        "none of that reasoning is in the skills. The gallery paid for it over eleven exhibits and the plugin ships without it",
+        "§ Scale's five rows — extent, fill, edges, density, cost — belong in the skills as the shape a first build should take, not as a rule an author is graded against afterwards"
+      ],
+      "notes": "Found by the blind validation run. The kit knows this and the product does not."
     }
   ]
 }
