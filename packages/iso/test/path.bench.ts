@@ -91,6 +91,57 @@ describe('PathFinder', () => {
   });
 });
 
+/**
+ * K58 — what a weighted map costs, and what declaring its floor gives back.
+ *
+ * The `clay` exhibit measured a 17× spread between a weighted cost function and a flat one on
+ * identical geometry, and named the octile heuristic as the cause: it is the true cost over
+ * weight-**1** ground, so on ground that weighs `w` it is `w` times too small and A\* slides
+ * toward Dijkstra. {@link PathOptions.minWeight} lets the caller say what the floor really is.
+ *
+ * The four rows are one query over four descriptions of the same shape of ground. The first is
+ * the reference; the pairs either side of it are the same map searched blind and searched told.
+ * **The endpoints are a long shallow leg rather than corner to corner**, because on a square
+ * every tile lies on some cheapest diagonal route between opposite corners, so no heuristic —
+ * not even an exact one — can narrow that particular frontier.
+ */
+describe('PathFinder — the weighted heuristic', () => {
+  const bounds = { gx0: 0, gy0: 0, gx1: 48, gy1: 48 };
+  const pillar = (gx: number, gy: number): boolean => (gx * 5 + gy * 3) % 17 === 0 && gx > 2 && gx < 45;
+  const flat: TileCost = (gx, gy) => (pillar(gx, gy) ? 0 : 1);
+  const heavy: TileCost = (gx, gy) => (pillar(gx, gy) ? 0 : 6);
+  const rough: TileCost = (gx, gy) => (pillar(gx, gy) ? 0 : 3 + (((gx * 7 + gy * 13) >>> 0) % 6));
+  const finder = new PathFinder(8192);
+  const out = new Path(256);
+
+  bench('weight 1 everywhere — the flat reference', () => {
+    finder.find(flat, 0, 0, 47, 2, out, { bounds });
+  });
+
+  bench('weight 6 everywhere, minWeight 1 — the defect', () => {
+    finder.find(heavy, 0, 0, 47, 2, out, { bounds, minWeight: 1 });
+  });
+
+  bench('weight 6 everywhere, minWeight 6 — the fix', () => {
+    finder.find(heavy, 0, 0, 47, 2, out, { bounds, minWeight: 6 });
+  });
+
+  bench('weights 3..8, minWeight 1 — the defect', () => {
+    finder.find(rough, 0, 0, 47, 2, out, { bounds, minWeight: 1 });
+  });
+
+  bench('weights 3..8, minWeight 3 — the fix, on a map whose floor is not its ceiling', () => {
+    finder.find(rough, 0, 0, 47, 2, out, { bounds, minWeight: 3 });
+  });
+
+  bench('weights 1..8, minWeight 1 — the case the fix cannot help', () => {
+    // One tile of weight 1 anywhere holds the whole floor down, so there is nothing to declare
+    // and nothing to win. This row is here so nobody has to re-measure to find that out.
+    const mixed: TileCost = (gx, gy) => (pillar(gx, gy) ? 0 : 1 + (((gx * 7 + gy * 13) >>> 0) % 8));
+    finder.find(mixed, 0, 0, 47, 2, out, { bounds, minWeight: 1 });
+  });
+});
+
 describe('FlowField', () => {
   const grid = new TileGrid(48, 48, { fill: 1 });
   const rng = createRng(0xf10e);

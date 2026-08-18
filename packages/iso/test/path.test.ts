@@ -25,7 +25,7 @@ import {
   pathSample,
   pathSimplify,
 } from '../src/path.js';
-import type { TileCost } from '../src/path.js';
+import type { PathOptions, TileCost } from '../src/path.js';
 import { HALF_H, HALF_W, gridToWorldX, gridToWorldY } from '../src/projection.js';
 import type { GridPoint, TileRange } from '../src/projection.js';
 import { TileGrid } from '../src/tilemap.js';
@@ -47,6 +47,21 @@ const box = (gx0: number, gy0: number, gx1: number, gy1: number): TileRange => (
   gx1,
   gy1,
 });
+
+/**
+ * What the searcher charged for a route: the weight of every tile it *entered*, times the step
+ * that entered it. The start tile is not entered, so it is not paid for — the same off-by-one
+ * tile that makes a reverse Dijkstra read the wrong side of an edge.
+ */
+function routeCost(p: Path, cost: TileCost): number {
+  let total = 0;
+  for (let i = 1; i < p.nodeCount; i++) {
+    const dx = Math.abs(p.gxAt(i) - p.gxAt(i - 1));
+    const dy = Math.abs(p.gyAt(i) - p.gyAt(i - 1));
+    total += cost(p.gxAt(i), p.gyAt(i)) * (dx === 1 && dy === 1 ? STEP_DIAG : STEP_ORTHO);
+  }
+  return total;
+}
 
 function nodes(p: Path): [number, number][] {
   const out: [number, number][] = [];
@@ -973,6 +988,212 @@ describe('PathFinder', () => {
     // buffers and separate growth paths.
     expect(finder.find(open, 0, 0, 90, 90, out, { maxNodes: 100000 })).toBe(true);
     expect(out.nodeCount).toBe(91);
+  });
+});
+
+/**
+ * K58 — the octile heuristic is exact on weight-1 ground and `wMin` times too small on
+ * everything else, so a documented feature (weights) and this package's performance disagreed.
+ * `PathOptions.minWeight` is the declaration that closes the gap.
+ *
+ * Four things have to hold at once and each has a test below, because three of the four fail
+ * *silently*: a search that expands the whole map is merely slow, a heuristic that overestimates
+ * returns a route that is good rather than cheapest, and a perturbed tie-break diverges a replay
+ * one tile at a time. Only the fourth — the declaration being contradicted — is loud, and it is
+ * loud on purpose.
+ */
+describe('PathOptions.minWeight — the weighted heuristic', () => {
+  /** A cost function that counts the tiles a search paid to look at. The expanded-node count is
+   *  private, and it should stay private: what a caller feels is how many times *their* function
+   *  was called, and that is the number this measures. */
+  function counting(inner: TileCost): { cost: TileCost; readonly calls: () => number } {
+    let calls = 0;
+    return {
+      cost: (gx, gy) => {
+        calls += 1;
+        return inner(gx, gy);
+      },
+      calls: () => calls,
+    };
+  }
+
+  const WALLS = box(0, 0, 48, 48);
+
+  /** Uniform heavy ground with a few pillars: the shape where `minWeight` is exactly right and
+   *  the heuristic goes from six times too small to exact. */
+  const heavy: TileCost = (gx, gy) => ((gx * 5 + gy * 3) % 17 === 0 && gx > 2 && gx < 45 ? 0 : 6);
+
+  /** Rough ground with a real floor: weights 3..8, minimum 3. The realistic case — a cost
+   *  function that says "nothing here is easy" rather than one that says "it is all the same". */
+  const rough: TileCost = (gx, gy) => 3 + (((gx * 7 + gy * 13) >>> 0) % 6);
+
+  it('K58: declaring the floor collapses the frontier — the test that fails if the fix is reverted', () => {
+    const finder = new PathFinder(8192);
+    const out = new Path(128);
+
+    // **Not corner to corner**, and the reason is worth knowing: on a square, every tile lies on
+    // *some* cheapest diagonal route from one corner to the other, so even a perfectly exact
+    // heuristic has to expand the whole map and the option looks four times weaker than it is.
+    // A long shallow leg is the ordinary query and the one where the frontier can actually
+    // narrow.
+    const blind = counting(heavy);
+    expect(finder.find(blind.cost, 0, 0, 47, 2, out, { bounds: WALLS, minWeight: 1 })).toBe(true);
+    const blindCost = routeCost(out, heavy);
+
+    const told = counting(heavy);
+    expect(finder.find(told.cost, 0, 0, 47, 2, out, { bounds: WALLS, minWeight: 6 })).toBe(true);
+
+    // Revert the scaling and these two numbers become the same number, because `minWeight` would
+    // then be a field nothing reads. A ratio rather than an absolute so the assertion survives a
+    // change to the map above; the measured figure is 18,906 calls against 2,170, an 8.7× cut.
+    expect(told.calls()).toBeLessThan(blind.calls() / 5);
+    // …and it is still the cheapest route, which is the half that matters.
+    expect(routeCost(out, heavy)).toBe(blindCost);
+  });
+
+  it('K58: the same on rough ground with a floor of 3, where the estimate is merely tighter', () => {
+    const finder = new PathFinder(8192);
+    const out = new Path(128);
+    const blind = counting(rough);
+    finder.find(blind.cost, 0, 0, 47, 47, out, { bounds: WALLS, minWeight: 1 });
+    const told = counting(rough);
+    finder.find(told.cost, 0, 0, 47, 47, out, { bounds: WALLS, minWeight: 3 });
+    expect(told.calls()).toBeLessThan(blind.calls());
+  });
+
+  it('returns the cheapest route on weighted ground, checked against an independent Dijkstra', () => {
+    // The failure mode of a bad heuristic is a *wrong answer*, not a crash, so this is the test
+    // that matters most. `FlowField` is a full Dijkstra sweep with no heuristic in it at all —
+    // a second implementation of the same cost model, in this package, that cannot share A*'s
+    // mistake — and `costAt(start)` is therefore the true cost of the cheapest route.
+    const rng = createRng(0x5a17);
+    const grid = new TileGrid(32, 32, { fill: 1 });
+    for (let i = 0; i < 120; i++) grid.set(rng.int(2, 30), rng.int(2, 30), 0);
+    const cost: TileCost = (gx, gy) =>
+      grid.get(gx, gy) === 0 ? 0 : 4 + (((gx * 11 + gy * 5) >>> 0) % 5);
+
+    const finder = new PathFinder(4096);
+    const out = new Path(128);
+    const bounds = box(0, 0, 32, 32);
+    for (const [tx, ty] of [
+      [31, 31],
+      [31, 0],
+      [0, 31],
+      [17, 29],
+      [29, 3],
+    ] as const) {
+      const truth = new FlowField(0, 0, 32, 32);
+      truth.addGoal(tx, ty);
+      truth.build(cost, undefined, 0);
+      expect(finder.find(cost, 0, 0, tx, ty, out, { bounds, minWeight: 4 })).toBe(true);
+      expect(routeCost(out, cost)).toBe(truth.costAt(0, 0));
+    }
+  });
+
+  it('stays optimal with diagonals off and with corners cut', () => {
+    // Both options *delete* routes, and a lower bound over a superset is still a lower bound —
+    // but the version of that argument that gets written down and never checked is the one that
+    // is wrong, so it is checked.
+    const cost: TileCost = (gx, gy) => (gx === 4 && gy > 0 && gy < 6 ? 0 : 5);
+    const finder = new PathFinder(2048);
+    const out = new Path(128);
+    const bounds = box(0, 0, 12, 12);
+    for (const options of [
+      { diagonals: false },
+      { cutCorners: true },
+      { diagonals: false, cutCorners: true },
+    ] as const) {
+      const truth = new FlowField(0, 0, 12, 12);
+      truth.addGoal(9, 7);
+      truth.build(cost, options, 0);
+      expect(finder.find(cost, 0, 0, 9, 7, out, { ...options, bounds, minWeight: 5 })).toBe(true);
+      expect(routeCost(out, cost)).toBe(truth.costAt(0, 0));
+    }
+  });
+
+  it('I13: a weighted search with a declared floor is still byte-identical run to run', () => {
+    const rng = createRng(0xb1a5);
+    const grid = new TileGrid(40, 40, { fill: 1 });
+    for (let i = 0; i < 260; i++) grid.set(rng.int(1, 40), rng.int(0, 39), 0);
+    const cost: TileCost = (gx, gy) =>
+      grid.get(gx, gy) === 0 ? 0 : 2 + (((gx * 7 + gy * 13) >>> 0) % 4);
+    const options = { minWeight: 2, bounds: box(0, 0, 40, 40) };
+    const a = new Path(128);
+    const b = new Path(128);
+    expect(new PathFinder(4096).find(cost, 0, 0, 39, 39, a, options)).toBe(true);
+    // A different instance with a different capacity hint, so the node table has rehashed and
+    // the arrays have grown under it, and a second run of the first — same answer both ways.
+    expect(new PathFinder(64).find(cost, 0, 0, 39, 39, b, options)).toBe(true);
+    expect(nodes(b)).toEqual(nodes(a));
+    expect(b.arcLength).toBe(a.arcLength);
+  });
+
+  it('does not perturb the tie-break: scaling the map and the floor together is the same road', () => {
+    // The proof, as a test. Multiply every weight by `k` and declare `minWeight: k` and every
+    // heap key — `g` and `h` alike — is exactly `k` times what it was, so the frontier's
+    // `(key, insertion sequence)` order is the *same permutation*, and the same node pops at
+    // every step. On open ground equal-`f` ties are everywhere, so if the scaling had disturbed
+    // the ordering at all, these routes would differ. They do not, for any `k`.
+    const finder = new PathFinder(2048);
+    const unit = new Path(128);
+    const bounds = box(-2, -2, 20, 20);
+    expect(finder.find(open, 0, 0, 13, 9, unit, { bounds, minWeight: 1 })).toBe(true);
+    for (const k of [2, 3, 7, 40]) {
+      const scaled = new Path(128);
+      expect(finder.find(() => k, 0, 0, 13, 9, scaled, { bounds, minWeight: k })).toBe(true);
+      expect(nodes(scaled)).toEqual(nodes(unit));
+    }
+  });
+
+  it('defaults to 1, and 1 is the shipped behavior to the node', () => {
+    // Nothing that never sets it can be moved by it. A caller who upgrades and changes nothing
+    // gets the identical road, which is what makes this option safe to add to a kit whose
+    // recorded sessions are replayed against it.
+    const grid = new TileGrid(24, 24, { fill: 1 });
+    for (let i = 0; i < 40; i++) grid.set((i * 7) % 22 + 1, (i * 5) % 22 + 1, 0);
+    const cost: TileCost = (gx, gy) => (grid.get(gx, gy) === 0 ? 0 : 1 + ((gx + gy) % 3));
+    const finder = new PathFinder(2048);
+    const bare = new Path(128);
+    const explicit = new Path(128);
+    expect(finder.find(cost, 0, 0, 23, 23, bare, undefined)).toBe(true);
+    expect(finder.find(cost, 0, 0, 23, 23, explicit, { minWeight: 1 })).toBe(true);
+    expect(nodes(explicit)).toEqual(nodes(bare));
+  });
+
+  it('names the tile when the cost function contradicts the declaration', () => {
+    // The wrong declaration is the dangerous one: it makes the heuristic overestimate, and an
+    // overestimating A* answers with a route that is good rather than cheapest and says nothing.
+    // So it is an error, and the error names the caller's mistake and where it was found.
+    const cost: TileCost = (gx, gy) => (gx === 2 && gy === 1 ? 2 : 5);
+    const finder = new PathFinder(256);
+    expect(() => finder.find(cost, 0, 0, 6, 4, new Path(32), { minWeight: 5 })).toThrow(
+      /options\.minWeight is 5, but the cost function returned 2 at \(2, 1\)/,
+    );
+    // An impassable tile is exempt: it is never entered, so its weight is in no route's sum.
+    const walled: TileCost = (gx, gy) => (gx === 2 && gy === 1 ? 0 : 5);
+    expect(finder.find(walled, 0, 0, 6, 4, new Path(32), { minWeight: 5 })).toBe(true);
+  });
+
+  it('refuses a floor that is not a positive integer, before it can reach the heap', () => {
+    // A fractional floor would put a float in the frontier's ordering, which is the exact
+    // divergence this module's header is about — so it is the same class of refusal as a
+    // fractional weight, and it is caught once per search rather than once per tile.
+    const finder = new PathFinder(256);
+    for (const bad of [1.5, 0, -3, Number.NaN, Infinity]) {
+      expect(() => finder.find(open, 0, 0, 3, 3, new Path(8), { minWeight: bad })).toThrow(
+        /expected options\.minWeight to be an integer >= 1/,
+      );
+    }
+  });
+
+  it('non-negotiable 11: the option a caller supplied is readable back off the object', () => {
+    // Free here, and deliberately so: `PathOptions` is a plain object the caller built and still
+    // holds, so there is nothing to shadow-copy and no getter to forget. That is why the floor
+    // lives here rather than on the finder.
+    const options: PathOptions = { minWeight: 4, diagonals: false };
+    new PathFinder(256).find(() => 4, 0, 0, 3, 3, new Path(16), options);
+    expect(options.minWeight).toBe(4);
+    expect(options.diagonals).toBe(false);
   });
 });
 

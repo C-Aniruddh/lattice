@@ -85,10 +85,14 @@ const TAN_22_5 = 0.4142135623730951;
 /**
  * How a search is allowed to move, shared by {@link PathFinder} and {@link FlowField}.
  *
- * All four fields are *determinism* controls as much as behavior ones: change any of them
+ * All five fields are *determinism* controls as much as behavior ones: change any of them
  * and the same query returns a different — still optimal — route, so a recorded session
  * replayed against different options diverges at the first junction. Pick them once, per
  * game, and keep them with the save.
+ *
+ * {@link FlowField.build} reads only `diagonals` and `cutCorners`: it is a Dijkstra sweep, so
+ * it has no heuristic to scale and no frontier to bound — it is bounded by its own rectangle.
+ * The other three describe a {@link PathFinder.find}.
  */
 export interface PathOptions {
   /** Allow 8-way movement. Default `true`. */
@@ -114,6 +118,63 @@ export interface PathOptions {
    *  say so, and it is the difference between a failed search that stops and one that explores
    *  the whole world first. */
   readonly bounds?: Readonly<TileRange>;
+  /**
+   * The **smallest weight the cost function will return for any passable tile** this search can
+   * reach. A positive integer, default `1`, and the one number that lets a weighted map keep
+   * A\*'s heuristic instead of sliding into Dijkstra.
+   *
+   * ## What it buys
+   *
+   * The heuristic is the integer octile metric, which is the true cost of crossing an offset
+   * over ground that weighs **1**. Tell the searcher the ground weighs at least 3 and the
+   * estimate can be three times larger and still never overestimate — see the admissibility
+   * argument in {@link PathFinder.find}. An estimate that is `wMin` times too small is an
+   * estimate A\* has to buy back by expanding nodes, and the bill is exponential in the gap:
+   *
+   * | ground | `minWeight` | what the frontier does |
+   * |---|---|---|
+   * | every passable tile weighs 1 | `1` | nothing changes — this is the shipped behavior, to the bit |
+   * | every passable tile weighs 3 to 8 | `3` | the estimate is three times tighter; the expanded set collapses towards the corridor |
+   * | tiles weigh 1 to 8 | `1` | **nothing changes, and nothing can**: one tile of weight 1 anywhere on a cheaper route is enough to make any larger estimate a lie |
+   *
+   * The third row is the honest limit and is why this is an option rather than a fix. This
+   * number is a property of the *whole* cost function, not of the route, so a single cheap tile
+   * holds it down for the entire map. A cost function that returns `1 + roughness` gets nothing
+   * here; one that returns `2 + roughness` — the same ordering, the same ratios, one unit of
+   * floor — gets a heuristic twice as tight, for free, forever.
+   *
+   * ## Why the caller declares it rather than the searcher deriving it
+   *
+   * It is a property of the cost *function*, and the cost function is the caller's. Scanning the
+   * map for it costs a pass over every tile per search, needs a bound to scan (a
+   * {@link TileCost} over seeded noise has no edge), and is stale the instant a brush moves the
+   * ground — which is the case this exists for. Caching it on the {@link PathFinder} would be
+   * worse still: one finder serves many cost functions, so the cache would be keyed on nothing.
+   * Declaring it beside the cost function it describes also satisfies non-negotiable 11 without
+   * a line of code: `PathOptions` is a plain object the caller built and still holds, so every
+   * field is readable back off it and there is nothing to shadow-copy.
+   *
+   * ## Declare it wrong and you get an error, not a wrong road
+   *
+   * A minimum higher than the truth makes the heuristic overestimate, and an overestimating A\*
+   * returns a route that is merely *good* while reporting it as cheapest — a wrong answer with
+   * no crash behind it, which is the worst failure this module has. So
+   * {@link PathFinder.find} **throws** the moment the cost function contradicts the declaration,
+   * naming the tile and both numbers. It is one comparison per examined neighbor, on the same
+   * line as the integer check that is already there for the same class of bug.
+   *
+   * That check covers every tile the search paid to look at, which is a superset of the route it
+   * returns and a subset of the map. A tile cheaper than the declaration that the search never
+   * reaches at all cannot be caught, and in the rare shape where such a tile sits one step
+   * beyond the frontier it can still cost optimality — so the declaration is a promise about the
+   * cost function, and the check is the net under it, not a substitute for meaning it.
+   *
+   * An integer, and that is not tidiness: `octile × minWeight` becomes the heap key, and this
+   * module's determinism rests on those keys being exact integers (see the file header).
+   * `minWeight: 1.5` would put a float in the frontier's ordering and hand two engines two
+   * different roads.
+   */
+  readonly minWeight?: number;
 }
 
 /**
@@ -721,6 +782,12 @@ function segmentWorst(cost: TileCost, x0: number, y0: number, x1: number, y1: nu
  * offset over uniform ground, so it never overestimates as long as the smallest weight is 1,
  * and being *exact* rather than merely admissible is what keeps the expanded set small. With
  * diagonals off it degrades to Manhattan, which is the true cost there for the same reason.
+ *
+ * It is exact on **weight-1** ground and therefore *loose by the map's minimum weight* on any
+ * other, which is why {@link PathFinder.find} scales it by {@link PathOptions.minWeight}. The
+ * scaling lives at the call sites rather than in here so that this function stays what its name
+ * says — the unweighted metric — and so that the one place the admissibility argument has to be
+ * checked is the one place the weight appears.
  */
 function octile(dx: number, dy: number, diagonals: boolean): number {
   const ax = dx < 0 ? -dx : dx;
@@ -797,6 +864,10 @@ export class PathFinder {
    *   Float costs are the replay divergence this module's header is about, and one comparison
    *   per examined neighbor is a cheap price for a bug whose only symptom is two players
    *   seeing different roads.
+   * @throws RangeError if `options.minWeight` is not an integer `>= 1`, or if the cost function
+   *   returns a passable weight below it. The second is the caller's declaration being wrong,
+   *   and it is thrown rather than tolerated because the symptom of tolerating it is a route
+   *   that is not the cheapest one with nothing at all to say so.
    */
   find(
     cost: TileCost,
@@ -812,6 +883,12 @@ export class PathFinder {
     const cutCorners = options?.cutCorners ?? false;
     const maxNodes = options?.maxNodes ?? 20000;
     const bounds = options?.bounds;
+    const minWeight = options?.minWeight ?? 1;
+    if (!Number.isInteger(minWeight) || minWeight < 1) {
+      throw new RangeError(
+        `PathFinder.find: expected options.minWeight to be an integer >= 1, got ${String(minWeight)}`,
+      );
+    }
 
     const startGx = Math.floor(fromGx);
     const startGy = Math.floor(fromGy);
@@ -837,7 +914,47 @@ export class PathFinder {
     this.#nodeG[start] = 0;
     this.#nodeState[start] = OPEN;
     this.#nodeFrom[start] = -1;
-    this.#open.push(start, octile(startGx - goalGx, startGy - goalGy, diagonals), this.#seq++);
+    // ## Why `minWeight × octile` never overestimates, in full, so a reader can check it
+    //
+    // A\* returns the cheapest route only while the estimate `h(n)` is a **lower bound** on the
+    // true remaining cost from `n` to the goal. Take any legal route `n = t0, t1, …, tk = goal`
+    // that this search could walk. Its cost is what the loop below charges, summed:
+    //
+    //     cost = Σ weight(t_i) × STEP_i         STEP_i ∈ { STEP_ORTHO, STEP_DIAG }
+    //
+    // Every `t_i` is a tile the route *enters*, and `minWeight` is the caller's declaration that
+    // no passable tile weighs less than that. The step is the declaration and nothing else — the
+    // comparison in the neighbor loop enforces it on the ground this search actually touched,
+    // which is a net under the promise rather than the promise itself. So
+    //
+    //     cost >= minWeight × Σ STEP_i
+    //
+    // and `Σ STEP_i` is exactly what that same route would cost over weight-1 ground. `octile`
+    // is the *minimum* unweighted cost over all 8-connected routes — it is a minimum because
+    // `STEP_ORTHO <= STEP_DIAG <= 2 × STEP_ORTHO`, so no route is ever improved by trading a
+    // diagonal for two orthogonals or the other way round — hence `Σ STEP_i >= octile(n, goal)`
+    // and `cost >= minWeight × octile(n, goal) = h(n)`. Lower bound, so admissible. ∎
+    //
+    // **Every restriction this searcher applies only strengthens it.** `cutCorners: false`,
+    // `bounds`, and impassable tiles each *delete* routes; deleting routes can only raise the
+    // true remaining cost, and a lower bound over a superset is a lower bound over a subset.
+    // `diagonals: false` deletes the diagonal steps too, and `octile` follows it into Manhattan,
+    // which is the exact minimum over what is left. There is no combination in which the bound
+    // has to be re-argued.
+    //
+    // It is also *consistent*: `octile` changes by at most one step per step, so
+    // `h(n) − h(n') <= minWeight × STEP <= weight(n') × STEP`, the cost of the move. The
+    // re-open branch in the loop below therefore stays dormant rather than becoming hot.
+    //
+    // And the frontier is undisturbed. `minWeight` is an integer, so `f = g + h` stays an exact
+    // integer and the heap's `(key, insertion sequence)` order stays total — the Lattice
+    // ordering rule, untouched, with no comparator anywhere near it. At the default of `1` the
+    // keys are bit-identical to what this line pushed before the option existed.
+    this.#open.push(
+      start,
+      minWeight * octile(startGx - goalGx, startGy - goalGy, diagonals),
+      this.#seq++,
+    );
 
     let expanded = 0;
     const dirs = diagonals ? 8 : 7;
@@ -872,6 +989,17 @@ export class PathFinder {
             `PathFinder.find: expected an integer weight from the cost function at (${String(nx)}, ${String(ny)}), got ${String(weight)}`,
           );
         }
+        // The declaration, checked against the ground it describes. Skipped for impassable
+        // tiles, which are never entered and so never appear in the sum the argument above is
+        // about. A silent lie here is a route that is not the cheapest one, reported as if it
+        // were — so this is a throw and not a clamp: clamping to the weight just seen would
+        // change the heuristic mid-search, and an ordering that changes under the heap is a
+        // different kind of wrong answer.
+        if (weight < minWeight) {
+          throw new RangeError(
+            `PathFinder.find: options.minWeight is ${String(minWeight)}, but the cost function returned ${String(weight)} at (${String(nx)}, ${String(ny)}) — declare the true minimum weight of the map, or the heuristic overestimates and the route found is not the cheapest one`,
+          );
+        }
         const diagonal = (code & 1) === 0;
         if (diagonal && !cutCorners) {
           // **Both** shared orthogonal neighbors must be passable. Checking only one lets an
@@ -884,7 +1012,13 @@ export class PathFinder {
         this.#nodeG[node] = tentative;
         this.#nodeFrom[node] = current;
         this.#nodeState[node] = OPEN;
-        this.#open.push(node, tentative + octile(nx - goalGx, ny - goalGy, diagonals), this.#seq++);
+        // `minWeight × octile` — the admissibility argument is above the start push, and the
+        // insertion sequence is still the only tie-break.
+        this.#open.push(
+          node,
+          tentative + minWeight * octile(nx - goalGx, ny - goalGy, diagonals),
+          this.#seq++,
+        );
       }
     }
     return this.#fail(out, startGx, startGy, goalGx, goalGy);
