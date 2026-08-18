@@ -2900,6 +2900,48 @@
         "the warning is still correct when nothing is available. It was wrong here, and being wrong in the pessimistic direction cost the user nothing only because the agent ignored it"
       ],
       "notes": "Found by the blind validation run on 2026-08-18. The one agent that could look shipped a markedly better game than the one that could not, and it could look because it disagreed with our own preflight."
+    },
+    {
+      "id": "S16",
+      "phase": "skills",
+      "role": "lattice-designer",
+      "title": "An author checks the hour that flatters the scene",
+      "package": "skills",
+      "paths": [
+        "skills/lattice/references/looking.md",
+        "tools/looking/look.mjs"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "third instance of one shape: Lamp Road opened at night and was a black screen; a stranger built an orchard and verified it at \"Dawn mist\", where it is lovely; the harness caught a later phase at 84% near-black and 98% of the border",
+        "a day cycle has a worst hour and an author sees whichever one is on screen when they look",
+        "looking.md must say to sample a cycle at both ends rather than once",
+        "look.mjs wants a way to force a phase — an --at or --advance flag — so the check is deliberate rather than whatever the clock happened to be doing"
+      ],
+      "notes": "Found by the round-three blind run. The agent looked, and looked at the right thing, at the wrong time."
+    },
+    {
+      "id": "S17",
+      "phase": "skills",
+      "role": "lattice-designer",
+      "title": "The agent with the best looking loop still shipped an unreadable HUD",
+      "package": "skills",
+      "paths": [
+        "skills/hud/SKILL.md",
+        "skills/art/SKILL.md"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "Claude drove a browser, fixed four defects by looking, and shipped a HUD whose text measures 1.58 to 2.53 against its own backdrop — every row under the 4.5 floor",
+        "the harness caught all five nodes; the eye did not, because low contrast reads as atmosphere rather than as a defect and the world behind it was beautiful",
+        "so contrast is the measure that must not be left to judgement. The hud skill needs the floor stated as a number, and the instruction to read it off the harness rather than to eyeball it",
+        "this is the counterpart to the ink slot finding: that one made a fill unreadable, this one makes text unreadable, and both are invisible to a compiler"
+      ],
+      "notes": "Found by the round-three blind run. The most capable agent, with the loop running, still missed it — which is the argument for a number over an opinion."
     }
   ]
 }
