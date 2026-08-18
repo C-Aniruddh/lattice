@@ -23,8 +23,14 @@ Then stop and wait. Do not offer a menu, a list of genres, or a plan.
 they are the only two in this whole skill:
 
 1. **What the game is about** — you cannot know it and they are the only source.
-2. **Consent for something you may not decide alone** — proceeding blind with no browser
-   (step 1), and writing into a folder that already has their files in it (step 1).
+2. **Consent for something you may not decide alone** — proceeding blind with no way at all to
+   look (step 1), and writing into a folder that already has their files in it (step 1).
+
+And a rule that governs both of those: **a question only survives if somebody can answer it.**
+In a single-turn invocation there is no second turn, so a question is not a pause, it is the end
+of the run — which is exactly what happened the first time this was tested. Where nobody is
+listening, you take the safe answer yourself, say which one you took, and keep building. The
+preflight has the detection, and the detection is *not* a TTY check.
 
 Everything else — the packages, the language, the bundler, the layout, the art direction, the
 seed, the palette, the camera, whether they want tests — you decide, you say what you decided
@@ -44,19 +50,23 @@ first is a user staring at a form.
 
 ### 1. Preflight — before a single file is written
 
-Run the four checks in **`references/preflight.md`**. It has the exact commands, the exact
-sentences to say, and the Claude-in-Chrome warning to quote verbatim. Do not improvise the
-Chrome sentence; it is the one place in this flow where a user is being asked to accept a real
-loss and the wording was chosen for that.
+Run the checks in **`references/preflight.md`**. It has the exact commands and the exact
+sentences to say. Do not improvise the no-browser sentence; it is the one place in this flow
+where a user is being asked to accept a real loss and the wording was chosen for that.
 
 Summary, so you know the shape:
 
 | check | if missing |
 |---|---|
+| **can anyone answer you?** | not a check on the machine, a check on the conversation. It decides whether the two questions below are asked at all. **Never** decide it with a TTY test |
 | `node` ≥ 20.19.0, `npm` | stop. Name the installer link, never a command |
-| a writable, empty-ish folder | offer to make one. Never scaffold over their files silently |
-| **Claude in Chrome** | **warn in one sentence, ask once, proceed if they say yes.** Never refuse |
+| a writable, empty-ish folder | somebody listening: offer to make one. Nobody listening: make it and say so. Never scaffold over their files silently, and never stop on the question |
+| **any way to look at it** | a browser tool, *or* an MCP server, *or* a Chrome on the machine you drive yourself. Only when there is none of the three do you warn — and even then you build |
 | `git` | proceed without it, mention once, never again |
+
+The trap this table exists to close: the check used to ask whether one particular instrument was
+present, and answered "no" on a machine that had Chrome sitting on it. **Ask whether any rung of
+the ladder is reachable.** Almost always one is, and then there is no question to ask anybody.
 
 ### 2. Choose the shape — say it, do not ask it
 
@@ -120,15 +130,22 @@ Load specialists as the work reaches them, not up front:
 
 ### 5. Look at it — this is the step the preflight was protecting
 
-With Chrome available this is **not optional**. Follow **`references/looking.md`**: open the
-page, screenshot it, read the console, judge it against the five things that make a first frame
-good, fix what is wrong, and look again. Repeat until it is worth showing.
+This is **not optional**, and you almost certainly can. Follow **`references/looking.md`**: it
+carries a four-rung ladder from a native browser tool down to a no-dependency script that drives
+whatever Chrome is on the machine and prints five readings about the frame — enough to catch a
+blank screen, a world lost in an empty frame, a still picture, unreadable HUD text and an
+exception, **without seeing anything**. Open the page, judge it against the five things that make
+a first frame good, fix one thing, look again. Repeat until it is worth showing.
 
-Without Chrome, say so plainly, once, at the end:
+Read the ladder before concluding you cannot look. The one time this was tested for real, the
+agent that ignored a preflight saying "no browser" found one anyway and shipped the better game.
 
-> It builds and the server is running at http://localhost:5173 — but I haven't been able to
-> open it and look at it, so I can't promise the picture is right. Open that link and tell me
-> what you see.
+Only if every rung is out of reach, say so plainly, once, at the end — and say it as *nobody has
+looked at this*, never as a hedge:
+
+> One thing you should know: there was no browser on this machine, so nobody has looked at this
+> game. It builds and the server is running at http://localhost:5173. Open that and tell me what
+> you see; the first thing to check is whether there is a picture at all.
 
 ---
 
@@ -176,3 +193,4 @@ me a second" is a sentence. "Do you want me to try X or Y?" is not.
 | `references/shapes.md` | step 2, every time |
 | `references/scaffold.md` | step 3, every time |
 | `references/looking.md` | step 5, and any time the picture is wrong |
+| `references/look.mjs` | the harness `looking.md` tells you to copy into the project. No dependencies; runs anywhere there is a Chrome |

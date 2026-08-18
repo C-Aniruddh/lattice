@@ -1,0 +1,67 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>look harness fixture</title>
+<style>
+  html,body{margin:0;height:100%;background:#0a1420}
+  #app{position:fixed;inset:0}
+  canvas{display:block;width:100%;height:100%}
+  #hud{position:fixed;top:12px;left:12px;font:16px/1.5 system-ui;pointer-events:none}
+</style>
+<div id="app"><canvas id="c"></canvas></div>
+<div id="hud"></div>
+<script>
+const mode = new URLSearchParams(location.search).get('mode') || 'good';
+const c = document.getElementById('c');
+const ctx = c.getContext('2d');
+function resize(){ c.width = innerWidth; c.height = innerHeight; }
+resize(); addEventListener('resize', resize);
+
+// The HUD. In `blackhud` the rows take the game's night ink, which is what shipped.
+const ink = mode === 'blackhud' ? '#0a1420' : '#e8eef6';
+document.getElementById('hud').innerHTML =
+  ['Stone 128', 'Light 4', 'Fog 61%', 'Beacons 3', 'Day 12']
+    .map(r => `<div style="color:${ink}">${r}</div>`).join('');
+
+if (mode === 'throws') { setTimeout(() => { null.beacon.light(); }, 100); }
+
+// `blank` draws nothing at all: the light field at full darkness, the camera off the map, the
+// canvas with no size — six ordinary causes, one picture, and this is that picture.
+if (mode === 'blank') { document.getElementById('hud').innerHTML = ''; }
+
+let t = 0;
+function frame() {
+  if (mode === 'blank') { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, c.width, c.height); requestAnimationFrame(frame); return; }
+  const w = c.width, h = c.height;
+  ctx.fillStyle = '#0a1420';
+  ctx.fillRect(0, 0, w, h);
+
+  // The world. In `diorama` it is fitted to a tile rectangle and lands as a small diamond in
+  // the top-left corner, which is the empty-ocean failure exactly.
+  const span = mode === 'diorama' ? Math.min(w, h) * 0.16 : w * 1.7;
+  const cx = mode === 'diorama' ? w * 0.2 : w / 2;
+  const cy = mode === 'diorama' ? h * 0.2 : h / 2;
+  const cols = 34, rows = 34;
+  const tw = span / cols, th = tw / 2;
+
+  for (let gy = 0; gy < rows; gy++) {
+    for (let gx = 0; gx < cols; gx++) {
+      const x = cx + (gx - gy) * tw / 2;
+      const y = cy + (gx + gy - rows) * th / 2;
+      const lit = 0.35 + 0.5 * Math.abs(Math.sin((gx * 0.4 + gy * 0.3 + t * 0.02)));
+      ctx.fillStyle = `rgb(${(40 * lit) | 0},${(120 * lit) | 0},${(96 * lit) | 0})`;
+      ctx.beginPath();
+      ctx.moveTo(x, y - th / 2); ctx.lineTo(x + tw / 2, y);
+      ctx.lineTo(x, y + th / 2); ctx.lineTo(x - tw / 2, y);
+      ctx.fill();
+      // Roofs. In `darkroofs` the roof color is the outline slot, so half of them vanish.
+      if ((gx * 7 + gy * 13) % 11 === 0) {
+        ctx.fillStyle = mode === 'darkroofs' ? '#0b0f14' : '#c96f3a';
+        ctx.fillRect(x - tw / 4, y - th - tw / 3, tw / 2, tw / 3);
+      }
+    }
+  }
+  if (mode !== 'static') t += 1;
+  requestAnimationFrame(frame);
+}
+frame();
+</script>
