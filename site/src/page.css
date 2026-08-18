@@ -131,6 +131,22 @@
    * ground change is exactly the edit that lets a legibility fix regress in silence.
    */
   --dimmer: #8b867d;
+  /**
+   * The warm tone that marks a literal in code and a kind on the reference — **static, and that is
+   * the point.**
+   *
+   * `--lattice-glass` is a *surface* slot in the kit's day cycle: it is `#c79a76` at dusk and
+   * `#3f5f74` at midnight, because glass lit by a night sky is blue and dark. That is right for a
+   * window in a world and wrong for type. `/reference/` is pinned at the midnight end, and every
+   * string literal in a signature and every `interface` chip on it measured **2.92:1** against the
+   * ground — below every floor this page holds itself to, in the one document that is nothing but
+   * small text.
+   *
+   * So text takes the dusk value as a constant. It is the same color the landing page shows where
+   * the reader meets the code block, it is 9.75:1 on `#0c0a08`, and it cannot follow a surface slot
+   * into the dark again.
+   */
+  --tint: #c79a76;
   --accent: var(--lattice-warn);
   --rule: color-mix(in srgb, var(--paper) 11%, transparent);
   --rule-soft: color-mix(in srgb, var(--paper) 6%, transparent);
@@ -1121,7 +1137,7 @@ b.warn { color: var(--accent); }
   tab-size: 2;
 }
 .code b { font-weight: 500; color: var(--accent); }        /* keyword */
-.code i { font-style: normal; color: var(--lattice-glass); } /* @latticekit module path */
+.code i { font-style: normal; color: var(--tint); }        /* string literal / module path */
 .code u { text-decoration: none; color: var(--dimmer); }     /* comment */
 
 .shell-cmd {
@@ -1383,51 +1399,261 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; padding-right: 0
 
 .scroller { overflow-x: auto; }
 
-.pkg {
-  border: 1px solid var(--rule);
-  margin-top: 14px;
-  background: color-mix(in srgb, var(--lattice-panel) 40%, transparent);
-}
-.pkg > summary {
-  cursor: pointer;
-  list-style: none;
-  padding: 15px 18px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px 20px;
-  align-items: baseline;
-}
-.pkg > summary::-webkit-details-marker { display: none; }
-.pkg > summary h3 { font-size: 15px; }
-.pkg > summary h3 .layer { color: var(--dimmer); font-weight: 400; margin-left: 10px; font-size: 11px; letter-spacing: 0.12em; }
-.pkg > summary .why { grid-column: 1 / -1; font: 400 13.5px/1.5 var(--sans); color: color-mix(in srgb, var(--paper) 72%, transparent); max-width: 70ch; }
-.pkg > summary .sz {
-  font: 500 12px/1 var(--mono); color: var(--accent);
-  font-variant-numeric: tabular-nums; white-space: nowrap;
-}
-/* A `<details>` with no marker is a paragraph nobody clicks. The caret is the affordance, and
-   it is on the right where the reader's eye already is after the size. */
-.pkg > summary .sz::after { content: ' \25B8'; color: var(--dim); display: inline-block; transition: transform 160ms ease; }
-.pkg[open] > summary .sz::after { transform: rotate(90deg) translateX(1px); }
-.pkg > summary:hover h3 { color: var(--accent); }
-.pkg[open] > summary { border-bottom: 1px solid var(--rule-soft); }
-.pkg-body { padding: 18px; display: grid; gap: 20px; }
-.pkg-body h4 { font: 500 10px/1 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); margin-bottom: 10px; }
-.pkg-body ul { margin: 0; padding-left: 1.15em; }
-.pkg-body li { font: 400 13.5px/1.55 var(--sans); color: color-mix(in srgb, var(--paper) 78%, transparent); margin-bottom: 7px; }
-.pkg-body li:last-child { margin-bottom: 0; }
+/* ── /reference/ ──────────────────────────────────────────────────────────────────────────
+ *
+ * The reference is the same site: same ground, same IBM Plex Mono, same wordmark, same rail and
+ * footer. It was reviewed as *"it doesn't use the black theme, so looks inconsistent"*, and the
+ * cause was not a missing stylesheet — it shares this one — but the day cycle: the ramp runs from
+ * `#181410` at the top of a document to `#0c0a08` at the bottom, the landing page hides its light
+ * end behind a hero, and the reference opened on it and stayed there. `page.ts` pins this document
+ * at the midnight end (`data-ground="night"`), so the two pages read as one site and the contrast
+ * floors below are measured against the ground that is actually painted.
+ *
+ * What is new here is what a *technical* document needs and a landing page does not: a rail of 100
+ * symbol names, a filter over it, signatures set as code, and doc comments that arrive as
+ * paragraphs, tables, lists and fenced examples because that is how they were written.
+ */
 
-.symbols {
-  display: flex; flex-wrap: wrap; gap: 5px;
-  font: 400 12px/1 var(--mono);
+/* The index page's nine cards. A grid of links rather than a table: the purpose line is the thing
+   a reader is choosing on, and a table column crushes it to three words on a phone. */
+.pkgcards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1px;
+  background: var(--rule-soft);
+  border: 1px solid var(--rule);
 }
-.symbols code {
-  padding: 5px 7px;
+.pkgcard {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  padding: 16px 18px;
+  background: color-mix(in srgb, var(--lattice-panel) 44%, transparent);
+  text-decoration: none;
+}
+.pkgcard:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.pkgcard-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font: 500 13px/1.2 var(--mono); }
+.pkgcard-top .layer { font: 500 9.5px/1 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--dimmer); white-space: nowrap; }
+.pkgcard:hover .pkgcard-top code { color: var(--accent); }
+.pkgcard .why { font: 400 13px/1.5 var(--sans); color: color-mix(in srgb, var(--paper) 76%, transparent); }
+.pkgcard-foot { font: 400 11.5px/1 var(--mono); letter-spacing: 0.04em; color: var(--dim); }
+.pkgcard-foot b { color: var(--accent); font-weight: 500; }
+
+/*
+ * The finder, which is the answer to "find a symbol without scrolling" and the only interactive
+ * thing on either reference document.
+ *
+ * It is `js-only` in the markup: with script off the list underneath is still every symbol in the
+ * kit with every link live, which is longer to read and not broken. A box that filters nothing is
+ * the one outcome worth avoiding.
+ */
+.finder-box { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; max-width: none; }
+.finder-box input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  background: color-mix(in srgb, #000 40%, transparent);
+  border: 1px solid var(--rule);
+  color: var(--paper);
+  font: 400 13px/1.2 var(--mono);
+}
+.finder-box input::placeholder { color: var(--dimmer); }
+.finder-count { font: 400 11px/1 var(--mono); letter-spacing: 0.1em; color: var(--dimmer); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.finder-count b { color: var(--accent); font-weight: 500; }
+kbd {
+  font: 500 11px/1 var(--mono);
+  border: 1px solid var(--rule);
+  padding: 3px 5px;
+  color: var(--dim);
   background: color-mix(in srgb, #000 34%, transparent);
-  color: color-mix(in srgb, var(--paper) 74%, transparent);
-  border: 1px solid var(--rule-soft);
 }
-.symbols code.entry { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+
+.symlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: min(62vh, 640px);
+  overflow: auto;
+  border: 1px solid var(--rule);
+  background: color-mix(in srgb, #000 22%, transparent);
+}
+.symlist > li {
+  display: grid;
+  /* `max-content` on the kind column, not a `ch` guess: the widest chip is INTERFACE and a fixed
+     column clipped its own border by two pixels. */
+  grid-template-columns: minmax(0, 24ch) max-content 7ch minmax(0, 1fr);
+  gap: 14px;
+  align-items: baseline;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--rule-soft);
+  font: 400 12.5px/1.45 var(--mono);
+}
+.symlist > li[hidden] { display: none; }
+.symlist > li:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.symlist a { text-decoration: none; overflow-wrap: anywhere; }
+.symlist a code { color: var(--paper); }
+.symlist a:hover code { color: var(--accent); }
+.sym-pkg { color: var(--dim); }
+.sym-sum { font: 400 12.5px/1.45 var(--sans); color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── a package document ───────────────────────────────────────────────────────────────── */
+
+/*
+ * Three areas, and the order they stack in at 390 px is why they are areas rather than two columns.
+ *
+ * The rail is a column beside the document on a laptop. On a phone a grid with the rail first in
+ * the DOM opens the page on a filter box and a list of 79 names, and the reader has to scroll past
+ * an index to find out which package they are even in. Named areas put the heading first at both
+ * widths without the markup having to change: `"nav head" / "nav doc"` becomes `head / nav / doc`.
+ */
+.ref {
+  display: grid;
+  grid-template-columns: minmax(0, 15.5rem) minmax(0, 1fr);
+  grid-template-areas: 'nav head' 'nav doc';
+  align-items: start;
+  column-gap: clamp(22px, 3.2vw, 54px);
+  padding-block: clamp(36px, 4.6vw, 68px);
+}
+.ref-head { grid-area: head; }
+.ref-nav { grid-area: nav; }
+.ref-doc { grid-area: doc; margin-top: clamp(22px, 2.6vw, 34px); }
+
+/* The rail. `overflow: auto` on a sticky element is what makes 100 names usable in a 700-pixel
+   viewport; `reference.ts` keeps the marked entry inside it as the reader descends. */
+.ref-nav {
+  position: sticky;
+  top: 80px;
+  align-self: start;
+  max-height: calc(100vh - 104px);
+  overflow: auto;
+  padding-right: 6px;
+}
+.ref-up { display: block; font: 500 10px/1 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--dim); text-decoration: none; margin-bottom: 16px; }
+.ref-up:hover { color: var(--accent); }
+.navlist { list-style: none; margin: 0; padding: 0; font: 400 12px/1.5 var(--mono); }
+.navlist ul { list-style: none; margin: 0; padding: 0; }
+.navlist > li[hidden], .navlist li[hidden] { display: none; }
+.navgroup { display: block; font: 500 9.5px/1 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--dimmer); margin: 16px 0 7px; }
+.navgroup a { color: inherit; text-decoration: none; }
+.navgroup a:hover { color: var(--accent); }
+.navlist a { display: block; padding: 3px 9px; color: var(--dim); text-decoration: none; border-left: 2px solid transparent; overflow-wrap: anywhere; }
+.navlist a:hover { color: var(--paper); background: color-mix(in srgb, var(--paper) 5%, transparent); }
+.navlist a[aria-current] {
+  color: var(--accent);
+  border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+
+.ref-head > * + * { margin-top: 16px; }
+.ref-head h2 { font: 500 clamp(24px, 3.2vw, 38px)/1.08 var(--mono); letter-spacing: -0.04em; }
+.ref-head .eyebrow a { color: inherit; text-decoration: none; }
+.ref-head .eyebrow a:hover { color: var(--accent); }
+
+.promises { margin-top: clamp(26px, 3vw, 40px); }
+.promises h3, .mod > h3 { scroll-margin-top: 92px; }
+.promises h3 { font: 500 10px/1 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); margin-bottom: 12px; }
+.promises ul { margin: 0; padding-left: 1.15em; }
+.promises li { font: 400 13.5px/1.6 var(--sans); color: color-mix(in srgb, var(--paper) 80%, transparent); margin-bottom: 8px; max-width: 76ch; }
+.promises .note { margin-top: 12px; }
+
+.mod { padding-block: clamp(28px, 3.4vw, 46px) 0; border-top: 1px solid var(--rule); margin-top: clamp(28px, 3.4vw, 46px); }
+.mod > h3 {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px;
+  font: 500 clamp(19px, 2.1vw, 25px)/1.2 var(--mono); letter-spacing: -0.02em;
+}
+.mod > h3 .anchor { color: var(--paper); text-decoration: none; }
+.mod > h3 .anchor:hover { color: var(--accent); }
+.mod-count { font: 400 10px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--dimmer); }
+
+/* ── one symbol ───────────────────────────────────────────────────────────────────────── */
+
+.sym { border-top: 1px solid var(--rule-soft); padding-block: 24px; scroll-margin-top: 92px; }
+.sym h4 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; font: 500 15.5px/1.35 var(--mono); }
+.sym h4 .anchor { text-decoration: none; }
+.sym h4 .anchor code { color: var(--paper); }
+.sym h4 .anchor:hover code { color: var(--accent); }
+.kind {
+  font: 500 9.5px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--dim); border: 1px solid var(--rule); padding: 4px 6px; white-space: nowrap;
+}
+.kind[data-kind='interface'], .kind[data-kind='type'] { color: var(--tint); }
+.kind.entry { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.sym-src { margin-left: auto; font: 400 11px/1.4 var(--mono); color: var(--dimmer); text-decoration: none; white-space: nowrap; }
+.sym-src:hover { color: var(--accent); text-decoration: underline; }
+.sig { margin-top: 13px; padding: 14px 16px; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+h5.sub { font: 500 10px/1 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); margin: 22px 0 10px; }
+
+.params th { font: 400 12.5px/1.5 var(--mono); text-transform: none; letter-spacing: 0; color: var(--paper); white-space: nowrap; padding-right: 18px; }
+.params td p { margin: 0; }
+
+/* A `@throws` or a `@returns`: a label in the rail's typeface and the sentence beside it, so the
+   three of them stack into something scannable rather than three more paragraphs. */
+.tagline { display: grid; grid-template-columns: 8.5ch minmax(0, 1fr); gap: 14px; margin-top: 10px; }
+.tagline > b { font: 500 9.5px/1.9 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); font-weight: 500; }
+.tagline p { margin: 0; font: 400 13.5px/1.6 var(--sans); color: color-mix(in srgb, var(--paper) 80%, transparent); }
+.tagline p + p { margin-top: 8px; }
+
+/* An interface's members, each with the paragraph above it in the source. This is where `loop`,
+   `input` and `audio` keep most of what they have to say. */
+.members { margin: 0; border-top: 1px solid var(--rule-soft); }
+.members dt { padding-top: 12px; font: 400 12.5px/1.55 var(--mono); }
+.members dt code { color: color-mix(in srgb, var(--paper) 90%, transparent); white-space: pre-wrap; overflow-wrap: anywhere; }
+.members dt code b { font-weight: 500; color: var(--accent); }
+.members dt code i { font-style: normal; color: var(--tint); }
+.members dt code u { text-decoration: none; color: var(--dimmer); }
+.members dd { margin: 5px 0 0; padding: 0 0 12px; border-bottom: 1px solid var(--rule-soft); }
+.members dd:empty { padding-bottom: 12px; }
+
+/* ── rendered doc prose ───────────────────────────────────────────────────────────────── */
+
+.doc { margin-top: 14px; }
+.doc > * + * { margin-top: 15px; }
+.doc p, .doc li { font: 400 14px/1.62 var(--sans); color: color-mix(in srgb, var(--paper) 82%, transparent); }
+.doc p { margin: 0; max-width: 76ch; }
+.doc code { color: var(--tint); font-size: 0.94em; overflow-wrap: anywhere; }
+.doc a code { color: inherit; }
+.doc .xref { text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+/* A `##` in a *package* introduction is a section of a long essay — `iso`'s header has four — so
+   it keeps sentence case and some size. Deeper than that, and anywhere inside a module or symbol
+   comment, a heading is a label and is set like every other label on this site. */
+.doc h3 { font: 500 15px/1.35 var(--mono); letter-spacing: -0.01em; text-transform: none; color: var(--paper); margin-top: 26px; }
+.doc h4, .doc h5, .doc h6 { font: 500 11px/1.3 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); margin-top: 22px; }
+.doc ul, .doc ol { margin: 0; padding-left: 1.2em; max-width: 76ch; }
+.doc li { margin-bottom: 7px; }
+.doc li:last-child { margin-bottom: 0; }
+.doc blockquote {
+  margin: 0;
+  padding: 2px 0 2px 15px;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.doc .doc-code { font-size: 11.5px; padding: 14px 16px; }
+.doc table { font-size: 12.5px; }
+.doc td { color: color-mix(in srgb, var(--paper) 80%, transparent); }
+.doc-lead > * + * { margin-top: 18px; }
+.doc-lead p { font-size: 15px; }
+.doc-lead > p:first-child { color: color-mix(in srgb, var(--paper) 90%, transparent); }
+
+@media (max-width: 900px) {
+  /*
+   * One column, and the rail becomes an index box above the document rather than a sticky
+   * sidebar. It keeps its filter, because at this width the filter is the only sane way to reach
+   * the 79th symbol, and it keeps a fixed height so the document itself is never more than one
+   * screen away.
+   */
+  .ref { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'head' 'nav' 'doc'; row-gap: 26px; }
+  .ref-nav { position: static; max-height: none; overflow: visible; padding-right: 0; }
+  .ref-doc { margin-top: 0; }
+  .navlist { max-height: 36vh; overflow: auto; border: 1px solid var(--rule); padding: 4px 8px 10px; }
+  /* Four grid columns do not fit in 390 px. The row becomes a flex line — name, kind, package —
+     with the summary wrapped underneath it, which is two lines instead of the three a grid gives
+     when the package label wraps into a column of its own. */
+  .symlist > li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 10px; }
+  .symlist > li[hidden] { display: none; }
+  .symlist > li > a { flex: 1 1 auto; }
+  .sym-sum { flex: 1 1 100%; white-space: normal; }
+  .tagline { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}
 
 /* ── footer ───────────────────────────────────────────────────────────────────────────── */
 

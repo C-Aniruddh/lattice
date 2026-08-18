@@ -84,6 +84,23 @@ const NIGHT_PAGE = extendStops(NIGHT, { page: PAGE_STOPS.night, panel: PANEL_STO
 const root = document.documentElement;
 const groundCanvas = document.querySelector<HTMLCanvasElement>('#ground');
 
+/**
+ * The day cycle is the scroll bar on the landing page, and a fixed hour on `/reference/`.
+ *
+ * Both documents share this file, and the second one was reviewed as *"it doesn't use the black
+ * theme, so looks inconsistent"* — correctly. The cycle runs from `#181410` at the top of a page
+ * to `#0c0a08` at the bottom, and the landing page's top is covered by a hero, so the only place a
+ * reader ever sees the lightest end **is** the reference, which opens on it and stays there
+ * because it is one screen of table before the first heading.
+ *
+ * So the reference asks for the midnight end and holds it: `data-ground="night"` in the markup,
+ * one value, no scroll binding. That is the right answer for a technical document for a second
+ * reason as well — a page whose ground moves while somebody is reading a signature is a page
+ * doing something for its own benefit, and the contrast floors are measured against the darkest
+ * ground rather than sampled somewhere along a ramp.
+ */
+const groundFixed = document.body.dataset['ground'] === 'night' ? 1 : undefined;
+
 /** The last palette step written to the document. The whole point of quantizing: two scroll
  *  positions inside one step produce byte-identical strings, so the backdrop is repainted about
  *  thirty times over a full scroll rather than sixty times a second. The count used to be printed
@@ -310,10 +327,33 @@ class Scene {
     this.stage = stage ?? host;
     const base = host.dataset['src'] ?? '';
     const extra = host.dataset['params'] ?? '';
-    this.src =
-      base === '' || !opts.scaled
-        ? base
-        : `${base}?dpr=${String(TILE_DPR)}${extra === '' ? '' : `&${extra}`}`;
+    const managed = host.dataset['unmanaged'] !== 'yes';
+    /**
+     * The query every embedded exhibit is given, and the whole page-side of the frame-cost rule.
+     *
+     * `cost=0` is on **every** exhibit this page mounts, hero included. An exhibit opened directly
+     * still prints its worst frame — that figure is a development gate and `docs/GALLERY.md` scores
+     * an exhibit on it — but a figure measured on a stranger's machine, in the kit's own voice,
+     * four seconds into their first visit, is a claim about their hardware and their other thirty
+     * tabs rather than about Lattice. So the *embedder* asks for it to be suppressed, per exhibit,
+     * and `examples/_shared`'s `bootstrap` answers with `boot.showCost`.
+     *
+     * **It is a URL parameter and not a stylesheet on purpose.** The rejected version was eleven
+     * CSS selectors written here, reaching into eleven HUDs that variously call the node
+     * `.card.cost`, `.gauge`, `.worst` and a bare span — a list that rots the first time any one of
+     * them is renamed, silently, and in the direction of printing the figure again. Nothing in
+     * `site/src/page.css` may target an exhibit's cost node; this line is the mechanism.
+     *
+     * Only managed scenes get it. `/example/` is a plain Lattice program rather than an exhibit —
+     * it never calls `bootstrap`, has no HUD and prints no figure — so the key would be a
+     * parameter nothing reads.
+     */
+    const query = [
+      ...(opts.scaled ? [`dpr=${String(TILE_DPR)}`] : []),
+      ...(opts.scaled && extra !== '' ? [extra] : []),
+      ...(managed ? ['cost=0'] : []),
+    ];
+    this.src = base === '' || query.length === 0 ? base : `${base}?${query.join('&')}`;
     // One logical viewport for every screen, and two things that were tried and measured and are
     // *not* here, so nobody spends the afternoon again:
     //
@@ -328,7 +368,7 @@ class Scene {
     this.w = Number(host.dataset['w'] ?? 1000);
     this.h = Number(host.dataset['h'] ?? 625);
     this.scaled = opts.scaled;
-    this.managed = host.dataset['unmanaged'] !== 'yes';
+    this.managed = managed;
     this.unreachable = !this.managed;
     this.meter = createMeter(null);
   }
@@ -900,7 +940,7 @@ function onScroll(): void {
   requestAnimationFrame(() => {
     queued = false;
     const span = Math.max(1, document.body.scrollHeight - innerHeight);
-    applyNight(clamp01(scrollY / span));
+    applyNight(groundFixed ?? clamp01(scrollY / span));
     // The hero's frame may be created long after boot — a reduced-motion visitor presses Play —
     // so the wheel bridge is offered on every scroll and `bridged` makes the repeat free. A
     // frame that is replaced gets a fresh `Window` and therefore a fresh bridge.
@@ -938,9 +978,14 @@ for (const a of document.querySelectorAll<HTMLAnchorElement>('.topnav a')) {
   if (href.startsWith('#')) navLinks.set(href.slice(1), a);
 }
 const spied = [...document.querySelectorAll<HTMLElement>('main .section[id]')];
-let spiedId = ' ';
+let spiedId = '\u0000';
 
 function spy(): void {
+  // **A document with no spied sections is not a document with none active.** `/reference/` has no
+  // `.section[id]` at all, so `current` is always `''` here, and the `replaceState` below would
+  // strip the fragment off `/reference/iso/#createCamera` the first time the reader scrolled — a
+  // deep link that erases itself under the person who followed it.
+  if (spied.length === 0) return;
   // A third of the way down is where a reader is actually reading, not the top edge: a section
   // whose first pixel has appeared is not the section anybody is in.
   const line = innerHeight * 0.34;
@@ -1117,4 +1162,4 @@ document.addEventListener('click', (event) => {
 addEventListener('scroll', onScroll, { passive: true });
 addEventListener('resize', onScroll, { passive: true });
 onScroll();
-applyNight(0);
+applyNight(groundFixed ?? 0);

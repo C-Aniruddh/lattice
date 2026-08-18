@@ -14,14 +14,15 @@ The hero is a **split**: the words in one column, `examples/demo` live and playa
 full viewport, with no type over the world at all. The ten gallery tiles are the ten exhibits, live,
 at their own viewports, scaled into a grid, each captioned with the ordinary sentence it would be
 asked for and tagged with the capability it proves. The backdrop is drawn with `@latticekit/draw`,
-the page's color scheme is `lerpPalette(DUSK, NIGHT, scrollProgress)`, and the frame readout is
-`@latticekit/loop` measuring the page it is printed on.
+the page's color scheme is `lerpPalette(DUSK, NIGHT, scrollProgress)`, and no frame cost is printed
+anywhere a visitor can see one — see *The frame cost* below.
 
 **The order**, and it is the argument in sequence: masthead with a dated announcement chip → the
 hero → the proof strip → `/gallery`, which is the centre → `/how`, which is why the agent gets it
 right → `/example` → a closing band → the footer. The API reference is a route of its own at
 `/reference/`: at 2,255 px it was the second-largest object on a page a newcomer has four seconds
-for, and it is content for somebody who has already adopted this.
+for, and it is content for somebody who has already adopted this. It is ten documents now: an
+index at `/reference/` and one per package at `/reference/<pkg>/`.
 
 This directory is **not part of the kit**, is **not a workspace member**, and nothing in it may be
 imported by a package or by an exhibit. It reads `packages/*/dist` and `examples/*` and writes only
@@ -46,17 +47,46 @@ is served from `dist/x/` and only exists after a build, so the tiles are empty i
 
 | | |
 |---|---|
-| `index.html`, `reference/index.html`, `public/llms.txt`, `public/api.json`, `public/kit.json` | **generated** by `tools/build-page.mjs`. Do not edit; your change is gone on the next build |
+| `index.html`, `reference/**/index.html`, `public/llms.txt`, `public/api.json`, `public/kit.json` | **generated** by `tools/build-page.mjs`. Do not edit; your change is gone on the next build |
 | `src/page.css`, `src/page.ts` | the design and the behavior |
+| `src/reference.ts` | the reference's filter and its rail. Loaded only by `/reference/**` |
+| `tools/api-model.mjs` | every public symbol read out of `packages/*/dist/**/*.d.ts`, and the cross-check against `kit.json` |
+| `tools/doc-html.mjs` | the doc comments' markdown — tables, fenced code, `{@link}` — rendered |
 | `src/meter.ts` | the one guard every live frame figure on the page is printed through |
 | `data/measured.json` | every number the page prints, each with the command that produced it |
 | `data/exhibits.json` | the gallery, as data. Adding an exhibit is one row here and nothing else |
 | `example/hello.ts` | the worked example the page prints, typechecked on every build |
 
-**The API reference is generated from `.lattice/kit.json`**, which `npm run lint` fails the
-repository's build over if a package exports a symbol it does not list. That is the whole reason
-it is generated rather than written: a reference typed out beside the thing it describes drifts
-from it inside a week, and this one cannot.
+**The API reference is generated from the built type declarations** — `packages/*/dist/**/*.d.ts`,
+which `npm run build` emits — so every symbol carries its real signature, its parameters and the
+doc comment written above it. It used to come out of `.lattice/kit.json`, which carries names and
+no types at all, and so could answer *"which package is `pathSample` in"* and never *"how do I call
+it"*.
+
+The manifest is still the check rather than the source. `tools/api-model.mjs` compares the exports
+the compiler found against `kit.json`'s list, **per package and in both directions**, and throws —
+failing the page's build — if they disagree. That is strictly stronger than the `npm run lint` rule
+it replaces here, which cannot see a manifest entry the built package no longer exports. Either
+way, a reference typed out beside the thing it describes drifts from it inside a week and this one
+cannot.
+
+Extraction is TypeScript's own compiler API, which is already a root devDependency and is the
+program that emitted these files; the alternatives were a hand-rolled `.d.ts` reader, which is a
+TypeScript parser with a smaller test suite, and a generator like typedoc, which brings a
+dependency and a second theme to argue with. **The kit's own zero-dependency rule is untouched:
+nothing here is installed by anything under `packages/`.**
+
+## The frame cost
+
+**No frame figure appears anywhere a visitor sees**, and both halves of that rule are load-bearing
+(`docs/GALLERY.md` § *the frame cost is evidence in development and a liability in a shop window*).
+An exhibit opened directly still prints its worst frame, because that figure is a development gate.
+An exhibit *embedded here* prints none: `Scene` appends **`?cost=0`** to the `src` of every exhibit
+it mounts, hero included, and `examples/_shared`'s `bootstrap` answers with `boot.showCost`.
+
+It is a URL parameter and **not** a stylesheet. Nothing in `src/page.css` may target an exhibit's
+cost node: eleven selectors reaching into eleven HUDs rot the first time any one of them is
+renamed, silently, and in the direction of printing the figure again.
 
 **Nothing on the page may state a number that is not in `data/measured.json` or read live off the
 running kit.** If you want a figure that does not exist, measure it and add it with its command.
@@ -121,6 +151,18 @@ input, and it is the exact vaporware signal this page cannot afford while the pl
   them, every one is over 4.5:1: the tile tag 7.90, the tile prompt 13.11, a tile's name and fact
   6.60, the announcement chip 5.87–9.59, the terminal's tabs 7.24 and its command 13.60, the
   closing band 11.93–15.20.
+- **`/reference/**` is pinned at the midnight end.** The cycle's lightest ground is the top of a
+  page, the landing page hides its top behind a hero, and the reference opened on `#181410` and
+  stayed there — which is what *"it doesn't use the black theme"* was describing. `data-ground=
+  "night"` in the markup, read once by `page.ts`, no scroll binding: a document nobody reads while
+  scrolling past should not change color while a signature is being read. Re-measured against
+  `#0c0a08`: `--dimmer` **5.46:1**, `--dim` **7.33:1**, the doc paragraph 13.76, a signature 12.59,
+  a kind chip and inline code 7.82, the rail 7.33, `↳ source` 5.46. Every one is over the floors
+  above.
+- **A `--lattice-*` slot is a surface color and must never set type.** `--lattice-glass` is
+  `#c79a76` at dusk and `#3f5f74` at midnight, so every string literal in a code block and every
+  kind chip on the reference measured **2.92:1** there. `--tint` is the dusk value as a constant,
+  9.7:1 on the reference's ground and identical to what the landing page already showed.
 - **The drag pill's backing is a contrast floor, not a taste.** It sits over a live world whose
   brightest state is Lamp Road's noon sky (`#79c2ee`). At `rgb(8 5 3 / 66%)` the accent on *Drag*
   measured **4.46:1** against what showed through — under the floor. It is 82% and 6.78:1.

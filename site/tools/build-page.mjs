@@ -1,18 +1,26 @@
 /**
- * Generate the landing page.
+ * Generate the landing page and the API reference.
  *
- * `site/index.html`, `site/public/llms.txt`, `site/public/api.json` and `site/public/kit.json`
- * are all outputs of this script. None of them is edited by hand, and the reason is the one the
- * brief gives for the API reference: a reference typed out beside the thing it describes drifts
- * from it within a week. Every package, export, invariant and budget on the page comes out of
- * `.lattice/kit.json` — the same file `npm run lint` fails the build over — and every number
- * comes out of `site/data/measured.json`, which carries the command that produced it.
+ * `site/index.html`, `site/reference/**\/index.html`, `site/public/llms.txt`,
+ * `site/public/api.json` and `site/public/kit.json` are all outputs of this script. None of them
+ * is edited by hand, and the reason is the one the brief gives for the API reference: a reference
+ * typed out beside the thing it describes drifts from it within a week. Every package, export,
+ * invariant and budget on the landing page comes out of `.lattice/kit.json` — the same file
+ * `npm run lint` fails the build over — and every number comes out of `site/data/measured.json`,
+ * which carries the command that produced it.
+ *
+ * The reference has a second source, and it is the more important one: `packages/*\/dist/**\/*.d.ts`,
+ * the type declarations `npm run build` emits. That is where the signatures and the doc comments
+ * come from — see `api-model.mjs`, which also cross-checks those exports against the manifest and
+ * fails the build if the two disagree.
  *
  * Run: `node site/tools/build-page.mjs`
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildApiModel, crossCheck } from './api-model.mjs';
+import { docHtml, summarize } from './doc-html.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const site = join(here, '..');
@@ -86,8 +94,21 @@ const KEYWORDS =
  * inside a comment cannot be wrapped twice and a `<` in the source cannot become markup. The
  * three classes are the three things a reader scans for: what is a keyword, what came from the
  * kit, and what is prose.
+ *
+ * **Block comments are lifted out whole, before the line pass.** The reference prints declarations
+ * verbatim, and some of them carry documentation *inside* the declaration — `persist`'s
+ * `FailureReason` is a seven-member union with a paragraph over every member, which is the right
+ * way to write it and the reason that type is readable at all. Line-at-a-time, the pass painted
+ * `else` and `from` inside those paragraphs as keywords, in the accent color, in prose.
  */
 function highlight(code) {
+  return code
+    .split(/(\/\*[\s\S]*?\*\/)/g)
+    .map((part, i) => (i % 2 === 1 ? `<u>${esc(part)}</u>` : highlightCode(part)))
+    .join('');
+}
+
+function highlightCode(code) {
   return code
     .split('\n')
     .map((line) => {
@@ -412,44 +433,6 @@ function tileHtml(x) {
           </div>
         </div>
       </article>`;
-}
-
-function packageHtml(name) {
-  const p = kit.packages[name];
-  const size = sizeOf(name);
-  const entries = new Set(p.entryPoints ?? []);
-  const symbols = [...p.exports]
-    .sort((a, b) => (entries.has(b) ? 1 : 0) - (entries.has(a) ? 1 : 0) || a.localeCompare(b))
-    .map((s) => `<code${entries.has(s) ? ' class="entry"' : ''}>${esc(s)}</code>`)
-    .join('');
-  const deps = p.dependsOn.length === 0 ? 'nothing' : p.dependsOn.map((d) => `@latticekit/${d}`).join(', ');
-  return `        <details class="pkg" id="pkg-${name}">
-          <summary>
-            <h3>${esc(p.name)}<span class="layer">LAYER ${layerOf(name)}</span></h3>
-            <span class="sz">${p.exports.length} exports${size === undefined ? '' : ` &middot; ${esc(kb(size.gzipKb))}`}</span>
-            <span class="why">${esc(p.purpose)}</span>
-          </summary>
-          <div class="pkg-body">
-            <div class="scroller"><table>
-              <tbody>
-                <tr><th>depends on</th><td>${esc(deps)}</td></tr>
-                <tr><th>environment</th><td>${esc(p.environment)}</td></tr>
-                <tr><th>modules</th><td>${p.modules.map((m) => `<code>${esc(m)}</code>`).join(' ')}</td></tr>
-                <tr><th>start here</th><td>${(p.entryPoints ?? []).length === 0 ? '<em>no entry points declared &mdash; this package is used through its types and its overlay, not called first</em>' : p.entryPoints.map((e) => `<code>${esc(e)}</code>`).join(' ')}</td></tr>
-                <tr><th>gzipped</th><td>${size === undefined ? '&mdash;' : `${esc(kb(size.gzipKb))} against a ${esc(kbShort(budgetOf(name)))} budget${size.note === undefined ? '' : ` &mdash; ${esc(size.note)}`}`}</td></tr>
-              </tbody>
-            </table></div>
-            <div>
-              <h4>What it promises</h4>
-              <ul>${p.invariants.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>
-            </div>
-            <div>
-              <h4>${p.exports.length} exports &mdash; entry points first</h4>
-              <div class="symbols">${symbols}</div>
-            </div>
-            <p class="note"><a href="${tree(`packages/${name}`)}">packages/${name}</a> &middot; <a href="${src(`packages/${name}/README.md`)}">README</a></p>
-          </div>
-        </details>`;
 }
 
 /* ── the shared chrome ─────────────────────────────────────────────────────────────────── */
@@ -830,7 +813,7 @@ ${packageNames
   .map((n) => {
     const p = kit.packages[n];
     const s = sizeOf(n);
-    return `            <tr><td><a href="/reference/#pkg-${n}"><code>${esc(p.name)}</code></a></td><td>${layerOf(n)}</td><td>${esc(p.purpose)}</td><td class="num">${s === undefined ? '&mdash;' : esc(kb(s.gzipKb))}</td></tr>`;
+    return `            <tr><td><a href="/reference/${n}/"><code>${esc(p.name)}</code></a></td><td>${layerOf(n)}</td><td>${esc(p.purpose)}</td><td class="num">${s === undefined ? '&mdash;' : esc(kb(s.gzipKb))}</td></tr>`;
   })
   .join('\n')}
           </tbody>
@@ -1008,26 +991,238 @@ ${footer()}
 /* ── /reference/ ───────────────────────────────────────────────────────────────────────── */
 
 /**
- * The API reference, on a route of its own.
+ * The API reference: an index at `/reference/` and one document per package under it.
  *
- * It is the same generator it always was — every row still comes out of `.lattice/kit.json`, which
- * `npm run lint` fails the build over — and the only thing that changed is which document it is
- * in. `site/vite.config.ts` names it as a second Rollup input; `appType: 'mpa'` means a link to it
- * is a navigation rather than a router, and a mistyped path under it still 404s.
+ * ## What changed, and why it was worth changing
+ *
+ * Every row on this page used to come out of `.lattice/kit.json`, which carries export names,
+ * purposes and invariants and **no types at all**. So the reference could answer *"which package
+ * is `pathSample` in"* and never *"how do I call it"* — a list of 540 names, which is an index
+ * rather than a reference. A blind review said exactly that, and the owner's version of it was
+ * shorter: it should read like an autogenerated doc.
+ *
+ * It is generated from the built type declarations now — `packages/*&#47;dist/**&#47;*.d.ts`, which
+ * `npm run build` emits and which an adopter's editor reads. Three things follow from that:
+ *
+ * 1. **Every symbol carries its real signature**, character for character as the compiler wrote
+ *    it, so the page cannot describe a parameter list that does not exist.
+ * 2. **Every symbol carries its doc comment**, and that is the point of the exercise rather than a
+ *    side effect. `AGENTS.md` non-negotiable 5 requires a *why* over a *what*, and the result is
+ *    RFC-grade writing sitting in these files: why pointer-anchored zoom exists, why `readonly` is
+ *    not a barrier between a read type and a write type, why a duration is not branded. Printing
+ *    `createCamera(viewW, viewH, options?)` and dropping the paragraph underneath it would have
+ *    thrown away the valuable half.
+ * 3. **Module headers are sections.** Half the best writing in the kit is a file header rather
+ *    than a symbol comment — `createCamera`'s own comment is two lines; the table splitting a
+ *    camera's position from its policy is the top of `camera.ts` — so a module is a section with
+ *    its own prose and its symbols underneath it, in the order the package re-exports them.
+ *
+ * ## What was kept
+ *
+ * The old generator's one real property was that it could not drift: `npm run lint` fails the
+ * build if a package exports a symbol `kit.json` does not list. {@link crossCheck} is the stronger
+ * form of the same guarantee — it compares the *compiler's* view of each package's exports against
+ * the manifest, in both directions, and throws with the names. The budgets table and its
+ * `↳ source` provenance lines are unchanged, and the invariants are still printed verbatim from
+ * the manifest.
+ *
+ * ## Nine documents rather than one
+ *
+ * The prose is 700 kB of text. As one page that is a megabyte of HTML before any markup, which is
+ * a document a phone parses slowly and nobody can navigate; every generated reference in the world
+ * splits, and this one splits at the package because the package is the unit an adopter installs.
+ * `/reference/` keeps the budgets, the contracts, the nine cards — and a filterable index of
+ * every symbol in the kit, which is the thing that makes a split reference navigable rather than a
+ * maze.
  */
+
+const apiModel = buildApiModel({ repo, packages: packageNames });
+crossCheck(apiModel, kit);
+
+const modelOf = (name) => {
+  const p = apiModel.packages.find((x) => x.id === name);
+  if (p === undefined) throw new Error(`no built declarations for @latticekit/${name}`);
+  return p;
+};
+
+const symbolCount = apiModel.packages.reduce((n, p) => n + p.symbols.length, 0);
+
+/**
+ * Where a symbol's entry lives, for `{@link}` cross-references.
+ *
+ * `VERSION` is exported by all nine packages, so the first one wins for a link written in another
+ * package's prose — and a link from *inside* a package always resolves locally first, because a
+ * comment in `iso` saying `{@link VERSION}` means the one it exports.
+ */
+const symbolHome = new Map();
+for (const p of apiModel.packages) {
+  for (const s of p.symbols) if (!symbolHome.has(s.name)) symbolHome.set(s.name, `/reference/${p.id}/#${s.name}`);
+}
+const linkerFor = (pkg) => (name) => {
+  const local = pkg === undefined ? undefined : modelOf(pkg).symbols.find((s) => s.name === name);
+  if (local !== undefined) return `#${name}`;
+  return symbolHome.get(name);
+};
+
+/** A doc comment, rendered with this page's highlighter and this page's cross-links. */
+const doc = (md, pkg, heading) => docHtml(md, { heading, link: linkerFor(pkg), highlight });
+
+/** The `↳ source` line every symbol carries, pointing at the `.ts` the comment was written in
+ *  rather than at the `.d.ts` it was read from — resolved through the declaration source map, so
+ *  it lands on the line and not merely in the file. */
+const sourceLink = (origin) =>
+  `<a class="sym-src" href="${src(origin.file)}#L${String(origin.line)}">&#8627; ${esc(origin.file.replace(/^packages\/[^/]+\//, ''))}:${String(origin.line)}</a>`;
+
+/** One symbol: what it is, how it is called, and why it exists. */
+function symbolHtml(s, pkg, entries) {
+  const params = s.doc.tags.filter((t) => t.tag === 'param');
+  const returns = s.doc.tags.filter((t) => t.tag === 'returns' || t.tag === 'return');
+  const throws = s.doc.tags.filter((t) => t.tag === 'throws');
+  const flags = s.doc.tags.filter((t) => t.tag === 'tier-a' || t.tag === 'tier-b' || t.tag === 'browser-only' || t.tag === 'deprecated' || t.tag === 'see' || t.tag === 'defaultValue');
+
+  const sig = s.signatures.map((x) => `<pre class="code sig">${highlight(x)}</pre>`).join('');
+
+  const paramRows = params.length === 0 ? '' : `
+            <h5 class="sub">Parameters</h5>
+            <div class="scroller"><table class="params"><tbody>
+${params.map((p) => `              <tr><th><code>${esc(p.name)}</code></th><td>${doc(p.text, pkg, 6)}</td></tr>`).join('\n')}
+            </tbody></table></div>`;
+
+  const notes = [
+    ...returns.map((t) => `<div class="tagline"><b>Returns</b>${doc(t.text, pkg, 6)}</div>`),
+    ...throws.map((t) => `<div class="tagline"><b>Throws</b>${doc(t.text, pkg, 6)}</div>`),
+    ...flags.map((t) => `<div class="tagline"><b>${esc(t.tag)}</b>${doc(t.text, pkg, 6)}</div>`),
+  ].join('\n');
+
+  const members = s.members.length === 0 ? '' : `
+            <h5 class="sub">${s.members.length} member${s.members.length === 1 ? '' : 's'}</h5>
+            <dl class="members">
+${s.members.map((m) => `              <dt><code>${highlight(m.text)}</code></dt><dd>${m.doc.prose === '' ? '' : doc(m.doc.prose, pkg, 6)}${m.doc.tags.filter((t) => t.tag === 'throws').map((t) => `<div class="tagline"><b>Throws</b>${doc(t.text, pkg, 6)}</div>`).join('')}</dd>`).join('\n')}
+            </dl>`;
+
+  return `          <article class="sym" id="${esc(s.name)}">
+            <h4><a class="anchor" href="#${esc(s.name)}"><code>${esc(s.name)}</code></a>
+              <span class="kind" data-kind="${esc(s.kind)}">${esc(s.kind)}</span>${entries.has(s.name) ? '<span class="kind entry">start here</span>' : ''}
+              ${sourceLink(s.origin)}</h4>
+            ${sig}
+            ${s.doc.prose === '' ? '' : `<div class="doc">${doc(s.doc.prose, pkg, 5)}</div>`}${paramRows}
+            ${notes}${members}
+          </article>`;
+}
+
+/** The rail: every symbol in the package, grouped by module, filterable, and marked as the reader
+ *  passes it. It is the answer to "find a symbol without scrolling" on a document that is long
+ *  precisely because it is worth reading. */
+function navHtml(pkg) {
+  const model = modelOf(pkg);
+  return `      <nav class="ref-nav" data-symbol-nav data-finder aria-label="Symbols in @latticekit/${esc(pkg)}">
+        <a class="ref-up" href="/reference/">&uarr; all nine packages</a>
+        <p class="finder-box js-only">
+          <input type="search" data-finder-input placeholder="Filter symbols" aria-label="Filter the symbols in this package" autocomplete="off" spellcheck="false">
+          <span class="finder-count"><b data-finder-count>${model.symbols.length}</b>/${model.symbols.length}</span>
+        </p>
+        <ul class="navlist">
+${model.modules.map((m) => `          <li data-group><b class="navgroup"><a href="#mod-${esc(m.id)}">${esc(m.id)}</a></b>
+            <ul>
+${m.symbols.map((s) => `              <li data-key="${esc(`${s.name} ${s.kind} ${m.id} ${pkg}`.toLowerCase())}"><a href="#${esc(s.name)}" data-kind="${esc(s.kind)}">${esc(s.name)}</a></li>`).join('\n')}
+            </ul>
+          </li>`).join('\n')}
+        </ul>
+        <p class="note js-only" data-finder-empty hidden>Nothing in this package matches that.</p>
+      </nav>`;
+}
+
+/** One package document. */
+function packagePage(pkg) {
+  const p = kit.packages[pkg];
+  const model = modelOf(pkg);
+  const size = sizeOf(pkg);
+  const entries = new Set(p.entryPoints ?? []);
+  const deps = p.dependsOn.length === 0 ? 'nothing' : p.dependsOn.map((d) => `<a href="/reference/${esc(d)}/"><code>@latticekit/${esc(d)}</code></a>`).join(', ');
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+${head({
+    title: `${p.name} — Lattice API reference`,
+    description: `${p.purpose} Every exported symbol of ${p.name} with its signature, its parameters and the comment above it in the source.`,
+    extra: '<script type="module" src="/src/reference.ts"></script>',
+  })}
+</head>
+<body data-ground="night">
+
+<noscript>
+  <p class="banner">This page is a document and reads fine without JavaScript; only the filter box
+  needs it. The worlds are on <a href="/">the front page</a>.</p>
+</noscript>
+
+<canvas id="ground" aria-hidden="true"></canvas>
+
+<div class="page">
+
+${topbar('/', 'reference')}
+
+<main class="shell">
+  <div class="ref">
+      <header class="ref-head">
+        <p class="eyebrow"><a href="/reference/">API reference</a> &middot; layer ${layerOf(pkg)}</p>
+        <h2><code>${esc(p.name)}</code></h2>
+        <p class="lede">${esc(p.purpose)}</p>
+        <div class="scroller"><table>
+          <tbody>
+            <tr><th>exports</th><td>${model.symbols.length} symbols in ${model.modules.length} modules${(p.entryPoints ?? []).length === 0 ? '' : ` &mdash; start with ${p.entryPoints.map((e) => `<a href="#${esc(e)}"><code>${esc(e)}</code></a>`).join(', ')}`}</td></tr>
+            <tr><th>depends on</th><td>${deps}</td></tr>
+            <tr><th>environment</th><td>${esc(p.environment)}</td></tr>
+            <tr><th>gzipped</th><td>${size === undefined ? '&mdash;' : `${esc(kb(size.gzipKb))} against a ${esc(kbShort(budgetOf(pkg)))} budget${size.note === undefined ? '' : ` &mdash; ${esc(size.note)}`}`}</td></tr>
+            <tr><th>source</th><td><a href="${tree(`packages/${pkg}`)}">packages/${esc(pkg)}</a> &middot; <a href="${src(`packages/${pkg}/README.md`)}">README</a> &middot; <a href="${src(`packages/${pkg}/dist/index.d.ts`)}">index.d.ts</a></td></tr>
+          </tbody>
+        </table></div>
+      </header>
+
+${navHtml(pkg)}
+
+    <div class="ref-doc">
+      ${model.doc.prose === '' ? '' : `<div class="doc doc-lead">${doc(model.doc.prose, pkg, 3)}</div>`}
+
+      <section class="promises">
+        <h3>What it promises</h3>
+        <ul>${p.invariants.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>
+        <p class="note">Verbatim from <a href="${src('.lattice/kit.json')}"><code>.lattice/kit.json</code></a>, which <code>npm run lint</code> keeps in step with the code.</p>
+      </section>
+
+${model.modules.map((m) => `      <section class="mod" id="mod-${esc(m.id)}">
+        <h3><a class="anchor" href="#mod-${esc(m.id)}">${esc(m.id)}</a><span class="mod-count">${m.symbols.length} symbol${m.symbols.length === 1 ? '' : 's'}</span>${m.from === '' ? '' : `<span class="kind">re-exported from @latticekit/${esc(m.from)}</span>`}</h3>
+        ${m.doc.prose === '' ? '' : `<div class="doc doc-lead">${doc(m.doc.prose, pkg, 4)}</div>`}
+${m.symbols.map((s) => symbolHtml(s, pkg, entries)).join('\n')}
+      </section>`).join('\n')}
+    </div>
+  </div>
+</main>
+
+${footer()}
+
+</div>
+</body>
+</html>
+`;
+}
+
+/** The index: the budgets, the nine packages, every symbol in one filterable list, and the
+ *  contracts that hold between packages. */
 const referenceHtml = `<!doctype html>
 <html lang="en">
 <head>
 ${head({
-  title: 'Lattice API reference — every public symbol, from the manifest',
-  description: `Every exported name in the nine Lattice packages, generated from .lattice/kit.json: ${commas(fig('publicSymbols'))} symbols, their layer, their invariants and their size budgets.`,
+  title: 'Lattice API reference — every public symbol, with its signature',
+  description: `Every exported symbol of the nine Lattice packages — ${commas(symbolCount)} of them — generated from the built type declarations: real signatures, parameters, and the doc comment above each one in the source.`,
+  extra: '<script type="module" src="/src/reference.ts"></script>',
 })}
 </head>
-<body>
+<body data-ground="night">
 
 <noscript>
-  <p class="banner">This page is a table of names and reads fine without JavaScript. The worlds are on
-  <a href="/">the front page</a>.</p>
+  <p class="banner">This page is an index and reads fine without JavaScript; only the filter box
+  needs it. The worlds are on <a href="/">the front page</a>.</p>
 </noscript>
 
 <canvas id="ground" aria-hidden="true"></canvas>
@@ -1040,19 +1235,22 @@ ${topbar('/', 'reference')}
 
   <!-- Deliberately without an 'id'. 'page.ts''s scroll spy walks 'main .section[id]' and writes
        both the rail and 'history.replaceState', so an id here would rewrite this document's URL to
-       /reference/#reference the moment it is scrolled — a hash that names the only section on the
-       page. The rail's Reference link carries 'aria-current' from the markup instead, which is
-       true for the whole document rather than for a scroll position inside it. Deep links still
-       work: every '#pkg-*' anchor is on the '<details>', not on this element. -->
+       /reference/#reference the moment it is scrolled. The rail's Reference link carries
+       'aria-current' from the markup instead, which is true for the whole document rather than for
+       a scroll position inside it. -->
   <section class="section">
     <div class="marker"><a href="/">&larr; back</a></div>
     <div class="body">
       <p class="eyebrow">API reference</p>
-      <h2>Every public symbol, from the manifest.</h2>
-      <p class="lede">Generated from <a href="${src('.lattice/kit.json')}"><code>.lattice/kit.json</code></a>, which
-      <code>npm run lint</code> fails the build over. It answers &ldquo;which package, which symbol&rdquo; and never
-      &ldquo;how do I call it&rdquo; &mdash; the manifest carries no types. An agent should read
-      <a href="/api.json"><code>/api.json</code></a> instead of this.</p>
+      <h2>Every public symbol, with the signature the compiler emitted.</h2>
+      <p class="lede">Generated from <code>packages/*/dist/**/*.d.ts</code> &mdash; the type declarations
+      <code>npm run build</code> writes and an adopter's editor reads &mdash; so a signature here is the
+      one you will get, and the prose under it is the comment above it in the source.</p>
+      <p class="note">${commas(symbolCount)} exported names across ${packageNames.length} packages &mdash; ${commas(fig('publicSymbols'))} of them distinct, because
+      <code>VERSION</code> is exported by every package &mdash; cross-checked against
+      <a href="${src('.lattice/kit.json')}"><code>.lattice/kit.json</code></a>: the build fails if the manifest and the
+      built declarations disagree in either direction. An agent should read <a href="/api.json"><code>/api.json</code></a>
+      rather than this page.</p>
 
       <div class="scroller">
         <table>
@@ -1065,7 +1263,32 @@ ${topbar('/', 'reference')}
         </table>
       </div>
 
-${packageNames.map(packageHtml).join('\n')}
+      <h3>The nine packages</h3>
+      <div class="pkgcards">
+${packageNames.map((n) => {
+  const p = kit.packages[n];
+  const m = modelOf(n);
+  const size = sizeOf(n);
+  return `        <a class="pkgcard" href="/reference/${esc(n)}/">
+          <span class="pkgcard-top"><code>${esc(p.name)}</code><span class="layer">layer ${layerOf(n)}</span></span>
+          <span class="why">${esc(p.purpose)}</span>
+          <span class="pkgcard-foot"><b>${m.symbols.length}</b> symbols &middot; ${m.modules.length} modules${size === undefined ? '' : ` &middot; ${esc(kb(size.gzipKb))}`}</span>
+        </a>`;
+}).join('\n')}
+      </div>
+
+      <h3>Find a symbol</h3>
+      <p>Every exported name in the kit, in one list. <kbd>/</kbd> focuses the box, <kbd>Enter</kbd> opens the first match.</p>
+      <div class="finder" data-finder>
+        <p class="finder-box js-only">
+          <input type="search" data-finder-input placeholder="Filter by name, kind or package" aria-label="Filter every symbol in the kit" autocomplete="off" spellcheck="false">
+          <span class="finder-count"><b data-finder-count>${symbolCount}</b>/${symbolCount}</span>
+        </p>
+        <ul class="symlist">
+${apiModel.packages.flatMap((p) => p.symbols.map((s) => `          <li data-key="${esc(`${s.name} ${s.kind} ${s.module} ${p.id}`.toLowerCase())}"><a href="/reference/${esc(p.id)}/#${esc(s.name)}"><code>${esc(s.name)}</code></a><span class="kind" data-kind="${esc(s.kind)}">${esc(s.kind)}</span><span class="sym-pkg">${esc(p.id)}</span><span class="sym-sum">${esc(summarize(s.doc.prose, 96))}</span></li>`)).join('\n')}
+        </ul>
+        <p class="note js-only" data-finder-empty hidden>No symbol matches that. The nine packages are above; <a href="/llms.txt">/llms.txt</a> has the whole kit as text.</p>
+      </div>
 
       <h3>What holds between packages</h3>
       <p>Claims no single package's suite can check, because each is about two packages agreeing. They live in
@@ -1089,6 +1312,7 @@ ${footer()}
 </body>
 </html>
 `;
+
 /* ── llms.txt ──────────────────────────────────────────────────────────────────────────── */
 
 const llms = `# Lattice
@@ -1161,7 +1385,7 @@ ${(kit.budgets.coverageCore * 100).toFixed(0)}% in core); the layering and the d
 
 Not stable: function signatures, because nothing has shipped to a registry and nothing outside this
 repository uses them yet; the \`/lattice\` plugin, which is specified in docs/SKILLS.md and not built;
-the gallery, which is ${gallery.live.length} of ${gallery.live.length + gallery.pending.length} exhibits; the API reference, which lists names and not signatures.
+the gallery, which is ${gallery.live.length} of ${gallery.live.length + gallery.pending.length} exhibits.
 
 Versioning: semver, with the pre-1.0 rule stated — a minor bump may break source compatibility, a
 patch never does. The nine packages version and publish in lockstep, one number for the whole kit.
@@ -1214,6 +1438,7 @@ ${p.purpose}
 - layer: ${layerOf(n)}; environment: ${p.environment}; depends on: ${p.dependsOn.length === 0 ? 'nothing' : p.dependsOn.join(', ')}
 - modules: ${p.modules.join(', ')}
 - start with: ${(p.entryPoints ?? []).length === 0 ? '(none declared)' : p.entryPoints.join(', ')}
+- signatures and doc comments: /reference/${n}/ — generated from packages/${n}/dist/**/*.d.ts
 - invariants:
 ${p.invariants.map((i) => `  - ${i}`).join('\n')}
 - exports (${p.exports.length}): ${p.exports.join(', ')}
@@ -1315,6 +1540,9 @@ const api = {
         budgetKb: budgetOf(n),
         source: tree(`packages/${n}`),
         readme: src(`packages/${n}/README.md`),
+        /** Signatures, parameters and every doc comment, generated from this package's built
+         *  declarations. The manifest above carries names and no types; that document has both. */
+        reference: `/reference/${n}/`,
       },
     ]),
   ),
@@ -1335,7 +1563,6 @@ const api = {
       'function signatures: nothing has shipped to a registry, so nothing outside this repository uses them yet',
       'the /lattice plugin: specified in docs/SKILLS.md, not built',
       `the gallery: ${gallery.live.length} of ${gallery.live.length + gallery.pending.length} exhibits`,
-      'the API reference: names, not signatures — the manifest carries no types',
     ],
     versioning: {
       scheme: 'semver',
@@ -1390,13 +1617,23 @@ mkdirSync(join(site, 'public'), { recursive: true });
 mkdirSync(join(site, 'reference'), { recursive: true });
 writeFileSync(join(site, 'index.html'), html);
 writeFileSync(join(site, 'reference/index.html'), referenceHtml);
+/** One document per package, each one a real directory with an `index.html` in it, because
+ *  `appType: 'mpa'` serves documents rather than routes and `/reference/iso/` has to 404 honestly
+ *  if it is ever missing. `site/vite.config.ts` names every one of them as a Rollup input. */
+let referenceBytes = Buffer.byteLength(referenceHtml);
+for (const name of packageNames) {
+  const page = packagePage(name);
+  referenceBytes += Buffer.byteLength(page);
+  mkdirSync(join(site, 'reference', name), { recursive: true });
+  writeFileSync(join(site, 'reference', name, 'index.html'), page);
+}
 writeFileSync(join(site, 'public/llms.txt'), llms);
 writeFileSync(join(site, 'public/api.json'), `${JSON.stringify(api, null, 2)}\n`);
 writeFileSync(join(site, 'public/kit.json'), readFileSync(join(repo, '.lattice/kit.json')));
 
 const bytes = (s) => `${(Buffer.byteLength(s) / 1024).toFixed(1)} kB`;
 console.log(`site/index.html        ${bytes(html)}`);
-console.log(`site/reference/index.html ${bytes(referenceHtml)}`);
+console.log(`site/reference/**  ${(referenceBytes / 1024).toFixed(1)} kB in ${packageNames.length + 1} documents, ${commas(symbolCount)} symbols`);
 console.log(`site/public/llms.txt   ${bytes(llms)}`);
 console.log(`site/public/api.json   ${bytes(JSON.stringify(api, null, 2))}`);
 console.log(`${packageNames.length} packages, ${gallery.live.length} live exhibits, ${Object.values(kit.packages).reduce((n, p) => n + p.exports.length, 0)} export rows`);
