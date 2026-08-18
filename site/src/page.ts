@@ -2,7 +2,7 @@
  * **`@browser-only`** — the landing page's behavior. Not part of the kit, and nothing here may
  * move into `packages/`.
  *
- * It does four things, and three of them are the kit running on its own marketing:
+ * It does three things, and all three are the kit running on its own marketing:
  *
  * 1. **The day cycle is the scroll bar.** `lerpPalette(DUSK, NIGHT, progress)` from
  *    `@latticekit/draw` writes the document's `--lattice-*` custom properties, so the page darkens
@@ -15,15 +15,20 @@
  *    created the first time it comes near the viewport and `loop.stop()`ed the moment it leaves.
  *    An off-screen exhibit costs nothing because its loop is not running, which is a claim this
  *    page can make only because `@latticekit/loop` puts the frame source behind an interface.
- * 4. **It shows its own frame cost**, and the number it shows is `worstGapMs` rather than
- *    `worstFrameMs`, because a pump that is fast between long pauses is not a page that is fast.
- *    `docs/PERFORMANCE.md` has the pair that read 4.6 ms and 69.2 ms at the same instant.
  *
- * ## The two traps this file is written against
+ * ## What it used to do and does not any more
  *
- * **A frame readout of 0.0 ms means the tab is hidden.** `requestAnimationFrame` does not run in
- * a background tab, so every timing here is held and marked stale unless
- * `document.visibilityState === 'visible'`.
+ * **It printed its own frame cost** — `hero worst 10s`, `page period`, `page worst 10s`, `scenes
+ * live`, a figure in the proof strip and one on every tile — read live off a `@latticekit/loop`
+ * that rendered nothing. The argument for it was that a page confident enough to display its own
+ * render cost is making one, and the argument against it is the measurement: 35 ms on one laptop,
+ * 41.5 ms on another, and worse than either on a slow machine. **A number that makes the product
+ * look bad on hardware the page did not choose is a liability, not evidence**, and there is no
+ * wording that fixes that. Every readout, the loop that fed them and the meters bound to elements
+ * are gone. `meter.ts` is still here and every {@link Scene} still holds one; none of them has an
+ * element to write to, so nothing about frame cost reaches a visitor.
+ *
+ * ## The trap this file is still written against
  *
  * **The exhibits are same-origin, deliberately.** `bootstrap` parks its `Boot` on the mount
  * element as `__latticeBoot`, so this page can reach a running exhibit's `loop` and stop it. If
@@ -34,9 +39,8 @@
  */
 import { DUSK, NIGHT, beginFrame, createCanvas2dSurface, createPalette, endFrame, extendStops, isoTile, lerpPalette, mix, withAlpha } from '@latticekit/draw';
 import { createCamera } from '@latticekit/iso';
-import { browserFrames, createLoop } from '@latticekit/loop';
 import { clamp01, hash2 } from '@latticekit/core';
-import { WARMUP_MS, createMeter } from './meter.js';
+import { createMeter } from './meter.js';
 import type { LoopLike, Meter } from './meter.js';
 
 /* ────────────────────────────────────────────────────────────────────────────────────────
@@ -80,9 +84,11 @@ const NIGHT_PAGE = extendStops(NIGHT, { page: PAGE_STOPS.night, panel: PANEL_STO
 const root = document.documentElement;
 const groundCanvas = document.querySelector<HTMLCanvasElement>('#ground');
 
-/** Repaints of the backdrop since load. Printed in the footer, because a page that claims a
- *  cheap scroll animation should say how cheap. */
-let repaints = 0;
+/** The last palette step written to the document. The whole point of quantizing: two scroll
+ *  positions inside one step produce byte-identical strings, so the backdrop is repainted about
+ *  thirty times over a full scroll rather than sixty times a second. The count used to be printed
+ *  in the footer's colophon, which was the page narrating its own scroll animation to somebody who
+ *  was doing the scrolling. */
 let lastKey = '';
 
 const backdrop = groundCanvas === null ? undefined : makeBackdrop(groundCanvas);
@@ -98,9 +104,6 @@ function applyNight(progress: number): void {
   lastKey = key;
   for (const slot of Object.keys(vars)) root.style.setProperty(`--lattice-${slot}`, vars[slot] ?? '');
   backdrop?.paint(progress);
-  repaints += 1;
-  const readout = document.querySelector('#repaints');
-  if (readout !== null) readout.textContent = String(repaints);
 }
 
 /**
@@ -258,13 +261,37 @@ class Scene {
    *  here rather than from page load: a scene resumed after a scroll pays its re-entry cost
    *  again, and quoting the first frame back as its steady cost is the same lie either way. */
   startedAt: number | undefined;
-  /** The readout on this tile, printed through the same guard as every other figure. */
+  /**
+   * This scene's meter, which is now bound to nothing.
+   *
+   * It used to write the tile's own worst gap between two painted frames into `.cost`. **No frame
+   * figure is printed to a visitor any more** — see the header — and the honest way to hold that
+   * line is for there to be no element for one to land in, rather than a formatting decision that
+   * somebody re-opens later. `createMeter(null)` is a no-op writer with the same lifecycle, so
+   * `started`/`stopped`/`update` stay where they were and the machinery is one selector away from
+   * working again if this is ever wanted internally.
+   */
   readonly meter: Meter;
   /** Whether a frame of this world has been kept. Once true the placeholder never returns. */
   held = false;
   /** No `__latticeBoot` after two seconds: the loop cannot be reached, so pausing means
    *  unmounting. See {@link Scene.adopt}. */
   unreachable = false;
+  /**
+   * Whether this scene's document is an *exhibit*, and therefore has a loop this page can reach.
+   *
+   * Every gallery tile is; the ten-line example in Getting started is not. It is a plain Lattice
+   * program — that is the entire point of printing it — so it does not call `bootstrap` and parks
+   * no `__latticeBoot`, and the only way to stop its loop is to take its document away.
+   *
+   * **Declared in the markup rather than discovered**, because discovering it costs two seconds of
+   * polling and a console warning on every mount, and because the *policy* has to differ before
+   * the discovery lands. An unreachable scene must never be preloaded: {@link Scene.hold} mounts
+   * it, {@link Scene.pause} can only unmount it, and the next scheduling pass holds it again — a
+   * mount/unmount loop every 220 ms for as long as the reader is one screen away from it. That is
+   * exactly what this page did before the flag existed, three warnings at a time in the console.
+   */
+  readonly managed: boolean;
   /**
    * What this scene has most recently been told to be.
    *
@@ -277,7 +304,7 @@ class Scene {
    */
   desired: 'run' | 'stop' = 'stop';
 
-  constructor(host: HTMLElement, opts: { readonly scaled: boolean; readonly meter?: Element | null }) {
+  constructor(host: HTMLElement, opts: { readonly scaled: boolean }) {
     this.host = host;
     const stage = host.querySelector<HTMLElement>('.stage, .hero-stage');
     this.stage = stage ?? host;
@@ -301,12 +328,9 @@ class Scene {
     this.w = Number(host.dataset['w'] ?? 1000);
     this.h = Number(host.dataset['h'] ?? 625);
     this.scaled = opts.scaled;
-    // A tile's chip has room for `12.3 ms` and nothing else; the statement panel has a whole
-    // line. Same verdict, two widths — which is the point of {@link format} taking the width
-    // rather than each caller deciding what "warming up" means again.
-    this.meter = opts.meter === undefined
-      ? createMeter(host.querySelector('.cost'), { short: true })
-      : createMeter(opts.meter);
+    this.managed = host.dataset['unmanaged'] !== 'yes';
+    this.unreachable = !this.managed;
+    this.meter = createMeter(null);
   }
 
   get mounted(): boolean { return this.frame !== undefined; }
@@ -393,6 +417,10 @@ class Scene {
   adopt(tries = 0): void {
     const frame = this.frame;
     if (frame === undefined) return;
+    // A scene that was declared unmanaged has nothing to take hold of, and polling forty times for
+    // a handle the markup already said is not there is two seconds of timers and a warning about a
+    // thing that is working as intended. Re-decide the schedule and stop.
+    if (!this.managed) { onAdopted(this); return; }
     const boot = reachBoot(frame);
     if (boot === undefined) {
       if (tries < 40) { setTimeout(() => { this.adopt(tries + 1); }, 50); return; }
@@ -582,13 +610,6 @@ function onAdopted(scene: Scene): void {
   schedule();
 }
 
-function countLive(): void {
-  const live = tiles.filter((s) => s.boot?.loop.running === true).length +
-    (hero?.boot?.loop.running === true ? 1 : 0);
-  const readout = document.querySelector('#live');
-  if (readout !== null) readout.textContent = String(live);
-}
-
 /**
  * Decide what runs and what exists, from one list sorted by distance from the viewport.
  *
@@ -632,16 +653,22 @@ function schedule(): void {
     if (run.has(scene)) {
       scene.resume();
       mounted += 1;
-    } else if (candidates.includes(scene) && mounted < mountLimit) {
+    } else if (candidates.includes(scene) && mounted < mountLimit && scene.managed) {
       // Wanted, but over the running budget: hold the document and stop the clock. If it has no
       // document yet this is where the preload happens.
+      //
+      // **`scene.managed` is the fourth rule, and it is a bug fix.** Holding means *exist with the
+      // clock stopped*, and a scene whose loop this page cannot reach has no such state — the only
+      // pause available to it is an unmount. So holding one mounts it, pausing it destroys it, and
+      // the next pass holds it again: a mount/unmount loop every 220 ms for the whole time the
+      // reader is one screen away. An unmanaged scene is therefore binary, running or gone, and
+      // gives up its preload rather than its correctness.
       scene.hold();
       mounted += 1;
     } else {
       scene.unmount();
     }
   }
-  countLive();
 }
 
 /**
@@ -666,7 +693,17 @@ const near = new IntersectionObserver((entries) => {
   schedule();
 }, { rootMargin: '80px 0px', threshold: [0, 0.05, 0.25, 0.5, 0.75, 1] });
 
-for (const host of document.querySelectorAll<HTMLElement>('.tile')) {
+/**
+ * Every scaled world on the page: the ten gallery tiles, and the ten-line example running beside
+ * its own listing in Getting started.
+ *
+ * The `.demo` is in this list rather than beside it deliberately. It is the same thing a tile is —
+ * a real page in an iframe whose loop this page starts and stops — so it belongs to the same
+ * budget, sorted by the same distance from the reader's eye. Handing it a loop of its own would be
+ * an eleventh scene that no policy could evict, on the page whose argument is that it never runs
+ * more than two at once.
+ */
+for (const host of document.querySelectorAll<HTMLElement>('.tile, .demo')) {
   const scene = new Scene(host, { scaled: true });
   tiles.push(scene);
   host.dataset['state'] = scene.idleState;
@@ -690,7 +727,7 @@ addEventListener('resize', schedule, { passive: true });
  *  scene nobody stops the day a browser decides to collect it. */
 let heroWatch: IntersectionObserver | undefined;
 const heroHost = document.querySelector<HTMLElement>('.hero');
-const hero = heroHost === null ? undefined : new Scene(heroHost, { scaled: false, meter: document.querySelector('#m-hero') });
+const hero = heroHost === null ? undefined : new Scene(heroHost, { scaled: false });
 
 if (hero !== undefined && heroHost !== null) {
   if (askFirst) heroHost.dataset['state'] = 'ask';
@@ -708,7 +745,6 @@ if (hero !== undefined && heroHost !== null) {
       // worse one: somebody who asked for stillness asked for stillness, not for nothing.
       if (askFirst && !hero.armed) hero.pause();
     }
-    countLive();
   }, { threshold: 0 });
   heroWatch.observe(heroHost);
 
@@ -819,95 +855,35 @@ function forwardWheel(frame: HTMLIFrameElement): void {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────────────────
- * 4. The page's own frame cost.
+ * The page's own frame cost, which is no longer measured or shown.
  * ──────────────────────────────────────────────────────────────────────────────────────── */
 
 /**
- * A loop that renders nothing.
+ * **There was a fourth thing here and it is gone on purpose.**
  *
- * Its `frameMs` is therefore meaningless and is not shown. What it is here for is `worstGapMs`:
- * the wall time between two *painted* frames, which on a page whose main thread is shared with
- * every live exhibit is the honest measure of what the reader is experiencing. If a gallery tile
- * blows the budget, this number is where it shows up.
- */
-const pageLoop = createLoop({
-  clock: { now: () => performance.now() },
-  frames: browserFrames(),
-  windowMs: 10_000,
-});
-
-/**
- * The page's own three readouts, and the one that changed meaning.
+ * A `@latticekit/loop` that rendered nothing ran for the life of the page so that `worstGapMs` —
+ * the wall time between two painted frames, with every live exhibit on the same main thread —
+ * could be printed in four places: the meter bay under /why, the sixth cell of the proof strip,
+ * and a figure on the hero and on every tile.
  *
- * `hero worst 10s` used to be `hero pump` and printed `heroLoop.stats.frameMs`. That is the
- * pump's own wall time — an exponential moving average of work that excludes everything happening
- * *between* two pumps — and it is the number this page's own paragraph, four inches below it,
- * calls the wrong one. It duly printed `0.1 ms`, `0.4 ms`, `7.7 ms` and `11.3 ms` to four
- * different readers of the same page. It is `worstGapMs` now, like the other two, so all three
- * figures are the same kind of number and the paragraph beside them is true of all of them.
- */
-const pageMeters = [
-  createMeter(document.querySelector('#m-cadence'), { period: true }),
-  createMeter(document.querySelector('#m-worst')),
-  // The proof strip's sixth cell. Five of its figures were measured on one machine on one day and
-  // are printed out of `measured.json`; this one is measuring the browser it is being read in, and
-  // it is the only figure on the page a visitor can disprove by watching it. `short` because the
-  // cell is 158 px wide and "warming up" is not.
-  createMeter(document.querySelector('#m-strip'), { short: true }),
-];
-
-/**
- * When the page's own loop began, and the one place a warm-up window is *cleared* rather than
- * annotated.
+ * The argument for it was good and the measurement killed it. It read 35 ms on one laptop and
+ * 41.5 ms on another, and a slow machine reads worse than either — so the page's own instrument
+ * was, on most hardware, an argument against the page. **A metric that makes the product look bad
+ * on the reader's own machine is a liability rather than evidence**, and there is no way to word
+ * around a number the reader can see. So the readouts, the loop that fed them and the warm-up
+ * bookkeeping are all deleted rather than hidden: a hidden meter is a meter somebody re-enables.
  *
- * The page owns `pageLoop` outright — nothing else reads its stats — so the honest move here is
- * to throw the load away instead of qualifying it, which `resetStats` does exactly. That is not
- * available for an exhibit's loop: its HUD is reading the same object, and `resetStats` zeroes
- * `fps` for every other reader. Those get {@link judge}'s `mounting` verdict instead.
+ * What survives is the *policy* the meter was watching, which never depended on printing anything
+ * — {@link schedule}'s running budget, the eviction order, and the same-origin `loop.stop()` that
+ * makes an off-screen exhibit free. `meter.ts` is still here and every {@link Scene} still holds a
+ * meter; none of them is bound to an element.
  */
-let pageStartedAt = performance.now();
-let pageWarmedUp = false;
 
-function warmPage(): void {
-  pageStartedAt = performance.now();
-  pageWarmedUp = false;
-  for (const m of pageMeters) m.started(pageStartedAt);
-}
-
-/** `cadenceMs` is the *shortest* gap in the window and `worstGapMs` the longest, so the two
- *  readouts differ only in which field they print — and `#m-cadence` wants the period rather than
- *  the worst case, which is the one place the shared judgement is asked a different question. */
-const cadenceView: LoopLike = {
-  get running() { return pageLoop.running; },
-  get windowMs() { return pageLoop.windowMs; },
-  get stats() {
-    return { worstGapMs: pageLoop.stats.cadenceMs, cadenceMs: pageLoop.stats.cadenceMs };
-  },
-};
-
-let sampledAt = 0;
-pageLoop.onRender((_alpha, _t, nowMs) => {
-  if (nowMs - sampledAt < 250) return;
-  sampledAt = nowMs;
-  const now = performance.now();
-  if (!pageWarmedUp && now - pageStartedAt >= WARMUP_MS) {
-    pageWarmedUp = true;
-    pageLoop.resetStats();
-  }
-  pageMeters[0]?.update(cadenceView, now);
-  pageMeters[1]?.update(pageLoop, now);
-  pageMeters[2]?.update(pageLoop, now);
-  hero?.meter.update(hero.boot?.loop, now);
-  for (const scene of tiles) scene.meter.update(scene.boot?.loop, now);
-});
-pageLoop.start();
-warmPage();
-// A tab that comes back has been away for an unknown length of time, and every rolling window on
-// the page stopped rolling when its rAF did. Start the warm-up again rather than printing a
-// figure stitched together from two visits.
+// A tab that comes back has been away for an unknown length of time. Nothing is printed from a
+// scene's clock any more, but `Scene.startedAt` is still what a resumed loop is timed from, and a
+// stamp from before the tab was hidden would make the next resume look instantaneous.
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
-  warmPage();
   const now = performance.now();
   for (const scene of tiles) if (scene.startedAt !== undefined) scene.startedAt = now;
   if (hero !== undefined && hero.startedAt !== undefined) hero.startedAt = now;
@@ -1049,7 +1025,10 @@ for (const box of document.querySelectorAll<HTMLElement>('.codebox')) {
  */
 for (const term of document.querySelectorAll<HTMLElement>('[data-term]')) {
   const tabs = [...term.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-  const panels = [...term.querySelectorAll<HTMLElement>('.term-cmd')];
+  // `.term-panel`, not `.term-cmd`. A panel is a sequence now — two of the three installs are two
+  // commands followed by a sentence about what happens next — so the unit that is shown and hidden
+  // is the panel, and the typewriter is driven from it rather than from each line.
+  const panels = [...term.querySelectorAll<HTMLElement>('.term-panel')];
   const copy = term.querySelector<HTMLButtonElement>('[data-term-copy]');
   let shown = 0;
 
@@ -1084,7 +1063,13 @@ for (const term of document.querySelectorAll<HTMLElement>('[data-term]')) {
   });
 
   copy?.addEventListener('click', () => {
-    const text = panels[shown]?.querySelector('[data-cmd]')?.textContent ?? '';
+    // Every command in the shown panel, newline-joined, and nothing else. `[data-cmd]` rather than
+    // the `<pre>` is what keeps the `$` and the `>` off somebody's clipboard — and a two-step
+    // install that copied only its first step would be worse than one that copied nothing, because
+    // it looks like it worked.
+    const text = [...(panels[shown]?.querySelectorAll('[data-cmd]') ?? [])]
+      .map((n) => n.textContent ?? '')
+      .join('\n');
     void navigator.clipboard.writeText(text).then(
       () => { say(copy, 'Copied'); },
       () => { say(copy, 'Press ⌘C'); },
@@ -1131,6 +1116,5 @@ document.addEventListener('click', (event) => {
 
 addEventListener('scroll', onScroll, { passive: true });
 addEventListener('resize', onScroll, { passive: true });
-document.addEventListener('visibilitychange', countLive);
 onScroll();
 applyNight(0);

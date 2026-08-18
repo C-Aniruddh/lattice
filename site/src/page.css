@@ -426,8 +426,9 @@ b.warn { color: var(--accent); }
  * width are **Gallery** — the page's whole argument, and the only link that goes to something
  * running — and **GitHub**. Everything else is reachable from the body and the footer.
  */
-@media (max-width: 820px) { .topnav a[href$='#how'], .topnav a[href='/llms.txt'] { display: none; } }
-@media (max-width: 560px) { .topnav a[href$='#example'], .topnav a[href='/reference/'] { display: none; } }
+@media (max-width: 900px) { .topnav a[href$='#what'] { display: none; } }
+@media (max-width: 820px) { .topnav a[href$='#start'] { display: none; } }
+@media (max-width: 560px) { .topnav a[href$='#why'], .topnav a[href='/reference/'] { display: none; } }
 
 /* ── hero ─────────────────────────────────────────────────────────────────────────────── */
 
@@ -517,10 +518,24 @@ b.warn { color: var(--accent); }
  * somewhere nobody chose. Measured here it came out at 17.8 px per `ch` against a 26.4 px advance
  * and clipped the heading to two-thirds of the column. The column is the measure.
  */
+/*
+ * `--accent`, not `--paper`, and it is a contrast decision as much as a design one.
+ *
+ * The accent is `--lattice-warn`, which `packages/draw` keeps bright at both ends of the day cycle
+ * on purpose — "because a HUD must read at midnight" — so the one element on this page set in it is
+ * the one that must never dim as the reader scrolls. Measured against the ground it sits on:
+ * **8.14:1 at `#181410`**, the lightest the cycle reaches, and 8.7:1 at `#0c0a08`. Both are over
+ * the 4.5:1 floor for body text and this is 42px.
+ *
+ * Five words on one line at this size, so nothing is broken by hand any more — the previous
+ * headline was three clauses that had to be, and a `<br>` inside a phrase is a rhythm nobody asked
+ * for. The measure is still the column: `ch` resolves against whichever face has actually loaded,
+ * so a cap in `ch` lands somewhere nobody chose until the webfont arrives.
+ */
 .hero-copy h1 {
   font: 500 clamp(26px, 2.9vw, 42px)/1.12 var(--mono);
   letter-spacing: -0.05em;
-  color: var(--paper);
+  color: var(--accent);
   margin: 0;
 }
 
@@ -664,27 +679,16 @@ b.warn { color: var(--accent); }
   .hero-cta .cta { flex: 1 1 auto; justify-content: center; }
 }
 
-/* ── the meter, which is an instrument rather than a headline ─────────────────────────── */
-
-.meter-bay { display: grid; gap: 12px; justify-items: start; }
-.meter-bay .note { max-width: 46ch; }
-
-.meter {
-  display: grid;
-  grid-template-columns: auto auto;
-  gap: 2px 16px;
-  font: 500 11px/1.5 var(--mono);
-  letter-spacing: 0.06em;
-  padding: 11px 14px;
-  color: var(--paper);
-  background: var(--plate);
-  border: 1px solid var(--rule);
-  backdrop-filter: blur(3px);
-  font-variant-numeric: tabular-nums;
-}
-.meter dt { color: var(--dim); text-transform: uppercase; font-size: 10px; letter-spacing: 0.14em; align-self: center; }
-.meter dd { margin: 0; text-align: right; }
-.meter dd.hot { color: var(--lattice-bad); }
+/*
+ * ── the meter, deleted ────────────────────────────────────────────────────────────────────
+ *
+ * `.meter-bay` and `.meter` styled a four-row instrument panel — `hero worst 10s`, `page period`,
+ * `page worst 10s`, `scenes live` — and there is no such element on this page any more. Every
+ * frame figure is gone, here and on the tiles and in the proof strip, because the one that read
+ * 35 ms on one laptop and 41.5 ms on another was measuring the reader's machine and losing. The
+ * rules are removed rather than left orphaned, because an orphaned rule is how the markup comes
+ * back. `page.ts`'s header has the whole reasoning.
+ */
 
 /* ── the proof strip ──────────────────────────────────────────────────────────────────── */
 
@@ -884,17 +888,19 @@ b.warn { color: var(--accent); }
 }
 
 /*
- * The state chip, and the figure in it.
+ * The state chip — one word, and the number that used to sit beside it is gone.
  *
- * The word is what this tile is doing; the number beside it is that exhibit's own worst gap
- * between two painted frames, written by the same meter as the panel at the top of the page and
- * subject to the same four guards.
+ * What is left says what this tile is *doing*, which is a fact about this page's running budget
+ * and not about how fast anything is: nine of ten tiles are a held frame at any moment on a phone,
+ * and a page that shows nine motionless rectangles without saying why reads as broken. The
+ * `12.3 ms` that used to follow it was the tile's own worst gap between two painted frames, and it
+ * left with every other frame figure on this page — it measured the reader's machine, and losing
+ * that argument on their hardware is worse than never making it.
  *
  * **It sits under the world and not on it**, which is the second time this page has had to learn
- * that lesson. Every exhibit's own HUD claims its frame's corners — Island's clock and cost row
- * are in the top right, Crowd's scrubber is bottom left — so a page chip anywhere over the stage
- * lands on somebody's instrument at some viewport. Under the caption it collides with nothing and
- * is legible at every size, which the version over the top-right corner was not.
+ * that lesson. Every exhibit's own HUD claims its frame's corners — Island's clock is in the top
+ * right, Crowd's scrubber is bottom left — so a page chip anywhere over the stage lands on
+ * somebody's instrument at some viewport.
  */
 .chip {
   display: flex;
@@ -907,12 +913,9 @@ b.warn { color: var(--accent); }
   color: var(--dim);
 }
 .chip::before { content: 'idle'; }
-.tile[data-state='held'] .chip::before { content: 'frame held'; }
-.tile[data-state='paused'] .chip::before { content: 'paused'; }
-.tile[data-state='live'] .chip::before { content: '● live'; color: var(--lattice-ok); }
-.chip .cost { color: var(--paper); letter-spacing: 0.06em; text-transform: none; font-variant-numeric: tabular-nums; }
-.chip .cost:empty { display: none; }
-.chip .cost.hot { color: var(--lattice-bad); }
+[data-state='held'] .chip::before { content: 'frame held'; }
+[data-state='paused'] .chip::before { content: 'paused'; }
+[data-state='live'] .chip::before { content: '● live'; color: var(--lattice-ok); }
 
 /*
  * What a tile is before it has been paid for — and, now, only before its *first* mount.
@@ -938,9 +941,9 @@ b.warn { color: var(--accent); }
   transition: opacity 300ms linear;
   opacity: 1;
 }
-.tile[data-state='live'] .stage::before,
-.tile[data-state='paused'] .stage::before,
-.tile[data-held] .stage::before { opacity: 0; }
+[data-state='live'] .stage::before,
+[data-state='paused'] .stage::before,
+[data-held] .stage::before { opacity: 0; }
 
 .tile-body { padding: 15px 18px 18px; display: grid; gap: 7px; }
 .tile-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 3px; }
@@ -984,6 +987,57 @@ b.warn { color: var(--accent); }
 .tile-links a:hover { color: var(--accent); text-decoration: underline; }
 
 /*
+ * The whole tile is the link, and `Source` is the one thing that escapes it.
+ *
+ * ## Why it is a pseudo-element and not a wrapper
+ *
+ * The obvious version — wrap the `<article>` in an `<a>` — cannot work, because the tile has a
+ * second link inside it and an `<a>` inside an `<a>` is invalid HTML that browsers repair by
+ * splitting the outer one, which produces a different DOM than the one that was written. The
+ * second obvious version — a click handler on the article — produces a clickable thing that is
+ * not a link: no middle-click, no ⌘-click, no "open in new tab", no href in the status bar, and
+ * nothing in the accessibility tree.
+ *
+ * So: one real `<a>` with a real href and a real accessible name, stretched over the article by an
+ * absolutely positioned `::after`. There is exactly one link target for the whole tile, keyboard
+ * focus lands on the visible words rather than on a 400 px rectangle, and everything a link does
+ * still works.
+ *
+ * ## The two things that have to sit above it
+ *
+ * `Source` goes off-site, and a visitor who likes a tile wanting the file is `docs/GALLERY.md`'s
+ * own reason the gallery exists — so it is raised out of the stretched layer and keeps its own
+ * hit area. `.tile-run` is already at `z-index: 3` for the same reason: on a phone it is the
+ * control that decides which of ten worlds gets the one running slot, and swallowing it into a
+ * navigation would take that choice away.
+ *
+ * Nothing else is raised, deliberately. Lifting the caption out so it stays drag-selectable would
+ * carve a hole in the middle of the target the owner asked for — *the whole grid item* — and the
+ * prompt under each tile is one sentence that is also in `/llms.txt` and `/api.json`. A reader who
+ * wants the text has two places to get it; a reader who wants the world has one gesture.
+ */
+/*
+ * `inset: 0` resolves against the nearest *positioned* ancestor, and that has to be `.tile`.
+ *
+ * Worth writing down because the first version of this was wrong in a way that looked right: a
+ * `position: relative` on `.tile-body` — added to give `Source` something to stack against —
+ * silently became the containing block, so the overlay covered the caption and stopped at the top
+ * of the world. Every link target on the page reported correctly and the one thing the owner asked
+ * for, clicking the picture, did nothing. `.tile-out` does not need a positioned parent to take a
+ * `z-index`; `.tile-open::after` needs exactly one, and it is the article.
+ */
+.tile-open::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.tile-out { position: relative; z-index: 2; }
+/* The tile now behaves like a link everywhere, so it should say so everywhere. */
+.tile:hover .tile-open { color: var(--accent); }
+.tile:has(.tile-open:focus-visible) { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/*
  * The poster control, and why a phone gets it on every idle tile.
  *
  * One column means one running scene — that is the budget that makes ten live worlds affordable
@@ -1009,15 +1063,49 @@ b.warn { color: var(--accent); }
 .tile-run b { color: var(--accent); font-weight: 600; }
 .tile-run:hover { background: linear-gradient(to top, rgb(10 7 4 / 94%), rgb(10 7 4 / 72%)); }
 .tile-run:hover b { text-decoration: underline; text-underline-offset: 3px; }
-.tile[data-state='ask'] .tile-run { display: flex; }
+[data-state='ask'] .tile-run { display: flex; }
 
 /* A pointer that can run two scenes at once never needs to choose between them. A screen that
    can run one does, on every tile that is not the one running. */
 @media (max-width: 900px) {
-  .tile:not([data-state='live']) .tile-run { display: flex; }
+  .tile:not([data-state='live']) .tile-run,
+  .demo:not([data-state='live']) .tile-run { display: flex; }
 }
 
-/* ── code ─────────────────────────────────────────────────────────────────────────────── */
+/* ── code, and the thing it draws, side by side ───────────────────────────────────────── */
+
+/*
+ * The program on the left, the program running on the right, and they are the same file.
+ *
+ * The ratio is not decorative. The listing has one 150-character line in it and every other line
+ * is short, so it wants most of the measure; the world is square and legible small, and at 300 px
+ * it is unmistakably a live isometric scene. Below 900 px they stack with the code first, because
+ * the section is called Getting started and the first thing a reader wants there is the code —
+ * this is the one place on the page where the world is the evidence rather than the argument.
+ *
+ * `align-items: start` so the world does not stretch to the height of the listing and hand its
+ * camera a viewport nobody framed.
+ */
+.showcase {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 300px);
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .showcase { grid-template-columns: minmax(0, 1fr); }
+  /* One column, and the world stops being a sidebar and becomes a band under the code. */
+  .demo .stage { aspect-ratio: 3 / 2; }
+}
+
+/*
+ * The example's own frame. It is a {@link Scene} exactly like a gallery tile — same iframe, same
+ * running budget, same `loop.stop()` when the reader leaves — which is the only reason an eleventh
+ * live world on this page is affordable at all.
+ */
+.demo { display: grid; gap: 8px; position: relative; }
+.demo .stage { border: 1px solid var(--rule); }
+.demo .chip { padding-left: 1px; }
 
 .code {
   margin: 0;
@@ -1128,8 +1216,10 @@ b.warn { color: var(--accent); }
  * one advance width, so `steps(--n)` lands one character per step and the caret never sits half
  * inside a glyph.
  */
-.term { border: 1px solid var(--rule); background: color-mix(in srgb, #000 42%, transparent); max-width: 62ch; }
-.term-tabs { display: flex; border-bottom: 1px solid var(--rule-soft); }
+/* `min(62ch, 100%)`: 62ch is the measure a two-command install wants, and 100% is the promise it
+   never widens the column it is in. */
+.term { border: 1px solid var(--rule); background: color-mix(in srgb, #000 42%, transparent); max-width: min(62ch, 100%); }
+.term-tabs { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--rule-soft); }
 .term-tabs button {
   font: 500 10px/1 var(--mono);
   letter-spacing: 0.16em;
@@ -1145,22 +1235,58 @@ b.warn { color: var(--accent); }
 .term-tabs button[aria-selected='true'] { color: var(--accent); border-bottom-color: var(--accent); }
 
 .term-body { position: relative; }
+
+/*
+ * A panel is now a *sequence* rather than a line, because two of the three installs are two
+ * commands and the second one is not optional.
+ *
+ * `display: none` on the panel rather than on each line: a tab whose commands were individually
+ * hidden would leave the note behind, and the note is the half of the Codex tab that says what to
+ * do after the CLI has run. The tab strip is the same real tablist it was — `role`, `aria-selected`
+ * and roving `tabindex` in the markup, arrow keys in `page.ts`.
+ */
+.term-panel { display: none; padding: 4px 0 0; }
+.term-panel[data-on='yes'] { display: block; }
+
+/*
+ * The line that follows the commands, and it is content rather than a footnote.
+ *
+ * Codex's install is a CLI line *and* a restart-and-pick-it-from-the-directory step, and printing
+ * only the line would be printing half a mechanism. Claude's says what the plugin is for once it
+ * is in. Grok's says that the manifest it reads is the one already in the repository. Each is one
+ * sentence, and a tab that needed two would be a tab whose install does not fit on this page.
+ */
+.term-note {
+  margin: 2px 0 0;
+  padding: 10px 18px 14px;
+  max-width: none;
+  font: 400 12px/1.55 var(--mono);
+  color: var(--dimmer);
+  border-top: 1px solid var(--rule-soft);
+}
+.term-note code { color: var(--dim); }
+
+/* Said once, under the whole widget, because it is true of all three tabs and a caveat repeated
+   three times is a page apologizing. */
+.term-caveat { margin-top: 12px; max-width: 62ch; }
+
 .term-cmd {
-  display: none;
+  display: block;
   margin: 0;
   max-width: none;
-  padding: 16px 76px 16px 18px;
+  padding: 16px 76px 4px 18px;
   font: 500 clamp(12.5px, 1.05vw, 14.5px)/1.5 var(--mono);
-  /* One line, and it scrolls rather than wraps — the whole reason for the tabs is that the
-     visible command fits. `full` is the one that can overflow, and it is the one nobody reads
-     unless they came looking for it. */
+  /* One line each, and they scroll rather than wrap — the whole reason for the tabs is that the
+     visible command fits. The longest of the six is 42 characters. */
   white-space: nowrap;
   overflow-x: auto;
 }
-.term-cmd[data-on='yes'] { display: block; }
+/* Every line after the first tightens up: they are one sequence, not three paragraphs. */
+.term-cmd + .term-cmd { padding-top: 0; }
+.term-cmd:last-of-type { padding-bottom: 14px; }
 /* The `$` is a picture of a shell, not part of the command, so it is not part of a selection
    either. This is the whole reason a copied command out of this block is clean. */
-.term-cmd .prompt { color: var(--accent); user-select: none; -webkit-user-select: none; }
+.term-cmd .prompt { color: var(--accent); user-select: none; -webkit-user-select: none; padding-right: 1ch; }
 .term-cmd .type { display: inline-block; overflow: hidden; white-space: nowrap; vertical-align: bottom; width: var(--w); }
 .term-cmd code { color: color-mix(in srgb, var(--paper) 90%, transparent); }
 .term-cmd .caret {
@@ -1175,7 +1301,10 @@ b.warn { color: var(--accent); }
 @keyframes blink { 50% { opacity: 0; } }
 /* Written by `page.ts` on mount and again on every tab change, so switching tabs re-types rather
    than swapping a finished string in. */
-.term-cmd[data-type='run'] .type { animation: type 620ms steps(var(--n)) both; }
+/* `--d` staggers the second command behind the first, so a two-step install types in the order it
+   is run in. `both` holds the `from` state through the delay, or line two is briefly complete
+   before it starts. */
+.term-panel[data-type='run'] .term-cmd .type { animation: type 520ms steps(var(--n)) var(--d, 0ms) both; }
 @keyframes type { from { width: 0; } to { width: var(--w); } }
 
 .term-copy {
@@ -1194,6 +1323,27 @@ b.warn { color: var(--accent); }
 }
 .term-copy:hover { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
 
+/*
+ * Under 640 px the commands wrap instead of scrolling, and the typewriter stands down.
+ *
+ * This is the rule `.shell-cmd` already states and the terminal was not keeping: *a command a
+ * reader has to drag sideways to finish reading is a command they do not read.* At 390 px the
+ * terminal is 350 px wide, the Copy button reserves 76 of it, and the longest install line is 42
+ * characters — so the first command ended mid-word underneath the button, which on the page's
+ * single most important object is the worst place on the page for it to happen.
+ *
+ * The typewriter has to go with it, and not as a matter of taste: it animates a `width` in `ch`
+ * measured from the string's length, which is only the string's width while the string is on one
+ * line. Wrapped, it clips the second line away entirely.
+ */
+@media (max-width: 640px) {
+  .term-cmd { white-space: pre-wrap; overflow-wrap: anywhere; overflow-x: visible; }
+  .term-cmd .type { display: inline; width: auto; overflow: visible; white-space: inherit; }
+  .term-panel[data-type='run'] .term-cmd .type { animation: none; }
+  /* A caret parked after a wrapped command sits in the middle of a line and reads as a typo. */
+  .term-cmd .caret { display: none; }
+}
+
 /* ── the traps ────────────────────────────────────────────────────────────────────────── */
 
 /* Each one is a mistake that compiles, runs, and produces a plausible-looking broken game — which
@@ -1208,7 +1358,17 @@ ul.plain.traps > li { border-left-color: color-mix(in srgb, var(--accent) 40%, t
  * and the two places to go.
  */
 .band { border-top: 1px solid var(--rule); background: color-mix(in srgb, var(--lattice-panel) 46%, transparent); }
-.band-in { padding-block: clamp(56px, 7vw, 96px); display: grid; gap: 22px; justify-items: start; }
+/*
+ * `minmax(0, 1fr)` rather than the implicit `auto` track, and it is a real fix.
+ *
+ * An `auto` track is sized from its items' min-content, and the terminal's commands are `<pre>`s
+ * with `white-space: nowrap` — so the track grew to the widest command, 431 px, inside a 350 px
+ * container at 390 CSS pixels. `body { overflow-x: hidden }` was absorbing it, which is a fix for
+ * the symptom: a document wider than the viewport still makes some mobile browsers fit-to-width on
+ * load and shrink every glyph on the page. A `0` floor lets the track be exactly the container,
+ * and the commands scroll inside their own box, which is what the box was for.
+ */
+.band-in { padding-block: clamp(56px, 7vw, 96px); display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; justify-items: start; }
 .band-in h2 { font: 500 clamp(26px, 3.2vw, 40px)/1.05 var(--mono); letter-spacing: -0.04em; max-width: 22ch; }
 .band-in .lede { margin: 0; }
 .term-bay { width: 100%; }
@@ -1283,7 +1443,23 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; padding-right: 0
 .foot ul { list-style: none; margin: 0; padding: 0; }
 .foot a { color: color-mix(in srgb, var(--paper) 76%, transparent); text-decoration: none; }
 .foot a:hover { color: var(--accent); }
-.foot .colophon { color: var(--dimmer); font-size: 12px; line-height: 1.6; }
+/*
+ * One line where the colophon was.
+ *
+ * `lerpPalette(DUSK, NIGHT, scroll), repainted 345 times so far` was the page describing its own
+ * scroll animation to somebody who was scrolling it, plus a font weight, a licence and a commit —
+ * four footnotes in the one place a reader has already decided to leave. `docs/GALLERY.md`'s copy
+ * doctrine: if it is on screen doing the thing, delete the sentence about it.
+ */
+.credit {
+  margin: 0;
+  padding-bottom: 56px;
+  max-width: none;
+  font: 400 13px/1.7 var(--mono);
+  color: var(--dimmer);
+}
+.credit a { color: var(--dim); }
+.credit a:hover { color: var(--accent); }
 
 /*
  * Without JavaScript.
@@ -1297,7 +1473,7 @@ noscript { display: block; }
 html:not(.js) .hero-world,
 html:not(.js) .stage,
 html:not(.js) .tile-run,
-html:not(.js) .meter-bay,
+html:not(.js) .demo,
 html:not(.js) .play,
 html:not(.js) .js-only,
 html:not(.js) #ground { display: none; }
@@ -1342,7 +1518,7 @@ noscript .banner {
   html { scroll-behavior: auto; }
   * { transition-duration: 1ms !important; }
   .hint[data-hint='on'] { animation: none; }
-  .term-cmd[data-type='run'] .type { animation: none; width: var(--w); }
+  .term-panel[data-type='run'] .term-cmd .type { animation: none; width: var(--w); }
   .term-cmd .caret { animation: none; }
 }
 
@@ -1358,7 +1534,17 @@ noscript .banner {
    *
    * Two columns here, so the anchor alternates by parity rather than by "the last two".
    */
-  .proof .src { min-width: 0; width: max-content; max-width: min(88vw, 44ch); }
-  .proof > li:nth-child(odd) .src { left: 0; right: auto; }
-  .proof > li:nth-child(even) .src { left: auto; right: 0; }
+  /*
+   * Anchored to the strip rather than to the cell, which is the only version that is right at
+   * every column count.
+   *
+   * The parity rule this replaces — odd anchors left, even anchors right — assumes two columns,
+   * and `auto-fit` at `minmax(158px, 1fr)` gives three at 500 px and four at 660. At three, the
+   * rightmost cell is odd, anchors left, and its note ran 66 px past the right edge. A note under
+   * the whole strip cannot overflow at any count, is bigger to read on a phone, and is where a
+   * finger has already put the reader's eye.
+   */
+  .proof { position: relative; }
+  .proof > li { position: static; }
+  .proof .src { left: 0; right: 0; min-width: 0; width: auto; max-width: none; }
 }

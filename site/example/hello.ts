@@ -1,58 +1,34 @@
 /**
- * The whole of a Lattice program, and the one that appears on the landing page.
+ * The whole of a Lattice program, and the one the landing page prints and runs side by side.
  *
- * It is a real file rather than a snippet: `site/tools/build.mjs` typechecks it against the built
- * packages before the page is generated, so a signature that changes in the kit breaks the
- * page's build instead of quietly making its example a lie.
+ * It is a real file rather than a snippet, and it is the same file in both places: `site/tools/
+ * build.mjs` typechecks it against the built packages before the page is generated, and
+ * `site/example/index.html` is a real page that boots it, which the Getting started section
+ * mounts in an iframe. So the listing cannot become a lie in either direction — a signature that
+ * moves in the kit breaks the build, and a program that no longer draws anything is visible on
+ * the page beside its own source.
  *
- * Keep it inside one screen. `docs/GALLERY.md` asks for an example "sized so the whole thing fits
- * on screen at once", and a listing a reader has to scroll is a listing they skim.
+ * **Ten code lines, and that is the specification rather than a coincidence.** The forty-line
+ * version this replaces was a seeded town on rolling ground with a depth sorter, a `Passes`
+ * object and pointer input, and it was read by somebody who does not write TypeScript as proof
+ * that a Lattice program is long. What a stranger has to be able to see in four seconds is: a
+ * surface, a camera, a palette, a loop, and a world drawn inside it. Everything past that is in
+ * the gallery, standing over the thing it does.
+ *
+ * The one thing the listing leaves to its host is the canvas's size, because
+ * `createCanvas2dSurface` reads `clientWidth`/`clientHeight` and a bare `<canvas>` is 300x150.
+ * `index.html` beside this file gives it the viewport in two lines of CSS.
  */
-import { createRng, noise2 } from '@latticekit/core';
-import { DepthSorter, createCamera } from '@latticekit/iso';
-import { BASE_SLOTS, beginFrame, createCanvas2dSurface, createPalette, endFrame,
-  isoBox, isoTile, renderFrame, type Passes } from '@latticekit/draw';
+import { createCamera } from '@latticekit/iso';
+import { BASE_SLOTS, beginFrame, createCanvas2dSurface, createPalette, endFrame, isoBox } from '@latticekit/draw';
 import { browserFrames, createLoop } from '@latticekit/loop';
-import { createInput } from '@latticekit/input';
 
-const canvas = document.body.appendChild(document.createElement('canvas'));
-canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%';
+const surface = createCanvas2dSurface(document.body.appendChild(document.createElement('canvas')));
+const camera = createCamera(innerWidth, innerHeight, { zoom: 0.62 }), palette = createPalette(BASE_SLOTS);
 
-const surface = createCanvas2dSurface(canvas);
-const camera = createCamera(innerWidth, innerHeight, { zoom: 1.4 });
-const palette = createPalette(BASE_SLOTS);
-const order = new DepthSorter(256);
-const loop = createLoop({ clock: { now: () => performance.now() }, frames: browserFrames() });
-
-// Drag pans, wheel zooms to the pointer, pinch works. Input never learns what is in the world.
-createInput({ element: canvas, camera, step: loop });
-
-const rng = createRng('hello-lattice');      // same seed, same town, on every machine
-const N = 28;
-const ground = (gx: number, gy: number) => Math.round(noise2(1, gx * .11, gy * .11) * 2) * 8;
-const town = Array.from({ length: 60 }, () => ({ gx: rng.int(0, N), gy: rng.int(0, N), h: rng.int(2, 7) }));
-
-const passes: Passes = {
-  maxHeightPx: 112,
-  terrain: (pen, seen) => {
-    for (let gy = seen.gy0; gy < seen.gy1; gy++)
-      for (let gx = seen.gx0; gx < seen.gx1; gx++) isoTile(pen, gx, gy, 'ground', 'ink', 0, ground(gx, gy));
-  },
-  solids: (pen, sorted) => {
-    for (let i = 0; i < sorted.count; i++) {          // back to front, culled, never allocated
-      const it = town[sorted.indexAt(i)];
-      if (it) isoBox(pen, it.gx, it.gy, 1, 1, { color: 'metal', h: it.h, z: ground(it.gx, it.gy) });
-    }
-  },
-};
-
-loop.onRender((_alpha, t) => {
-  order.clear();
-  for (const it of town) order.add(it.gx, it.gy, 1, 1, it.h * 16);
-  const pen = beginFrame({ surface, camera, palette, t, clear: 'sky' });
-  renderFrame(pen, passes, order);
+createLoop({ clock: { now: () => performance.now() }, frames: browserFrames(), render: (_alpha, t) => {
+  const pen = beginFrame({ surface, camera, palette, t, clear: 'sky' });   // erase, then paint the sky
+  // Back to front is just the loop order in a 2:1 projection, so this city needs no depth sort.
+  for (let gy = -7; gy < 7; gy++) for (let gx = -7; gx < 7; gx++) isoBox(pen, gx, gy, 1, 1, { color: 'metal', h: 2 + 5 * Math.sin(t + (gx + gy) * 0.4) ** 2 });
   endFrame(pen);
-});
-
-camera.centerOnTile(N / 2, N / 2);
-loop.start();
+} }).start();

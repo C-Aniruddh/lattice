@@ -55,6 +55,14 @@ export default defineConfig({
       input: {
         index: fileURLToPath(new URL('./index.html', import.meta.url)),
         reference: fileURLToPath(new URL('./reference/index.html', import.meta.url)),
+        // **The third document, and it is the Getting started section's other half.**
+        //
+        // `site/example/hello.ts` used to be printed and nothing else. It is now printed *and*
+        // running beside its own listing, which needs a page to run in — `site/example/index.html`
+        // — and that page has to be in `dist/` or the section is a code block next to a hole. It
+        // is a Rollup input for exactly the reason `/reference/` is: without it the dev server
+        // serves it off disk and only the deployed site 404s, which is the worst shape of bug.
+        example: fileURLToPath(new URL('./example/index.html', import.meta.url)),
       },
     },
     // **False on purpose.** The gallery is built into `dist/x/<exhibit>/` by

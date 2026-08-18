@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lattice — the ten-line example, running</title>
+<meta name="color-scheme" content="dark">
+<!--
+  The host for `hello.ts`, and the reason the Getting started section can print a program and run
+  it at the same time.
+
+  It is a page in its own right — `site/vite.config.ts` names it as a third Rollup input, so it
+  builds to `dist/example/` and `appType: 'mpa'` makes `/example/` a real document rather than a
+  route the landing page pretends to have. The section below the code block mounts it in an
+  iframe through the same `Scene` machinery every gallery tile uses, so it obeys the same running
+  budget: it is created when the reader nears it and its loop is stopped when they leave.
+
+  The two rules here are the whole file. `createCanvas2dSurface` sizes its backing store from the
+  element's `clientWidth`/`clientHeight`, and an unstyled `<canvas>` is 300x150 — so the program
+  would run correctly and paint a stamp in the corner. Giving the canvas the viewport is the
+  host's job in any real app too, which is why it is here and not in the ten lines.
+-->
+<style>
+  html, body { margin: 0; height: 100%; background: #0d1226; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+</style>
+<script type="module" src="./hello.ts"></script>
+</head>
+<body></body>
+</html>

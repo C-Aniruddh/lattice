@@ -60,9 +60,19 @@
       "source": "site/data/exhibits.json — live[], one row per exhibit. Each is a directory under examples/, built into /x/<name>/ by site/tools/build.mjs and served as a page of its own; open any of them and it is running, not a picture."
     },
     "exampleLines": {
-      "value": 40,
+      "value": 10,
       "unit": "",
-      "source": "grep -cvE '^[[:space:]]*($|//|/*|*)' site/example/hello.ts — docs/GALLERY.md's own line rule, applied to the whole program printed further down this page. 58 lines on disk; 40 of them are code. site/tools/build-page.mjs re-counts the file at build time and fails the build if this number has drifted from it."
+      "source": "grep -cvE '^[[:space:]]*($|//|/*|*)' site/example/hello.ts — docs/GALLERY.md's own line rule, applied to the whole program printed in Getting started and running beside it. site/tools/build-page.mjs re-counts the file at build time and fails the build if this number has drifted from it."
+    },
+    "skills": {
+      "value": 12,
+      "unit": "",
+      "source": "find skills -name SKILL.md | wc -l — twelve directories under skills/, each carrying one SKILL.md: the parent that owns /lattice, plus eleven specialists it loads (starting, art, world, economy, input, sound, saving, hud, determinism, performance, traps). The parent is counted because it is a skill and not a wrapper — it is the one that fires on a from-scratch build."
+    },
+    "traps": {
+      "value": 32,
+      "unit": "",
+      "source": "grep -c '^### ' skills/traps/SKILL.md — one heading per named failure that compiles, runs, and produces a plausible-looking broken game. Each carries the wrong version as well as the right one, because recognizing the wrong one is the job."
     },
     "pageFrame": {
       "value": "live",
