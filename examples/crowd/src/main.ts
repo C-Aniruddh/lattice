@@ -45,7 +45,11 @@ const boot = bootstrap({
   depth: 3400,
 });
 
-const plaza = createPlaza(boot.seed);
+// The piazza is not level: `unitsAt` puts the paving on a plateau `TOP` units up and steps it down
+// twice to the lagoon, so the tile under a pixel is the marched one. Declared even though the only
+// gesture here is a camera one — the declaration is a statement about this *map*, and `'flat'`
+// would be a false one the day this exhibit grows a tap.
+const plaza = createPlaza(boot.seed); boot.setTerrain({ field: plaza.field, maxHeightPx: plaza.maxHeightPx });
 /** Re-run on every resize, because `Camera` *copies* its bounds and the panel rebuilds the camera
  *  whenever a zoom clamp moves. `fitBounds` is given `HEART` and not the map: it fits what it is
  *  handed *inside* the frame, so framing the map is how an exhibit becomes a diorama. */

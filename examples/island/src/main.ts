@@ -70,7 +70,10 @@ const boot = bootstrap({
   light: { scale: 0.45, falloff: 2.6, bloom: 0.34 },
 });
 
-const island = createIsland(boot.seed);
+// A coast is the shape this bug is worst on: `MAX_HEIGHT_PX` of headland above a lagoon at zero,
+// so the sea-level inverse of the projection is right at the water line and wrong by most of a
+// summit at the top of it. Nothing here taps a tile today; the declaration is about the ground.
+const island = createIsland(boot.seed); boot.setTerrain({ field: island.field, maxHeightPx: MAX_HEIGHT_PX });
 
 /**
  * Put the horizon a tenth of the way down the frame, on any window, and pen the camera to

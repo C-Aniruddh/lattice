@@ -228,30 +228,39 @@ Two things beside the relief, both of which were needed:
 
 ---
 
-## `ActionEvent.gx/gy` is a flat-ground answer, and this is the worst case for it
+## The pick was this exhibit's own problem, and K44 made it one word
 
 `@latticekit/input` resolves a pointer through `worldToTile`, the exact inverse of the projection **on
-the plane `z = 0`** — the only plane it inverts. It has no seam for a `HeightField` and no way to be
-handed one, so `gx`/`gy` on every gesture and every action it fires assume the ground is flat.
-`Terraces` measured that at 281 px and 14 tiles on a static hillside and filed it as **K44**.
+the plane `z = 0`** — the only plane it inverts. Undeclared, `gx`/`gy` on every gesture and every
+action it fires assume the ground is flat. `Terraces` measured that at 281 px and 14 tiles on a
+static hillside and filed it as **K44**.
 
-Here it is worse than static, in a way no other exhibit can reproduce: **the error moves as the
-visitor sculpts.** Raising ground under the cursor pushes the true tile toward the viewer, so a brush
-driven by `event.gx` walks *away* from the finger exactly as fast as the ridge grows — you make a hill
-and the brush slides off the far side of it while you hold still.
+Here it was worse than static, in a way no other exhibit can reproduce: **the error moved as the
+visitor sculpted.** Raising ground under the cursor pushes the true tile toward the viewer, so a brush
+driven by a flat-ground `gx` walks *away* from the finger exactly as fast as the ridge grows — you
+make a hill and the brush slides off the far side of it while you hold still.
 
-**The workaround and what it cost:**
+**K44 has landed, and what it took away is worth listing:**
 
-| | |
+| was | is |
 |---|---|
-| the call | `screenToTileOnHeights(camera, sx, sy, clay.land, MAX_UNITS · STEP_PX, out)`, from `sx`/`sy` and never from `gx`/`gy` |
-| where | once per **update**, against the field as it stands *this* step — not once per gesture, because the ground moves between the top of a stroke and the bottom of it |
-| what it costs | one terrain march: `ceil(1400 / HALF_H)` = 88 steps plus 12 bisections, about 400 bilinear samples, **under 0.05 ms**, paid whether or not the brush is down because the ring has to sit on the ground either way |
-| the second half of it | `tileSourceOf` answers `has` with `true` **everywhere**, and `has` is `screenToTileOnHeights`'s only off-map test — so the `TileSource` had to be hand-written with a real bound, or a tap on the sky sculpts grid (−4000, 900) |
+| `screenToTileOnHeights(camera, sx, sy, clay.land, MAX_UNITS · STEP_PX, out)` in `update` | `boot.input.hoverTile(at)` — the same march, through the picker every gesture already shares |
+| a raw `pointermove` listener on `boot.canvas`, plus its teardown | nothing: `input` tracks the pointer for `hoverTile`, and `held`/`hoverTile` are the package's "queries, not streams" seam |
+| `sx`/`sy` on the brush, written from the listener *and* from all three drag gestures | nothing: the only thing this exhibit ever did with the pointer was pick a tile from it |
+| — | one declaration: `boot.setTerrain({ field: clay.land, maxHeightPx: MAX_UNITS · STEP_PX })` |
 
-Three code lines and one hand-written `TileSource`. Cheap to work around, invisible if you do not,
-and the failure it produces on moving ground looks like the brush is broken rather than like the
-coordinate is wrong.
+**Net −2 logic lines**, and one more thing that cannot go wrong: there is no second answer to
+disagree with the first. `clay.land` is *held* rather than copied, so a stroke resolves against the
+hill it is building, which is the property the per-update re-pick used to buy by hand.
+
+What has not changed is where the pick happens: once per **update**, not once per gesture, because
+the ground moves between the top of a stroke and the bottom of it. It costs one terrain march —
+`ceil(1400 / HALF_H)` = 88 steps plus 12 bisections, about 400 bilinear samples, **under 0.05 ms** —
+paid whether or not the brush is down, because the ring has to sit on the ground either way.
+
+And `clay.ts`'s hand-written `TileSource` stays, for the reason it was written: `tileSourceOf`
+answers `has` with `true` **everywhere**, and `has` is the march's only off-map test, so a tap on the
+sky would otherwise sculpt grid (−4000, 900). That is now `input`'s off-map test too.
 
 ---
 
@@ -384,13 +393,15 @@ Ranked by how much time each cost.
    case where it cannot be worked around by turning the landform, because the player turns it. One
    subtraction through `tint` is the fix at every call site that will ever need it, which is the
    argument for it being a `HeightField` option.
-3. **K44 — `ActionEvent.gx`/`gy` is the flat-ground answer (`input`).** Table above. The new
-   information this exhibit adds is that on *moving* ground the error is not a constant offset, it
-   tracks the height under the finger, so the brush drifts while the visitor holds still.
+3. **K44 — closed.** `input` takes a `terrain` declaration, and the table above is what that
+   removed from this file. The information this exhibit contributed still stands: on *moving*
+   ground the error is not a constant offset, it tracks the height under the finger, so the brush
+   drifts while the visitor holds still.
 4. **`tileSourceOf` answers `has` with `true` everywhere (`iso`).** That is documented and correct for
-   an unbounded procedural world, but `screenToTileOnHeights` uses `has` as its *only* off-map test,
-   so the two compose into a pick that never returns `false`. A `boundedTileSource(get, w, h)` beside
-   it would close it; as it stands, every bounded heightfield exhibit hand-writes the same six lines.
+   an unbounded procedural world, but the terrain march uses `has` as its *only* off-map test, so the
+   two compose into a pick that never returns `false` — and K44 has moved that composition inside
+   `input`, where a caller cannot see it. A `boundedTileSource(get, w, h)` beside it would close it;
+   as it stands, every bounded heightfield exhibit hand-writes the same six lines.
 5. **`@latticekit/ui` has no button, no toggle and no segmented control.** `Canyon` reported the same
    absence about a slider. Two exhibits needing two different missing primitives is a finding rather
    than a coincidence: the package ships `roll`, `panel`, `toasts`, `floats`, `thumbnails` and
@@ -399,9 +410,11 @@ Ranked by how much time each cost.
 6. **No `camera.setZoom`, so a chosen zoom is a fabricated rectangle (`iso`).** Filed by `Canyon`;
    hit again from a cold start, in the same three lines. The absence is not obvious until you look
    for it.
-7. **No hover gesture (`input`).** Six gestures and none of them is a pointer that is not pressing.
-   The brush ring has to follow the cursor, so this exhibit adds a raw `pointermove` listener —
-   `Terraces` reported the same gap for the same reason.
+7. ~~**No hover gesture (`input`).**~~ Withdrawn. There is no hover *gesture* and there should not
+   be — continuous input is a query in this package, and `input.hoverTile` is exactly it. The raw
+   `pointermove` listener this exhibit used to carry was working around a missing declaration, not a
+   missing event: once `terrain` is declared, `hoverTile` answers on the terrain and the listener has
+   nothing left to do. `Terraces` filed the same gap and it is the same non-gap.
 8. **`bootstrap` exposes no `now()` (`examples/_shared`).** `@latticekit/ui` requires the clock `loop`
    was given and the kit bans reading `performance.now()` in exhibit source, so the overlay is driven
    from `boot.loop.realTime * 1000`. Reported by `Terraces` too.

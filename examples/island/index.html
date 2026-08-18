@@ -19,7 +19,12 @@
   .lattice-ui {
     --paper: #f4f7fd;
     --dim: #9db0c8;
-    --card: color-mix(in srgb, var(--lattice-ink, #16203a) 84%, transparent);
+    /* 91% and not 84%, which is a legibility number rather than a taste one. The plate is the
+       ground every reading on it is measured against, and at 84% a noon sea comes through it hard
+       enough to lift the plate to a luminance of 0.049 — which puts the quietest ink on it under
+       WCAG AA no matter what that ink is. Seven points of opacity is imperceptible as a plate and
+       is the difference between 4.8 and 5.4 on every row of the clock. */
+    --card: color-mix(in srgb, var(--lattice-ink, #16203a) 91%, transparent);
     --edge: color-mix(in srgb, var(--paper) 15%, transparent);
     --accent: var(--lattice-warn, #ffcf3f);
     --moon: #dfe8fb;
@@ -78,10 +83,17 @@
   /* The longest gap between two painted frames in the last ten seconds, which docs/GALLERY.md
      § Scale makes a gate. Deliberately quiet — a number a visitor should be able to find, not one
      the composition has to make room for — and tabular, so a glance across ten-second windows
-     compares digits in the same column rather than re-reading the whole string. */
+     compares digits in the same column rather than re-reading the whole string.
+
+     **Quiet by size and tracking, never by alpha again.** This line used to be `--dim` at 72%,
+     and `tools/looking/look.mjs` measured it at contrast 1.96 against a floor of 3. Alpha is the
+     one lever that makes a thing quiet by dragging its ink toward the plate behind it, so it
+     cannot be turned down without turning legibility down with it — at 9px there was not much of
+     either left. The ink is now the same `--dim` the hour name above it uses, and the hierarchy is
+     carried by the two things that cost no contrast: 9px against 10px, and .16em of tracking. */
   .perf {
     margin-top: 6px; font-size: 9px; font-weight: 700; letter-spacing: .16em;
-    color: color-mix(in srgb, var(--dim) 72%, transparent);
+    color: var(--dim);
     font-variant-numeric: tabular-nums;
   }
 

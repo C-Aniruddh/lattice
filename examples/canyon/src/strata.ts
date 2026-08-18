@@ -205,6 +205,34 @@ function at(a: Float64Array, i: number): number {
  * Quantizing the state would change what the next step erodes and the exhibit's headline claim
  * with it.
  */
+/**
+ * The drawn surface at one tile, and **the only definition of it in this exhibit**.
+ *
+ * The Terrain pass and the pointer both have to agree about where the rock is, and the way they
+ * stop agreeing is the ordinary one: two copies of the same expression, one of which is updated.
+ * Off the map is zero rather than a read past the end of the buffer — the world is bounded and the
+ * air above the edge is not ground.
+ */
+function surfaceAt(s: Float64Array, rise: number, gx: number, gy: number): number {
+  return gx < 0 || gy < 0 || gx >= N || gy >= N ? 0 : bench(at(s, gy * N + gx), rise);
+}
+
+/**
+ * The ground as `@latticekit/input` needs to see it: a **live** view, not a snapshot.
+ *
+ * The rock in this exhibit is a function of time — that is the whole exhibit — so a field captured
+ * at one epoch would resolve every pointer against a canyon that has since been cut a thousand feet
+ * deeper. `tileSourceOf` over a closure that re-reads `time.state` and `time.epoch` on every sample
+ * costs nothing to hold and is never stale, which is exactly the contract `Terrain.field` asks for:
+ * the object is held rather than copied, so this is handed over once and never handed over again.
+ */
+export function canyonHeights(time: DeepTime): HeightField {
+  return {
+    heights: tileSourceOf((gx, gy) => surfaceAt(time.state, UPLIFT * time.epoch, gx, gy)),
+    stepPx: STEP_PX,
+  };
+}
+
 function bench(h: number, rise: number): number {
   const bed = h - rise;
   let k = 0;
@@ -287,8 +315,7 @@ export function paintCanyon(pen: Pen, time: DeepTime, visible: Readonly<TileRang
   const s = time.state;
   const rise = UPLIFT * time.epoch;
   const field: HeightField = {
-    heights: tileSourceOf((gx, gy) =>
-      (gx < 0 || gy < 0 || gx >= N || gy >= N ? 0 : bench(at(s, gy * N + gx), rise))),
+    heights: tileSourceOf((gx, gy) => surfaceAt(s, rise, gx, gy)),
     stepPx: STEP_PX,
   };
   // `visibleTileBounds` answers with the grid-space **bounding box** of the screen, and says so:

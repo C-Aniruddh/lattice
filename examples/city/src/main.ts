@@ -29,7 +29,10 @@ import { createHud } from './hud.js';
 
 const worldRect: Rect = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 const boot = bootstrap<'touch'>({
-  seed: 'city-block', bounds: worldRect, background: '#04070f', palette: BLUE, clear: 'sky',
+  // `terrain: 'flat'` and it is the honest answer: the streets are one plane, the curb is a tenth
+  // of a storey of art under the sprites, and there is no height field anywhere in this exhibit.
+  // Saying so is what separates a level world from one that never answered — see the option's doc.
+  seed: 'city-block', bounds: worldRect, background: '#04070f', palette: BLUE, clear: 'sky', terrain: 'flat',
   // `keepVisible: 0.5` — half the viewport must still be showing the map after any gesture. The
   // first pass used 0.15 so the clamp would not fight the opening frame, and the cost of that was a
   // drag that ran clean off the world into empty sky, which is the same failure as a car in the

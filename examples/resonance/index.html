@@ -78,7 +78,25 @@
   }
   .again:active { transform: translateY(1px); }
   .again:focus-visible { outline: 2px solid var(--paper); outline-offset: 3px; }
-  .gate[data-idle='1'] .again { opacity: .35; }
+  /*
+   * Idle is a **different button, not a faded one**, and the difference is the whole point.
+   *
+   * This rule used to be `opacity: .35`, and `tools/looking/look.mjs` measured what that costs:
+   * contrast 1.80 against a floor of 3, with a `visibleRange` of 0.0419 against a floor of 0.04 —
+   * a hair from a control that is not on the screen at all. Opacity is the one lever that dims a
+   * thing by pulling *both* its ink and its plate toward whatever is behind them, so it takes the
+   * ink and the ground with it and there is no contrast left to lose.
+   *
+   * Worse, this is the state the exhibit **opens in**: `data-idle` is 1 until an `AudioContext`
+   * exists, and nothing wakes one without a gesture. So the least legible thing in the first frame
+   * was the control that starts the exhibit. A ghost — no fill, the glow as a hairline, `--paper`
+   * for the label — reads as clearly secondary to the filled state next to it and stays at 12:1.
+   */
+  .gate[data-idle='1'] .again {
+    background: color-mix(in srgb, var(--glow) 14%, transparent);
+    color: var(--paper);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--glow) 52%, transparent);
+  }
 
   .tally { display: flex; align-items: baseline; gap: 8px; }
   .opened { font-size: 25px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .03em; }

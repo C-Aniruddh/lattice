@@ -22,6 +22,10 @@
     --edge: color-mix(in srgb, var(--paper) 15%, transparent);
     --accent: var(--lattice-warn, #f2b64a);
     --stone: var(--lattice-metal, #b6b1a4);
+    /* The frame-budget verdict, under the line and over it. Literals rather than palette slots,
+       and the long version of why is at `.val[data-over]` below. */
+    --under: #7cc46f;
+    --over: #ff9d8a;
     font: 500 13px/1.35 ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
     color: var(--paper);
     -webkit-font-smoothing: antialiased;
@@ -57,12 +61,31 @@
   .key { font-size: 10px; font-weight: 700; letter-spacing: .14em; color: var(--dim); }
   .val, .lattice-roll { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--paper); }
   .figures .row:first-child .lattice-roll { font-size: 25px; color: var(--accent); transition: color 1.2s linear; }
+  /*
+   * ── the two verdict colours, and why they are not palette slots ──────────────────────────
+   *
+   * The worst frame in the last ten seconds, green under the 16.7 ms line and red over it. The
+   * colour is the whole point: a number nobody can score is a number nobody reads.
+   *
+   * These used to be `var(--lattice-ok)` and `var(--lattice-bad)` — the world's own slots, pushed
+   * in from `draw`'s palette. That is the right instinct for anything painted *in* the piazza and
+   * the wrong one for a number on a plate over it, because those two colours were chosen to be
+   * foliage and the red half of an awning stripe in golden-hour light. Measured on the plate by
+   * `tools/looking/look.mjs`: the calm reading came out at **3.93** and the alarm at **2.42**,
+   * under the floor of 3 — so the readout was least legible in exactly the state it had something
+   * to say, and it got there by *recolouring itself* the moment the frame went over budget.
+   *
+   * So the pair is authored here, against the card rather than against the sky, with two
+   * properties the slots could not give it. **The alarm is never quieter than the calm state**
+   * (6.25 against 6.00), which is the actual bug rather than the symptom. And neither of them
+   * moves when the world's palette does, so the verdict cannot become unreadable at an hour
+   * nobody checked — the failure `docs/GALLERY.md` § Scale says an author will always miss,
+   * because they see whichever hour was on screen when they looked.
+   */
   /* The one figure that would be wrong if this exhibit were built the ordinary way. */
-  .zero { color: var(--lattice-ok, #6e9c54); }
-  /* The worst frame in the last ten seconds, green under the 16.7 ms line and red over it. The
-     colour is the whole point: a number nobody can score is a number nobody reads. */
-  .val[data-over="0"] { color: var(--lattice-ok, #6e9c54); }
-  .val[data-over="1"] { color: var(--lattice-bad, #b8483f); }
+  .zero { color: var(--under); }
+  .val[data-over="0"] { color: var(--under); }
+  .val[data-over="1"] { color: var(--over); }
 
   /* ── the time strip ───────────────────────────────────────────────────────────────────────
      A scrubber and three jumps. The track is deliberately as wide as the card and as tall as a

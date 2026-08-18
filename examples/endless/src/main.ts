@@ -61,7 +61,12 @@ const BUDGET = 8;
  *  header. About ±1.2 million tiles, well inside the ~2^24 that `core.noise` promises. */
 const bounds: Rect = { minX: -4e7, minY: -4e7, maxX: 4e7, maxY: 4e7 };
 const boot = bootstrap({
+  // The one exhibit that can declare its ground at construction: `world.field` is a module-level
+  // `HeightField` over a `cell` lookup, so it exists before the seed does and is still the same
+  // object after `world.open`. Everywhere else the map is generated from `boot.seed` and the
+  // declaration has to be `boot.setTerrain` a line later.
   seed: 'endless', bounds, background: '#8fc4e8', palette: AFTERNOON, clear: 'sky', depth: 3000,
+  terrain: { field: world.field, maxHeightPx: world.MAX_HEIGHT_PX },
   camera: { zoom: 0.78, minZoom: 0.5, maxZoom: 2.4, keepVisible: 0 },
   light: { scale: 0.6, falloff: 2.4, bloom: 0.42 },
 });

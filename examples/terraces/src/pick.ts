@@ -19,9 +19,11 @@
  *
  * The naive one is not a straw man and that is worth being explicit about: it is the exact
  * inverse of the projection at `z = 0`, and it is what `@latticekit/input` puts in `gx`/`gy` on
- * **every action event it fires**, because `input` resolves a pointer through `worldToTile` and
- * has no way to be handed a heightfield. An exhibit that read `event.gx` would therefore ship
- * this bug without ever choosing to, which is why the caller re-picks from `sx`/`sy`. See the
+ * **every action event fired by a system that was not told what the ground looks like**. K44 gave
+ * it a seam — `main.ts` declares `terrain` now, so this exhibit's own events resolve on the hill —
+ * but the seam does not remove the naive answer from this file, because the naive answer *is* the
+ * left-hand column. `input` reports one tile per event and this row exists to show two, so both
+ * are computed here from `event.sx`/`event.sy` and neither is read off the event. See the
  * README's first kit finding.
  *
  * ## The error is measured in drawn pixels, on purpose

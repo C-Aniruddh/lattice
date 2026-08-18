@@ -76,7 +76,7 @@ import {
   type Stops,
   type Surface,
 } from '@latticekit/draw';
-import { createInput, type ActionEvent, type ActionMap, type DomInputSystem, type GestureMap, type ProfileOverrides } from '@latticekit/input';
+import { createInput, type ActionEvent, type ActionMap, type DomInputSystem, type GestureMap, type ProfileOverrides, type TerrainOption } from '@latticekit/input';
 import { browserFrames, createLoop, createTweens, type Loop, type Tweens } from '@latticekit/loop';
 import { PANEL_CLASS } from './panel.js';
 import { resolveCost } from './cost.js';
@@ -121,6 +121,25 @@ export interface BootOptions<A extends string> {
   readonly depth?: number;
   /** The action map. Its keys become the names `boot.onAction` accepts. */
   readonly actions?: ActionMap<A>;
+  /**
+   * What the ground looks like, which is what `gx`/`gy` on every event mean.
+   *
+   * `input` inverts the projection on the plane `z = 0` and on no other, so a pixel names a
+   * *family* of tiles — one per elevation — and the sea-level member of that family is the right
+   * answer only on level ground. An exhibit with a hill that never says so gets a tile next to
+   * the right one, moving smoothly with the pointer, and wrong: `terraces` measures 281 px of it
+   * and `demo` shipped a 212–237 px version.
+   *
+   * So there are three states and only one of them is quiet by accident. `{ field, maxHeightPx }`
+   * resolves on the terrain. `'flat'` is a *declaration* that the ground really is a plane — it
+   * resolves identically to saying nothing and differs in the one way that matters. Saying
+   * nothing gets one `flat-ground-pick` diagnostic in the console the first time a coordinate is
+   * read, which is a warning on the first tap of every exhibit that has not answered.
+   *
+   * Omit it here and call {@link Boot.setTerrain} instead when the map is generated from
+   * `boot.seed` and therefore does not exist yet at this call — which is most of the gallery.
+   */
+  readonly terrain?: TerrainOption;
   /** Gesture threshold overrides. The URL may override these again. */
   readonly profile?: ProfileOverrides;
   /** `false` for a fixed camera. Gestures still arrive; nothing drives the camera. */
@@ -178,6 +197,9 @@ export interface Boot<A extends string> {
   readonly cameraPolicy: Readonly<CameraPolicy>;
   /** The light options currently in force — what `draw` will not tell you. */
   readonly lightOpts: Readonly<Required<LightFieldOpts>>;
+  /** The ground declaration in force — {@link BootOptions.terrain} after {@link Boot.setTerrain}
+   *  has had its say, and `undefined` while nobody has made one. Non-negotiable 11. */
+  readonly terrain: TerrainOption | undefined;
 
   /**
    * **The number `docs/GALLERY.md` § Scale's cost row gates this exhibit on**: the worst gap
@@ -246,6 +268,20 @@ export interface Boot<A extends string> {
    * across.
    */
   setCamera(policy: Partial<CameraPolicy>): void;
+  /**
+   * Say what the ground looks like, once the map that answers exists.
+   *
+   * The declaration is held **here** and not only on the input system, and that is the whole
+   * reason this method exists: `input.terrain` is construction-time state, so a declaration made
+   * through `boot.input.setTerrain` is thrown away by the next {@link Boot.setProfile} or
+   * {@link Boot.setCamera} — which the control panel performs every time a zoom clamp or a
+   * gesture threshold moves. Written through here it **survives an input rebuild**, exactly as
+   * {@link Boot.onAction} does and `input.onAction` does not.
+   *
+   * The field is held rather than copied, so ground the player raises this frame is ground the
+   * next event resolves on; only a new *ceiling* or a new field needs this call again.
+   */
+  setTerrain(terrain: TerrainOption): void;
   /** Retune the night. **Rebuilds the field's two buffers**, because `scale` and `bloom` are
    *  construction-time. `falloff` is only the default for `add`, which takes it per call. */
   setLight(opts: LightFieldOpts): void;
@@ -387,6 +423,10 @@ export function bootstrap<A extends string = never>(options: BootOptions<A> = {}
   // `loop` is built above this line for one reason: so `stepMs` is read off it here rather than
   // written as a literal. It is read again, from the same place, in every rebuild below.
   let profileOverrides: ProfileOverrides = withUrlProfile(params, options.profile);
+  // Held here rather than only on the input system, because `terrain` is construction-time state
+  // over there: every rebuild below would otherwise drop a declaration the exhibit made once and
+  // hand the console a `flat-ground-pick` warning on the first tap after a slider moved.
+  let terrain: TerrainOption | undefined = options.terrain;
   let input = makeInput();
 
   /** Handlers made through the boot, replayed onto every input system that replaces this one. */
@@ -407,6 +447,7 @@ export function bootstrap<A extends string = never>(options: BootOptions<A> = {}
       // so the bare number this file existed to stop anyone typing no longer compiles at all.
       step: loop,
       ...(options.actions === undefined ? {} : { actions: options.actions }),
+      ...(terrain === undefined ? {} : { terrain }),
       profile: profileOverrides,
       ...(options.control === undefined ? {} : { control: options.control }),
       onDiagnostic: (d) => {
@@ -515,6 +556,9 @@ export function bootstrap<A extends string = never>(options: BootOptions<A> = {}
     get lightOpts() {
       return lightOpts;
     },
+    get terrain() {
+      return terrain;
+    },
     get worstMs() {
       return loop.stats.worstGapMs;
     },
@@ -592,6 +636,12 @@ export function bootstrap<A extends string = never>(options: BootOptions<A> = {}
       // `input` captured the old camera at construction, and the controller drives whatever it
       // captured. Rebuilding it is not optional politeness.
       rebuildInput();
+    },
+    setTerrain(next) {
+      terrain = next;
+      // No rebuild: `TilePicker` holds the declaration and swaps it in place, so a ceiling can
+      // move under a slider without every subscription being re-registered.
+      input.setTerrain(next);
     },
     setLight(next) {
       lightOpts = { ...lightOpts, ...next };

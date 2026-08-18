@@ -210,6 +210,39 @@ so. `fit()` reads `surface.pixelRatio` back off the surface.
 
 ---
 
+## The ground: `terrain`, and the one word every exhibit now says
+
+`input` inverts the projection **on the plane `z = 0` and on no other**, so a screen pixel does not
+name a tile — it names a family of them, one per elevation, and the sea-level member of that family
+is right only on level ground. K44 gave the package a seam for it, and gave it three states rather
+than two:
+
+| the exhibit writes | `gx`/`gy` mean | what happens if the map grows a hill |
+|---|---|---|
+| `terrain: { field, maxHeightPx }` | the tile whose terrain surface is under the pixel | nothing — it is the marched answer |
+| `terrain: 'flat'` | the plane `z = 0` | wrong, and nobody is told |
+| nothing at all | the plane `z = 0` | wrong, **and one `flat-ground-pick` diagnostic** the first time a coordinate is read |
+
+The third row is why every exhibit in the gallery declares. It is not a warning about a bug the
+package found — it cannot see your terrain and cannot find one. It is a warning that **nobody ever
+said**, which is a thing it can see, and the cost of answering is one word.
+
+`BootOptions.terrain` is the answer when the ground exists before `bootstrap` does, which in this
+gallery is exactly one exhibit: `endless`, whose `HeightField` is a module-level view over a `cell`
+lookup. Everywhere else the map is generated from `boot.seed` — which `bootstrap` is the thing that
+reads — so the declaration arrives a line later through **`Boot.setTerrain`**, and that method exists
+for one reason: `input.terrain` is construction-time state over there, so a declaration written
+straight onto `boot.input` is thrown away by the next `setProfile` or `setCamera`, which the control
+panel performs every time a zoom clamp or a gesture threshold moves. Written through the boot it
+survives a rebuild, exactly as `Boot.onAction` does and `input.onAction` does not. Either way it
+reads back off `boot.terrain`, per non-negotiable 11.
+
+It is also the one live knob in this file that is **not** a rebuild: `TilePicker` holds the
+declaration and swaps it in place, so a march ceiling can move under a slider for free. Compare
+`setCamera`, `setProfile` and `setLight`, all three of which are rebuild-and-carry.
+
+---
+
 ## Is this a `@latticekit/kit` package or an examples folder?
 
 **Keep it in `examples/` — and the reason is not that it is too small to be a package. It is that

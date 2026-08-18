@@ -111,22 +111,30 @@ their shadowed foot.
 
 Ranked by how much pain each caused.
 
-**1. `@latticekit/input` resolves every pointer on flat ground, and cannot be told otherwise.**
-`ActionEvent` carries `gx`/`gy`, `input` fills them through `worldToTile`, and there is no seam
-anywhere in `InputOptions` for a `HeightField`. So the coordinates on the event are the *wrong*
-answer on any map with elevation — silently, plausibly, and by more the taller the terrain. `iso`
-already ships the right function; `input` has no way to reach it. Every exhibit with a hill will
-either re-pick by hand from `sx`/`sy` or ship this bug, and the second is the default. **The fix is
-one optional field**: `createInput({ heights: { field, maxHeightPx } })`, and `fill()` calls
-`screenToTileOnHeights` instead of `worldToTile` when it is present. Until then the honest thing
-would be for `input` to *warn* once when a game reads `gx` — but it cannot know.
+**1. `@latticekit/input` resolved every pointer on flat ground and could not be told otherwise.**
+**Fixed — this is K44, and it is what this exhibit was for.** `ActionEvent` carries `gx`/`gy`,
+`input` filled them through `worldToTile`, and there was no seam anywhere in `InputOptions` for a
+`HeightField`; the coordinates on the event were the *wrong* answer on any map with elevation —
+silently, plausibly, and by more the taller the terrain. The fix landed as one optional field,
+`createInput({ terrain: { field, maxHeightPx } })`, with two things this row did not ask for and
+should have. `terrain: 'flat'` is a *declaration* rather than a default, so a level world says so
+in one word; and a system that was told nothing raises one `flat-ground-pick` diagnostic the first
+time a coordinate is actually read — which is the "the honest thing would be for `input` to warn
+once, but it cannot know" line above, answered. It cannot know your terrain, but it can know that
+nobody said.
 
-**2. There is no hover.** `GestureMap` has six members and none of them is a pointer position with
-no button down. A tile highlight that follows the cursor is the single most common thing an
-isometric builder does, and it cannot be built from `@latticekit/input` at all — this exhibit adds a
-raw `pointermove` listener to `boot.canvas` and does its own coordinate work, which is precisely
-the `pointerToTile(ev, …)` that `hittest.ts`'s header says means you have the seam the wrong way
-round. It is right that game code should not convert coordinates; there is currently no other way.
+This exhibit declares it too, and **nothing else here changed**: `pick.ts` still computes the naive
+answer and the marched one side by side from `event.sx`/`event.sy`, because computing both *is* the
+exhibit. `input` reports one tile per event, and a row whose whole subject is the gap between two
+answers has to hold both.
+
+**2. ~~There is no hover.~~ Withdrawn — there is, and it is a query rather than a gesture.**
+`GestureMap` has six members and none of them is a pointer position with no button down, which is
+correct: continuous input in this package is *asked for*, and `input.hoverTile(out)` is the ask. It
+resolves through the same picker every gesture uses, so with `terrain` declared it is terrain-aware
+for free and a highlight cannot disagree with the tap that follows it. `examples/clay` has deleted
+its raw `pointermove` listener for exactly this reason. This exhibit keeps its own listener, because
+what it needs is not the tile but the *screen point*, twice, at two different ceilings.
 
 **3. `bootstrap` owns the loop's clock and exposes no `now()`.** `@latticekit/ui`'s `createOverlay`
 requires *the clock `loop` was given*, and `bootstrap` builds the loop with

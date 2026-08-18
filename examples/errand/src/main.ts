@@ -52,7 +52,11 @@ import { createHud } from './hud.js';
 const SPEED = 168;
 
 const boot = bootstrap({
-  seed: 'meadowmill', background: '#2a2434', palette: AFTERNOON, clear: 'sky', depth: 3072, bounds: BOUNDS,
+  // `terrain: 'flat'`, and `ground.ts` § Why the valley is flat is the argument for it: this
+  // exhibit has no height field on purpose, because terrain-aware picking is `terraces`' idea and
+  // a hill under the miller is one more place the tile you touched and the tile you got can
+  // disagree — in the exhibit whose whole promise is that they cannot. One word says so.
+  seed: 'meadowmill', background: '#2a2434', palette: AFTERNOON, clear: 'sky', depth: 3072, bounds: BOUNDS, terrain: 'flat',
   camera: { zoom: 0.72, minZoom: 0.35, maxZoom: 2.4, keepVisible: 0.42 },
 });
 const valley = createValley(boot.seed);

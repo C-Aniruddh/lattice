@@ -32,9 +32,9 @@
  * tableland, which is its edges row.
  */
 import { clamp } from '@latticekit/core';
-import { rectFromSize, type Camera, type Rect } from '@latticekit/iso';
+import { rectFromSize, type Camera, type HeightField, type Rect } from '@latticekit/iso';
 import type { Passes } from '@latticekit/draw';
-import { paintCanyon } from './strata.js';
+import { canyonHeights, paintCanyon } from './strata.js';
 import { drawBirds, drawSky } from './sky.js';
 import { STEP_PX } from './erosion.js';
 import type { DeepTime } from './deeptime.js';
@@ -110,6 +110,23 @@ export function frame(camera: Camera, w: number, h: number): void {
   camera.fitBounds(opening);
 }
 
+/** The tallest ground on the map in world pixels — the caprock plus the uplift a full run adds.
+ *  Two things need it and they need the same one: `renderFrame`'s terrain cull below, and the
+ *  ceiling the pointer's march down the rock starts from. */
+export const MAX_HEIGHT_PX = 62 * STEP_PX;
+
+/**
+ * What the ground is, for `@latticekit/input`'s pointer → tile seam.
+ *
+ * A canyon is the one exhibit here whose ground is a function of *time*, so this is a live view
+ * rather than a snapshot — see `strata.ts` § {@link canyonHeights}. The pair is what a `terrain`
+ * declaration wants and it is assembled here, beside the pass that uses the same two numbers, so
+ * the cull margin and the march ceiling cannot drift apart.
+ */
+export function terrainOf(time: DeepTime): { readonly field: HeightField; readonly maxHeightPx: number } {
+  return { field: canyonHeights(time), maxHeightPx: MAX_HEIGHT_PX };
+}
+
 /**
  * The frame's passes, hoisted once.
  *
@@ -121,7 +138,7 @@ export function frame(camera: Camera, w: number, h: number): void {
 export function passesFor(time: DeepTime): Passes {
   return {
     backdrop: (pen) => { drawSky(pen); },
-    maxHeightPx: 62 * STEP_PX,
+    maxHeightPx: MAX_HEIGHT_PX,
     terrain: (pen, visible) => { paintCanyon(pen, time, visible); },
     // The birds are handed the epoch and the cut for one reason: § *A mile deep has to feel a
     // mile deep* asks for birds **below the rim line**, and a bird in screen space has no idea

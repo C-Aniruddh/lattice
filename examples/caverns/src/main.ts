@@ -76,7 +76,11 @@ const boot = bootstrap({
   light: { scale: 0.55, falloff: 1, bloom: 0.3 },
   actions: { carry: ['tap'] },
 });
-const cave = createCavern(boot.seed);
+// The floor of a cave is not a plane — `heightUnits` gives every open tile a unit or two of swell
+// before the walls grow out of it — so the tile under a tap is the marched one, not the sea-level
+// one the projection inverts to. `carry` below reads `e.gx`, which is exactly the read that would
+// otherwise have gone uphill of the finger and told the console about it once.
+const cave = createCavern(boot.seed); boot.setTerrain({ field: cave.field, maxHeightPx: cave.maxHeightPx });
 
 /**
  * Pen the camera to the cave, and frame the chamber it opens in.

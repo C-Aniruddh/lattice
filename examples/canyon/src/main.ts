@@ -46,7 +46,7 @@ import { drive } from '@latticekit/ui';
 import { bootstrap, controlPanel, knobs } from '../../_shared/src/index.js';
 import { CANYON } from './palette.js';
 import { STEPS, createDeepTime } from './deeptime.js';
-import { REACH, frame, passesFor } from './view.js';
+import { REACH, frame, passesFor, terrainOf } from './view.js';
 import { createHud } from './hud.js';
 
 const PLAY_RATE = 40, CATCH_UP = 14;
@@ -79,7 +79,10 @@ const boot = bootstrap({
 boot.onResize((w, h) => { frame(boot.camera, w, h); });
 frame(boot.camera, boot.camera.viewW, boot.camera.viewH);
 
-const time = createDeepTime(boot.seed), passes = passesFor(time);
+// The rock rises and the river cuts, so the ground `input` resolves a pointer against is a live
+// view of `time` rather than a copy of it — `view.ts` § terrainOf. Nothing in this exhibit reads a
+// tile today; the declaration is about the ground, and 62 units of caprock is not a plane.
+const time = createDeepTime(boot.seed), passes = passesFor(time); boot.setTerrain(terrainOf(time));
 let want = OPENS_AT, playing = true, behind = false, from = -1, nowMs = 0;
 
 boot.onUpdate((dt) => {

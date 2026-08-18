@@ -69,7 +69,12 @@ const boot = bootstrap({
 // frames a tile's *sea-level* position, which on ground standing 250 px up is a quarter of a
 // screen too low — the same off-by-an-elevation this exhibit is about, arriving in the camera
 // instead of in the pick.
-const hill = createHill(boot.seed);
+// The declaration, which silences `flat-ground-pick` and **changes nothing else in this file**.
+// `pick.ts` still computes both answers from `event.sx`/`event.sy`, because computing both *is*
+// this exhibit: `input` can only report one tile per event, and a row whose subject is the gap
+// between the naive answer and the marched one has to hold them side by side. The `aware` toggle
+// and the `ceiling` slider are readings of `screenToTileOnHeights`, not of the input system.
+const hill = createHill(boot.seed); boot.setTerrain({ field: hill.field, maxHeightPx: hill.maxHeightPx });
 tileBounds(0, 0, W, H, hill.maxHeightPx, worldRect);
 boot.camera.setBounds(worldRect);
 boot.camera.centerOn(gridToWorldX(OPEN_AT, OPEN_AT), gridToWorldY(OPEN_AT, OPEN_AT) - heightAt(hill.field, OPEN_AT, OPEN_AT));

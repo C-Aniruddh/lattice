@@ -31,22 +31,25 @@
  * spent on sculpting instead, because an exhibit whose subject is what your finger does cannot make
  * the finger do something else first.
  *
- * ## `ActionEvent.gx/gy` is a flat-ground answer, and this exhibit is the worst case for it
+ * ## The pick used to be this exhibit's own problem, and now it is one word
  *
- * `@latticekit/input` resolves a pointer through `worldToTile`, which is the exact inverse of the
- * projection **on the plane z = 0** — the only plane it inverts. It has no seam for a `HeightField`
- * and no way to be handed one, so `gx`/`gy` on every gesture and every action it fires assume the
- * ground is flat. `Terraces` measured that error at 281 px and 14 tiles on a static hillside.
+ * `@latticekit/input` resolves a pointer through `worldToTile`, the exact inverse of the projection
+ * **on the plane `z = 0`** — the only plane it inverts. Undeclared, `gx`/`gy` on every gesture and
+ * every action assume the ground is flat, and `Terraces` measured that at 281 px and 14 tiles on a
+ * static hillside.
  *
- * Here it is worse than static, and in a way no other exhibit can reproduce: **the error moves as
- * the visitor sculpts.** Raising ground under the cursor pushes the true tile toward the viewer, so
- * a brush driven by `event.gx` walks *away* from the finger exactly as fast as the ridge grows —
- * the visitor makes a hill and the brush slides off the far side of it while they hold still.
+ * Here it was worse than static, and in a way no other exhibit can reproduce: **the error moved as
+ * the visitor sculpted.** Raising ground under the cursor pushes the true tile toward the viewer, so
+ * a brush driven by a flat-ground `gx` walks *away* from the finger exactly as fast as the ridge
+ * grows — the visitor makes a hill and the brush slides off the far side of it while they hold
+ * still. Which is why this file used to carry a `screenToTileOnHeights` call of its own, a raw
+ * `pointermove` listener to feed it `sx`/`sy`, and a copy of the pointer in {@link brush}.
  *
- * The workaround is one call: `screenToTileOnHeights(camera, sx, sy, clay.land, MAX_UNITS · STEP_PX,
- * out)`, from `sx`/`sy` and **never** from `gx`/`gy`, re-run every update against the field as it
- * stands *this* step rather than once per gesture. See {@link update} for what that costs. It is
- * filed as kit gap K44.
+ * **All three are gone.** K44 gave `input` the seam: `boot.setTerrain({ field: clay.land, … })`
+ * below hands it the live field — held, never copied, so ground raised this frame is ground the
+ * next query resolves on — and the pick is then `boot.input.hoverTile(at)`, which is the same
+ * march through the same picker every gesture uses. The two answers cannot disagree any more,
+ * because there is now only one of them.
  *
  * ## What is logic and what is not
  *
@@ -57,7 +60,7 @@
  * cannot be seen. `npm run gallery` checks it.
  */
 import { renderFrame } from '@latticekit/draw';
-import { screenToTileOnHeights, type Tile } from '@latticekit/iso';
+import type { Tile } from '@latticekit/iso';
 import { drive } from '@latticekit/ui';
 import { bootstrap, controlPanel, createBucket, knobs } from '../../_shared/src/index.js';
 import { CLAY } from './palette.js';
@@ -96,34 +99,41 @@ const boot = bootstrap({
 boot.onResize((w, h) => { frame(boot.camera, w, h); }); frame(boot.camera, boot.camera.viewW, boot.camera.viewH);
 
 const clay = createClay(boot.rng.derive('valley').seed), scatter = boot.rng.derive('scatter').seed;
+// The declaration, and the reason there is no picking maths left in this file. `clay.land` is the
+// terrain without the water on it — a brush follows the ground it moves, not the surface of the
+// river standing on it — and the ceiling is the brush's own, because nothing here can raise a tile
+// past `MAX_UNITS`. Held rather than copied, so a stroke resolves against the hill it is building.
+boot.setTerrain({ field: clay.land, maxHeightPx: MAX_UNITS * STEP_PX });
 const life = createLife(clay, boot.rng.derive('folk')), bucket = createBucket<Thing>(boot.order);
-/** Where the brush is, how wide, and whether it is down. `sx`/`sy` are the pointer in CSS pixels —
- *  `bootstrap` pins the canvas to the viewport, so a `PointerEvent`'s `clientX` is already that.
- *  `at` is the terrain-aware pick's out parameter, one `Tile` for the life of the exhibit. */
-const brush = { gx: 80, gy: 80, radius: RADIUS, down: false, sx: 0, sy: 0 }, at: Tile = { gx: 0, gy: 0 };
+/** Where the brush is, how wide, and whether it is down. The pointer is **not** in here any more:
+ *  `input` tracks it for `hoverTile`, and a second copy is a second thing to keep in step.
+ *  `at` is the pick's out parameter, one `Tile` for the life of the exhibit. */
+const brush = { gx: 80, gy: 80, radius: RADIUS, down: false }, at: Tile = { gx: 0, gy: 0 };
 const passes = passesFor(clay, bucket, brush);
 let mode = false, units = 0;
 
-// A raw listener, because `@latticekit/input` has six gestures and none of them is a hover — the ring
-// has to follow a cursor that is not pressing anything, and `Terraces` reported the same gap.
-const onMove = (event: PointerEvent): void => { brush.sx = event.clientX; brush.sy = event.clientY; };
-boot.canvas.addEventListener('pointermove', onMove);
-boot.scope.add(() => { boot.canvas.removeEventListener('pointermove', onMove); });
-// Claimed, so the camera controller never sees it. See the header for what that costs.
-for (const kind of ['dragstart', 'drag', 'dragend'] as const) boot.on(kind, (g) => { g.claim(); brush.sx = g.sx; brush.sy = g.sy; brush.down = kind !== 'dragend'; });
+// Claimed, so the camera controller never sees it. See the header for what that costs. Nothing
+// here reads `g.sx`/`g.sy` any longer: the only thing this exhibit ever did with the pointer was
+// pick a tile from it, and `input` is now the thing that does that.
+for (const kind of ['dragstart', 'drag', 'dragend'] as const) boot.on(kind, (g) => { g.claim(); brush.down = kind !== 'dragend'; });
 
 /**
  * One update: find the tile under the pointer *on the terrain as it stands now*, move the clay,
  * tell `life` what the stroke crossed, then run the water.
  *
- * The pick is re-run every update rather than once per gesture, and that is the whole K44
- * workaround: the ground is rising under the finger, so the answer from the top of the stroke is
- * wrong by the height of the hill by the bottom of it. It costs one terrain march — about forty
- * bilinear samples at this ceiling — per update, which is under a fiftieth of a millisecond and is
- * paid whether or not the brush is down, because the ring has to sit on the ground either way.
+ * The pick is re-run every update rather than once per gesture, and that is the part of the old
+ * workaround worth keeping: the ground is rising under the finger, so the answer from the top of a
+ * stroke is wrong by the height of the hill by the bottom of it. It costs one terrain march —
+ * about forty bilinear samples at this ceiling — per update, which is under a fiftieth of a
+ * millisecond and is paid whether or not the brush is down, because the ring has to sit on the
+ * ground either way.
+ *
+ * `false` is a pointer that is not over the world: no mouse yet, or the finger that was drawing
+ * has lifted on a touch screen. The brush keeps its last tile rather than jumping, which is what
+ * the ring under a lifted finger should do.
  */
 function update(dt: number): void {
-  if (screenToTileOnHeights(boot.camera, brush.sx, brush.sy, clay.land, MAX_UNITS * STEP_PX, at)) {
+  if (boot.input.hoverTile(at)) {
     brush.gx = at.gx + 0.5; brush.gy = at.gy + 0.5; units = clay.terr[at.gy * N + at.gx] ?? 0;
     if (brush.down) {
       sculpt(clay, brush.gx, brush.gy, RADIUS, (cutting() ? -RATE : RATE) * dt);

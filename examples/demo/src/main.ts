@@ -74,6 +74,14 @@ const boot = bootstrap<'touch'>({
 const valley = createValley(boot.seed);
 tileBounds(0, 0, W, H, valley.maxHeightPx, worldRect);
 boot.camera.setBounds(worldRect);
+// And the same map, said once more to `input` — which is the seam K44 added and the reason this
+// exhibit is named in `terrain.ts`. Lamp Road is a river valley with a ridge road above it; on that
+// ground the sea-level inverse of the projection lands **212 to 237 px** uphill of the finger,
+// which is a tile or two of a plausible-looking wrong answer that nothing downstream can catch.
+// The taps here go through `boxSilhouette`, so they were never exposed to it — but a declaration is
+// about the ground rather than about today's handlers, and the ceiling is the one the terrain cull
+// already measured rather than a second guess at the tallest thing on the map.
+boot.setTerrain({ field: valley.field, maxHeightPx: valley.maxHeightPx });
 
 const reach: Reach = { run: 0 };
 const rules = createRules(reach);

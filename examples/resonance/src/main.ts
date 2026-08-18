@@ -65,7 +65,10 @@ const boot = bootstrap({
   camera: { zoom: 0.95, minZoom: 0.5, maxZoom: 2.4, keepVisible: 0.5 }, light: { scale: 0.5, falloff: 1, bloom: 0.3 },
   actions: { s0: ['key:Digit1'], s1: ['key:Digit2'], s2: ['key:Digit3'], s3: ['key:Digit4'], s4: ['key:Digit5'], s5: ['key:Digit6'], hum: ['tap', 'key:Space'] },
 });
-const cave = createCavern(boot.seed);
+// The floor of a hollow rolls and its roof comes down to meet it, so the tile under a pixel is the
+// marched one. `hum` is bound to `tap` and does not read a coordinate today; the declaration is
+// about the ground, and it is what keeps the console clean when it one day does.
+const cave = createCavern(boot.seed); boot.setTerrain({ field: cave.field, maxHeightPx: cave.maxHeightPx });
 tileBounds(0, 0, W, H, cave.maxHeightPx, worldRect); boot.camera.setBounds(worldRect);
 // Opening on a gate rather than on the map's middle: the first thing in frame has to be the thing
 // the exhibit is about, and `gates` is sorted so that this is one lookup and no second notion of
