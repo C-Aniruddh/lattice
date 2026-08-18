@@ -9,11 +9,12 @@
  * are two files that drift, and the drift is silent: the repo's tests would go on passing
  * against a harness no user is running. So the copies are compared, byte for byte, here.
  *
- * **The fixture guard.** Six pages, five of them broken in a way a real agent shipped, and the
+ * **The fixture guard.** Eight pages, six of them broken in a way a real agent shipped, and the
  * assertion is not "the script ran" but *which row failed*. A harness that fails everything is
  * as useless as one that passes everything, and the second one is how this project got a suite
  * that was green over a black screen. `good` must pass every row; each broken page must fail
- * exactly the row named for it and no other.
+ * exactly the row named for it and no other. The last page is looked at **twice, at two hours**,
+ * because one of those six is only broken at one of them.
  *
  * ```bash
  * node tools/looking/verify.mjs
@@ -33,12 +34,27 @@ const repo = join(here, '..', '..');
 const fixture = pathToFileURL(join(here, 'fixture.html')).href;
 
 /**
+ * The `cycle` fixture is a sixty-second day read off the wall clock, bright at phase 0 and
+ * near-black at phase 0.5. `aim(ms)` returns the `--advance` that lands the *capture* on a chosen
+ * millisecond of that minute — the capture, not the launch, so the lead is the browser start plus
+ * the settle. The dark half of the cycle is flat for about twenty seconds either side of the
+ * bottom, so a couple of seconds of error changes nothing.
+ */
+const CAPTURE_LEAD_MS = 2300;
+const aim = (targetMs) => ((targetMs - ((Date.now() + CAPTURE_LEAD_MS) % 60_000)) % 60_000 + 60_000) % 60_000;
+
+/**
  * What each fixture is supposed to prove. `fails: []` means every row passes.
  *
  * `darkroofs` is in the table with an empty expectation on purpose. It is the defect this
  * harness does **not** catch — a roof painted in the outline slot, near-black against a night
  * sea — and it is pinned here so that nobody later reads the passing matrix as a claim that it
  * does. If a future measurement catches it, this line is what changes.
+ *
+ * The two `cycle` rows are the S16 pin. **The same page, the same build, two verdicts**, and the
+ * only difference between them is the hour `--advance` put the page in. A regression that stopped
+ * the flag reaching the page's clock would show up as the dark row passing — which is exactly the
+ * failure this whole file exists to catch, an author's verdict taken at the hour that flattered.
  */
 const EXPECTED = [
   { mode: 'good', fails: [] },
@@ -48,6 +64,8 @@ const EXPECTED = [
   { mode: 'static', fails: ['motion'] },
   { mode: 'throws', fails: ['console'] },
   { mode: 'darkroofs', fails: [] },
+  { mode: 'cycle', label: 'cycle@noon', advance: () => aim(0), fails: [] },
+  { mode: 'cycle', label: 'cycle@night', advance: () => aim(30_000), fails: ['framing'] },
 ];
 
 let failures = 0;
@@ -64,11 +82,14 @@ if (!left.equals(right)) {
   process.stdout.write('ok     the shipped copy of look.mjs matches the source\n');
 }
 
-for (const { mode, fails } of EXPECTED) {
+for (const { mode, fails, label, advance } of EXPECTED) {
+  const name = label ?? mode;
   const report = await look({
     url: `${fixture}?mode=${mode}`,
     out: null,
     evals: [],
+    at: [],
+    advanceMs: advance ? advance() : 0,
     json: false,
     settleMs: 900,
     gapMs: 700,
@@ -82,11 +103,11 @@ for (const { mode, fails } of EXPECTED) {
   const expected = [...fails].sort();
   const same = actual.length === expected.length && actual.every((name, i) => name === expected[i]);
   if (same) {
-    process.stdout.write(`ok     ${mode.padEnd(10)} failed [${actual.join(', ')}]\n`);
+    process.stdout.write(`ok     ${name.padEnd(12)} failed [${actual.join(', ')}]\n`);
   } else {
     failures++;
     process.stdout.write(
-      `BAD    ${mode.padEnd(10)} expected [${expected.join(', ')}], got [${actual.join(', ')}]\n`,
+      `BAD    ${name.padEnd(12)} expected [${expected.join(', ')}], got [${actual.join(', ')}]\n`,
     );
   }
 }

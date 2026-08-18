@@ -88,10 +88,8 @@ Run it against a dev server that is already up. If `npm run dev` is not running 
 the background first and give it a couple of seconds; `look.mjs` exits `2` with "is the dev
 server running?" rather than hanging if it is not.
 
-It has **no dependencies**. It finds Chrome, speaks the DevTools protocol over a socket it opens
-itself, and decodes the PNG with Node's own zlib — so it runs in a directory whose
-`node_modules` was created ninety seconds ago by `npm create vite`, with no second install and
-no network. Set `CHROME_PATH` if it cannot find a browser.
+It has **no dependencies** and needs no install, in a freshly scaffolded directory or any other.
+Set `CHROME_PATH` if it cannot find a browser.
 
 It writes `.look/frame-a.png` and `.look/frame-b.png`. **If you can open an image, open them.**
 Most agents can, including ones that do not advertise it — Codex reads a PNG from disk mid-session
@@ -150,10 +148,39 @@ failed to establish, and precisely not the same as a good game.
 
 ---
 
+## Sample the cycle at both ends, never once
+
+**A day cycle has a worst hour, and an author sees whichever hour was on screen when they
+happened to look.** That sample time is an accident; the worst hour is the one that ships. It has
+gone wrong here three times — a night game that opened on a near-black screen; a stranger's
+orchard, verified by its author at *"Dawn mist"*, where it is lovely; and that same build,
+measured later at the other end of its sixty-second day, at **84% of the frame near-black across
+98% of the border**. Nothing was flaky. The clock had moved.
+
+So state the hour rather than accepting it. Two flags, both the `--eval` path with the timing
+moved:
+
+```bash
+node tools/look.mjs http://localhost:5173 --advance 30s      # half a day later
+node tools/look.mjs http://localhost:5173 --at '__lattice.setHour(3)'
+```
+
+`--advance` shifts the page's wall clock — `Date.now()` and `new Date()` — before the first line
+of the page runs. It reaches a cycle read off that clock, `(Date.now() % DAY_MS) / DAY_MS`, which
+is the shape a game with offline progress already has. **It does not reach a cycle accumulated
+from `dt` inside `update`**, and cannot: the loop clamps a jump to `maxCatchUpMs` on purpose.
+Those games need `--at`, which runs an expression in the page before the capture — so give the
+harness something to call, next to `order` and `loop` on `__lattice`.
+
+Two looks, half a cycle apart, is the floor. **If the two reports' `anything` line is identical,
+the clock never moved**: the flag did not reach this game and you still have one sample, not two.
+
+---
+
 ## The loop
 
 1. `npm run check` — a type error is a wrong game, not a red squiggle.
-2. Look, by the best rung you have.
+2. Look, by the best rung you have — and if there is a day cycle, at both ends of it.
 3. **Read the console.** Warnings from `@latticekit/*` are written for you and usually name the
    exact mistake — `input`'s covered-by-overlay diagnostic, `draw`'s missing light field, `iso`'s
    "you did not call sort()". Rung 3 collects these for you into the `console` row.
@@ -236,8 +263,9 @@ To reach either from a script, hang them off the window in your boot — one lin
 difference between a blind agent that can ask questions and one that cannot:
 
 ```ts
-// dev only: gives the looking harness something to ask
-(globalThis as Record<string, unknown>).__lattice = { loop, order, camera };
+// dev only: gives the looking harness something to ask — and, if there is a day cycle,
+// something to set, so `--at '__lattice.setHour(3)'` can put the world at its worst hour
+(globalThis as Record<string, unknown>).__lattice = { loop, order, camera, setHour };
 ```
 
 ```bash

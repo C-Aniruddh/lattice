@@ -211,6 +211,45 @@ is right before a single frame has run.
 
 ---
 
+## Legibility is a number, and the number is 4.5
+
+**Contrast ratio 4.5:1 for HUD text against whatever is behind it — 3:1 only at 24 px, or 19 px
+bold.** Those are the floors to design to, and you **read the ratio off the looking harness**
+rather than judging it by eye: `look.mjs`'s `legibility` row prints one ratio per DOM text node.
+
+The eye is the wrong instrument here, and that is the finding rather than an aside. An agent that
+drove a browser itself, screenshotted, and found and fixed four real defects that way still
+shipped a HUD whose five rows measured **1.58, 1.97, 1.76, 2.16 and 2.53**. It saw none of them,
+because **low contrast reads as atmosphere rather than as a defect** — over a world that is
+beautiful, dim lettering looks like a deliberate hush. The harness caught all five in one run.
+
+The two floors are not the same bar, so do not read a green row as a comfortable HUD. `look.mjs`
+fails below **3**, the weaker floor: in that same HUD a sixth node measured **3.1** — a passing
+row, still under the floor for the size it was set at. A passing `legibility` row says nothing is
+invisible; it does not say anything is easy to read.
+
+**And the trap is the section directly above.** A HUD styled from `--lattice-*` takes both its ink
+and its ground from the world's palette, so its contrast is a *function of the hour* — legible at
+noon and failing at dusk with no line of code changing. That is exactly what those five rows were:
+`color: color-mix(in srgb, var(--lattice-warn) 70%, #fff)` over
+`background: color-mix(in srgb, var(--lattice-night) 62%, transparent)` — two colors that move
+together, with the canvas showing through the gap between them. Measured twice across that game's
+four-minute cycle, with nothing changed in between: the title went **1.58 → 1.10** and the clear
+button **2.16 → 1.11**, while two other rows went **2.53 → 14.1**. Same build, different hour.
+
+Two ways out, and the first is usually right:
+
+1. **Anchor one side.** An opaque panel background that does not come from the palette, or a fixed
+   ink. One end held still turns a ratio that moves all day into one with a worst case you can
+   compute once.
+2. **Check both ends.** If both sides must move, measure at both ends of the cycle rather than at
+   whichever hour was on screen — the looking reference carries the flag that forces the phase.
+
+`art`'s fills-versus-outlines table is this same failure one layer down: `ink` chosen as a *fill*
+makes a building unreadable, this makes *text* unreadable, and no compiler sees either.
+
+---
+
 ## What `ui` does not have, so you stop looking for it
 
 **No button. No toggle. No segmented control. No slider.** The package ships `roll`, `panel`,
@@ -239,9 +278,6 @@ that still takes taps behind the dialog, and nothing at all for a keyboard-only 
   `left`, `top`, `z-index`, `pointer-events` and `display`** — plus custom properties. Nothing
   decorative: no color, no font, no radius, no shadow. That list is a test, and it is the boundary
   between "primitives" and "a look you have to fight".
-- **`clip-path` clips the border and the box-shadow too.** A hairline on a clipped card has to be
-  a second clipped layer inset by a pixel — and it must be `::before` rather than `::after`,
-  because `::after` is the last child and would paint over the card's own text.
 - **`setText` writes only on change and returns whether it did.** That guard replaced 37
   hand-written `lastX` fields in one game and costs 22 ns when nothing moved.
 - **Everything returns a disposer or a handle with `destroy()`**, and everything is registered on
@@ -261,6 +297,7 @@ that still takes taps behind the dialog, and nothing at all for a keyboard-only 
 | taps on the world rather than on a button | `input` |
 | what the numbers mean | `economy` |
 | the status a message is reporting | `saving` |
+| running the harness that prints those ratios | the `lattice` skill's `references/looking.md` |
 
 Long form, on disk: `node_modules/@latticekit/ui/README.md` — including the full list of class names
 your stylesheet may hold on to.

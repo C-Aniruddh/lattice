@@ -72,7 +72,35 @@
  * node tools/looking/look.mjs http://localhost:5173
  * node tools/looking/look.mjs http://localhost:5173 --json --out shots/
  * node tools/looking/look.mjs http://localhost:5173 --eval 'window.__lattice.order.count'
+ * node tools/looking/look.mjs http://localhost:5173 --advance 30s          # half a day later
+ * node tools/looking/look.mjs http://localhost:5173 --at '__lattice.setHour(3)'
  * ```
+ *
+ * ## Choosing the hour rather than accepting it
+ *
+ * A day cycle has a worst hour and an author sees whichever hour was on screen when they looked.
+ * One stranger's game was verified by its author at dawn, where it is lovely, and measured **84%
+ * of the frame near-black across 98% of the border** when this script was later pointed at the
+ * same build. Nothing was flaky; the clock had moved.
+ *
+ * So there are two ways to say *when*, and both are the `--eval` path with the timing moved:
+ *
+ * - `--advance DURATION` shifts the page's wall clock forward — `Date.now()` and `new Date()` —
+ *   with the patch installed **before the first line of the page runs**, so the game is born at
+ *   that hour rather than jolted to it. (Applying it after load instead makes any "has the day
+ *   rolled over?" latch fire on the jump. Measured on the orchard above: the same shift applied
+ *   mid-run opens its end-of-day panel over the scene, and the report then describes the panel —
+ *   `motion 0.00%`, six legibility rows failing against a scrim — rather than the game.)
+ * - `--at EXPRESSION` runs an expression in the page after load and before the capture, on the
+ *   same `Runtime.evaluate` call `--eval` already uses. For a game that exposes its own phase.
+ *
+ * **`--advance` is narrow, and knowingly so.** It reaches a cycle read off the wall clock —
+ * `(Date.now() % DAY_MS) / DAY_MS`, which is the shape a game with offline progress already has.
+ * It does **not** reach a cycle accumulated from `dt` inside `loop.onUpdate`, and cannot: the loop
+ * clamps a jump to `maxCatchUpMs` (250 ms) on purpose, so a shifted monotonic clock would buy
+ * 250 ms of daylight and a corrupted `worstGapMs` reading. Those games need `--at` and a hook.
+ * An expression that throws exits `2` — being unable to reach the hour you asked for is a failure
+ * to look, never a passing game.
  *
  * Exit code is `0` when every row passed, `1` when a row failed (so `&&` works), and `2` when
  * the script itself could not run — a missing Chrome is a `2`, never a `1`, because "I could not
@@ -748,13 +776,65 @@ const LIMITS = {
   textVisibleRange: 0.04,
 };
 
+/**
+ * `30s`, `1500ms`, `2m`, or a bare number of milliseconds → milliseconds.
+ *
+ * A duration with no unit is milliseconds because that is what every other number on this command
+ * line is; a duration with the wrong unit is a `2` rather than a silent thousandfold miss.
+ */
+function parseDuration(text) {
+  const match = /^(-?\d+(?:\.\d+)?)(ms|s|m)?$/.exec(String(text).trim());
+  if (!match) {
+    throw Object.assign(
+      new Error(`look: --advance wants a duration like 30s, 1500ms or 2m — got ${String(text)}`),
+      { fatal: true },
+    );
+  }
+  const scale = match[2] === 's' ? 1000 : match[2] === 'm' ? 60_000 : 1;
+  return Number(match[1]) * scale;
+}
+
+/**
+ * The wall clock, moved. Installed at document start so the page is *born* at that hour.
+ *
+ * Only `Date` — deliberately. `performance.now()` is the monotonic clock the loop measures itself
+ * with, and shifting it neither advances a `dt`-accumulated cycle (the loop's catch-up clamp eats
+ * the jump) nor leaves `worstGapMs` worth reading.
+ */
+const clockShift = (ms) => `(() => {
+  const SHIFT = ${ms};
+  const RealDate = Date;
+  const now = () => RealDate.now() + SHIFT;
+  function ShiftedDate(...args) {
+    if (new.target === undefined) return new RealDate(now()).toString();
+    return args.length === 0 ? new RealDate(now()) : new RealDate(...args);
+  }
+  ShiftedDate.prototype = RealDate.prototype;
+  Object.setPrototypeOf(ShiftedDate, RealDate);
+  ShiftedDate.now = now;
+  globalThis.Date = ShiftedDate;
+})()`;
+
 function parseArgs(argv) {
-  const args = { url: null, out: null, evals: [], json: false, settleMs: 1500, gapMs: 1000, width: 1280, height: 800 };
+  const args = {
+    url: null,
+    out: null,
+    evals: [],
+    at: [],
+    advanceMs: 0,
+    json: false,
+    settleMs: 1500,
+    gapMs: 1000,
+    width: 1280,
+    height: 800,
+  };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--json') args.json = true;
     else if (arg === '--out') args.out = argv[++i];
     else if (arg === '--eval') args.evals.push(argv[++i]);
+    else if (arg === '--at') args.at.push(argv[++i]);
+    else if (arg === '--advance') args.advanceMs = parseDuration(argv[++i]);
     else if (arg === '--settle') args.settleMs = Number(argv[++i]);
     else if (arg === '--gap') args.gapMs = Number(argv[++i]);
     else if (arg === '--size') {
@@ -850,6 +930,11 @@ async function look(args) {
     await session.send('Log.enable');
     await session.send('Page.enable');
 
+    const advanceMs = args.advanceMs ?? 0;
+    if (advanceMs !== 0) {
+      await session.send('Page.addScriptToEvaluateOnNewDocument', { source: clockShift(advanceMs) });
+    }
+
     const loaded = new Promise((resolve) => session.on('Page.loadEventFired', resolve));
     const navigation = await session.send('Page.navigate', { url: args.url });
     if (navigation.errorText) {
@@ -861,6 +946,27 @@ async function look(args) {
       );
     }
     await Promise.race([loaded, wait(15000)]);
+
+    // Before the settle, so whatever the expression moved has the same time to come to rest that
+    // the opening frame gets. A `--at` that throws is fatal: the hour asked for was not reached,
+    // and reporting the hour that happened to be on screen instead is the exact mistake this flag
+    // exists to prevent.
+    for (const expression of args.at ?? []) {
+      const result = await session.send('Runtime.evaluate', {
+        expression,
+        returnByValue: true,
+        awaitPromise: true,
+      });
+      if (result.exceptionDetails) {
+        const why =
+          result.exceptionDetails.exception?.description ?? result.exceptionDetails.text;
+        throw Object.assign(
+          new Error(`look: --at '${expression}' threw — ${String(why).split('\n')[0]}`),
+          { fatal: true },
+        );
+      }
+    }
+
     await wait(args.settleMs);
 
     const shoot = async () => {
@@ -907,6 +1013,7 @@ async function look(args) {
       url: args.url,
       frame: { width: frameA.width, height: frameA.height },
       gapMs: args.gapMs,
+      at: { advanceMs, expressions: [...(args.at ?? [])] },
       background: backgroundOf(frameA),
       luminance: luminanceOf(frameA),
       motion: motionBetween(frameA, frameB),
@@ -964,7 +1071,14 @@ function judge(report) {
 }
 
 function render(report, rows) {
-  const lines = [`looked at ${report.url} — ${report.frame.width}×${report.frame.height}`, ''];
+  // The hour is in the heading rather than in a row of its own. It is an *input*, and a row that
+  // reports an input has a verdict column it can never earn — which is how a report acquires a
+  // line an agent learns to skip.
+  const when =
+    report.at.advanceMs !== 0 ? ` — wall clock +${(report.at.advanceMs / 1000).toFixed(1)}s` : '';
+  const lines = [`looked at ${report.url} — ${report.frame.width}×${report.frame.height}${when}`, ''];
+  for (const expression of report.at.expressions) lines.push(`  at    ${expression}`);
+  if (report.at.expressions.length) lines.push('');
   for (const row of rows) {
     lines.push(`  ${row.verdict === 'pass' ? 'pass' : 'FAIL'}  ${row.name.padEnd(11)} ${row.detail}`);
   }
@@ -985,9 +1099,18 @@ function render(report, rows) {
 
 const isMain = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
 if (isMain) {
-  const args = parseArgs(process.argv.slice(2));
+  let args;
+  try {
+    args = parseArgs(process.argv.slice(2));
+  } catch (err) {
+    process.stderr.write(`${err.message}\n`);
+    process.exit(2);
+  }
   if (!args.url) {
-    process.stderr.write('usage: node look.mjs <url> [--json] [--out DIR] [--eval EXPR] [--size WxH]\n');
+    process.stderr.write(
+      'usage: node look.mjs <url> [--json] [--out DIR] [--eval EXPR] [--size WxH]\n' +
+        '                     [--advance DURATION] [--at EXPR]\n',
+    );
     process.exit(2);
   }
   try {

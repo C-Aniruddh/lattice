@@ -28,10 +28,21 @@ if (mode === 'throws') { setTimeout(() => { null.beacon.light(); }, 100); }
 // canvas with no size — six ordinary causes, one picture, and this is that picture.
 if (mode === 'blank') { document.getElementById('hud').innerHTML = ''; }
 
+// `cycle` is a day/night game whose hour comes off the wall clock — `(Date.now() % DAY_MS)`,
+// which is the shape a game with offline progress already has. It is a good frame at one end of
+// the cycle and a near-black one at the other, so the only thing separating a pass from a fail is
+// *when* somebody looked. That is the whole of finding S16, in fifteen lines.
+const DAY_MS = 60000;
+const BACKDROP = [10, 20, 32];
+const sunNow = () => 0.5 + 0.5 * Math.cos(((Date.now() % DAY_MS) / DAY_MS) * Math.PI * 2);
+const dim = (rgb, sun) =>
+  `rgb(${BACKDROP.map((b, i) => (b + (rgb[i] - b) * sun) | 0).join(',')})`;
+
 let t = 0;
 function frame() {
   if (mode === 'blank') { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, c.width, c.height); requestAnimationFrame(frame); return; }
   const w = c.width, h = c.height;
+  const sun = mode === 'cycle' ? sunNow() : 1;
   ctx.fillStyle = '#0a1420';
   ctx.fillRect(0, 0, w, h);
 
@@ -48,16 +59,29 @@ function frame() {
       const x = cx + (gx - gy) * tw / 2;
       const y = cy + (gx + gy - rows) * th / 2;
       const lit = 0.35 + 0.5 * Math.abs(Math.sin((gx * 0.4 + gy * 0.3 + t * 0.02)));
-      ctx.fillStyle = `rgb(${(40 * lit) | 0},${(120 * lit) | 0},${(96 * lit) | 0})`;
+      ctx.fillStyle = dim([40 * lit, 120 * lit, 96 * lit], sun);
       ctx.beginPath();
       ctx.moveTo(x, y - th / 2); ctx.lineTo(x + tw / 2, y);
       ctx.lineTo(x, y + th / 2); ctx.lineTo(x - tw / 2, y);
       ctx.fill();
       // Roofs. In `darkroofs` the roof color is the outline slot, so half of them vanish.
       if ((gx * 7 + gy * 13) % 11 === 0) {
-        ctx.fillStyle = mode === 'darkroofs' ? '#0b0f14' : '#c96f3a';
+        ctx.fillStyle = mode === 'darkroofs' ? '#0b0f14' : dim([201, 111, 58], sun);
         ctx.fillRect(x - tw / 4, y - th - tw / 3, tw / 2, tw / 3);
       }
+    }
+  }
+  // Lamps, in `cycle` only. They keep the night frame from being flat — so the row that fails at
+  // midnight is `framing` and nothing else, which is the point: this is not a blank screen, it is
+  // a world that disappeared into its own darkness.
+  if (mode === 'cycle') {
+    for (let i = 0; i < 60; i++) {
+      // On the clock, not on the frame counter. Headless Chrome runs rAF unthrottled — measured
+      // here at about 125 Hz — and a per-frame phase step of 0.05 rad aliases against a one-second
+      // gap almost exactly, so the lamps came back byte-identical and `motion` read 0.00%.
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.0015 + i);
+      ctx.fillStyle = `rgb(${(200 + 55 * pulse) | 0},${(150 + 60 * pulse) | 0},${(60 + 40 * pulse) | 0})`;
+      ctx.fillRect(((i * 149) % 61) / 60 * (w - 10), ((i * 97) % 37) / 36 * (h - 10), 9, 9);
     }
   }
   if (mode !== 'static') t += 1;
