@@ -23,6 +23,13 @@
  * state lives in the closure the caller already has, and nobody holds a registry or sets a
  * `pickable` flag.
  *
+ * **What this file holds is the camera, not the geometry.** Every function here starts by asking
+ * the camera where a screen pixel is in the world and then does something a camera has no part
+ * in: a floor, a polygon crossing count, or — for the terrain answer — `worldToTileOnHeights`,
+ * which lives in `height.ts` because it wants a world point rather than a viewport. That split is
+ * what lets `@latticekit/input` reach the same march against the transform it froze when the tick
+ * opened, and it is why nothing in this file marches a heightfield itself.
+ *
  * **Never cache hit boxes during the draw pass.** An earlier version of the source game
  * recorded tap targets while painting, so any frame the renderer did not run — a backgrounded
  * tab, a throttled `requestAnimationFrame`, a paused loop — left the game visibly showing
@@ -34,7 +41,7 @@ import type { Camera } from './camera.js';
 import type { Tile } from './projection.js';
 import { HALF_H, HALF_W } from './projection.js';
 import type { HeightField } from './height.js';
-import { heightAt } from './height.js';
+import { worldToTileOnHeights } from './height.js';
 
 /**
  * The tile under a screen point, on flat ground. **The exact inverse of `gridToScreen` at
@@ -58,24 +65,6 @@ export function screenToTile(camera: Camera, sx: number, sy: number, out: Tile):
 }
 
 /**
- * How finely the terrain march refines its answer once it has a bracket: `2⁻¹²` of the
- * bracket, which is a fifth of a thousandth of a tile at any sane `stepPx`.
- *
- * A fixed iteration count rather than a tolerance, because the same tap must resolve to the
- * same tile on a slow phone and a fast desktop, and a loop that stops when it is "close
- * enough" stops after a different number of steps when the arithmetic is the same but the
- * clock is not — that is a replay divergence with no stack trace.
- */
-const MARCH_REFINEMENTS = 12;
-
-/** Height of the terrain surface at the world point that a raised point `t` above the ground
- *  would project onto, minus `t`. Zero exactly where the screen ray meets the ground. */
-function surfaceGap(field: HeightField, wx: number, wy: number, t: number): number {
-  const y = wy + t;
-  return heightAt(field, (wx / HALF_W + y / HALF_H) / 2, (y / HALF_H - wx / HALF_W) / 2) - t;
-}
-
-/**
  * The tile under a screen point **on a heightfield**, or `false` if the ray leaves the map.
  *
  * Needed because the projection stops being invertible once terrain has height: raising a
@@ -83,19 +72,25 @@ function surfaceGap(field: HeightField, wx: number, wy: number, t: number): numb
  * pixel*, so screen → (grid, z) is one equation short of solvable and {@link screenToTile}
  * will confidently return the flat-ground answer.
  *
- * So this marches instead. A screen pixel corresponds to a whole family of candidate ground
- * positions, one for each elevation `t`: larger `t` means a candidate nearer the viewer. The
- * surface the player can *see* is the nearest one, so the march starts at `maxHeightPx` and
- * works down, taking the first elevation at which the terrain actually reaches the ray, then
- * refines the bracket by bisection — the terrain is bilinear and therefore continuous, which
- * is what makes bisection sound here.
+ * **This is `worldToTileOnHeights` with a camera in front of it, and the camera is the entire
+ * difference.** The march lives in `height.ts` rather than here because it does not want a
+ * camera: once a caller holds a world point the answer is pure heightfield geometry, and the
+ * caller that needs it most — `@latticekit/input` — resolves every event against the transform it
+ * froze as the tick opened, so it has no live camera to hand in. Held as two copies of one
+ * bisection the two would drift, and the symptom would be a tap that disagrees with the hover
+ * ring drawn under it, with each package's suite green against its own copy. Composed, they
+ * cannot. Why the march starts high and walks down, and why it bisects rather than stops at a
+ * tolerance, is documented once, on `worldToTileOnHeights`.
  *
  * @param maxHeightPx The tallest terrain on the map, in world pixels, which bounds where the
  *   march starts. Pass it: too small and the march begins below a peak and misses it, too
  *   large and every tap scans ground that is not there. Negative or non-finite throws.
- * @returns `true` with `out` filled, or `false` — leaving `out` untouched — when the pixel
- *   resolves to a tile the field does not define. `false` rather than a plausible tile,
- *   because a tap on the sky that selects the shore is worse than a tap that does nothing.
+ * @returns `true` with `out` filled, or `false` — leaving `out` untouched — when the ray leaves
+ *   the field before it meets ground, or resolves to a tile `heights.has` does not define.
+ *   `false` rather than a plausible tile, because a tap on the sky that selects the shore is
+ *   worse than a tap that does nothing. **A source whose `has` answers `true` everywhere can
+ *   only report the first of those**, which is why an unbounded procedural field needs a real
+ *   bound written into it before a tap on the horizon is trusted.
  */
 export function screenToTileOnHeights(
   camera: Camera,
@@ -105,54 +100,14 @@ export function screenToTileOnHeights(
   maxHeightPx: number,
   out: Tile,
 ): boolean {
+  // Restated rather than inherited from `worldToTileOnHeights`: the message has to name the call
+  // the caller actually wrote, or it sends them looking for a function they have never heard of.
   if (!(Number.isFinite(maxHeightPx) && maxHeightPx >= 0)) {
     throw new RangeError(
       `screenToTileOnHeights: expected maxHeightPx to be a finite number >= 0, got ${String(maxHeightPx)}`,
     );
   }
-  const wx = camera.toWorldX(sx);
-  const wy = camera.toWorldY(sy);
-
-  // One step per grid unit of travel along the ray: HALF_H world pixels of elevation move the
-  // candidate ground point exactly one unit of `gx + gy` towards the viewer, so no tile of the
-  // march can be skipped.
-  let hi = maxHeightPx;
-  let gapHi = surfaceGap(field, wx, wy, hi);
-  let lo = hi;
-  let gapLo = gapHi;
-  if (gapHi < 0) {
-    const steps = Math.ceil(maxHeightPx / HALF_H);
-    let found = false;
-    for (let i = 1; i <= steps; i++) {
-      // The final step is written as an exact zero rather than `max - steps*max/steps`,
-      // which is not reliably exact in floating point and would leave the ground plane a
-      // hair above where it is.
-      lo = i === steps ? 0 : maxHeightPx - (i * maxHeightPx) / steps;
-      gapLo = surfaceGap(field, wx, wy, lo);
-      if (gapLo >= 0) {
-        found = true;
-        break;
-      }
-      hi = lo;
-      gapHi = gapLo;
-    }
-    if (!found) return false;
-    // Bisect the bracket. `gapLo >= 0 > gapHi` and the surface is continuous, so the crossing
-    // is between them and stays between them at every step.
-    for (let i = 0; i < MARCH_REFINEMENTS; i++) {
-      const mid = lo + (hi - lo) / 2;
-      if (surfaceGap(field, wx, wy, mid) >= 0) lo = mid;
-      else hi = mid;
-    }
-  }
-
-  const y = wy + lo;
-  const gx = Math.floor((wx / HALF_W + y / HALF_H) / 2);
-  const gy = Math.floor((y / HALF_H - wx / HALF_W) / 2);
-  if (!field.heights.has(gx, gy)) return false;
-  out.gx = gx;
-  out.gy = gy;
-  return true;
+  return worldToTileOnHeights(field, camera.toWorldX(sx), camera.toWorldY(sy), maxHeightPx, out);
 }
 
 /**

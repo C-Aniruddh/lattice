@@ -162,11 +162,29 @@ export function setTokens(ui: Overlay, tokens: Readonly<Record<string, string>>)
  * has to darken with the world — a HUD glowing in its daytime colors over a night scene is the
  * most obvious way an overlay reveals itself as a layer bolted on top.
  *
- * **Write it from `update`, never from `render`.**
+ * **Write it from `update`, never from `render`**, and reach it through one of `@latticekit/draw`'s
+ * two bridges — never through `draw`'s `Palette` itself:
  *
  * ```ts
+ * // a game that draws already holds a live palette: `paletteVars` is the bridge
+ * ui.every(() => applyPalette(ui, paletteVars(palette)));
+ *
+ * // an overlay with no canvas behind it can blend two stop sets directly
  * ui.every(() => applyPalette(ui, lerpPalette(DAY, NIGHT, world.dayT)));
  * ```
+ *
+ * **`paletteVars` is not ceremony.** `draw`'s `Palette` is live state with a `rev` and a `get`;
+ * the {@link Palette} *this* function takes is a flat bag of name → CSS string. Passing the live
+ * object straight in is a type error, and it is one on purpose: they are two different things
+ * that share a word, and nothing here would catch it at runtime. The keys of a live palette are
+ * `rev`, `get`, `set`, …, so the overlay would receive a `--lattice-rev`, six stringified
+ * functions, and not one color.
+ *
+ * **If a canvas is behind the overlay, both must be asked the same question.** `draw`'s
+ * `palette.lerp(from, to, t)` and its `lerpPalette(from, to, t)` are built to round `t` the same
+ * way, so they cannot land on different colors for one `t` — which is no help whatever if the
+ * world is given one `t` and the HUD another, and dusk is the one moment where a mismatch is
+ * both unmissable and impossible to name.
  *
  * Three properties make that correct rather than merely cheap:
  *

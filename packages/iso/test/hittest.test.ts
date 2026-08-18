@@ -21,6 +21,7 @@ import { createCamera, gridToScreen } from '../src/camera.js';
 import { HALF_H, HALF_W, gridToWorldX, gridToWorldY, rectSet } from '../src/projection.js';
 import type { Rect, Tile } from '../src/projection.js';
 import { TileGrid, tileSourceOf } from '../src/tilemap.js';
+import { worldToTileOnHeights } from '../src/height.js';
 import type { HeightField } from '../src/height.js';
 
 const rect = (): Rect => ({ minX: 0, minY: 0, maxX: 0, maxY: 0 });
@@ -330,6 +331,69 @@ describe('screenToTileOnHeights', () => {
     }
     screenToTileOnHeights(cam, 231, 187, field, 24, b);
     expect(b).toEqual(a);
+  });
+
+  it('is the camera and nothing else — every answer is `worldToTileOnHeights` on the same point', () => {
+    // The reduction, stated as a property rather than trusted to a reader diffing two functions.
+    // This used to be two copies of one bisection — one here, one in `height.ts` — and the pin
+    // lived downstream in `packages/input/test/terrain.test.ts` because that is the package the
+    // drift would have hurt. Now the composition is the implementation, and the invariant belongs
+    // to the package that owns both halves. A hover ring drawn from this call and a tap resolved
+    // through the other must land on one tile; a `false` from either must be a `false` from both.
+    const wave = (x: number, period: number): number => {
+      const half = period / 2;
+      const at = ((x % period) + period) % period;
+      return at < half ? at : period - at;
+    };
+    const grid = new TileGrid(48, 48, { originGx: -24, originGy: -24 });
+    grid.fillFrom((gx, gy) => wave(gx + 24, 18) + wave(gy + 24, 12) - 2);
+    const field: HeightField = { heights: grid, stepPx: 6 };
+    const cam = createCamera(800, 600, { bounds: huge(), minZoom: 0.25, maxZoom: 4 });
+    cam.centerOnTile(4, 6);
+    const a = tile();
+    const b = tile();
+    let offMap = 0;
+    let onMap = 0;
+    for (const zoom of [0.4, 1, 2.75]) {
+      cam.zoomAt(zoom / cam.zoom, 400, 300);
+      for (let sx = -40; sx <= 840; sx += 37) {
+        for (let sy = -40; sy <= 640; sy += 29) {
+          for (const maxHeightPx of [0, 48, 150]) {
+            const hit = screenToTileOnHeights(cam, sx, sy, field, maxHeightPx, a);
+            const same = worldToTileOnHeights(
+              field,
+              cam.toWorldX(sx),
+              cam.toWorldY(sy),
+              maxHeightPx,
+              b,
+            );
+            expect(same).toBe(hit);
+            if (hit) {
+              // `toBe` per component, not `toEqual` on the pair: equivalent is not the claim,
+              // identical is, and a shifted picking coordinate is the bug this guards.
+              expect(a.gx).toBe(b.gx);
+              expect(a.gy).toBe(b.gy);
+              onMap += 1;
+            } else offMap += 1;
+          }
+        }
+      }
+    }
+    // Both branches were actually taken, or the sweep proves only that two functions agree about
+    // nothing. A sweep that never leaves the map cannot see a disagreement about leaving it.
+    expect(onMap).toBeGreaterThan(100);
+    expect(offMap).toBeGreaterThan(10);
+  });
+
+  it('refuses the bad maximum before it asks the camera anything', () => {
+    // The guard is restated here rather than inherited from `worldToTileOnHeights`, so the
+    // message names the call the caller wrote. A `worldToTileOnHeights:` prefix on a
+    // `screenToTileOnHeights` mistake sends them looking for a function they never called.
+    const field: HeightField = { heights: tileSourceOf(() => 0), stepPx: 8 };
+    const cam = createCamera(400, 400, { bounds: huge() });
+    expect(() => screenToTileOnHeights(cam, 0, 0, field, -1, tile())).toThrow(
+      /^screenToTileOnHeights: /,
+    );
   });
 
   it('uses HALF_H-sized steps, so a one-tile-wide spike cannot be stepped over', () => {

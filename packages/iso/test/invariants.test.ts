@@ -309,9 +309,12 @@ describe('I15: nothing on the per-frame path allocates', () => {
       'gridToScreen',
     ],
     'depth.ts': ['add', 'addPoint', 'sort', 'indexAt', 'pickSorted'],
-    'height.ts': ['heightAt', 'slopeAt'],
+    // `surfaceGap` is listed here rather than in `hittest.ts` because that is where it lives:
+    // the terrain march is one march, `screenToTileOnHeights` is `camera → world → this file`,
+    // and the copy that used to sit beside the camera is gone.
+    'height.ts': ['heightAt', 'slopeAt', 'surfaceGap'],
     'anchor.ts': ['anchorToScreen', 'anchorVisible', 'anchorPan'],
-    'hittest.ts': ['screenToTile', 'surfaceGap', 'boxSilhouette', 'pointInPolygon', 'pointInTile'],
+    'hittest.ts': ['screenToTile', 'boxSilhouette', 'pointInPolygon', 'pointInTile'],
     'path.ts': ['pathSample', 'pathDirAt', 'dirCodeOf', 'octile', 'segmentWorst'],
     'heap.ts': ['push', 'pop', 'sortIndicesByKey'],
     'tilemap.ts': ['class TileGrid::get', 'class TileGrid::has'],
@@ -329,7 +332,7 @@ describe('I15: nothing on the per-frame path allocates', () => {
         checked += 1;
       }
     }
-    // 14 projection + 15 camera + 5 depth + 2 height + 3 anchor + 5 hittest + 5 path + 3 heap
+    // 14 projection + 15 camera + 5 depth + 3 height + 3 anchor + 4 hittest + 5 path + 3 heap
     // + 2 tilemap. It was 56 when `tilemap` listed a second storage class's `get` and `has`
     // as well; that class was deleted by K22 and `docs/rfc/chunkgrid.md` says why. Recount
     // from the list above when you change it — do not fit the number to the failure.
