@@ -20,7 +20,9 @@ write one of these.
 |---|---|
 | a black or one-color screen | camera never framed · `sort()` never called · darkness at 1 with no lights · light field not on the pen · a canvas with no size · a fractional grid index |
 | the tap opens the thing *behind* the one under the finger | something reordered after `sort()`, or two collections and an offset |
-| taps miss on hills, and by more the higher the hill | `ActionEvent.gx/gy` — the flat-ground answer |
+| taps land uphill or downhill of where the finger was, by more the higher the hill | `createInput` was never told about the terrain, so every `gx`/`gy` is the sea-level answer |
+| a sculpting brush slides off the far side of a hill while the hand holds still | the same, on ground that moves: the error tracks the height under the pointer |
+| something got placed at `NaN`, and no bounds check said anything | `onGround` unchecked on a system that *does* declare terrain |
 | taps miss on tall things specifically | `spriteVolume` called without the ground |
 | art floats above or sinks below its hill | `drawSprite`'s ground argument omitted |
 | a building renders near-black, or one glows all night | a palette slot used as the wrong kind — `ink` and `night` are not fills, and `warn`/`ok`/`bad` do not darken |
@@ -108,8 +110,7 @@ The default outcome of a from-scratch build: a small complete world dead center,
 four sides, two thirds of the opening frame background. It reads as a *model* of a place at every
 zoom, because the problem is not the zoom — the world ran out before the frame did. The call that
 does it is `camera.fitBounds(worldRect)`: fit a *region* instead, and size the map against the
-viewport. Eleven exhibits were rebuilt against the five rows in `starting`, and extent is the one
-that is expensive to change later.
+viewport. The five rows are in `starting`; extent is the one that is expensive to retrofit.
 
 ### A moving color is a cache key
 
@@ -130,13 +131,21 @@ exhibit found as 27% of its soft ellipses missing with no flickering light anywh
 
 The tell was never a flicker. It was a game that got slower and stayed slower.
 
-### `ActionEvent.gx/gy` is a flat-ground answer
+### `gx`/`gy` resolve on the ground you declared — and on `z = 0` if you declared none
 
-There is no seam anywhere in the input options for a heightfield, so on sloped ground those
-coordinates are wrong — silently, and by more the taller the terrain. **Measured at 281 px and
-14 tiles** on one hillside; 212–237 px on another; over 1,400 px at one ridge. The error always
-points up the slope. Re-pick from `sx`/`sy` with `screenToTileOnHeights`. Full treatment in the
-`input` and `world` skills.
+Screen → grid inverts on the plane `z = 0` and on no other, so a system told nothing answers with
+the sea-level member of the family of tiles under that pixel: a real tile, next to the right one,
+moving with the pointer, and wrong by more the taller the terrain — **281 px and 14–16 tiles** on
+one slope, 212–237 px on another, always uphill of the finger. On ground the player deforms it is
+not even a constant offset: the error tracks the height under the cursor, so a brush walks off the
+far side of a hill while the hand holds still. **The fix is one option** —
+`terrain: { field, maxHeightPx }` on `createInput`, or `terrain: 'flat'` to say the ground really
+is level. Undeclared, it says so once in the console as `flat-ground-pick`.
+
+The declared version has a new failure of its own: over the sky a gesture reports
+`onGround: false` and `gx`/`gy` of **`NaN`**, every comparison against which is `false`, so a
+handler that skips the check places the building nowhere and no bounds test objects. Check
+`onGround` wherever you used to read `gx` straight. Full treatment in `input`.
 
 ### `loop.stats.worstFrameMs` cannot see a pause between pumps
 
@@ -279,7 +288,8 @@ construction and stripes each bench with the color of the one below it.
 ### `tileSourceOf` answers `has()` true everywhere
 
 Correct for an unbounded world, and `screenToTileOnHeights` uses `has()` as its **only** off-map
-test — so the naive composition of the two never misses. One game reported sculpting grid
+test — which is also what `input`'s `onGround` reports — so the naive composition of the two never
+misses. One game reported sculpting grid
 `(-4000, 900)` from a tap on the sky. Two correct decisions composing into a wrong answer, which
 is a class this kit keeps producing.
 
@@ -317,8 +327,9 @@ Both are deliberate absences, not gaps you are failing to find. The cache was wr
 and deleted — 400 buildings of 42 draw calls each is 2.14 ms, and a perfect cache buys back at
 most 2.1 ms of an 8 ms budget in exchange for four new ways to render something stale. "Cache it"
 is not a move available to you. And `GestureMap` has six members, none of which is a pointer
-position with no button down — a tile highlight that follows the cursor needs a raw `pointermove`
-listener of your own.
+position with no button down — a tile highlight that follows the cursor is `input.hoverTile(out)`,
+asked once per update, and **not** a raw `pointermove` listener of your own, which picks on the
+flat plane again and disagrees with the tap that follows it.
 
 ### Rebuilding the audio engine to change a setting
 

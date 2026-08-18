@@ -65,8 +65,9 @@ export const endless: HeightField = {
 ```
 
 **`tileSourceOf` answers `has()` with `true` everywhere.** That is correct for an unbounded
-world, and it composes into a wrong answer with `screenToTileOnHeights`, which uses `has()` as
-its *only* off-map test. Naively combined, a tap on the empty sky returns a grid coordinate —
+world, and it composes into a wrong answer with `screenToTileOnHeights` — and so with `input`'s
+`onGround`, which is that same test — because `has()` is the *only* off-map check either has.
+Naively combined, a tap on the empty sky returns a grid coordinate —
 one exhibit reported sculpting grid `(-4000, 900)` from one. If your world is bounded, hand-write
 the source with a real bound:
 
@@ -90,53 +91,55 @@ paint it, to find its extremes, to derive a map — keep your own `TileGrid` ref
 
 ---
 
-## Picking on sloped ground — the trap that is silent and gets worse with height
+## Picking on sloped ground — the field has to be declared, or every tap is wrong
 
 Raise a point by half a tile height and it lands on **exactly the same screen pixel** as the
 point one unit of `gx + gy` further away at sea level. So a screen pixel does not name a tile; it
 names a *family* of tiles, and choosing between them needs the heightfield.
 
-**Every `ActionEvent` from `@latticekit/input` carries `gx`/`gy` computed as though the ground were
-flat.** There is no seam anywhere in the input options for a heightfield, so on any map with
-elevation those coordinates are the wrong answer — silently, plausibly, and by more the taller
-the terrain.
-
-Measured, on real exhibits: **281 px and 14 tiles** on one static hillside; **212–237 CSS pixels**
-on another; and about 250 px where one exhibit opens rising to **over 1,400 px at its ridge**.
-The error always points the same way — the naive answer has a *smaller* `gx + gy`, so the pick
-lands several terraces **up the slope** from the finger.
-
-```ts wrong
-// On flat ground this is right. On a hill it is wrong by more the higher the hill,
-// and nothing anywhere reports it.
-import type { ActionEvent } from '@latticekit/input';
-export function place(e: ActionEvent<'touch'>): void {
-  buildAt(e.gx, e.gy);
-}
-declare function buildAt(gx: number, gy: number): void;
-```
+**A game that has a `HeightField` has to hand it to `@latticekit/input`.** Nothing else in the kit
+can: input has no map and no way to acquire one, so told nothing it answers on the plane `z = 0`,
+which is a real tile several terraces **up the slope** from the finger — measured at **281 px and
+14–16 tiles** on one hillside and **212–237 CSS pixels** on another, always uphill, because the
+sea-level answer has the smaller `gx + gy`.
 
 ```ts
-import { screenToTileOnHeights } from '@latticekit/iso';
-import type { Camera, HeightField, Tile } from '@latticekit/iso';
+import { createInput } from '@latticekit/input';
+import type { Camera, HeightField } from '@latticekit/iso';
+import type { Loop } from '@latticekit/loop';
 
-const hit: Tile = { gx: 0, gy: 0 };
-
-/** Re-pick from `sx`/`sy` against the field as it stands. Two things matter here:
- *  — `maxHeightPx` is the march's ceiling. Too small and it silently truncates; at 0 it is
- *    precisely the naive answer.
- *  — the boolean is the off-map test, and it is the reason this returns one. */
-export function pickTile(camera: Camera, land: HeightField, maxHeightPx: number, sx: number, sy: number): Tile | null {
-  return screenToTileOnHeights(camera, sx, sy, land, maxHeightPx, hit) ? hit : null;
+export function wire(
+  canvas: HTMLCanvasElement,
+  camera: Camera,
+  loop: Loop,
+  land: HeightField,
+  maxHeightPx: number,   // MAX_HEIGHT_PX from the block above: the tallest ground, in world px
+): void {
+  createInput({
+    element: canvas,
+    camera,
+    step: loop,
+    // Every gesture, every ActionEvent and `hoverTile` now resolve on the terrain. Over the sky
+    // they report `onGround: false` and NaN, which is what a handler has to check.
+    terrain: { field: land, maxHeightPx },
+    actions: { place: ['tap'] },
+  });
 }
 ```
 
-**If the ground itself moves** — a sculpting game, a terraforming brush — re-pick once per
-**update**, against the field as it stands *this* step, and never once per gesture. Otherwise
-raising ground under the cursor pushes the true tile toward the viewer and the brush walks away
-from the finger exactly as fast as the ridge grows: you make a hill and the brush slides off the
-far side of it while you hold still. It reads as a broken brush rather than as a wrong
-coordinate.
+`input` carries the three states of that option, the `onGround` rule and the live `setTerrain`;
+this skill does not restate them. What is terrain's is the number and the maths: **`maxHeightPx`
+is the march's ceiling**, too small and it silently truncates, and at 0 it is precisely the naive
+answer. For a pick that does not come through `input` at all, `iso.screenToTileOnHeights` is the
+same march exposed directly, with the same ceiling and the same boolean.
+
+**If the ground itself moves** — a sculpting game, a terraforming brush — nothing needs
+re-declaring: `input` holds the field rather than copying it, so ground raised this frame is
+ground the next event resolves on, and `setTerrain` is only for a new field or a ridge that has
+outgrown the old ceiling. Resolve once per **update** against the field as it stands *this* step.
+A brush driven by a coordinate picked on the flat plane walks away from the finger exactly as
+fast as the ridge grows: you make a hill and the brush slides off the far side of it while you
+hold still, which reads as a broken brush rather than as a wrong coordinate.
 
 The march costs about `maxHeightPx / 16` steps plus twelve bisections — measured at roughly
 400 bilinear samples and **under 0.05 ms** on a 1,400-px-tall field. Its **fixed iteration count

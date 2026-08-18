@@ -19,7 +19,7 @@ idea can be told through it.
 | **build** | town, city, farm, base, factory, colony, port, "build", "place", "grow a…" | `starting` `art` `world` `input` `hud` | terrain, and a translucent ghost following the pointer |
 | **idle** | idle, incremental, tycoon, clicker, "while I'm away", money, resources, upgrades | `starting` `art` `economy` `hud` `saving` | one producer, a number rolling up, one button with a price |
 | **crowd** | villagers, ants, traffic, commuters, pilgrims, a queue, "hundreds of…" | `starting` `art` `world` `hud` `performance` | a road with two hundred things already walking it |
-| **terrain** | island, canyon, mountain, river, erosion, dig, sculpt, flood, "the land" | `starting` `art` `world` `performance` | a heightfield under a moving sun |
+| **terrain** | island, canyon, mountain, river, erosion, dig, sculpt, flood, "the land" | `starting` `art` `world` `input` `performance` | a heightfield under a moving sun |
 | **explore** | endless, infinite, wander, roam, procedural, "no edge", "keeps going" | `starting` `art` `world` `performance` | terrain minting itself under a panning camera |
 | **listen** | music, sound, rhythm, hum, chord, tune, instrument, "by ear" | `starting` `art` `sound` `hud` | a lit board humming one note, one thing answering |
 | **story** | rpg, quest, adventure, npc, talk, errand, inventory, "a little world with people" | `starting` `art` `world` `input` `hud` `saving` | a village, and a person you can send somewhere |

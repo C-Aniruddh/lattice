@@ -73,7 +73,9 @@ const input = createInput({
   element: canvas,
   camera,
   step: loop,
-  terrain: { field: hill, maxHeightPx: hill.tallestUnits * hill.stepPx },
+  //                    the tallest ground this field can reach, in world pixels. It bounds the
+  //                    march; too low and a summit tap misses, too high and you pay for nothing.
+  terrain: { field: hill, maxHeightPx: MAX_UNITS * hill.stepPx },
 });
 
 input.onAction('build', (a) => {

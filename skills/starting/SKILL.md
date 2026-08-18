@@ -94,6 +94,9 @@ const input = createInput({
   element: canvas,
   camera,
   step: loop,                                    // the loop itself. Never a number
+  terrain: 'flat',                               // this ground IS level, and says so. The moment
+                                                 // it grows a heightfield: { field, maxHeightPx },
+                                                 // or every tap resolves at sea level. See `input`
   actions: { touch: ['tap'] },
 });
 
@@ -248,7 +251,7 @@ import { createHeadlessInput, fixedStep } from '@latticekit/input';
 import { createCamera } from '@latticekit/iso';
 
 const camera = createCamera(800, 600);
-const input = createHeadlessInput({ camera, step: fixedStep(60), actions: { collect: ['tap'] } });
+const input = createHeadlessInput({ camera, step: fixedStep(60), terrain: 'flat', actions: { collect: ['tap'] } });
 ```
 
 **Build the loop before the input.** That is the whole reason for the order in the boot above.

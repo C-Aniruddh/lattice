@@ -1,6 +1,6 @@
 ---
 name: input
-description: Taps, drags, pinch-zoom, keyboard and camera control in an isometric game. Use for tap to place or select, drag to pan, pinch or wheel to zoom, a placement ghost that follows the pointer, key bindings, "nothing happens when I tap", a tap that hits the wrong thing or the building behind, or taps that miss on hills.
+description: Taps, drags, pinch-zoom, keyboard and camera control in an isometric game. Use for tap to place or select, drag to pan, pinch or wheel to zoom, a placement ghost that follows the pointer, key bindings, "nothing happens when I tap", a tap that hits the wrong thing or the building behind, taps that land uphill or downhill of the finger, or a tile coordinate that comes back NaN.
 ---
 
 # Input
@@ -14,8 +14,9 @@ The two properties that shape everything else:
 - **Input never learns what is in the world.** There is no registry, no rect, no `pickable` flag
   and no hit callback — so an implementation that caches hit boxes during the draw pass cannot
   be built on it, because there is nowhere to put them and nothing that would read one. (In the
-  source game the cached version made every collect bubble untappable in a backgrounded tab,
-  where the draw pass had stopped running and the cached boxes were minutes old.)
+  source game that cache made every collect bubble untappable in a backgrounded tab.) `terrain`
+  is not an exception: a heightfield is the shape of the *ground*, a parameter of the projection
+  in the same sense the camera is, and no hit box can be stored in one or recovered from it.
 - **Gestures are delivered on simulation ticks, never on frames.** So a tap cannot be dropped by
   a slow frame or fired twice on a fast one.
 
@@ -25,18 +26,29 @@ The two properties that shape everything else:
 
 ```ts
 import { createInput } from '@latticekit/input';
-import type { Camera } from '@latticekit/iso';
+import type { Camera, HeightField } from '@latticekit/iso';
 import type { Loop } from '@latticekit/loop';
 
-export function wire(canvas: HTMLCanvasElement, camera: Camera, loop: Loop): void {
+export function wire(
+  canvas: HTMLCanvasElement,
+  camera: Camera,
+  loop: Loop,
+  land: HeightField,
+  maxHeightPx: number,
+): void {
   const input = createInput({
     element: canvas,
     camera,
     step: loop,                    // the loop itself, so the step cannot drift
+    terrain: { field: land, maxHeightPx },   // or 'flat'. Never nothing — see below
     actions: { place: ['tap', 'key:Space'], cancel: ['key:Escape'] },
   });
 
-  input.onAction('place', (a) => { void a.sx; void a.sy; });
+  input.onAction('place', (a) => {
+    if (!a.onGround) return;       // the pointer was on the sky: gx/gy are NaN
+    void a.gx;
+    void a.gy;
+  });
   loop.onUpdate((_dt, tick) => input.tick(tick));
   loop.onRender((_alpha, _time, nowMs) => input.frame(nowMs));
 
@@ -63,56 +75,83 @@ not the tile that was under the finger in the last frame the player actually saw
 
 ---
 
-## `gx`/`gy` on an event is a flat-ground answer
+## The ground, and why `gx`/`gy` depend on it
 
-This is the single most serious correctness trap in the kit, and it is silent.
+`terrain` is the one option with no safe default, so it is the one to decide before you write any
+of the others.
 
-Every `ActionEvent` and every gesture carries `gx`/`gy` resolved through `worldToTile` — **as
-though the ground were flat**. There is no seam anywhere in the input options for a heightfield.
-So on any map with elevation those coordinates are wrong, plausibly, and by more the taller the
-terrain.
+Screen → grid is the exact inverse of the projection **on the plane `z = 0`, and on no other
+plane**. Raise a point by `HALF_H` world pixels and it lands on precisely the same screen pixel as
+the point one unit of `gx + gy` further from the viewer at sea level — so a pixel does not name a
+tile, it names a *family* of them, one per elevation. Told nothing, this package answers with the
+sea-level member. On level ground that is right. On a hillside it is a real tile, next to the
+right one, moving smoothly with the pointer, and **wrong**: measured at **281 px and 14–16 tiles**
+on one exhibit's slope and **212–237 CSS pixels** on another. The error always points the same way
+— up the slope from the finger — because the naive answer has the smaller `gx + gy`.
 
-Measured on real games: **281 px and 14 tiles** on one static hillside; **212 to 237 CSS pixels**
-on another; and about 250 px where one exhibit opens, rising to **over 1,400 px at its ridge**.
-The error always points the same way — up the slope from the finger — because the naive answer
-has the smaller `gx + gy`.
+| you pass | `gx`/`gy` resolve on | `onGround` | write this when |
+|---|---|---|---|
+| `{ field, maxHeightPx }` | the terrain, marched by `iso` | **`false` over the sky or past the field's edge, and `gx`/`gy` are then `NaN`** | the map has any elevation at all |
+| `'flat'` | the plane `z = 0` | always `true` — off the map is still a number there, and `iso` decides what is in bounds | the ground really is level. One word, and it is the whole answer |
+| *omitted* | the plane `z = 0` | always `true` | never on purpose. One `flat-ground-pick` diagnostic, on the first coordinate read |
+
+The third row is the point. This package cannot see your terrain — no map, no registry, no way to
+acquire one — so it cannot detect the mistake, and nothing downstream can either. What it *can*
+tell is that nobody ever said.
+
+**`maxHeightPx` is where the march starts**: the tallest terrain on the map in world pixels,
+`maxUnits × field.stepPx`. Too low and the search begins below a peak and misses it; too high and
+every pick scans ground that is not there. `0` is legal and gives exactly the flat-ground answer,
+which is *not* the same statement as `'flat'`.
+
+### `onGround`, and the `NaN` behind it
+
+On terrain there is no infinite lattice to fall back on — a pixel above the horizon corresponds to
+no ground at all — so the only honest answers are `onGround: false` and `NaN`. Nothing else in the
+kit hands you a `NaN` tile, and no bounds check rejects one: every comparison against it is
+`false`, so the thing is placed, stored and drawn nowhere.
 
 ```ts wrong
 import type { ActionEvent } from '@latticekit/input';
-declare function buildAt(gx: number, gy: number): void;
+declare function place(gx: number, gy: number): void;
 
-// Correct on flat ground. On a hill, wrong by more the higher the hill, and nothing reports it.
+// Right on a flat system, and a NaN entry in the game's state the first time a player
+// drags across the sky on a system that declared a heightfield.
 export function onPlace(e: ActionEvent<'place'>): void {
-  buildAt(e.gx, e.gy);
+  place(e.gx, e.gy);
 }
 ```
 
 ```ts
-import { screenToTileOnHeights } from '@latticekit/iso';
-import type { Camera, HeightField, Tile } from '@latticekit/iso';
 import type { ActionEvent } from '@latticekit/input';
+declare function place(gx: number, gy: number): void;
 
-const hit: Tile = { gx: 0, gy: 0 };
-declare function buildAt(gx: number, gy: number): void;
-
-export function onPlace(
-  e: ActionEvent<'place'>,
-  camera: Camera,
-  land: HeightField,
-  maxHeightPx: number,
-): void {
-  // From sx/sy, never from gx/gy. The boolean is the off-map test.
-  if (screenToTileOnHeights(camera, e.sx, e.sy, land, maxHeightPx, hit)) buildAt(hit.gx, hit.gy);
+export function onPlace(e: ActionEvent<'place'>): void {
+  if (!e.onGround) return;    // above the horizon, or past the edge of the field
+  place(e.gx, e.gy);
 }
 ```
 
-**On flat ground, use `gx`/`gy`** — that is what they are for and they cost nothing. **The moment
-your world has a heightfield, re-pick.** And if the ground itself *moves* — a sculpting brush, a
-terraforming game — re-pick once per **update** against the field as it stands this step, not
-once per gesture: raising ground under the cursor pushes the true tile toward the viewer, so a
-brush driven by `event.gx` walks away from the finger exactly as fast as the ridge grows. You
-make a hill and the brush slides off the far side of it while you hold still, which reads as a
-broken brush rather than as a wrong coordinate.
+`hoverTile` answers the same question with its own boolean and leaves `out` **untouched** over the
+sky, so a placement ghost with nowhere to stand is simply not drawn rather than drawn on the shore.
+
+### Ground that moves
+
+`input.setTerrain({ field, maxHeightPx })` replaces the declaration and keeps every handler, every
+scope and the camera; `input.terrain` reads back what is in force. The field is **held rather than
+copied**, so ground the player raises this frame is ground the next event resolves on — a
+sculpting brush re-declares nothing, and only raises `maxHeightPx` when the ridge outgrows the old
+ceiling. A game whose map is generated after the input system was bound declares it there too.
+
+Unlike `setProfile` and `setActions`, `setTerrain` **does not bump the replay epoch and a
+recording does not refuse it** — terrain is game state that moves during ordinary play, and a
+cursor that refused here would refuse every session in which a player dug a hole. It does throw
+from inside a handler: half a bucket resolved on one surface and half on another is not a thing.
+
+Deformable ground is also where the undeclared version stops looking like a wrong coordinate and
+starts looking like a broken feature. Raising ground under the cursor pushes the true tile toward
+the viewer, so a brush driven by `event.gx` walks off the far side of the hill exactly as fast as
+the ridge grows, while the player's hand holds still.
 
 ---
 
@@ -161,11 +200,10 @@ export function pickAt(
 ```
 
 **`spriteVolume`'s fourth argument is the ground, and omitting it is silent.** Leave it off and
-the volume is measured at sea level while the sprite is painted up the hill: measured at **212 to
-237 CSS pixels** of vertical error on three seeds of one exhibit, every tap there landing in mid
-air. It was half-masked by a hand-written bubble fallback that *did* know the elevation, which is
-why nothing looked broken — the marker still lit, through a circle test that no longer had
-anything to do with what was on screen.
+the volume is measured at sea level while the sprite is painted up the hill: **212 to 237 CSS
+pixels** of vertical error on three seeds of one exhibit, every tap there landing in mid air —
+and nothing looked broken, because a hand-written bubble fallback that *did* know the elevation
+kept lighting the marker through a circle test unrelated to what was on screen.
 
 **After `sort()`, do not reorder.** Not by anything, for any reason. In particular do not
 *partition* — drawing every contact shadow first and every body second looks better and is a
@@ -192,10 +230,11 @@ import type { InputSystem } from '@latticekit/input';
 export function placementMode(input: InputSystem<'place'>): () => void {
   const scope = input.scope();          // a scene holds this, not an array of disposers
   scope.on('drag', (g) => {
-    moveGhost(g.gx, g.gy);
     g.claim();                          // …and the camera will NOT also pan
+    if (!g.onGround) return;            // dragged over the sky: leave the ghost where it was
+    moveGhost(g.gx, g.gy);
   });
-  scope.on('dragend', (g) => commit(g.gx, g.gy));
+  scope.on('dragend', (g) => { if (g.onGround) commit(g.gx, g.gy); });
   return () => scope.dispose();         // everything above, gone
 }
 declare function moveGhost(gx: number, gy: number): void;
@@ -208,11 +247,12 @@ listener is not a thing that can be constructed.
 `claim()` is the trade you have to state out loud. If a drag sculpts, a drag no longer pans, and
 panning has to move to the arrow keys and the pinch. That is a design decision, not a detail.
 
-**There is no hover gesture.** `GestureMap` has six members and none of them is a pointer
-position with no button down — so a tile highlight that follows the cursor, the single most
-common thing an isometric builder does, cannot be built from this package. Two exhibits hit it
-independently. Add a raw `pointermove` listener to the canvas and do the coordinate work
-yourself; it is a known gap, not something you are missing.
+**There is no hover *gesture*.** `GestureMap` has six members and none of them is a pointer
+position with no button down, so a tile highlight that follows the cursor is not a callback you
+can bind — it is `input.hoverTile(out)`, asked once per update. Two exhibits looked for the event
+and did not find it. **Do not answer it with a raw `pointermove` listener of your own**: that
+coordinate is back on the plane `z = 0` and the highlight then disagrees with the tap that
+follows, which is the one thing `hoverTile` going through the same picker guarantees it cannot.
 
 ---
 
@@ -233,8 +273,9 @@ declare function highlight(gx: number, gy: number): void;
 ```
 
 `hoverTile` returns `false` when there is no pointer over the world — which is every touch
-device, always, between taps. **A control that only appears on hover does not exist on a phone**,
-and this signature exists to make that impossible to forget.
+device, always, between taps — and, on a system with terrain, when the pointer is over the sky.
+**A control that only appears on hover does not exist on a phone**, and this signature exists to
+make that impossible to forget.
 
 ---
 
@@ -264,10 +305,9 @@ export function retune(input: InputSystem<'place'>): void {
 **A profile is part of a replay's identity.** The same finger movements under a tap slop of 8 px
 and of 12 px are a different sequence of actions, so a log records which profile it was made
 under and a replay under a different one is refused rather than migrated. Both `setProfile` and
-`setActions` refuse while a recording is open, and `setActions` refuses for a subtler reason: the
-action map is *not* in the compatibility triple, so a mid-recording rebind changes nothing about
-what the log says and everything about what a replay of it does — behind a triple that still
-matches exactly.
+`setActions` refuse while a recording is open — a rebind mid-log changes nothing about what the
+log *says* and everything about what a replay of it *does*. `setTerrain` is the exception above,
+and for the opposite reason.
 
 **The step is deliberately not retunable.** Changing it re-times every gesture and invalidates
 every log; that is a new system, not a knob.
