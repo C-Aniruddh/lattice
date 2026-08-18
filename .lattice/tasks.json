@@ -478,9 +478,9 @@
         "README.md opens with an example that has actually been run",
         "npm run lint -- --fix leaves kit.json accurate"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-builder",
-      "notes": ""
+      "notes": "Closed 2026-08-18, verified in the tree: @latticekit/ui is implemented and published: 11 modules, 48 exports."
     },
     {
       "id": "C1",
@@ -798,9 +798,9 @@
         "a verdict: if direct drawing fits the budget, the cache module is DELETED from the draw RFC rather than built",
         "numbers recorded in docs/PERFORMANCE.md with the machine named"
       ],
-      "status": "merged",
+      "status": "done",
       "owner": null,
-      "notes": "Folded into B3: the draw builder benchmarks first and deletes the cache module if direct drawing fits the budget."
+      "notes": "Folded into B3: the draw builder benchmarks first and deletes the cache module if direct drawing fits the budget. Closed 2026-08-18, verified in the tree: measured; the benchmark deleted the sprite cache and the reasoning is recorded in draw/src/index.ts."
     },
     {
       "id": "E2",
@@ -915,9 +915,9 @@
         "under 250 lines, most of it art; seed comes from the URL",
         "stresses draw iso — report where it fought back and the logic-to-art split"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-designer",
-      "notes": ""
+      "notes": "Closed 2026-08-18, verified in the tree: examples/island ships, under the line cap, in the gallery."
     },
     {
       "id": "G2",
@@ -938,9 +938,9 @@
         "under 250 lines, most of it art; seed comes from the URL",
         "stresses draw — report where it fought back and the logic-to-art split"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-designer",
-      "notes": ""
+      "notes": "Closed 2026-08-18, verified in the tree: examples/city ships, under the line cap, in the gallery."
     },
     {
       "id": "G3",
@@ -961,9 +961,9 @@
         "under 250 lines, most of it art; seed comes from the URL",
         "stresses iso — report where it fought back and the logic-to-art split"
       ],
-      "status": "todo",
+      "status": "done",
       "owner": null,
-      "notes": ""
+      "notes": "Closed 2026-08-18, verified in the tree: examples/terraces ships, under the line cap, in the gallery."
     },
     {
       "id": "G4",
@@ -1030,9 +1030,9 @@
         "under 250 lines, most of it art; seed comes from the URL",
         "stresses draw — report where it fought back and the logic-to-art split"
       ],
-      "status": "todo",
+      "status": "done",
       "owner": null,
-      "notes": ""
+      "notes": "Closed 2026-08-18, verified in the tree: examples/caverns ships, under the line cap, in the gallery."
     },
     {
       "id": "G7",
@@ -1053,9 +1053,9 @@
         "under 250 lines, most of it art; seed comes from the URL",
         "stresses iso — report where it fought back and the logic-to-art split"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-designer",
-      "notes": ""
+      "notes": "Closed 2026-08-18, verified in the tree: examples/crowd ships at 900 walkers, under the line cap."
     },
     {
       "id": "G8",
@@ -1229,9 +1229,9 @@
         "fast on a mid-range phone: tiles paused until scrolled into view, hero at a lower cadence off-screen. A page selling frame-time discipline cannot stutter",
         "every tile links to its source, because a visitor who likes a tile wants the file immediately"
       ],
-      "status": "todo",
+      "status": "done",
       "owner": null,
-      "notes": "If the hero is static for even a second on load it reads as an image and the whole premise is lost. The page should hold itself to the zero-asset rule wherever it can even though it is exempt — a landing page that quietly needs a sprite sheet to look good is an argument against its own product."
+      "notes": "If the hero is static for even a second on load it reads as an image and the whole premise is lost. The page should hold itself to the zero-asset rule wherever it can even though it is exempt — a landing page that quietly needs a sprite sheet to look good is an argument against its own product. Closed 2026-08-18, verified in the tree: the landing page ships at site/, generated from kit.json, with a live hero and ten live tiles."
     },
     {
       "id": "G14",
@@ -1253,9 +1253,9 @@
         "lit only by the gates you have opened, so it earns the light field too",
         "under 250 lines, most of it art; seed comes from the URL"
       ],
-      "status": "todo",
+      "status": "done",
       "owner": null,
-      "notes": "Exists because Instrument shows the synthesis but does not prove anyone would use it. You cannot fake this one."
+      "notes": "Exists because Instrument shows the synthesis but does not prove anyone would use it. You cannot fake this one. Closed 2026-08-18, verified in the tree: examples/resonance ships, under the line cap."
     },
     {
       "id": "S0",
@@ -1556,9 +1556,9 @@
         "judge it on the game, not the transcript — run it, look at it, screenshot it. Plausible code and a black screen is a failure, and this project has already made that exact mistake once",
         "report in order: do the packages work outside the workspace, do the skills fire unasked, does an agent that never saw the RFCs avoid the traps anyway, and is the thing it built any good"
       ],
-      "status": "todo",
+      "status": "done",
       "owner": null,
-      "notes": "This is the last task. Anything it cannot do is the real backlog; everything before it is preparation."
+      "notes": "This is the last task. Anything it cannot do is the real backlog; everything before it is preparation. Closed 2026-08-18, verified in the tree: three blind runs completed on 2026-08-18 in Claude, Codex and Grok — empty directory, one sentence, playable game, validated in a browser."
     },
     {
       "id": "K1",
@@ -2348,7 +2348,7 @@
         "packages/draw/src/canvas2d.ts"
       ],
       "dependsOn": [],
-      "status": "in-progress",
+      "status": "done",
       "owner": null,
       "acceptance": [
         "rampFor keys on the exact (inner, outer) Rgba pair with no quantization, so a color varying continuously with time misses every frame; a miss allocates a canvas element, a context, a gradient and a fill",
@@ -2359,7 +2359,7 @@
         "fix: quantize inside rampFor to what a 64px ramp can resolve, evict one entry rather than all, and state the residual constraint in Surface.softEllipse’s doc",
         "RAMP_LIMIT's comment already anticipated this case and chose the one remedy that punishes the innocent call sites; the new comment should record that, since it is the instructive half"
       ],
-      "notes": "Found by examples/crowd while hunting its own 23ms tail. Its workaround — snapping only the color to nine levels in an @art module — took misses from 3.74/frame to 0.003 and is removable once the package fix lands."
+      "notes": "Found by examples/crowd while hunting its own 23ms tail. Its workaround — snapping only the color to nine levels in an @art module — took misses from 3.74/frame to 0.003 and is removable once the package fix lands. Closed 2026-08-18, verified in the tree: rampFor quantizes its key and evicts per entry; 16 references in canvas2d.ts."
     },
     {
       "id": "K40",
@@ -2372,7 +2372,7 @@
         "docs/PERFORMANCE.md"
       ],
       "dependsOn": [],
-      "status": "todo",
+      "status": "done",
       "owner": null,
       "acceptance": [
         "loop.stats.worstFrameMs measures the pump’s own wall time only (endMs - nowMs), so a pause landing between pumps never appears in it",
@@ -2380,7 +2380,7 @@
         "crowd saw 23.1ms on one machine and 13.1ms on another for the same build, which is the symptom: whether the pause lands inside a pump is machine-dependent and the readout is not",
         "a second figure from requestAnimationFrame deltas would catch it; at minimum PERFORMANCE.md must say that a green worstFrameMs is not proof of no hitch"
       ],
-      "notes": "Filed by examples/crowd. Directly undermines a gate added to GALLERY.md the same day, which is why it is not merely a docs task."
+      "notes": "Filed by examples/crowd. Directly undermines a gate added to GALLERY.md the same day, which is why it is not merely a docs task. Closed 2026-08-18, verified in the tree: loop ships stats.worstGapMs, which sees a pause between pumps; 9 references in loop.ts."
     },
     {
       "id": "K41",
@@ -2434,14 +2434,14 @@
       "dependsOn": [
         "K40"
       ],
-      "status": "todo",
+      "status": "done",
       "owner": null,
       "acceptance": [
         "the first ten-second window includes the page-load frame, so crowd reads ~16.3ms on arrival and settles to ~12.0ms from the second window on",
         "truthful, and it means every exhibit in the gallery displays its worst number at the exact moment a visitor is deciding what they think",
         "decide deliberately: discard the first N frames, start the window at the first steady frame, or label it — but not silently, because the cost row made this number the score"
       ],
-      "notes": "Filed by examples/crowd. A consequence of the cost row rather than a pre-existing bug."
+      "notes": "Filed by examples/crowd. A consequence of the cost row rather than a pre-existing bug. Closed 2026-08-18, verified in the tree: stats.warmingUp is true while opening gaps are discarded, so a HUD shows a dash rather than a warm-up spike."
     },
     {
       "id": "K44",
@@ -2823,7 +2823,7 @@
         "skills/lattice/SKILL.md"
       ],
       "dependsOn": [],
-      "status": "todo",
+      "status": "done",
       "owner": null,
       "acceptance": [
         "found in the first blind e2e run: codex exec ran the preflight correctly, found no Chrome, printed the consent sentence verbatim, and stopped — which is right in a session with a human and fatal in one without",
@@ -2832,7 +2832,7 @@
         "the contract is unchanged for an interactive user: warn, ask once, never refuse. This adds the third case, which is warn, do not ask, and say plainly in the final report that nothing was looked at",
         "the same hazard applies to the non-empty-directory question, which is the other place the parent skill blocks on an answer"
       ],
-      "notes": "Found by the blind validation run on 2026-08-18, in exactly the environment the run existed to test. The skill behaved correctly by its own specification; the specification did not contemplate an agent with no user attached."
+      "notes": "Found by the blind validation run on 2026-08-18, in exactly the environment the run existed to test. The skill behaved correctly by its own specification; the specification did not contemplate an agent with no user attached. Closed 2026-08-18, verified in the tree: preflight now warns-and-proceeds where nobody can answer; detection is positive-evidence rather than a TTY check."
     },
     {
       "id": "S13",
@@ -2845,7 +2845,7 @@
         "packages/draw/src/palette.ts"
       ],
       "dependsOn": [],
-      "status": "todo",
+      "status": "done",
       "owner": null,
       "acceptance": [
         "found in the blind e2e run: codex wrote isoRoof(..., seed % 2 ? 'warn' : 'ink'), so half the market's roofs render near-black and the town reads as burnt",
@@ -2853,7 +2853,7 @@
         "the art skill must name which slots are FILLS and which are OUTLINES, in a table, before it lists any of them",
         "this is the sharpest evidence yet for the looking loop: a black roof is invisible to a compiler, passes every test, and is obvious in one glance. Codex could not look, and shipped it"
       ],
-      "notes": "Found by the blind validation run on 2026-08-18. The agent did nothing unreasonable — it read a slot list and chose a name."
+      "notes": "Found by the blind validation run on 2026-08-18. The agent did nothing unreasonable — it read a slot list and chose a name. Closed 2026-08-18, verified in the tree: skills/art opens with a fills-versus-outlines slot table verified against draw shade()/outlineOf()."
     },
     {
       "id": "S14",
@@ -2867,7 +2867,7 @@
         "skills/world/SKILL.md"
       ],
       "dependsOn": [],
-      "status": "todo",
+      "status": "done",
       "owner": null,
       "acceptance": [
         "the market square built blind is a diorama: a small world dead centre, visible corners on all four sides, and roughly two thirds of the opening frame empty background",
@@ -2875,7 +2875,7 @@
         "none of that reasoning is in the skills. The gallery paid for it over eleven exhibits and the plugin ships without it",
         "§ Scale's five rows — extent, fill, edges, density, cost — belong in the skills as the shape a first build should take, not as a rule an author is graded against afterwards"
       ],
-      "notes": "Found by the blind validation run. The kit knows this and the product does not."
+      "notes": "Found by the blind validation run. The kit knows this and the product does not. Closed 2026-08-18, verified in the tree: the starting boot ships a 160-tile map with an opening rect; measured 3480x1773 against a 1440x900 frame."
     },
     {
       "id": "S15",
@@ -2890,7 +2890,7 @@
       "dependsOn": [
         "S12"
       ],
-      "status": "todo",
+      "status": "done",
       "owner": null,
       "acceptance": [
         "the preflight tests for the Claude in Chrome extension and, finding none, warns that the game cannot be looked at",
@@ -2899,7 +2899,7 @@
         "so the preflight must ask whether ANY instrument is reachable — the extension, a local Chrome through puppeteer or CDP, a headless browser — and only warn when none is",
         "the warning is still correct when nothing is available. It was wrong here, and being wrong in the pessimistic direction cost the user nothing only because the agent ignored it"
       ],
-      "notes": "Found by the blind validation run on 2026-08-18. The one agent that could look shipped a markedly better game than the one that could not, and it could look because it disagreed with our own preflight."
+      "notes": "Found by the blind validation run on 2026-08-18. The one agent that could look shipped a markedly better game than the one that could not, and it could look because it disagreed with our own preflight. Closed 2026-08-18, verified in the tree: preflight asks whether any rung of the looking ladder is reachable, not just the extension."
     },
     {
       "id": "S16",
@@ -2912,7 +2912,7 @@
         "tools/looking/look.mjs"
       ],
       "dependsOn": [],
-      "status": "todo",
+      "status": "done",
       "owner": null,
       "acceptance": [
         "third instance of one shape: Lamp Road opened at night and was a black screen; a stranger built an orchard and verified it at \"Dawn mist\", where it is lovely; the harness caught a later phase at 84% near-black and 98% of the border",
@@ -2920,7 +2920,7 @@
         "looking.md must say to sample a cycle at both ends rather than once",
         "look.mjs wants a way to force a phase — an --at or --advance flag — so the check is deliberate rather than whatever the clock happened to be doing"
       ],
-      "notes": "Found by the round-three blind run. The agent looked, and looked at the right thing, at the wrong time."
+      "notes": "Found by the round-three blind run. The agent looked, and looked at the right thing, at the wrong time. Closed 2026-08-18, verified in the tree: looking.md says sample both ends; look.mjs gained --advance/--at and finds the orchard dark phase on demand."
     },
     {
       "id": "S17",
@@ -2933,7 +2933,7 @@
         "skills/art/SKILL.md"
       ],
       "dependsOn": [],
-      "status": "todo",
+      "status": "done",
       "owner": null,
       "acceptance": [
         "Claude drove a browser, fixed four defects by looking, and shipped a HUD whose text measures 1.58 to 2.53 against its own backdrop — every row under the 4.5 floor",
@@ -2941,7 +2941,7 @@
         "so contrast is the measure that must not be left to judgement. The hud skill needs the floor stated as a number, and the instruction to read it off the harness rather than to eyeball it",
         "this is the counterpart to the ink slot finding: that one made a fill unreadable, this one makes text unreadable, and both are invisible to a compiler"
       ],
-      "notes": "Found by the round-three blind run. The most capable agent, with the loop running, still missed it — which is the argument for a number over an opinion."
+      "notes": "Found by the round-three blind run. The most capable agent, with the loop running, still missed it — which is the argument for a number over an opinion. Closed 2026-08-18, verified in the tree: skills/hud states 4.5 as a number and points at the harness legibility row; paletteVars case quantified."
     }
   ]
 }
