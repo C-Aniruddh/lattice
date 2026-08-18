@@ -267,13 +267,15 @@ const traps = [
  * confirmation prompt, and teaching a stranger to skip a trust prompt on a third-party repository
  * is not something this page is going to do to save them one keystroke.
  *
- * ## The one thing the tabs must not imply
+ * ## What these commands assume
  *
- * Nothing is published and this repository is private until launch, so **all three of these fail
- * for a stranger today.** That is a launch-checklist state rather than a bug, and the honest
- * register for the whole block is *this is how you will install it* rather than *run this now*.
- * {@link INSTALL_NOTE} says so once, in one line, under the terminal — and names the thing that
- * does work right now.
+ * That the packages are on a registry and this repository is public. Both are launch-checklist
+ * items, and the page ships behind them rather than in front of them — see {@link INSTALL_NOTE}
+ * for why the caveat that used to live under the terminal was removed rather than reworded.
+ *
+ * The consequence for whoever changes this block: **do not print a command before it resolves.**
+ * A install line that fails is worse than a missing one, because the reader has already decided
+ * to trust you by the time it does.
  */
 const plugin = [
   {
@@ -305,12 +307,14 @@ const plugin = [
 
 /** Said once, under the terminal, and it is the sentence that keeps the block honest.
  *  `docs/SKILLS.md` § *The honest tension*: advertise the property that is true today, never the
- *  promise. Nothing is on a registry and the repository is private, so these commands are what
- *  installing will be. The three files beside them are live now, which is the part a visitor can
- *  actually act on this afternoon. */
-const INSTALL_NOTE =
-  'Not open yet &mdash; the repository is private until launch, so these are what installing will be rather than what it does today. ' +
-  '<a href="/llms.txt"><code>/llms.txt</code></a> is live now, and pointing any agent at it works this afternoon.';
+ *  promise. It is deliberately empty.
+ *
+ *  It used to carry a hedge — that the repository was private, so these commands were what
+ *  installing *will* be. True at the time and the wrong thing to print: the page ships when the
+ *  repository opens and the packages publish, and a caveat about a state that no longer exists on
+ *  the day anyone reads it is worse than silence. A launch note belongs in the launch, not in the
+ *  markup. Kept as a hook so a future release can put a real one here. */
+const INSTALL_NOTE = '';
 
 /** The portable, script-free form: the first environment's commands, plainly and with no prompt
  *  in front of them, because a `<noscript>` block has no Copy button to read `[data-cmd]` for it
@@ -354,7 +358,7 @@ ${v.lines
         </div>
       </div>
       <noscript><pre class="shell-cmd">${esc(INSTALL_PLAIN)}</pre></noscript>
-      <p class="note term-caveat">${INSTALL_NOTE}</p>`;
+      ${INSTALL_NOTE === '' ? '' : `<p class="note term-caveat">${INSTALL_NOTE}</p>`}`;
 
 /**
  * A tile's own viewport, and why it is not the tile's size.
@@ -662,7 +666,7 @@ ${topbar()}
          nobody asked for. -->
     <h1>${esc(HEADLINE)}</h1>
     <p class="hero-sub">Lattice is an agentic isometric game kit: ${fig('skills')} skills that teach your coding agent to
-    build a game, over ${fig('packages')} TypeScript core packages that leave it nothing to invent. No sprite sheets, no audio
+    build a game, over ${fig('packages')} TypeScript core packages. No sprite sheets, no audio
     files, no asset paths &mdash; the art is derived and the sound is synthesized.</p>
     <!-- The most important object on this page, and the one that was wrong for the longest.
          What used to sit here was 'npm i @latticekit/…', which is what an *agent* runs to install
