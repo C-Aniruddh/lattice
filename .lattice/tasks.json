@@ -1278,9 +1278,9 @@
         "each skill is self-contained — the user has node_modules, not this repo, so no reference to AGENTS.md or docs/ may survive",
         "decide the distribution shape: plugin manifest, marketplace entry, or a droppable directory — and that it is NOT a dependency of any @latticekit/* package"
       ],
-      "status": "todo",
+      "status": "done",
       "owner": null,
-      "notes": "The constraint that shapes everything: the user installed from npm and never cloned. Package READMEs DO ship (files includes README.md), so node_modules/@latticekit/iso/README.md is a real path a skill may point at."
+      "notes": "The constraint that shapes everything: the user installed from npm and never cloned. Package READMEs DO ship (files includes README.md), so node_modules/@latticekit/iso/README.md is a real path a skill may point at. Shipped: twelve SKILL.md files, validated by installing the plugin and running /lattice end to end in Claude, Codex and Grok. Marked done on 2026-08-18 after the third blind run."
     },
     {
       "id": "S1",
@@ -1301,9 +1301,9 @@
         "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
         "says what it does not cover and names the skill that does"
       ],
-      "status": "todo",
+      "status": "done",
       "owner": null,
-      "notes": ""
+      "notes": "Shipped: twelve SKILL.md files, validated by installing the plugin and running /lattice end to end in Claude, Codex and Grok. Marked done on 2026-08-18 after the third blind run."
     },
     {
       "id": "S2",
@@ -1324,9 +1324,9 @@
         "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
         "says what it does not cover and names the skill that does"
       ],
-      "status": "todo",
+      "status": "done",
       "owner": null,
-      "notes": ""
+      "notes": "Shipped: twelve SKILL.md files, validated by installing the plugin and running /lattice end to end in Claude, Codex and Grok. Marked done on 2026-08-18 after the third blind run."
     },
     {
       "id": "S3",
@@ -1347,9 +1347,9 @@
         "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
         "says what it does not cover and names the skill that does"
       ],
-      "status": "todo",
+      "status": "done",
       "owner": null,
-      "notes": ""
+      "notes": "Shipped: twelve SKILL.md files, validated by installing the plugin and running /lattice end to end in Claude, Codex and Grok. Marked done on 2026-08-18 after the third blind run."
     },
     {
       "id": "S4",
@@ -1370,9 +1370,9 @@
         "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
         "says what it does not cover and names the skill that does"
       ],
-      "status": "todo",
+      "status": "done",
       "owner": null,
-      "notes": ""
+      "notes": "Shipped: twelve SKILL.md files, validated by installing the plugin and running /lattice end to end in Claude, Codex and Grok. Marked done on 2026-08-18 after the third blind run."
     },
     {
       "id": "S5",
@@ -1393,9 +1393,9 @@
         "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
         "says what it does not cover and names the skill that does"
       ],
-      "status": "todo",
+      "status": "done",
       "owner": null,
-      "notes": ""
+      "notes": "Shipped: twelve SKILL.md files, validated by installing the plugin and running /lattice end to end in Claude, Codex and Grok. Marked done on 2026-08-18 after the third blind run."
     },
     {
       "id": "S6",
@@ -1416,9 +1416,9 @@
         "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
         "says what it does not cover and names the skill that does"
       ],
-      "status": "todo",
+      "status": "done",
       "owner": null,
-      "notes": ""
+      "notes": "Shipped: twelve SKILL.md files, validated by installing the plugin and running /lattice end to end in Claude, Codex and Grok. Marked done on 2026-08-18 after the third blind run."
     },
     {
       "id": "S7",
@@ -1439,9 +1439,9 @@
         "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
         "says what it does not cover and names the skill that does"
       ],
-      "status": "todo",
+      "status": "done",
       "owner": null,
-      "notes": ""
+      "notes": "Shipped: twelve SKILL.md files, validated by installing the plugin and running /lattice end to end in Claude, Codex and Grok. Marked done on 2026-08-18 after the third blind run."
     },
     {
       "id": "S8",
@@ -1462,9 +1462,9 @@
         "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
         "says what it does not cover and names the skill that does"
       ],
-      "status": "todo",
+      "status": "done",
       "owner": null,
-      "notes": ""
+      "notes": "Shipped: twelve SKILL.md files, validated by installing the plugin and running /lattice end to end in Claude, Codex and Grok. Marked done on 2026-08-18 after the third blind run."
     },
     {
       "id": "S9",
@@ -1485,9 +1485,9 @@
         "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
         "says what it does not cover and names the skill that does"
       ],
-      "status": "todo",
+      "status": "done",
       "owner": null,
-      "notes": ""
+      "notes": "Shipped: twelve SKILL.md files, validated by installing the plugin and running /lattice end to end in Claude, Codex and Grok. Marked done on 2026-08-18 after the third blind run."
     },
     {
       "id": "S10",
@@ -1508,9 +1508,9 @@
         "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
         "says what it does not cover and names the skill that does"
       ],
-      "status": "todo",
+      "status": "done",
       "owner": null,
-      "notes": ""
+      "notes": "Shipped: twelve SKILL.md files, validated by installing the plugin and running /lattice end to end in Claude, Codex and Grok. Marked done on 2026-08-18 after the third blind run."
     },
     {
       "id": "S11",
@@ -1531,9 +1531,9 @@
         "examples compile against the PUBLISHED packages, not the workspace — the difference is what a user hits",
         "says what it does not cover and names the skill that does"
       ],
-      "status": "todo",
+      "status": "done",
       "owner": null,
-      "notes": ""
+      "notes": "Shipped: twelve SKILL.md files, validated by installing the plugin and running /lattice end to end in Claude, Codex and Grok. Marked done on 2026-08-18 after the third blind run."
     },
     {
       "id": "V1",
@@ -1936,9 +1936,9 @@
         "maxVoices is one integer in a comparison — no allocation, no handle to invalidate, nothing downstream with a correctness claim that it did not change",
         "add the readers too, per the new eleventh non-negotiable"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-builder",
-      "notes": "The sharpest row in docs/rfc/live-options.md."
+      "notes": "The sharpest row in docs/rfc/live-options.md. Closed 2026-08-18 after verifying in the tree: audio ships setMaxVoices and every option reads back; verified in packages/audio/src/engine.ts."
     },
     {
       "id": "K19",
@@ -2015,9 +2015,9 @@
         "0.64 kB gzipped against iso having 0.45 kB of headroom — it is larger than everything iso has left, spent on the only module with no reader",
         "record the revisit trigger: a second WRITER, not a bigger map. A bigger map is new TileGrid(512,512); endless procedural terrain is tileSourceOf and free"
       ],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-builder",
-      "notes": ""
+      "notes": "Closed 2026-08-18 after verifying in the tree: ChunkGrid is gone; zero references remain in packages/iso/src."
     },
     {
       "id": "K23",
@@ -2132,7 +2132,7 @@
         "packages/iso/**"
       ],
       "dependsOn": [],
-      "status": "in_progress",
+      "status": "done",
       "owner": "lattice-builder",
       "acceptance": [
         "the shared Bucket cannot meet its invariant B7 — \"an unsorted each throws\" — from outside the package, and the reason is worth reading: DepthSorter publishes nothing that separates \"not sorted\" from \"sorted, nothing culled\"",
@@ -2140,7 +2140,7 @@
         "a public `sorted` flag, lowered by add and clear and raised by sort, is three lines and unblocks it",
         "the bucket test already asserts the gap as a tripwire, so whoever adds the flag is told where to come back"
       ],
-      "notes": "A helper outside the package could not close it, and said so rather than shipping a detector that would cry wolf. That is the right call and it routes here."
+      "notes": "A helper outside the package could not close it, and said so rather than shipping a detector that would cry wolf. That is the right call and it routes here. Closed 2026-08-18 after verifying in the tree: DepthSorter carries the sorted flag; 25 references in packages/iso/src/depth.ts and bucket invariant B7 passes."
     },
     {
       "id": "K29",
@@ -2192,7 +2192,7 @@
         "examples/demo/src/**"
       ],
       "dependsOn": [],
-      "status": "todo",
+      "status": "done",
       "owner": null,
       "acceptance": [
         "npm run gallery reports the hero as 1286 logic / 99 art, where GALLERY.md documents 622 / 768 — because not one module in examples/demo/src carries an @art tag",
@@ -2200,7 +2200,7 @@
         "the classification test is the one in GALLERY.md — a module is art if deleting it changes only what the exhibit looks or sounds like, holds no state past a frame, and moves no number the player is playing for",
         "the hero is exempt from the CAP, not from being measured. A documented split nothing can verify is the same species as the claim that a duration alias guarded anything"
       ],
-      "notes": "Found by tools/gallery.mjs the moment it could measure. The tool says so explicitly rather than printing a large number and moving on."
+      "notes": "Found by tools/gallery.mjs the moment it could measure. The tool says so explicitly rather than printing a large number and moving on. Closed 2026-08-18 after verifying in the tree: Five modules in examples/demo/src carry @art; npm run gallery reports the hero at 682 logic / 872 art with no warning."
     },
     {
       "id": "K32",
