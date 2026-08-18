@@ -268,6 +268,12 @@ shallowest crossing, and the walkers converge on fords, which looks designed.
 
 ## Sizing a bounded map — do this before you pick a number
 
+**A world that fits inside the frame is a diorama**, and it is what a from-scratch build produces
+by default. The standard every exhibit in this kit was rebuilt against: the world's bounding rect
+is at least **1.6× the viewport on its long axis**, no more than a third of the opening frame is
+empty background, and the world meets the frame edge rather than showing a corner with sky behind
+it. `starting` carries all five rows. The part that is terrain's is the arithmetic.
+
 A square grid projects to a **diamond**, and a viewport inscribed in it needs
 
 ```
@@ -281,6 +287,36 @@ behind it and no way to pan out of it. The same exhibit shipped at **160 tiles**
 inequality leaves 1,950 px of vertical camera travel and 3,400 of horizontal.
 
 Do the arithmetic before you choose the map size. It is cheaper than three rebuilds.
+
+**Density is a loop bound, and it is counted in hundreds.** Thirty trees on a 160-tile map is a
+model of a forest. The cheap way to get thousands is the rule the determinism section below
+already states for a different reason: **scatter is a function of `(seed, gx, gy)`**, evaluated
+over the *visible* tile range each frame rather than materialized into a list. A `hash2` threshold
+at 0.86 puts a tree on 14% of the tiles — about 3,600 of them on a 160×160 map — and the ones
+off-screen cost exactly nothing, because they were never asked about.
+
+---
+
+## The axis the projection flattens
+
+**An isometric projection compresses exactly the axis a landform is impressive along.** A unit of
+height is `HALF_H` = 16 world pixels against `HALF_W` = 32 for a unit of ground, and two of every
+tile's four corners land on the same screen row — so verticality, the thing that makes a mountain
+a mountain, is the one property the camera cannot show. A world whose subject is vertical has to
+buy that axis back with **composition**, and none of the ways to do it are the height field:
+
+- **put something known-small at the base and in front** — a walker, a hut, a lamp — so the eye
+  has a ruler;
+- **run the landform off the top of the frame**, so the summit is somewhere the player has to go
+  and look for rather than a shape they can measure at a glance;
+- **stack three distance bands up it**, so the far one is dimmer and the near one is not;
+- **narrow the base.** A cone that fills the map reads as ground. The same cone with a valley
+  beside it reads as a mountain.
+
+Raising the height field is the move that feels like it must work and does not: doubling `stepPx`
+doubles the compressed axis and leaves every other one where it was, so the landform gets taller
+and the picture does not change its mind about what it is looking at. `art` has the general form
+of this — a cue decorates a structure and cannot replace one.
 
 ---
 

@@ -23,6 +23,8 @@ write one of these.
 | taps miss on hills, and by more the higher the hill | `ActionEvent.gx/gy` — the flat-ground answer |
 | taps miss on tall things specifically | `spriteVolume` called without the ground |
 | art floats above or sinks below its hill | `drawSprite`'s ground argument omitted |
+| a building renders near-black, or one glows all night | a palette slot used as the wrong kind — `ink` and `night` are not fills, and `warn`/`ok`/`bad` do not darken |
+| the world sits in the middle of a big empty background | it is a diorama: the world ran out before the frame did |
 | the game gets slower at dusk and stays slow | palette stop sets rebuilt inside the render callback |
 | the game gets slower over minutes, with no event | an animated color feeding the ramp cache |
 | a frame counter reads `0.0 ms` | the tab is hidden |
@@ -74,6 +76,40 @@ the same thing. Note also that `Object.freeze(v2(0, 0))` *infers* `Readonly<Vec2
 annotation is the entire protection. This claim survived ten design documents, a compile of the
 whole surface, and a review; it was falsified only when somebody tried to make the compiler
 enforce it.
+
+### `ink` is the outline slot, and nothing in the slot list says so
+
+`BASE_SLOTS` names ten colors and offers them as equals. One real session, choosing two roof
+materials for a market, wrote this unprompted:
+
+```ts wrong
+isoRoof(pen, item.gx + 0.15, item.gy + 0.15, w, d, h, 0.72, item.seed % 2 ? 'warn' : 'ink');
+```
+
+Half the roofs came out near-black and the town read as burnt. `ink`'s three faces shade to
+**13 / 11 / 9%** luminance with an outline at **4%** — the three-tone spread that makes a solid
+legible is four points wide, and the silhouette stroke is *derived from the fill*, so there is
+nothing left below near-black for it to be derived into. `brand` in the same call is 42 / 30 / 21
+with a 13% outline.
+
+The other half is the mirror failure. `warn`, `ok` and `bad` barely move between `DAY` and
+`NIGHT` — 71→66, 64→58, 39→36 — because a HUD must stay readable at midnight, while `ground` goes
+58→22. So those roofs glow all night over a town that went dark, with nothing anywhere to explain
+it. Fills are `ground`, `brand`, `metal`, `glass`; `night` is the `tint` argument of
+`light.begin` and nothing else; a game's own materials go in through `extendStops`. Full table in
+`art`.
+
+It compiles, it passes every test, and it is obvious in one glance at the running game — which is
+the only place it is visible at all.
+
+### A world that fits in the frame
+
+The default outcome of a from-scratch build: a small complete world dead center, corners on all
+four sides, two thirds of the opening frame background. It reads as a *model* of a place at every
+zoom, because the problem is not the zoom — the world ran out before the frame did. The call that
+does it is `camera.fitBounds(worldRect)`: fit a *region* instead, and size the map against the
+viewport. Eleven exhibits were rebuilt against the five rows in `starting`, and extent is the one
+that is expensive to change later.
 
 ### A moving color is a cache key
 

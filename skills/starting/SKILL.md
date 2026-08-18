@@ -1,6 +1,6 @@
 ---
 name: starting
-description: The wiring order for a Lattice game — canvas, surface, camera, palette, light, depth sorter, loop and input, in the one order that works. Use when starting an isometric game, setting up a Lattice project, writing the boot or main.ts, adding a game loop to a canvas, or when the first screen is blank, black, empty, or the game keeps drawing but stops responding to taps.
+description: The wiring order for a Lattice game — canvas, surface, camera, palette, light, depth sorter, loop and input — and the shape a first build should take so it does not come out a diorama. Use when starting an isometric game, setting up a Lattice project, writing the boot or main.ts, adding a game loop to a canvas, choosing a map size or an opening camera, when the world looks small or sits in the middle of an empty background, or when the first screen is blank, black, empty, or the game keeps drawing but stops responding to taps.
 ---
 
 # Starting a Lattice game
@@ -58,21 +58,25 @@ const surface = createCanvas2dSurface(canvas);
 const palette = createPalette(BASE_SLOTS);
 
 // ── the world, and the camera that has to be told about it ────────────────────────
-const W = 64;
-const H = 64;
+const W = 160;                                  // not 64. See "the shape a first build takes"
+const H = 160;
 const MAX_HEIGHT_PX = 96;                       // the tallest ground on the map
 const worldRect: Rect = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 tileBounds(0, 0, W, H, MAX_HEIGHT_PX, worldRect);
 
+// The OPENING SHOT is a region of the world, never the whole of it. A fresh camera looks at
+// world (0, 0) — in a 2:1 projection the *top corner* of the map — so with no fit at all the
+// first frame is empty space beside the world. Fitting `worldRect` is the opposite failure:
+// every corner of the map on screen at once, which is the diorama the next section is about.
+const opening: Rect = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+tileBounds(W * 0.3, H * 0.3, W * 0.4, H * 0.4, MAX_HEIGHT_PX, opening);
+
 const camera = createCamera(Math.max(1, innerWidth), Math.max(1, innerHeight), {
-  bounds: worldRect,
+  bounds: worldRect,                            // where the player may go: the whole map
   minZoom: 0.25,
   keepVisible: 0.5,
 });
-// Frame the world on the FIRST frame. A fresh camera looks at world (0, 0), which in a 2:1
-// projection is the *top corner* of the map — so without this the opening frame is empty space
-// beside the world, which reads as a broken build.
-camera.fitBounds(worldRect, 24);
+camera.fitBounds(opening, 24);                  // where they start: a part of it
 
 // ── the night. Built unconditionally: it costs nothing while darkness is 0 ─────────
 const light = createLightField(surface, { scale: 0.6, falloff: 1, bloom: 0.3 });
@@ -101,7 +105,7 @@ function fit(): void {
   // ratio, and re-reading the raw one here silently undoes that.
   surface.resize(w, h, surface.pixelRatio);
   camera.resize(w, h);
-  camera.fitBounds(worldRect, 24);
+  camera.fitBounds(opening, 24);
 }
 addEventListener('resize', fit);
 visualViewport?.addEventListener('resize', fit);  // iOS: a collapsing URL bar fires only this
@@ -162,6 +166,65 @@ loop.start();                  // nothing runs before this. No ambient loop, no 
 
 ---
 
+## The shape a first build should take
+
+Almost every from-scratch isometric build comes out as a **diorama**: a small complete world in
+the middle of a large empty background, corners visible on all four sides, two thirds of the
+opening frame sky. It reads as a *model* of a place rather than as a place, and it reads that way
+at every zoom, because the problem is not the zoom — **the world ran out before the frame did.**
+
+Eleven worlds in this kit were rebuilt against the five rows below, over several passes, and they
+are cheap to get right up front and expensive to retrofit: extent decides the map size, the camera
+bounds and the generator at once. On a 1440×900 viewport at the opening zoom:
+
+| | the rule | the failure it names |
+|---|---|---|
+| **extent** | the world's bounding rect is **at least 1.6× the viewport on its long axis**, and something the game is about is off-screen on the first frame | a world with visible corners. Nothing invites a drag |
+| **fill** | **no more than a third** of the opening frame is empty background — sky, sea, void | a diamond of content ringed by flat color is the shape every naive isometric demo has |
+| **edges** | the world meets the frame edge, or a horizon does. Never a hard corner with background behind it | a floating slab announces the map's dimensions, which are an implementation detail |
+| **density** | whatever the game repeats — trees, towers, walkers, lamps — is counted in **hundreds**, not dozens | thirty of anything disproves the claim that these are cheap |
+| **cost** | 60 fps on a mid laptop, judged on the **worst frame in ten seconds** | grandeur that costs the frame is the same mistake as a diorama, arrived at from the other side |
+
+**Read them in order, and cost is a gate rather than a trade.** A build that is grand and drops
+frames has not half-passed; it fails *before* density is scored, because a stuttering scene reads
+as cheap no matter how much is in it. That row was missing for exactly one exhibit and that
+exhibit came back dense and slow — a standard that asks for more of something and names no price
+gets paid for out of frame time, which is the one budget nobody is watching.
+
+None of this is expensive. Extent is a constant, density is a loop bound, and the far band is
+art; together they are usually under twenty lines. `W = H = 160` and an opening rect that is a
+*part* of the world — both in the boot above — are the whole of the first three rows: measured
+on a 1440×900 viewport that boot opens at zoom 0.34 with the world **3480 × 1773 px**, or 2.4×
+the frame on its long axis and 2.0× on its short one. A 64-tile map fitted to `worldRect` instead
+puts the entire world in **1392 × 729 px** — 0.97× the frame, every corner on screen, background
+all the way round. That is the diorama, and it is one `fitBounds` argument away.
+
+### When it is slow, measure before you cut anything
+
+The obvious suspect is usually innocent. **400 sprites of 42 draw ops each is 2.14 ms — 27% of a
+60 fps budget** — so at the density these rows ask for, *drawing* is not what makes a scene slow.
+Suspect instead:
+
+- **work spent on entities nobody can see.** `renderFrame` calls `order.sort(camera)` and the cull
+  lives inside that sort, so everything you spend *before* `add` — sampling terrain, rebuilding a
+  sprite definition, planning a path — is paid in full for things off the screen. Put that work
+  behind `camera.isVisible`, or do it once instead of per frame.
+- **something periodic.** A 6 ms mean beside a 23 ms worst is not a scene that is too big; it is
+  something happening every N frames, and cutting the count will not touch it.
+- **an allocation on the hot path**, which reads as a sawtooth rather than as a level cost.
+
+**There is no sprite bitmap cache in `draw`** — one was written, measured and deleted on purpose —
+so "cache it" is not a move available to you. Spend detail where the eye is instead: cost scales
+with ops-per-sprite times sprites, so the lever on a distant thing is how many faces it is made
+of, not whether it exists. Reducing the count is the last answer rather than the first, and if you
+get there the number is a finding about the kit rather than a defeat.
+
+The art half of this — three distance bands, and why another depth cue will not rescue a
+composition that is not reading — is in `art`. The terrain half — the arithmetic that turns a
+viewport into a map size, and the axis an isometric projection flattens — is in `world`.
+
+---
+
 ## The two mistakes that are silent
 
 ### 1. A `stepMs` typed by hand
@@ -173,9 +236,8 @@ createInput({ element: canvas, camera, stepMs: 16, actions: { touch: ['tap'] } }
 
 `createInput` counts every gesture duration in ticks and multiplies by the step it was handed;
 it never reads a clock. A step that is not the loop's does not fail — **it lies by a constant
-ratio.** `16` against a loop running at 16.667 is a long press that fires at **432 ms**, a fling
-velocity **4% low**, and a recorded input log that a replay refuses months later with a message
-nobody can trace back to the literal.
+ratio.** `16` against a loop running at 16.667 is a long press that fires at **432 ms** and a
+fling velocity **4% low**.
 
 So `step` takes a `FixedStep` and the shortest thing that type-checks is the loop itself. Where
 there is no loop — a headless test, a replay — use `fixedStep(60)`, which derives the step with
@@ -217,11 +279,11 @@ to remember.
 **A Lattice game contains exactly one thing that decides when work happens.** That is the loop.
 Packages expose a tick-shaped method; they never go and find a clock.
 
-In the game this kit came from, a modal polled "should the namer be open?" every 900 ms while
-quests settled every 1,000 ms. Between a settle and the next one the derived condition was
-briefly true again, so the modal **reopened after the player had confirmed** — and the obvious
-recovery, pressing confirm again, overwrote the company name they had just chosen. That was not
-a flicker. It was the loss of the most personal piece of data in the save.
+In the game this kit came from, a modal polled at 900 ms while quests settled at 1,000 ms, so
+between a settle and the next one the derived condition was briefly true again and the modal
+**reopened after the player had confirmed** — overwriting the company name they had just chosen
+when they pressed confirm again. Not a flicker: the loss of the most personal value in the save.
+`traps` has the full version.
 
 So: one `createLoop`, and everything else hangs off it.
 
@@ -281,18 +343,11 @@ resolves to is not the tile that was under the finger in the last frame the play
 
 ## Under Vite, dispose on hot reload
 
-HMR re-evaluates the module. `createInput` correctly throws on a second binding to the same
-canvas — and the *first* instance is still bound and still rendering. **So the symptom is not
-the error**: it is a game that keeps drawing while every tap does nothing and the readout is
-frozen at whatever it last showed, with the real message buried in a console nobody is looking
-at by then.
-
-```ts
-declare const dispose: () => void;
-if (import.meta.hot) import.meta.hot.dispose(dispose);
-```
-
-One line. It pays for itself the first time you edit the file.
+HMR re-evaluates the module, `createInput` correctly throws on a second binding to the same
+canvas — and the *first* instance is still bound and still rendering. **So the symptom is not the
+error**: it is a game that keeps drawing while every tap does nothing and the readout is frozen,
+with the real message buried in a console nobody is looking at by then. The
+`import.meta.hot.dispose` line in the boot above is the whole fix.
 
 ---
 

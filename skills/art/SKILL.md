@@ -17,8 +17,69 @@ render that skips them still produces a picture, and the picture looks like a pl
 | **detail at three scales** | a mass, a feature on the mass, and something small enough to only just resolve. Two scales reads as a toy |
 | **setback massing** | stack narrower volumes as they rise. A single extruded box is the shape every naive isometric demo has |
 | **window rhythm** | repeat with a break — three, three, gap, three. Even spacing reads as a spreadsheet |
-| **cool shadows, warm highlights** | this is what separates a stylised render from a gray lerp. `shade` does it for you; do not replace it with a multiply |
+| **cool shadows, warm highlights** | this is what separates a stylized render from a gray lerp. `shade` does it for you; do not replace it with a multiply |
 | **something moves on everything** | every building gets an `animate` hook. A static frame reads as a screenshot of a game |
+
+---
+
+## The slots, and which of them are fills
+
+`createPalette(BASE_SLOTS)` names ten colors. **It is not a menu of ten interchangeable ones.**
+Two are not fills at all, three do not obey nightfall, and picking one of those for a roof gives
+you a building that compiles, passes every test, and is wrong at a glance.
+
+| slot | day color | it is | use it for |
+|---|---|---|---|
+| `ground` | soft green, 58% light | **fill** | terrain, tiles, earth, anything the world is made of |
+| `brand` | terracotta, 42% | **fill** — the recolorable one | whatever the game is *about*. `palette.set('brand', …)` is the whole recolor story |
+| `metal` | blue-gray, 59% | **fill** | machinery, rails, pipes, hardware |
+| `glass` | pale cyan, 79% | **fill** | windows, water, ice, anything wet |
+| `sky` | pale blue, 77% | **fill, backdrop only** | `clear: 'sky'`, and the color haze pulls toward |
+| `warn` `ok` `bad` | amber 71%, green 64%, red 39% | **signal** | lamps, hazards, a legality tint on a ghost, a HUD mark |
+| `ink` | near-black, **13%** | **outline and text. Not a fill** | the `stroke` argument of `isoTile`, `isoPatch`, `isoWall`; `wallText`, `sign`, `screenText`; and genuinely black hardware at small area — an iron post, a flue |
+| `night` | near-black, **8%** | **not a color you draw with** | one place only: the `tint` argument of `light.begin` — the color the dark itself goes |
+
+**`palette.ink(value)` is the resolver, not the slot.** It takes any `Ink` — a number or *any*
+slot name — and returns a color. The name collision with the `'ink'` slot is exactly how a roof
+ends up black.
+
+**A fill in the outline slot is a hole in the picture.** `shade` derives three faces from one
+color, and that spread is what makes a solid legible: `brand` comes out **42 / 30 / 21%** with an
+outline at **13%**. `ink` comes out **13 / 11 / 9%** with an outline at **4%** — the whole
+three-tone read spans four points of brightness, and because the silhouette stroke is *derived
+from the fill* there is nothing left below near-black for it to be derived into. It is not a dark
+building; it is a building with no faces and no silhouette.
+
+**A signal in a fill slot does not obey nightfall.** `warn`, `ok` and `bad` barely move between
+`DAY` and `NIGHT` — 71→66, 64→58, 39→36 — because a HUD has to stay readable at midnight.
+`ground` goes 58→22 and `sky` 77→14. So a roof painted `warn` sits at 93% of its noon brightness
+over a town at 38% of its, and glows all night with nothing anywhere to explain why.
+
+**An outline in a fill slot** is the milder mirror: stroke with `ground` or `metal` and the
+stroke lands within a few points of the face it is meant to separate, so a crowd of buildings
+merges into one mass at exactly the zoom where the silhouette was doing all the work.
+
+```ts wrong
+// A market with two roof materials, picked off the slot list as equals. Half the town renders
+// as black holes and the other half glows at midnight.
+isoRoof(pen, gx + 0.15, gy + 0.15, w, d, h, 0.72, seed % 2 ? 'warn' : 'ink');
+```
+
+**Ten is a starting vocabulary, not a limit.** A market with two roof materials wants two slots
+of its own — added to *both* stop sets, so both roll at dusk with everything else.
+
+```ts
+import { DAY, NIGHT, createPalette, extendStops, isoRoof } from '@latticekit/draw';
+import type { Pen } from '@latticekit/draw';
+
+const DAY_X = extendStops(DAY, { tile: 0xb4573cff, thatch: 0xc9a15aff });
+const NIGHT_X = extendStops(NIGHT, { tile: 0x59323aff, thatch: 0x5f5546ff });
+export const palette = createPalette(DAY_X);
+
+export function marketRoof(pen: Pen, gx: number, gy: number, seed: number): void {
+  isoRoof(pen, gx + 0.15, gy + 0.15, 1.7, 1.7, 1.4, 0.72, seed % 2 ? 'tile' : 'thatch');
+}
+```
 
 ---
 
@@ -80,7 +141,7 @@ the sort order disagreeing about which hill this is standing on.
 
 **Two `add` calls, not one, for a light.** A single pool is a linear ramp, and the eye reads a
 linear ramp as *the size of the lamp* rather than as the reach of its light. Two pools — a small
-bright core inside a wide dim halo — meet a neighbour in each other's halo, where both curves
+bright core inside a wide dim halo — meet a neighbor in each other's halo, where both curves
 are nearly flat, instead of in each other's ramp, where the slope is constant and the union has
 a visible crease down the middle.
 
@@ -117,22 +178,12 @@ though the sharpest version of it has been fixed.
 cannot draw a falloff per call at a sane price, so it renders one small ramp per `(inner, outer)`
 color pair and reuses it. **The color pair is a cache key.**
 
-That cache shipped once keyed on the exact 8-bit pair, evicting **wholesale** at 96 entries — so
-a single animated color did not merely fail to cache, it **deleted every other call site's ramp
-as well**. Contact shadows, light pools, sky and walkers, all constant-color sites that should
-have been permanent hits, became misses as collateral. Measured by wrapping
-`createRadialGradient`, which is only reached on a miss:
-
-| | misses per frame |
-|---|---:|
-| 27 flames and a fountain's ripple rings | **3.74** — a full cache drop every 26 frames, ≈225 canvas elements a second, ≈**3.7 MB/s** of garbage |
-| 8 braziers | 4.3 |
-| the same scene with 300 torches lit | **15.9** — a full drop every six frames |
-
-The key is now snapped to **32 levels per channel** — the resolution a 64-pixel ramp actually
-has — and a full cache evicts one entry rather than all of them. **So you do not have to
-quantize colors in your own art code, and if you already did, you can stop.** A flame mixed
-against noise every frame visits at most 32 keys per channel and then hits for ever.
+The key is snapped to **32 levels per channel** — the resolution a 64-pixel ramp actually has —
+and a full cache evicts one entry rather than all of them. **So you do not have to quantize
+colors in your own art code, and if you already did, you can stop.** A flame mixed against noise
+every frame visits at most 32 keys per channel and then hits for ever. (`traps` has the measured
+version of what this looked like before the key was snapped: one animated color evicting every
+*other* call site's ramp, at 3.74 misses a frame and about 3.7 MB/s of garbage.)
 
 Three things remain true and are what to watch:
 
@@ -232,6 +283,28 @@ twice tints twice, and the ground goes muddy.
 
 ---
 
+## Three distance bands, and what a cue cannot do
+
+`starting` carries the shape a first build should take — a world that runs off the edges of the
+frame, with hundreds of whatever it repeats. Two parts of that are art's.
+
+**Depth is three bands: something near, something mid, something far and dimmer.** One plane at
+one scale is why a diorama looks small, and shading will not rescue it, because shading is a
+function of distance and a picture with one distance in it has nothing to shade. Build the far
+band out of fewer faces — it is already asked to be dimmer and hazier, which is also permission
+for it to be *simpler*, and fidelity at a distance nobody can resolve is the one saving that
+costs nothing to take.
+
+**A cue decorates a structure and cannot replace one.** One world shipped every depth cue on this
+page — haze, three bands of it, cool shadows, warm highlights, a horizon — and still read as a
+hillside rather than as a mountain, because the composition underneath was wrong: the subject sat
+entirely inside the frame with air above it. Adding a sixth cue to a scene that is not reading is
+the move that never works. **When something is not reading, check the structure first** — what is
+off the edge of the frame, how much of it is background, how many distance bands there are — and
+only then reach for another cue.
+
+---
+
 ## Small things that turn out to be big
 
 **One stroke around the silhouette, never one per face.** Per-face strokes cross-hatch the
@@ -241,18 +314,15 @@ cross-package contract with the hit-tester, not a convention. In a crowd, stroke
 *is* the silhouette or two hundred people become a mesh of hairlines at low zoom.
 
 **A wall along the near-far diagonal has zero screen width.** World x is `(gx − gy) · HALF_W`, so
-a segment whose `gx` and `gy` change by the same amount projects to a vertical line: every number
-is finite, the projection is doing exactly what it promises, and the art is simply not there. A
-run of prayer flags laid along that diagonal cost one exhibit a full iteration with nothing
-anywhere saying why. `isoWall` now throws and names both tiles; `iso.isEdgeOn(ax, ay, bx, by)`
-is the predicate if you want to ask first. **An animated endpoint must not be able to sweep
-through the diagonal**, because the frame it crosses is a frame that throws.
+a segment whose `gx` and `gy` change by the same amount projects to a vertical line and the art
+is simply not there. `isoWall` throws and names both tiles; `iso.isEdgeOn(ax, ay, bx, by)` asks
+first. **An animated endpoint must not be able to sweep through the diagonal.**
 
 **`massing` and `animate` get different `Rng` streams.** A sprite whose massing chose a height
-and a lean cannot recover either by drawing in the same order in `animate` — it gets different
-numbers, so a moving crown sits beside the static one it is supposed to *be*, and the tree
-renders with its head beside its neck. It is worst on the tallest, leaniest instances, which is
-why it survives a review at a glance. Address by index instead:
+and a lean cannot recover either by drawing in the same order in `animate`, so a moving crown
+sits beside the static one it is supposed to *be* and the tree renders with its head beside its
+neck. Worst on the tallest, leaniest instances, which is why it survives a review. Address by
+index instead:
 
 ```ts
 import { hashStep, toUnit } from '@latticekit/core';
