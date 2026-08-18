@@ -26,7 +26,7 @@
  * | `anything` | a flat field of one color — the black screen, however it was reached |
  * | `framing` | a world that is a small diamond in a big empty frame. Measured at **99%** on the diorama the blind run shipped and **29%** on a world that fills the viewport, so the gap is not subtle |
  * | `motion` | a static first frame — a screenshot of a game rather than a game |
- * | `legibility` | HUD text that cannot be read against what is behind it. The black-on-black rows measure **contrast 1.03** against a required 3 |
+ * | `legibility` | HUD text that cannot be read against what is behind it. The black-on-black rows measure **contrast 1.03** against a required 3, and every node that clears 3 but misses WCAG AA is named in the same row without failing it |
  * | `console` | the exceptions and warnings a screenshot cannot show you |
  *
  * Note what `anything` is **not**: there is no brightness floor. A night game is legitimately
@@ -700,6 +700,7 @@ function textLegibility(frame, nodes, scale) {
     return {
       text: node.text.length > 40 ? `${node.text.slice(0, 39)}…` : node.text,
       fontPx: node.fontPx,
+      fontWeight: node.fontWeight,
       visibleRange: Number((at(0.97) - at(0.03)).toFixed(4)),
       contrast: Number(contrastRatio(inkLum, groundLum).toFixed(2)),
     };
@@ -734,6 +735,11 @@ const COLLECT_TEXT = `(() => {
       text,
       x: rect.left, y: rect.top, w: rect.width, h: rect.height,
       fontPx: Math.round(parseFloat(style.fontSize)),
+      // Weight comes back as a keyword on some elements and a number on others; \`bolder\` and
+      // \`lighter\` are relative and only \`getComputedStyle\` on the used value resolves them, which
+      // it does. Anything that does not parse is treated as normal, because guessing bold would
+      // relax the floor on the one node whose styling we could not read.
+      fontWeight: Number(style.fontWeight) || (style.fontWeight === 'bold' ? 700 : 400),
       color: [Number(parts[0]), Number(parts[1]), Number(parts[2])],
     });
   }
@@ -770,11 +776,62 @@ const LIMITS = {
   distinctColors: 16,
   /** Below this, nothing moved in a second and the first frame is a photograph. */
   changedFraction: 0.001,
-  /** WCAG's floor for large text. Below it a person squints; below 1.5 there is nothing there. */
+  /**
+   * **The floor that fails a row, and it is deliberately not WCAG AA.**
+   *
+   * AA is 4.5 for normal text, and the `hud` skill teaches 4.5 as the number to *design* to. This
+   * is 3, and the gap between the two is the difference between a design floor and a verdict.
+   *
+   * It was left at 3 on a guess and is now at 3 on evidence. Every text node in fourteen games —
+   * this kit's eleven exhibits and the three a stranger's agent built blind — was measured at four
+   * points of a day cycle: 660 readings. **Two exhibits that pass every row today live between 3
+   * and 4.5**: `endless` reads its own frame time at **3.26**, and `crowd` puts its entire label
+   * row — `PEOPLE`, `ON SCREEN`, `FRAME`, `WORST FRAME / 10 s`, `STATE PER PERSON`, `WORLD TIME` —
+   * at **4.16**, its readouts at **3.93** and its caption at **4.16**. Moving the floor to 4.5
+   * would turn `endless` red for the first time and take `crowd` from one failing node to
+   * thirty-six, on two exhibits nobody thinks are broken. A row that is red when things are right
+   * is a row an agent learns to skip, and that principle has already killed two earlier measures
+   * here.
+   *
+   * **The size distinction does not rescue them either.** WCAG relaxes to 3 for large text — 24 px,
+   * or 19 px bold — and every node in that band is 9 to 15 px, so the exemption applies to none of
+   * them. Across all 660 readings it changes **zero** verdicts: the only node in the corpus at
+   * 24 px or over is `terraces`'s `319 px` at 30 px/800, which measures 4.58 and clears both
+   * floors. So the size rule is not in this threshold, where it would be inert; it is in the
+   * advisory below, where it is what stops a legitimately large heading being nagged about.
+   */
   textContrast: 3,
+  /**
+   * WCAG AA, reported and never failed.
+   *
+   * A passing `legibility` row says nothing is invisible; it does not say anything is easy to read,
+   * and an agent that reads only the verdict column cannot tell those apart. So the nodes that
+   * clear the floor and miss AA are **named in the detail with no verdict of their own** — the same
+   * treatment the hour gets in the heading, and for the same reason: a line that reports a fact
+   * rather than a pass is a line that must not have a verdict column it can never earn.
+   */
+  textContrastAA: 4.5,
+  /** WCAG's large-text sizes, at which AA relaxes to {@link LIMITS.textContrast}. */
+  largeTextPx: 24,
+  largeBoldPx: 19,
+  largeBoldWeight: 700,
   /** Ink and ground within this much luminance of each other is invisible, whatever CSS says. */
   textVisibleRange: 0.04,
 };
+
+/**
+ * The AA floor for one node: 3 if WCAG calls it large text, 4.5 otherwise.
+ *
+ * `fontWeight` is a resolved number by the time it reaches here — `getComputedStyle` turns `bold`
+ * and `bolder` into one — and anything unreadable is treated as 400, because guessing bold would
+ * relax the bar on exactly the node whose styling could not be read.
+ */
+function aaFloorFor(node) {
+  const px = node.fontPx ?? 0;
+  const weight = node.fontWeight ?? 400;
+  const large = px >= LIMITS.largeTextPx || (px >= LIMITS.largeBoldPx && weight >= LIMITS.largeBoldWeight);
+  return large ? LIMITS.textContrast : LIMITS.textContrastAA;
+}
 
 /**
  * `30s`, `1500ms`, `2m`, or a bare number of milliseconds → milliseconds.
@@ -1052,14 +1109,33 @@ function judge(report) {
   const illegible = report.text.filter(
     (t) => t.visibleRange < LIMITS.textVisibleRange || t.contrast < LIMITS.textContrast,
   );
+  // Cleared the floor, missed AA. Advisory — it never moves the verdict, so it is appended to
+  // whichever detail the row already has rather than given a row of its own.
+  const underAA = report.text.filter((t) => !illegible.includes(t) && t.contrast < aaFloorFor(t));
+  // Named individually up to a handful, counted after that. One exhibit puts nine nodes in this
+  // band at once, and a line that runs off the terminal is a line nobody finishes reading — which
+  // is the failure mode this whole file is organized against, one notch quieter.
+  const AA_NAMED = 6;
+  const aaNote =
+    underAA.length === 0
+      ? ''
+      : ` — ${underAA.length} above the floor and under WCAG AA ` +
+        `(${LIMITS.textContrastAA}, or ${LIMITS.textContrast} at ${LIMITS.largeTextPx}px / ` +
+        `${LIMITS.largeBoldPx}px bold): ` +
+        underAA
+          .slice(0, AA_NAMED)
+          .map((t) => `"${t.text}" ${t.contrast} at ${t.fontPx}px`)
+          .join(', ') +
+        (underAA.length > AA_NAMED ? `, and ${underAA.length - AA_NAMED} more` : '');
   push(
     'legibility',
     illegible.length === 0,
     report.text.length === 0
       ? 'no DOM text found — a canvas-drawn HUD is not checked here'
-      : illegible.length === 0
-        ? `${report.text.length} text nodes, all readable`
-        : illegible.map((t) => `"${t.text}" contrast ${t.contrast}, range ${t.visibleRange}`).join('; '),
+      : (illegible.length === 0
+          ? `${report.text.length} text nodes, all readable`
+          : illegible.map((t) => `"${t.text}" contrast ${t.contrast}, range ${t.visibleRange}`).join('; ')) +
+        aaNote,
   );
   push(
     'console',

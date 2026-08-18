@@ -9,12 +9,16 @@
  * are two files that drift, and the drift is silent: the repo's tests would go on passing
  * against a harness no user is running. So the copies are compared, byte for byte, here.
  *
- * **The fixture guard.** Eight pages, six of them broken in a way a real agent shipped, and the
+ * **The fixture guard.** Ten pages, six of them broken in a way a real agent shipped, and the
  * assertion is not "the script ran" but *which row failed*. A harness that fails everything is
  * as useless as one that passes everything, and the second one is how this project got a suite
  * that was green over a black screen. `good` must pass every row; each broken page must fail
- * exactly the row named for it and no other. The last page is looked at **twice, at two hours**,
+ * exactly the row named for it and no other. One page is looked at **twice, at two hours**,
  * because one of those six is only broken at one of them.
+ *
+ * Two of the ten are pinned on their **detail text** rather than on their verdict, because what
+ * they prove is that a page which is *nearly* illegible is not reported as broken. See `dimhud`
+ * and `largehud` below.
  *
  * ```bash
  * node tools/looking/verify.mjs
@@ -66,6 +70,25 @@ const EXPECTED = [
   { mode: 'darkroofs', fails: [] },
   { mode: 'cycle', label: 'cycle@noon', advance: () => aim(0), fails: [] },
   { mode: 'cycle', label: 'cycle@night', advance: () => aim(30_000), fails: ['framing'] },
+  // The two that pin the contrast decision, and they pin a *refusal* as much as a behavior.
+  //
+  // Both pages are `#767676` on `#1c2230` — **3.59**, between this harness's floor of 3 and
+  // WCAG AA's 4.5. Raising the floor to AA was considered and rejected on measurement: 660
+  // readings across this kit's eleven exhibits and three games built blind put `endless` at 3.26
+  // and the whole of `crowd`'s label row at 4.16, so AA would redden two exhibits nobody thinks
+  // are broken. `dimhud` is what that refusal looks like — a **pass**, with the shortfall named in
+  // the detail so an author is told without being alarmed.
+  //
+  // `largehud` is the same ink, the same ground and the same 3.59 at 28 px, where WCAG's large-text
+  // rule makes 3 the AA floor. It must pass **and say nothing**, which is the only place the size
+  // distinction does any work: it is not in the failing threshold, where every measured node in the
+  // band is 9 to 15 px and the rule would be inert.
+  {
+    mode: 'dimhud',
+    fails: [],
+    legibility: /^5 text nodes, all readable — 5 above the floor and under WCAG AA \(4\.5, or 3 at 24px \/ 19px bold\): /,
+  },
+  { mode: 'largehud', fails: [], legibility: /^5 text nodes, all readable$/ },
 ];
 
 let failures = 0;
@@ -82,7 +105,7 @@ if (!left.equals(right)) {
   process.stdout.write('ok     the shipped copy of look.mjs matches the source\n');
 }
 
-for (const { mode, fails, label, advance } of EXPECTED) {
+for (const { mode, fails, label, advance, legibility } of EXPECTED) {
   const name = label ?? mode;
   const report = await look({
     url: `${fixture}?mode=${mode}`,
@@ -96,7 +119,8 @@ for (const { mode, fails, label, advance } of EXPECTED) {
     width: 1280,
     height: 800,
   });
-  const actual = judge(report)
+  const rows = judge(report);
+  const actual = rows
     .filter((row) => row.verdict !== 'pass')
     .map((row) => row.name)
     .sort();
@@ -109,6 +133,20 @@ for (const { mode, fails, label, advance } of EXPECTED) {
     process.stdout.write(
       `BAD    ${name.padEnd(12)} expected [${expected.join(', ')}], got [${actual.join(', ')}]\n`,
     );
+  }
+  // The advisory has no verdict, so a matrix that reads only verdicts cannot see it — which would
+  // leave the one thing `dimhud` exists to prove untested.
+  if (legibility) {
+    const detail = rows.find((row) => row.name === 'legibility')?.detail ?? '';
+    if (legibility.test(detail)) {
+      process.stdout.write(`ok     ${name.padEnd(12)} legibility detail matches\n`);
+    } else {
+      failures++;
+      process.stdout.write(
+        `BAD    ${name.padEnd(12)} legibility detail did not match ${legibility}\n` +
+          `       got: ${detail}\n`,
+      );
+    }
   }
 }
 

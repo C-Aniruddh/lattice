@@ -6,6 +6,15 @@
   #app{position:fixed;inset:0}
   canvas{display:block;width:100%;height:100%}
   #hud{position:fixed;top:12px;left:12px;font:16px/1.5 system-ui;pointer-events:none}
+  /* `dimhud` and `largehud` paint their own opaque ground so the ratio is a fixed number rather
+     than a function of whichever tile the HUD happens to sit over. Same ink, same ground, the
+     same measured 3.59 in both — the only difference between the two pages is the size of the
+     type. (3.59 rather than the 3.50 the two hex values work out to, because `look.mjs` reads the
+     ground off a five-bit histogram and `#1c2230` quantizes to `#182030`. Read the number the
+     harness prints, never the one the color picker implies — which is the same lesson the `hud`
+     skill teaches about eyeballing contrast.) */
+  body.dim #hud{background:#1c2230;padding:8px 12px}
+  body.large #hud{font-size:28px}
 </style>
 <div id="app"><canvas id="c"></canvas></div>
 <div id="hud"></div>
@@ -17,7 +26,18 @@ function resize(){ c.width = innerWidth; c.height = innerHeight; }
 resize(); addEventListener('resize', resize);
 
 // The HUD. In `blackhud` the rows take the game's night ink, which is what shipped.
-const ink = mode === 'blackhud' ? '#0a1420' : '#e8eef6';
+//
+// `dimhud` and `largehud` are the pair that pins the legibility floor at the two sizes WCAG
+// separates. Both put `#767676` on an opaque `#1c2230` panel — **contrast 3.59**, which lands in
+// the band between the old floor of 3 and the AA floor of 4.5, so both pages passed before the
+// raise. At 16 px that is a fail and at 28 px it is not, and nothing else about the two differs.
+// The panel is opaque on purpose: over the world the ratio would be a function of whichever tile
+// the HUD happened to sit above, and a fixture whose number moves pins nothing.
+const dimPanel = mode === 'dimhud' || mode === 'largehud';
+if (dimPanel) document.body.classList.add('dim');
+if (mode === 'largehud') document.body.classList.add('large');
+
+const ink = mode === 'blackhud' ? '#0a1420' : dimPanel ? '#767676' : '#e8eef6';
 document.getElementById('hud').innerHTML =
   ['Stone 128', 'Light 4', 'Fog 61%', 'Beacons 3', 'Day 12']
     .map(r => `<div style="color:${ink}">${r}</div>`).join('');

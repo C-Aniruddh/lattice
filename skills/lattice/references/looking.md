@@ -112,6 +112,15 @@ looked at http://localhost:5173 — 1280×713
   pass  console     clean
 ```
 
+A `legibility` row that passes can still have something to say, and it says it in the same line:
+
+```
+  pass  legibility  9 text nodes, all readable — 2 above the floor and under WCAG AA
+                    (4.5, or 3 at 24px / 19px bold): "21.7 ms" 3.26 at 14px, "0 bytes" 3.93 at 15px
+```
+
+That is a report, not a verdict. Nothing there fails, and nothing there should be left alone.
+
 Exit code `0` when every row passed, `1` when a row failed, `2` when the script could not run at
 all. **`2` is not a failing game — it is a failure to look**, and the two must never be reported
 as the same thing.
@@ -122,6 +131,7 @@ as the same thing.
 | `framing` | a small diamond in a big empty frame. The diorama measured **99%**; a world that fills the viewport measures around **30%** |
 | `motion` | nothing moved in a second. A screenshot of a game rather than a game |
 | `legibility` | HUD text that cannot be read against what is behind it. Black on black measures **contrast 1.03** against a floor of 3 |
+| ↳ *and, in the same row, an advisory* | every node that clears 3 and misses **WCAG AA — 4.5, or 3 at 24 px or 19 px bold** — is named without failing anything. **Read it.** A passing row says nothing is invisible; it does not say anything is easy to read, and the difference is where a good-looking HUD goes wrong |
 | `console` | the exceptions and warnings no picture shows you |
 
 There is deliberately **no brightness floor**. A night game is legitimately dark, and a threshold
@@ -259,14 +269,33 @@ at 120 Hz, so the verdict is the ratio. Under about one and a half cadences drop
 culling. If it is in the dozens when the game is supposed to be about hundreds of something, the
 density row above is failing and no amount of art will fix it.
 
-To reach either from a script, hang them off the window in your boot — one line, and it is the
-difference between a blind agent that can ask questions and one that cannot:
+To reach either from a script, hang them off the global in your boot. It is one call, and it is
+the difference between a blind agent that can ask questions and one that cannot:
 
 ```ts
-// dev only: gives the looking harness something to ask — and, if there is a day cycle,
-// something to set, so `--at '__lattice.setHour(3)'` can put the world at its worst hour
-(globalThis as Record<string, unknown>).__lattice = { loop, order, camera, setHour };
+import type { Camera, DepthSorter } from '@latticekit/iso';
+import type { Loop } from '@latticekit/loop';
+
+/**
+ * Dev only: gives the looking harness something to ask — and, if there is a day cycle,
+ * something to *set*, so `--at '__lattice.setHour(3)'` can put the world at its worst hour.
+ *
+ * Call it at the end of your boot with what you already have.
+ */
+export function exposeForLooking(handles: {
+  loop: Loop;
+  order: DepthSorter;
+  camera: Camera;
+  setHour?: (hour: number) => void;
+}): void {
+  Object.assign(globalThis, { __lattice: handles });
+}
 ```
+
+**Write it as `Object.assign(globalThis, …)`, not as `(globalThis as Record<string, unknown>).__lattice = …`.**
+The cast is the form two games reached for and it compiles under the scaffold's `tsconfig.json`,
+but it is a `TS4111` the moment a project turns on `noPropertyAccessFromIndexSignature` — which is
+a normal thing to want and costs you the one hook the harness needs.
 
 ```bash
 node tools/look.mjs http://localhost:5173 --eval '__lattice.order.count' --eval '__lattice.loop.stats.worstGapMs'

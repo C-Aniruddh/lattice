@@ -20,14 +20,24 @@
  * snippets that each work and do not compose. Concatenation checks the story, not the
  * sentences, and a duplicate identifier across two blocks is a real defect in the narrative.
  *
- * A block may opt out with ` ```ts ignore ` — for deliberately-wrong examples, which the
- * traps sections need.
+ * A block may opt out with ` ```ts wrong ` or ` ```ts ignore `; `tools/lib/fences.mjs` owns both
+ * words and has the table of which to use when. This file knew only `ignore` until the skills
+ * gate arrived and found that the skills had been written with `wrong` — two documents, two
+ * tags, one rule an author was expected to remember differently in each place.
+ *
+ * Note what this file does **not** check, and `tools/check-skills.mjs` does: these blocks resolve
+ * `@latticekit/*` at `packages/<name>/src/index.ts`, which is the workspace. A symbol that exists
+ * in `src` and is missing from `index.ts` compiles here and fails for a reader. That is tolerable
+ * for these two documents — they are read beside the repository — and is not tolerable for the
+ * skills, which are read with nothing but a `node_modules`.
  */
 
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { tsBlocks } from './lib/fences.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const DOCS = ['README.md', 'docs/GUIDE.md'];
@@ -41,35 +51,9 @@ const OUT = join(ROOT, '.lattice/doccheck');
  * file that will not exist by the time they look.
  */
 function extract(markdown, file) {
-  const blocks = [];
-  const lines = markdown.split('\n');
-
-  /** `null` outside any fence; otherwise the fence we are inside. */
-  let fence = null;
-  let buffer = [];
-
-  lines.forEach((line, i) => {
-    const marker = line.match(/^```(.*)$/);
-    if (marker === null) {
-      if (fence?.capture === true) buffer.push(line);
-      return;
-    }
-    if (fence === null) {
-      // Opening. Capture only `ts`, and only when the info string does not say `ignore` —
-      // the traps sections need blocks that are deliberately wrong.
-      const info = (marker[1] ?? '').trim();
-      const lang = info.split(/\s+/)[0] ?? '';
-      fence = { capture: lang === 'ts' && !/\bignore\b/.test(info), line: i + 2 };
-      buffer = [];
-      return;
-    }
-    // Closing.
-    if (fence.capture) blocks.push({ line: fence.line, code: buffer.join('\n') });
-    fence = null;
-    buffer = [];
-  });
-
-  return blocks.map((b) => `// ─── ${file}:${b.line} ───\n${b.code}`).join('\n\n');
+  return tsBlocks(markdown)
+    .map((b) => `// ─── ${file}:${b.line} ───\n${b.code}`)
+    .join('\n\n');
 }
 
 mkdirSync(OUT, { recursive: true });

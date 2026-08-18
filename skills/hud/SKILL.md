@@ -224,9 +224,20 @@ because **low contrast reads as atmosphere rather than as a defect** — over a 
 beautiful, dim lettering looks like a deliberate hush. The harness caught all five in one run.
 
 The two floors are not the same bar, so do not read a green row as a comfortable HUD. `look.mjs`
-fails below **3**, the weaker floor: in that same HUD a sixth node measured **3.1** — a passing
-row, still under the floor for the size it was set at. A passing `legibility` row says nothing is
-invisible; it does not say anything is easy to read.
+**fails** below **3**, the weaker floor, and **reports** everything between 3 and AA without
+failing it: in that same HUD a sixth node measured **3.1** — a passing row, still under the floor
+for the size it was set at, and now named in the row's own detail. A passing `legibility` row says
+nothing is invisible; it does not say anything is easy to read, and the advisory is the sentence
+that tells you which of the two you got.
+
+**The floor is 3 rather than 4.5 on measurement, not on taste**, and it is worth knowing why
+before you argue with it. Every text node in fourteen games — this kit's eleven exhibits and three
+games built blind by three agents — was measured at four points of a day cycle. Two exhibits that
+pass every row live between 3 and 4.5: one reads its own frame time at **3.26**, and another puts
+its entire label row at **4.16**. A harness that failed those would be red on games nobody thinks
+are broken, and a row that is red when things are right is a row an agent stops reading. **Design
+to 4.5 anyway.** The harness's floor is where a HUD is *broken*; this section's number is where a
+HUD is *good*, and the gap between them is yours to close rather than the harness's to enforce.
 
 **And the trap is the section directly above.** A HUD styled from `--lattice-*` takes both its ink
 and its ground from the world's palette, so its contrast is a *function of the hour* — legible at
