@@ -25,11 +25,12 @@
     "bench": "vitest bench --run",
     "cover": "vitest run --coverage",
     "lint": "node tools/lint.mjs",
-    "verify": "npm run build && npm run lint && npm run docs && npm run test && npm run gallery",
+    "verify": "npm run build && npm run lint && npm run docs && npm run test && npm run gallery && npm run looking",
     "dev": "npm run dev --workspace=@latticekit/demo",
     "size": "node tools/size.mjs",
     "gallery": "node tools/gallery.mjs",
-    "docs": "node tools/check-docs.mjs"
+    "docs": "node tools/check-docs.mjs",
+    "looking": "node tools/looking/verify.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

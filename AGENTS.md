@@ -6,7 +6,8 @@ Nine small libraries that compose, and a real game built from nothing but them.
 This file is the constitution. It is written for agents first and humans second, because
 agents outnumber humans here. Read it before you touch anything. It is short on purpose.
 
-- **What each package is** → `.lattice/kit.json` (machine-readable) and `docs/ARCHITECTURE.md`
+- **What each package is** → `.lattice/kit.json` (machine-readable), `README.md` § The nine packages,
+  and each package's own `README.md`. The cross-package contracts are in `docs/SEAMS.md`
 - **What to work on next** → `.lattice/tasks.json`
 - **Where the build is** → `.lattice/state.json`
 - **How one work cycle runs** → `docs/LOOP.md`
@@ -128,7 +129,7 @@ packages/
   ui/        DOM overlay primitives — panels, toasts, number rolls. not a framework
 examples/
   demo/      a complete small game, built only from the above. the kit's real test
-docs/        ARCHITECTURE, PERFORMANCE, LOOP, and RFCs for anything not yet built
+docs/        SEAMS, PERFORMANCE, GALLERY, SKILLS, LOOP, LAUNCH, and RFCs for anything not yet built
 tools/       lint, size budget, and the scripts the work cycle runs
 .lattice/    machine-readable: kit.json, tasks.json, state.json — agents read these first
 ```
