@@ -28,6 +28,7 @@
 import type { Disposer } from '@latticekit/core';
 import { paletteVars, type Palette as WorldPalette } from '@latticekit/draw';
 import { applyPalette, createOverlay, el, roll, setText, type Overlay } from '@latticekit/ui';
+import { costNode } from '../../_shared/src/index.js';
 
 /** What the frame knows and the overlay shows. Pulled once per update, never pushed. */
 export interface Readout {
@@ -71,7 +72,7 @@ export function createHud(palette: WorldPalette, read: () => Readout, onWarp: (s
       el('p', { class: 'lede' }, 'Eight closed curves, and a number. Nothing here remembers where anybody is.'),
       el('code', {}, 's = ((φ·i + t·v) mod 1) · route.arcLength')),
     el('section', { class: 'card figures' }, row('PEOPLE', people.node), row('ON SCREEN', drawn),
-      row('FRAME', frame), row('WORST FRAME / 10 s', worst), row('STATE PER PERSON', el('span', { class: 'val zero' }, '0 bytes')))),
+      costNode(row('FRAME', frame)), costNode(row('WORST FRAME / 10 s', worst)), row('STATE PER PERSON', el('span', { class: 'val zero' }, '0 bytes')))),
     { layer: 'panels' });
   // The one interactive node in the overlay. Everything else is `pointer-events: none`, which is
   // `ui`'s most important decision: a drag that is not on a node you named reaches the world.

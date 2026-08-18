@@ -110,7 +110,10 @@
     <span class="key">CHUNKS LIVE</span><span class="val" data-cell></span>
     <span class="key">MEMORY</span><span class="val" data-cell></span>
     <span class="key">MINTED / EVICTED</span><span class="val" data-cell></span>
-    <span class="key">WORST FRAME · 10s</span><span class="val worst" data-cell></span>
+    <!-- `data-cost` is the frame-cost figure, marked so `hud.ts` can drop the pair of cells when
+         the embedder passed `?cost=0`. Both halves carry it: a label with nothing after it is
+         worse than the number was. -->
+    <span class="key" data-cost>WORST FRAME · 10s</span><span class="val worst" data-cell data-cost></span>
   </section>
   <section class="card proof">
     <p class="at" data-cell></p>

@@ -33,6 +33,7 @@
 import type { Disposer } from '@latticekit/core';
 import { paletteVars, type Palette as WorldPalette } from '@latticekit/draw';
 import { applyPalette, createOverlay, pulse, setText, show, type Overlay } from '@latticekit/ui';
+import { costNode } from '../../_shared/src/index.js';
 
 /**
  * What the exhibit tells the overlay once per update — a **pull**, so there is exactly one place
@@ -71,12 +72,11 @@ function pick(root: ParentNode, selector: string): HTMLElement {
 }
 
 export function createHud(opts: HudOptions): HudView {
-  const ui = createOverlay({ now: opts.now });
-  const root = pick(document, '#hud');
+  const ui = createOverlay({ now: opts.now }), root = pick(document, '#hud');
   // Everything is read before the docks are mounted, because mounting *moves* them out of `#hud`
   // and a selector run afterwards finds nothing.
   const wake = pick(root, '.wake'), asking = pick(root, '.asking'), gate = pick(root, '.gate');
-  const opened = pick(root, '.opened'), worst = pick(root, '.worst'), rack = pick(root, '.rack');
+  const opened = pick(root, '.opened'), worst = costNode(pick(root, '.worst')), rack = pick(root, '.rack');
   const keys = rack.querySelectorAll<HTMLElement>('.string');
   keys.forEach((key, index) => key.addEventListener('click', () => { opts.onString(index); }));
   pick(root, '.again').addEventListener('click', opts.onHum);

@@ -26,6 +26,7 @@
 import { fmtInteger, type Disposer } from '@latticekit/core';
 import { paletteVars, type Palette as WorldPalette } from '@latticekit/draw';
 import { applyPalette, createOverlay, roll, setText } from '@latticekit/ui';
+import { costNode } from '../../_shared/src/index.js';
 import { buildReadout } from './readout.js';
 
 /** Height units to feet. An art scale, and the only place this exhibit names a real-world unit —
@@ -46,7 +47,7 @@ export interface HudOptions {
 
 export function createHud(opts: HudOptions) {
   const ui = createOverlay({ now: opts.now }), feet = roll(ui, { format: (ft) => `${fmtInteger(ft)} ft`, ms: 160 });
-  const plate = buildReadout(ui, feet.node);
+  const plate = buildReadout(ui, feet.node); costNode(plate.cost);
   plate.raise.addEventListener('click', () => { opts.onMode(false); }); plate.lower.addEventListener('click', () => { opts.onMode(true); });
   // `addEventListener` rather than `el`'s `on*` keys, for the reason § *Static markup is art* gives:
   // by the time a handler changes what the exhibit does, the element is somebody else's markup.

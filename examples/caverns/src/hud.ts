@@ -39,6 +39,7 @@
 import type { Disposer } from '@latticekit/core';
 import { paletteVars, type Palette as WorldPalette } from '@latticekit/draw';
 import { applyPalette, createOverlay, el, roll, setText, type Overlay } from '@latticekit/ui';
+import { costNode } from '../../_shared/src/index.js';
 
 /**
  * What the exhibit tells the overlay, once per update. A pull, not a push, so there is exactly
@@ -76,11 +77,10 @@ export function createHud(opts: HudOptions): HudView {
     el('p', { class: 'brief-line brief-note' }, 'Set it down beside a brazier: the two pools become one brighter region, with no ridge where they meet and no rim where they end.'));
 
   const pools = roll(ui, { format: (v) => String(Math.round(v)) });
-  const worst = el('span', { class: 'gauge-value' });
-  const torches = el('span', { class: 'gauge-note' });
+  const worst = el('span', { class: 'gauge-value' }), torches = el('span', { class: 'gauge-note' });
   const meter = el('section', { class: 'card meter' },
     el('div', { class: 'gauge' }, el('span', { class: 'gauge-key' }, 'POOLS'), pools.node),
-    el('div', { class: 'gauge' }, el('span', { class: 'gauge-key' }, 'WORST'), worst),
+    costNode(el('div', { class: 'gauge' }, el('span', { class: 'gauge-key' }, 'WORST'), worst)),
     torches);
 
   // The two interactive nodes in the whole overlay. Everything else is `pointer-events: none`,

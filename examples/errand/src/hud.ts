@@ -38,6 +38,7 @@ import type { Disposer } from '@latticekit/core';
 import { paletteVars, type Palette as WorldPalette } from '@latticekit/draw';
 import type { StoreStatus } from '@latticekit/persist';
 import { applyPalette, createOverlay, panel, setText, show } from '@latticekit/ui';
+import { costNode } from '../../_shared/src/index.js';
 import { buildCards } from './cards.js';
 import type { SpotKind, Stage } from './errand.js';
 import { OBJECTIVES, TROUBLE, speechFor } from './script.js';
@@ -64,6 +65,7 @@ export function createHud(palette: WorldPalette, now: () => number, onAct: (kind
   const ui = createOverlay({ now });
   const sheet = panel(ui, { modal: true, dismissible: true });
   const c = buildCards(ui, sheet);
+  costNode(c.costCard);
   let speaking: SpotKind = 'you', paletteRev = -1;
   // The only handler in the overlay that changes anything, and the reason it is here rather than in
   // the module that built the button it is attached to.

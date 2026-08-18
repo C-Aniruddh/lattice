@@ -43,6 +43,14 @@ export { readParams } from './params.js';
 export type { Params } from './params.js';
 
 /**
+ * The frame-cost switch, and the two markers a HUD applies it with.
+ *
+ * `?cost=0` — or `bootstrap({ showCost: false })` — suppresses the worst-frame figure and
+ * nothing else. On by default, because § Scale's cost row is a gate. See `cost.ts`.
+ */
+export { COST_PARAM, costNode, costShown, costText } from './cost.js';
+
+/**
  * The kit's parameters, pre-declared.
  *
  * A namespace import rather than fifteen loose names, so an exhibit's panel reads

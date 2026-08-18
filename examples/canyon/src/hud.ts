@@ -41,6 +41,7 @@
 import { fmtInteger, type Disposer } from '@latticekit/core';
 import { paletteVars, type Palette as WorldPalette } from '@latticekit/draw';
 import { applyPalette, createOverlay, roll, setText } from '@latticekit/ui';
+import { costText } from '../../_shared/src/index.js';
 import { STEPS, YEARS_PER_STEP, type DeepTime } from './deeptime.js';
 import { buildReadout } from './readout.js';
 
@@ -90,7 +91,7 @@ export function createHud(opts: HudOptions) {
     const r = opts.read();
     year.set(r.time.epoch);
     deep.set(Math.round(r.time.cut * FEET));
-    setText(plate.stat, `EPOCH ${r.time.epoch}/${STEPS} · ${r.time.steps} STEP${r.time.steps === 1 ? '' : 'S'} THIS FRAME · GAP ${r.worstMs.toFixed(1)}/${r.cadenceMs.toFixed(1)}ms`);
+    setText(plate.stat, `EPOCH ${r.time.epoch}/${STEPS} · ${r.time.steps} STEP${r.time.steps === 1 ? '' : 'S'} THIS FRAME${costText(` · GAP ${r.worstMs.toFixed(1)}/${r.cadenceMs.toFixed(1)}ms`)}`);
     setText(plate.origin, r.behind ? 'CATCHING UP — RE-RUNNING THE MODEL' : r.from < 0
       ? 'RECOMPUTED · STEPPED ON FROM THE LAST FRAME'
       : `RESUMED · CHECKPOINT ${r.from} OF ${r.time.checkpoints}, THEN RE-RUN`);

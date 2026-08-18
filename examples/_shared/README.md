@@ -289,6 +289,28 @@ reads as *the list of things that are not default* and a bug report can be a lin
 coalesced on a 250 ms trailing timer: Safari rate-limits `history.replaceState` and throws past
 the limit, so a live slider drag would be an unhandled exception on exactly one browser.
 
+### `?cost=0` — the one key an embedder sets rather than a control
+
+Every other URL key here is written *by* a panel control. This one is only ever read, and only
+ever by whoever is embedding an exhibit rather than opening it.
+
+`docs/GALLERY.md` § Scale makes the worst frame a gate, so an exhibit shows its cost by default and
+that default is not negotiable — `bootstrap({ showCost })` starts at `true`, `?cost=0` is the only
+thing that turns it off, and the resolved answer is readable back as `boot.showCost`. What it is
+for is the landing page: eleven exhibits in eleven iframes, each printing a worst frame measured on
+a stranger's laptop, is eleven arguments about the visitor's hardware in a place that was meant to
+be an argument about the kit. `cost.ts` has the reasoning; a HUD applies it with `costNode(node)`
+on the element that carries the figure and its label, or `costText(clause)` where the figure shares
+a sentence with something that stays.
+
+```ts
+import { costNode } from '../../_shared/src/index.js';
+
+// hidden when the page embedded this exhibit as `…/island/?cost=0`, shown every other time
+const card = costNode(el('section', { class: 'card cost' },
+  el('span', { class: 'stat-label' }, 'WORST FRAME / 10s'), worst));
+```
+
 ### It costs nothing per frame
 
 No loop subscription, no `requestAnimationFrame`, no timer. Controls are native elements built

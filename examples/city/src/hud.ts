@@ -19,6 +19,7 @@ import { fmtInteger, type Disposer } from '@latticekit/core';
 import { paletteVars, type Palette } from '@latticekit/draw';
 import type { Loop } from '@latticekit/loop';
 import { applyPalette, createOverlay, el, roll, setText, toasts, type Overlay } from '@latticekit/ui';
+import { costNode } from '../../_shared/src/index.js';
 
 /** What the exhibit tells the overlay, once per update: the hour, and how many it has woken. */
 export interface Hud { readonly hour: number; readonly woken: number; readonly buildings: number }
@@ -58,8 +59,8 @@ export function createHud(palette: Palette, read: () => Hud, loop: Loop): HudVie
     el('span', { class: 'lit-mark' }),
     el('div', { class: 'lit-body' }, el('span', { class: 'stat-label' }, 'AWAKE'), woken.node, total),
     hour);
-  const cost = el('section', { class: 'card cost' },
-    el('span', { class: 'stat-label' }, 'WORST FRAME / 10s'), worst);
+  const cost = costNode(el('section', { class: 'card cost' },
+    el('span', { class: 'stat-label' }, 'WORST FRAME / 10s'), worst));
   ui.mount(el('div', { class: 'dock dock-left' }, brief), { layer: 'panels' });
   ui.mount(el('div', { class: 'dock dock-right' }, lit, cost), { layer: 'panels' });
   const host = toasts(ui, { max: 2 });

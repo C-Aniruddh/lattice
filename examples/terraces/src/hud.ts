@@ -46,6 +46,7 @@
 import type { Disposer } from '@latticekit/core';
 import { paletteVars, type Palette as WorldPalette } from '@latticekit/draw';
 import { applyPalette, createOverlay, el, roll, setText, type Overlay } from '@latticekit/ui';
+import { costNode } from '../../_shared/src/index.js';
 
 /** What the exhibit tells the overlay, once per update. A pull, not a push, so there is exactly
  *  one place the HUD can be a frame behind the world and it is the `read` call.
@@ -84,7 +85,7 @@ export function createHud(opts: HudOptions): HudView {
   const gauge = el('section', { class: 'card gauge' },
     el('span', { class: 'gauge-cap' }, 'pick error'), err.node,
     el('div', { class: 'gauge-rows' }, el('span', {}, 'tiles apart ', apart),
-      el('span', {}, 'terrace ', terrace), el('span', { class: 'worst' }, 'worst frame / 10s ', worst)));
+      el('span', {}, 'terrace ', terrace), costNode(el('span', { class: 'worst' }, 'worst frame / 10s ', worst))));
 
   ui.mount(el('div', { class: 'dock dock-left' }, el('section', { class: 'card brief' },
     el('h1', { class: 'brief-title' }, 'TERRACES'), el('p', { class: 'brief-line' }, BRIEF),

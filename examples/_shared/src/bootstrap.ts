@@ -79,6 +79,7 @@ import {
 import { createInput, type ActionEvent, type ActionMap, type DomInputSystem, type GestureMap, type ProfileOverrides } from '@latticekit/input';
 import { browserFrames, createLoop, createTweens, type Loop, type Tweens } from '@latticekit/loop';
 import { PANEL_CLASS } from './panel.js';
+import { resolveCost } from './cost.js';
 import { readParams, type Params } from './params.js';
 
 /**
@@ -126,6 +127,16 @@ export interface BootOptions<A extends string> {
   readonly control?: boolean;
   /** CSS color painted on the host element, behind the canvas. Only ever seen for one frame. */
   readonly background?: string;
+  /**
+   * Print the frame cost in the HUD. **Defaults to `true`, and the default is the gate.**
+   *
+   * `docs/GALLERY.md` § Scale judges every exhibit on its worst frame, so an exhibit opened
+   * directly or run by its author shows it. Overridden from the URL by `?cost=0`, which is how the
+   * landing page embeds eleven exhibits without printing eleven readings of the visitor's own
+   * laptop back at them. Read back off {@link Boot.showCost}; see `cost.ts` for the whole
+   * argument, and use `costNode`/`costText` in the HUD rather than reading this twice.
+   */
+  readonly showCost?: boolean;
 }
 
 /** What an exhibit is handed. Read `camera`, `light` and `input` **through this object** — the
@@ -159,6 +170,10 @@ export interface Boot<A extends string> {
   readonly rng: Rng;
   /** The URL, read and written. A panel control's storage. */
   readonly params: Params;
+  /** Whether this exhibit prints its frame cost — {@link BootOptions.showCost} after `?cost=`
+   *  has had its say. `costNode` and `costText` answer from the same value, so a HUD never has
+   *  to thread this through its own options to agree with the boot that resolved it. */
+  readonly showCost: boolean;
   /** The camera policy currently in force — what `iso` will not tell you. */
   readonly cameraPolicy: Readonly<CameraPolicy>;
   /** The light options currently in force — what `draw` will not tell you. */
@@ -292,6 +307,9 @@ const MAX_RATIO = 4;
 export function bootstrap<A extends string = never>(options: BootOptions<A> = {}): Boot<A> {
   const params = readParams();
   const seed = params.str('seed', options.seed ?? 'lattice');
+  // Resolved before anything is built, and published to `cost.ts` in the same call, so a HUD
+  // constructed later reads exactly what `boot.showCost` reports.
+  const showCost = resolveCost(params, options.showCost ?? true);
   const rng = createRng(seed);
   const scope = createScope();
 
@@ -490,6 +508,7 @@ export function bootstrap<A extends string = never>(options: BootOptions<A> = {}
     seed,
     rng,
     params,
+    showCost,
     get cameraPolicy() {
       return policy;
     },

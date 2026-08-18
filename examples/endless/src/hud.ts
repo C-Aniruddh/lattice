@@ -29,6 +29,7 @@
  */
 import { paletteVars, type Palette } from '@latticekit/draw';
 import { applyPalette, createOverlay, interactive, setText, type Disposer, type Overlay } from '@latticekit/ui';
+import { costNode } from '../../_shared/src/index.js';
 
 /**
  * Wire the markup in `index.html` to the world.
@@ -45,6 +46,9 @@ export function createHud(palette: Palette, read: () => readonly string[], state
   const root = document.getElementById('hud');
   if (root === null) throw new Error('endless: index.html is missing the #hud element the overlay drives');
   const cells = Array.from(root.querySelectorAll<HTMLElement>('[data-cell]'));
+  // The frame cost is markup here like everything else, so the flag is applied by selector rather
+  // than by wrapping a node this module never built. `[data-cost]` is both halves of that row.
+  root.querySelectorAll<HTMLElement>('[data-cost]').forEach((node) => costNode(node));
   // `interactive` per button rather than on the mount, because the default — a tap that is not on
   // a node you named reaches the world — is what makes the world draggable *under* the panels.
   root.querySelectorAll('button').forEach((button, i) => { button.onclick = act[i] ?? null; interactive(button); });

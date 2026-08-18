@@ -345,6 +345,13 @@ every eighth frame at 40 ms is a visible stutter and a healthy-looking number, w
 argument `docs/PERFORMANCE.md` makes about the tail. An exhibit that cannot show its worst
 frame cannot be said to have met this row.
 
+**The one reader who does not get it is a stranger on the landing page.** An *embedder* may pass
+`?cost=0` and the exhibit suppresses that figure and nothing else. This is not a loophole in the
+row above and does not weaken it: the default is on, opening an exhibit directly still shows the
+number, and the gate is scored exactly where it always was. See § *The frame cost is evidence in
+development and a liability in a shop window* for why the two readers are separated, and
+`examples/_shared/src/cost.ts` for the flag.
+
 **The frame is the composition.** An exhibit is judged on a screenshot taken at the opening
 frame, at a fixed 1440×900, before any input. If that image is mostly background, the exhibit
 is not finished, whatever its suite says. This is rule 10 with a ruler against it — and rule 10
@@ -670,8 +677,9 @@ paragraph can be replaced by a thing on screen, replace it. If it cannot, cut it
 2. **What it is, in one line**, under it. Not a feature list.
 3. **The proof, as numbers rather than adjectives.** Zero dependencies. Zero asset files.
    Nine packages. Roughly 78 kB gzipped for all of them. ~2,300 tests. A frame budget the
-   page is meeting live — and it may as well *show* the frame time, because a page confident
-   enough to display its own render cost is making an argument.
+   page is meeting live — which it demonstrates by *running smoothly*, and **never by printing
+   the frame time**, in its own chrome or in any exhibit it embeds. That figure is the one
+   exception to "numbers rather than adjectives", and the next subsection is why.
 4. **The agent story, prominently and early.** This is the differentiator and it is the part
    a generic gamedev library cannot copy: install the skills, point an agent at it, get a
    game. Show the actual invocation. Show what an agent produces. The audience is people who
@@ -679,6 +687,57 @@ paragraph can be replaced by a thing on screen, replace it. If it cannot, cut it
 5. **The gallery.** Eighteen live tiles, each one line of caption, each linking to source.
    The source is the point — a visitor who likes a tile wants the file, immediately.
 6. **One paste-able example** that compiles, sized so the whole thing fits on screen at once.
+
+### The frame cost is evidence in development and a liability in a shop window
+
+Item 3 used to end differently. It said the page *"may as well show the frame time, because a page
+confident enough to display its own render cost is making an argument."* That is wrong, and the
+reasoning is recorded here rather than deleted with the sentence, because the sentence is
+persuasive and whoever writes this page next will think of it again unaided.
+
+**A figure measured on the reader's own machine makes their hardware the argument against you.**
+Every other number in item 3 is a fact about the kit: 78 kB is 78 kB on a new laptop and on a
+five-year-old one. A frame time is not a fact about the kit at all. It is a measurement of the
+visitor's machine, their browser, their other thirty tabs and whatever their OS chose to do during
+those ten seconds — printed in the kit's own voice, where it reads as the kit's claim about itself.
+The exhibit that reads `8.7 ms` on the machine the page was built on reads `49.2 ms` on a machine
+that is busy, and the page has then handed a stranger a bad number about a product they have looked
+at for four seconds and cannot argue with. A **worst**-frame figure is the tail, which makes it the
+single number most sensitive to exactly the noise a visitor has and a developer does not.
+
+So the rule splits by *who is reading*, and both halves are load-bearing:
+
+| the context | who is reading | the rule |
+|---|---|---|
+| **an exhibit, opened directly** | its author, or a reviewer scoring § Scale's cost row | **shows its worst frame. Unchanged.** The cost row is a gate, and it has caught real bugs: four exhibits hand-rolled four different meters and two reported figures that were not true. An exhibit that cannot show its worst frame has not met that row |
+| **an exhibit, embedded in the landing page** | a stranger, on unknown hardware, being shown what the kit draws | **prints no frame cost.** The embedder asks for that explicitly, per exhibit; the exhibit never decides it for itself |
+| **the landing page's own chrome** | the same stranger | **prints no frame cost at all** — no hero readout, no fps counter, no budget line |
+
+**Neither half may be reintroduced by removing the other**, and both mistakes are easy to make in
+good faith. Deleting the cost row from an exhibit's HUD because the landing page does not want it
+retires a development gate to solve a presentation problem. Adding a frame readout back to the page
+because an exhibit shows one imports a developer's instrument into a shop window. Two different
+readers; the mechanism is what keeps them apart.
+
+**The mechanism is one flag, in `examples/_shared`.** `bootstrap` takes `showCost`, defaults it to
+`true`, lets `?cost=0` in the URL override it, and publishes the resolved answer as
+`boot.showCost` — non-negotiable 11, an option a caller supplied is a value they can read back.
+Every exhibit's HUD marks its own cost node with `costNode()`, or its cost *clause* with
+`costText()` where the figure shares a sentence with something that stays, and both read that one
+flag. **The landing page appends `?cost=0` to the `src` of every exhibit iframe**, hero included,
+and that append is the entire page-side of this.
+
+The version that was rejected is worth naming, because it is the one a parent page reaches for
+first: eleven CSS selectors, written in the landing page, reaching into eleven HUDs. Those exhibits
+call the node `.card.cost`, `.gauge`, `.worst`, `.cost-row`, `.sub.cost` and — twice — a bare span
+in their own markup, and a selector list against that set rots the first time any one of them is
+renamed. It rots *silently*, and in the direction of showing the figure again.
+
+Two figures that look like frame costs and are not: `Canyon`'s **one erosion step, 112×112 grid,
+0.30 ms** and `Resonance`'s **6 ms attack on a struck string**. Those are measured properties of an
+algorithm — the same number on every machine, and claims about the kit rather than about the reader
+— so they stay wherever they are printed. The test is not whether a number ends in `ms`; it is
+whether the reader's own hardware moved it.
 
 ### Interaction
 

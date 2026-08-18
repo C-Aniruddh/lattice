@@ -43,6 +43,7 @@ import {
   type Roll,
   type ToastHost,
 } from '@latticekit/ui';
+import { costNode } from '../../_shared/src/index.js';
 
 export interface Hud {
   /** One line, always naming the next action. The entire tutorial. */
@@ -154,7 +155,7 @@ export function createHud(opts: HudOptions): HudView {
   const costCard = el(
     'section',
     { class: 'card cost' },
-    el('div', { class: 'cost-row' }, el('span', { class: 'stat-label' }, 'WORST FRAME / 10s'), worst),
+    costNode(el('div', { class: 'cost-row' }, el('span', { class: 'stat-label' }, 'WORST FRAME / 10s'), worst)),
     el('div', { class: 'cost-row' }, el('span', { class: 'stat-label' }, 'DRAWN'), drawn),
   );
 

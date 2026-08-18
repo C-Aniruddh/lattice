@@ -40,6 +40,7 @@
 import type { Disposer } from '@latticekit/core';
 import { paletteVars, type Palette as WorldPalette } from '@latticekit/draw';
 import { applyPalette, createOverlay, setText, type Overlay } from '@latticekit/ui';
+import { costNode } from '../../_shared/src/index.js';
 import { mountChrome } from './overlay.js';
 
 /** What the exhibit tells the overlay, once per update. A pull, not a push, so there is exactly
@@ -101,6 +102,7 @@ function hhmm(minutes: number): string {
 export function createHud(opts: HudOptions): HudView {
   const ui = createOverlay({ now: opts.now });
   const { clock, hour, arc, perf, card } = mountChrome(ui, hhmm, opts.onSkip);
+  costNode(perf);
 
   let paletteRev = -1;
   const stopPalette: Disposer = ui.every(() => {
