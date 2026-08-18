@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "The rendering layer: a Surface interface with a Canvas2D backend, color derivation, and the isometric solid kit that makes procedural art read as designed.",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

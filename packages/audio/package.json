@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Sound without assets: WebAudio synthesis from declarative sound definitions, with voice limiting, buses and a music sequencer.",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

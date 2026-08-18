@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Idle-economy mathematics in closed form: cost curves, the flow integrator, offline accrual, and capacity gating.",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

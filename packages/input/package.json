@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Normalized input: pointer, touch, keyboard and gamepad into one event stream, plus gestures, an action map, and a camera controller.",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
