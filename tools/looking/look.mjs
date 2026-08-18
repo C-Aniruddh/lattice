@@ -730,7 +730,13 @@ const COLLECT_TEXT = `(() => {
     const rect = range.getBoundingClientRect();
     if (rect.width < 4 || rect.height < 4) continue;
     if (rect.bottom < 0 || rect.right < 0 || rect.top > innerHeight || rect.left > innerWidth) continue;
-    const parts = style.color.match(/[\\d.]+/g) || ['0','0','0'];
+    // Chrome serializes a color-mix() as \`color(srgb 0.61 0.69 0.78 / 0.72)\` — components in
+    // 0..1 — and everything else as \`rgb(157, 176, 200)\` — components in 0..255. Reading the
+    // digits and assuming bytes scored an ordinary color-mix ink as near-black, which reported
+    // a real 3.46 as 1.96. The unit is not in the numbers, it is in the function name.
+    const raw = style.color.trim();
+    const parts = raw.match(/-?[\\d.]+(?:e-?\\d+)?/g) || ['0','0','0'];
+    const unit = raw.startsWith('color(') ? 255 : 1;
     out.push({
       text,
       x: rect.left, y: rect.top, w: rect.width, h: rect.height,
@@ -740,7 +746,7 @@ const COLLECT_TEXT = `(() => {
       // it does. Anything that does not parse is treated as normal, because guessing bold would
       // relax the floor on the one node whose styling we could not read.
       fontWeight: Number(style.fontWeight) || (style.fontWeight === 'bold' ? 700 : 400),
-      color: [Number(parts[0]), Number(parts[1]), Number(parts[2])],
+      color: [Number(parts[0]) * unit, Number(parts[1]) * unit, Number(parts[2]) * unit],
     });
   }
   return { viewport, nodes: out.slice(0, 60) };
