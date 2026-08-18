@@ -2876,6 +2876,30 @@
         "§ Scale's five rows — extent, fill, edges, density, cost — belong in the skills as the shape a first build should take, not as a rule an author is graded against afterwards"
       ],
       "notes": "Found by the blind validation run. The kit knows this and the product does not."
+    },
+    {
+      "id": "S15",
+      "phase": "skills",
+      "role": "lattice-designer",
+      "title": "The preflight asks for one instrument when it needs any instrument",
+      "package": "skills",
+      "paths": [
+        "skills/lattice/references/preflight.md",
+        "skills/lattice/references/looking.md"
+      ],
+      "dependsOn": [
+        "S12"
+      ],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "the preflight tests for the Claude in Chrome extension and, finding none, warns that the game cannot be looked at",
+        "in the blind run Claude noticed Chrome itself was installed, drove it with puppeteer-core, and looked at its game repeatedly — the check said no and the answer was yes",
+        "it found four defects that way, every one invisible to a compiler: a viewport fitted to a tile rectangle so half the frame was empty ocean, a HUD reading the night ink so three rows were black on black, light pools landing at the summit elevation 200px up-screen from the water they were meant to show, and a flat relight price that made letting every beacon die the cheapest way to play",
+        "so the preflight must ask whether ANY instrument is reachable — the extension, a local Chrome through puppeteer or CDP, a headless browser — and only warn when none is",
+        "the warning is still correct when nothing is available. It was wrong here, and being wrong in the pessimistic direction cost the user nothing only because the agent ignored it"
+      ],
+      "notes": "Found by the blind validation run on 2026-08-18. The one agent that could look shipped a markedly better game than the one that could not, and it could look because it disagreed with our own preflight."
     }
   ]
 }
