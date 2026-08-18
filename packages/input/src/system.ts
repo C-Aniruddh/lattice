@@ -31,11 +31,17 @@
  * behind "input never learns what is in the world" — a naive implementation that caches hit
  * boxes during the draw pass cannot be built on this API, because there is nowhere to put them
  * and nothing that would read one.
+ *
+ * **`terrain` is not an exception to that, and the distinction is exact.** A `HeightField` is
+ * the shape of the *ground*: one number per grid vertex, no ids, no extents, no ordering, and no
+ * way to ask what is standing on it. It is a parameter of the projection, in the same sense the
+ * camera is — without it "which tile is under this pixel" has no answer rather than a different
+ * one — and a hit box cannot be stored in it or recovered from it. *What* is at the tile is
+ * still `iso`'s `pickSorted` over the caller's own state, called from a handler.
  */
 
 import { createScope, expectInt } from '@latticekit/core';
 import type { Scope, Vec2 } from '@latticekit/core';
-import { screenToTile } from '@latticekit/iso';
 import type { Camera, GridPoint } from '@latticekit/iso';
 import { compileActions, nameList, undeclared } from './actions.js';
 import type { ActionBinding, ActionEntry, ActionMap, CompiledActions } from './actions.js';
@@ -47,9 +53,10 @@ import {
   TapGestureEvent,
   TickFrame,
   ZoomGestureEvent,
-  fill,
 } from './events.js';
 import type { AnyActionHandler } from './events.js';
+import { TilePicker, checkTerrain } from './terrain.js';
+import type { Terrain, TerrainOption } from './terrain.js';
 import { profileFingerprint, resolveProfile } from './profile.js';
 import type { GestureProfile, ProfileOverrides } from './profile.js';
 import { createRecognizer } from './recognize.js';
@@ -105,6 +112,32 @@ export interface HeadlessInputOptions<A extends string> {
 
   /** Set `false` for a game whose camera is fixed. The gestures still arrive. */
   readonly control?: boolean;
+
+  /**
+   * What the ground looks like. **Answer it even when the answer is `'flat'`.**
+   *
+   * ```ts
+   * createInput({ element: canvas, camera, step: loop, terrain: { field: hill, maxHeightPx } });
+   * createInput({ element: canvas, camera, step: loop, terrain: 'flat' }); // and mean it
+   * ```
+   *
+   * Every `gx`/`gy` this package reports is the inverse of the projection **on the plane it is
+   * given**, and screen → grid inverts on `z = 0` and nowhere else. With a {@link Terrain} the
+   * pointer is marched down the heightfield by `iso` and lands on the tile the player can see;
+   * without one it lands on the tile the ray crosses at sea level, which on a hillside is
+   * several tiles uphill of the finger — `examples/terraces` measures 281 px and 14 tiles of it.
+   *
+   * Omitting this is not an error and cannot be: a game with genuinely level ground is the
+   * common case and has nothing to pass. It does raise the `flat-ground-pick` diagnostic once,
+   * the first time a coordinate is read, because the alternative is the silent wrong answer this
+   * option exists to end. `'flat'` says the same thing as omitting it and says it *on purpose*,
+   * which is the difference the diagnostic is testing for.
+   *
+   * Not fixed for the life of the system: {@link InputSystem.setTerrain} replaces it, and the
+   * field itself is held rather than copied, so ground the player raises this frame is ground
+   * the next event resolves on.
+   */
+  readonly terrain?: TerrainOption;
 
   /**
    * Where a keyboard action points.
@@ -224,6 +257,49 @@ export interface InputSystem<A extends string = never> extends InputScope<A> {
    */
   setActions(actions: ActionMap<A>): void;
 
+  /**
+   * The ground in force **right now**, exactly as it was declared, or `undefined` if it never
+   * was.
+   *
+   * A live read, not the object handed to the constructor: after {@link setTerrain} this is the
+   * new one. It is the same object the caller passed — not a copy — so a HUD that wants to show
+   * the march ceiling reads it here instead of keeping a second copy that drifts.
+   */
+  readonly terrain: TerrainOption | undefined;
+
+  /**
+   * Declare the ground, or change it. Keeps every handler, every scope and the camera.
+   *
+   * ```ts
+   * input.setTerrain({ field: hill, maxHeightPx: hill.tallestPx }); // after the map generated
+   * input.setTerrain('flat');                                       // the tunnel level
+   * ```
+   *
+   * Settable rather than baked, and the readback rule's three questions are why. **Identity:**
+   * nothing allocated or handed out depends on it — every coordinate is resolved from the
+   * pointer at the moment it is read, so there is no derived value to invalidate. **Record:** a
+   * log stores {@link RawSample}s, which are screen pixels; `gx`/`gy` have never been in one, any
+   * more than the camera position they equally depend on is, so no recording is made invalid by
+   * this. **Cost:** what the hot path reads is the field itself, which is exactly what a game
+   * with deformable ground needs to be live.
+   *
+   * The march ceiling moving under a slider is the case that settled it — `examples/terraces`
+   * ships that slider — and a game whose map is generated after its input system is bound is the
+   * case that made it necessary at all.
+   *
+   * **It does not bump the epoch {@link setProfile} and {@link setActions} bump**, and a recording
+   * does not refuse it. Those two replace *recognition and dispatch* rules, which a log's samples
+   * were produced under; this replaces the surface a coordinate is measured against, which is
+   * game state and moves during ordinary play — `examples/clay` deforms it every frame. A cursor
+   * that refused here would refuse every session in which a player dug a hole.
+   *
+   * @throws TypeError / RangeError for a malformed declaration, naming the field that is wrong,
+   *   **before anything changes**; RangeError if called from inside a handler, because half of
+   *   the bucket being delivered would then have resolved on a different surface from the other
+   *   half; or if the system has been disposed.
+   */
+  setTerrain(terrain: TerrainOption): void;
+
   /** The fixed step every duration is counted in. Fixed for the life of the system: changing it
    *  would re-time every gesture and invalidate every log, which is a new system, not a knob. */
   readonly stepMs: number;
@@ -295,6 +371,10 @@ export interface InputSystem<A extends string = never> extends InputScope<A> {
    * Returns `false` when there is no pointer over the world — which is every touch device,
    * always, between taps. A control that only appears on hover does not exist on a phone; this
    * signature exists to make that impossible to forget.
+   *
+   * On a system with {@link HeadlessInputOptions.terrain} it also returns `false` when the
+   * pointer is over the sky or past the edge of the field, and leaves `out` untouched: a ghost
+   * with nowhere to stand should not be drawn on the shore instead.
    */
   hoverTile(out: GridPoint): boolean;
 
@@ -428,11 +508,19 @@ export function createSystem<A extends string>(
   const actionLists = new Map<string, HandlerList<AnyActionHandler>>();
   for (const name of actions.names) actionLists.set(name, new HandlerList<AnyActionHandler>());
 
+  // One picker for the whole system, shared by every event object and by `hoverTile`, so a tap
+  // and the ghost that was following the finger cannot resolve on two different surfaces.
+  const picker = new TilePicker(diagnose);
+  if (options.terrain !== undefined) {
+    checkTerrain(options.terrain, `${label}.terrain`);
+    picker.set(options.terrain);
+  }
+
   const frame = new TickFrame();
-  const tapEvent = new TapGestureEvent();
-  const dragEvent = new DragGestureEvent();
-  const zoomEvent = new ZoomGestureEvent();
-  const actionEvent = new ActionEventImpl();
+  const tapEvent = new TapGestureEvent(picker);
+  const dragEvent = new DragGestureEvent(picker);
+  const zoomEvent = new ZoomGestureEvent(picker);
+  const actionEvent = new ActionEventImpl(picker);
   const focusPoint: Vec2 = { x: 0, y: 0 };
   /** Scratch for normalizing a submitted sample into a log entry. Only used while recording. */
   const recordScratch = createSampleSlot();
@@ -510,7 +598,7 @@ export function createSystem<A extends string>(
         tapEvent.pointerType = out.pointerType;
         tapEvent.heldMs = out.heldMs;
         tapEvent.claimed = false;
-        fill(tapEvent, frame, currentTick, out.sx, out.sy);
+        tapEvent.place(frame, currentTick, out.sx, out.sy);
         walk(gestures[out.type], tapEvent);
         if (tapEvent.claimed) return;
         fireActions(actions.forGesture(out.type), 'pointer', out.sx, out.sy);
@@ -526,7 +614,7 @@ export function createSystem<A extends string>(
         dragEvent.vx = out.vx;
         dragEvent.vy = out.vy;
         dragEvent.claimed = false;
-        fill(dragEvent, frame, currentTick, out.sx, out.sy);
+        dragEvent.place(frame, currentTick, out.sx, out.sy);
         walk(gestures[out.type], dragEvent);
         if (dragEvent.claimed || !control.enabled) return;
         if (out.type === 'dragstart') control.stop();
@@ -541,7 +629,7 @@ export function createSystem<A extends string>(
         zoomEvent.dx = out.dx;
         zoomEvent.dy = out.dy;
         zoomEvent.claimed = false;
-        fill(zoomEvent, frame, currentTick, out.sx, out.sy);
+        zoomEvent.place(frame, currentTick, out.sx, out.sy);
         walk(gestures.zoom, zoomEvent);
         if (zoomEvent.claimed || !control.enabled) return;
         // Pan first, then zoom about the anchor: a two-finger gesture pans and zooms at once,
@@ -582,7 +670,7 @@ export function createSystem<A extends string>(
       actionEvent.source = source;
       actionEvent.binding = entry.binding;
       actionEvent.claimed = false;
-      fill(actionEvent, frame, currentTick, sx, sy);
+      actionEvent.place(frame, currentTick, sx, sy);
       walk(list, actionEvent);
     }
   }
@@ -754,6 +842,21 @@ export function createSystem<A extends string>(
       epoch += 1;
     },
 
+    get terrain(): TerrainOption | undefined {
+      return picker.declared;
+    },
+
+    setTerrain(next: TerrainOption): void {
+      guardLive(
+        'input.setTerrain',
+        'The bucket being delivered is half resolved, and the events behind this one would answer against a different surface from the ones already handled.',
+      );
+      // Validated *before* anything is touched, so a rejected declaration leaves the system
+      // resolving exactly where it was rather than on half a heightfield.
+      checkTerrain(next, 'input.setTerrain');
+      picker.set(next);
+    },
+
     stepMs,
 
     get actionNames(): readonly A[] {
@@ -846,8 +949,11 @@ export function createSystem<A extends string>(
       if (!hoverActive) return false;
       // The **live** camera, not the frozen one: a hover highlight is a view, and a ghost that
       // lags a slow tick behind the finger is the thing this query exists to prevent.
-      screenToTile(camera, hoverSx, hoverSy, out);
-      return true;
+      //
+      // Through the same picker every event uses, so a highlight and the tap that follows it
+      // cannot disagree — and `false` now also means "the pointer is over the sky", which is the
+      // honest answer for a ghost that has nowhere to stand.
+      return picker.resolve(camera.toWorldX(hoverSx), camera.toWorldY(hoverSy), out);
     },
 
     pointerScreen(out: Vec2): boolean {

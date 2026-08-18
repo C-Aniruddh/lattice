@@ -20,7 +20,11 @@
  * - **One stream.** A game written against this package never learns which device it is being
  *   played on. "Collect" is one handler, not three.
  * - **Tile coordinates.** Every event arrives as a tile, converted once, through the camera the
- *   player was actually looking at. No game does the conversion.
+ *   player was actually looking at *and the ground the system was told about*. No game does the
+ *   conversion. A game with elevation passes `terrain: { field, maxHeightPx }` and a game
+ *   without it passes `terrain: 'flat'`; a game that passes neither is answering on the plane
+ *   `z = 0` and is told so once, because on a hillside that answer is a real tile, next to the
+ *   right one, and wrong by more the higher the player is pointing.
  * - **Bucketed to ticks.** Browser events arrive on the browser's schedule and a fixed-step
  *   loop runs on its own. A log of wall-clock events is not replayable; a log of tick-bucketed
  *   samples is.
@@ -107,6 +111,15 @@ export type {
 export type { GestureName, ZoomSource } from './recognize.js';
 export type { ActionBinding, ActionMap } from './actions.js';
 
+// ── the ground ──────────────────────────────────────────────────────────────────────────────
+//
+// The one thing this package must be told before `gx`/`gy` mean anything on a map with
+// elevation. `iso` marches the heightfield; this package holds the declaration and calls it. A
+// system that was never told resolves on the plane `z = 0` and says so once — see `terrain.ts`
+// for why a plausible wrong tile is the worst kind.
+
+export type { Terrain, TerrainOption } from './terrain.js';
+
 // ── the thresholds ──────────────────────────────────────────────────────────────────────────
 //
 // Every number that decides what a gesture is, with its derivation in the source beside it. A
@@ -155,5 +168,5 @@ export type { InputRecording, ReplayCursor } from './record.js';
 // types they need are re-exported here. A caller should not have to know which package owns a
 // two-field record to write an out-parameter.
 
-export type { GridPoint } from '@latticekit/iso';
+export type { GridPoint, HeightField } from '@latticekit/iso';
 export type { Vec2 } from '@latticekit/core';

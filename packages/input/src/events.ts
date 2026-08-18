@@ -8,6 +8,14 @@
  * carries screen, world and tile, all three resolved together, **through the camera as it stood
  * when the tick opened** — see {@link TickFrame}.
  *
+ * ## …and the tile one depends on the ground
+ *
+ * `gx`/`gy` are only the tile under the finger if something told this package what the ground
+ * looks like. Screen → grid inverts the projection **on the plane `z = 0`** and nowhere else, so
+ * on a hillside the undeclared answer is the tile the ray crosses at sea level — real, adjacent,
+ * plausible, and several terraces from where the player pointed. `terrain.ts` is the seam that
+ * fixes it and the diagnostic that reports a system nobody ever told.
+ *
  * ## The objects are reused
  *
  * There is one event object per gesture kind and one per action, for the life of the system.
@@ -17,8 +25,9 @@
  * ## What is *not* here, structurally
  *
  * There is no `target`, no `hit`, no `entity`, no `id`. This package has no way to be told what
- * is in the world — no registry, no rect, no `pickable` flag, no callback that returns a hit —
- * so a naive implementation that caches hit boxes during the draw pass cannot be built on it:
+ * is in the world — no registry, no rect, no `pickable` flag, no callback that returns a hit;
+ * the one thing it can be told is the shape of the *ground*, which carries none of those — so a
+ * naive implementation that caches hit boxes during the draw pass cannot be built on it:
  * there is nowhere to put them and nothing that would read one. `gx, gy` is geometry; "the
  * headquarters, not the rack behind it" is `iso`'s `pickSorted` over the caller's own state,
  * called from a handler with the coordinates below. In the source game the cached version made
@@ -26,11 +35,11 @@
  * and the cached boxes were minutes old.
  */
 
-import { worldToTile } from '@latticekit/iso';
 import type { Camera, GridPoint } from '@latticekit/iso';
 import type { GestureName, ZoomSource } from './recognize.js';
 import type { PointerKind } from './profile.js';
 import type { ActionBinding } from './actions.js';
+import type { TilePicker } from './terrain.js';
 
 /**
  * The camera, frozen at the instant a tick opened.
@@ -85,10 +94,15 @@ export class TickFrame {
 /**
  * The fields every gesture carries.
  *
- * Off the map is still a number: `gx, gy` is where the pixel falls on the infinite lattice, and
- * `iso` decides what is in bounds. Returning `false` here instead would make the most common
- * call — "which tile did they tap" — a two-step for the sake of a case most games handle by
- * looking the tile up and finding nothing.
+ * On flat ground, off the map is still a number: `gx, gy` is where the pixel falls on the
+ * infinite lattice, and `iso` decides what is in bounds. Returning `false` here instead would
+ * make the most common call — "which tile did they tap" — a two-step for the sake of a case most
+ * games handle by looking the tile up and finding nothing.
+ *
+ * On terrain there is no infinite lattice to fall on: a pixel above the horizon corresponds to
+ * no ground at all, and the only honest answers are {@link GestureBase.onGround} and `NaN`. That
+ * is a difference between the two grounds and not an inconsistency — the flat plane genuinely
+ * extends for ever, and a heightfield genuinely stops.
  */
 export interface GestureBase {
   readonly type: GestureName;
@@ -101,9 +115,29 @@ export interface GestureBase {
   /** World space, through the camera as it stood when the tick opened. */
   readonly wx: number;
   readonly wy: number;
-  /** Tile, floored. */
+  /**
+   * Tile, floored — **on the ground the system was told about**.
+   *
+   * With `terrain: { field, maxHeightPx }` this is the tile whose terrain surface is under the
+   * pixel, marched by `iso`. With `terrain: 'flat'`, or with nothing declared, it is the tile on
+   * the plane `z = 0` — which is the same answer on level ground and is the wrong one, by
+   * several tiles, anywhere the ground rises. See `terrain.ts` for what that costs and why the
+   * undeclared case says so once.
+   *
+   * `NaN` when {@link onGround} is `false`, and only ever then. A tile index that is not a
+   * number cannot be mistaken for the tile the player asked for; the sea-level answer can.
+   */
   readonly gx: number;
   readonly gy: number;
+  /**
+   * Did the pointer land on ground that exists?
+   *
+   * Always `true` on flat ground: off the map is still a number there, because `worldToTile`
+   * answers for the infinite lattice and `iso` decides what is in bounds. With a heightfield it
+   * is `false` for a pixel above the horizon or beyond the field's edge — a tap on the sky —
+   * and `gx`/`gy` are `NaN`. **Check it before using a coordinate on any map with terrain.**
+   */
+  readonly onGround: boolean;
   /**
    * Take this gesture. Handlers not yet run, and the camera controller, will not see it.
    *
@@ -195,44 +229,131 @@ export interface ActionEvent<A extends string> {
   readonly sy: number;
   readonly wx: number;
   readonly wy: number;
+  /** The tile, on the ground the system was told about. See {@link GestureBase.gx}. */
   readonly gx: number;
   readonly gy: number;
+  /** Did the pointer land on ground that exists? See {@link GestureBase.onGround}. */
+  readonly onGround: boolean;
   /** Take this action. Handlers not yet run will not see it. */
   claim(): void;
   readonly claimed: boolean;
 }
 
-/** The coordinate block, mutable, shared by every reused event object. */
-interface Coords {
-  tick: number;
-  sx: number;
-  sy: number;
-  wx: number;
-  wy: number;
-  gx: number;
-  gy: number;
-}
-
-/** Scratch tile, reused by {@link fill}. One per module; nothing here is re-entrant. */
+/** Scratch tile, reused by {@link CoordEvent}. One per module; nothing here is re-entrant. */
 const scratch: GridPoint = { gx: 0, gy: 0 };
 
+/** Nobody has asked for the tile yet. */
+const UNRESOLVED = 0;
+/** The pick landed on ground. */
+const ON_GROUND = 1;
+/** The pick found no ground: the ray left the field, or there is no map there. */
+const OFF_GROUND = 2;
+
 /**
- * Fill an event's coordinate block from a screen point and the frozen camera.
+ * The coordinate block every event shares, and the one place in the package where a pixel
+ * becomes a tile.
  *
- * The one function in the package that turns a pixel into a tile, so there is one place to look
- * when a tap resolves somewhere surprising and one place a fix has to go.
+ * ## The tile is resolved on read, not on delivery
+ *
+ * `sx`/`sy`/`wx`/`wy` are three multiplies and cost nothing, so they are filled eagerly. The
+ * tile is not: on terrain it is a march down the heightfield — twenty-four bilinear samples and
+ * about 75 ns on a 192 px hill, four hundred and under 0.05 ms on the 1,470 px one
+ * `examples/terraces` builds — and a game that binds input only to pan and zoom would otherwise
+ * pay for it on every pointer move it never asks a question about. Resolving on first read makes the
+ * cost exactly proportional to the number of coordinates a game actually uses, and it is also
+ * the hook that lets an undeclared `terrain` say so *when it matters* rather than at startup.
+ *
+ * It resolves against `wx`/`wy`, which were frozen from the camera as the tick opened, so
+ * laziness cannot leak the live camera into an answer: a handler that recenters the view still
+ * cannot move where a later event in the same bucket landed.
  */
-export function fill(target: Coords, frame: TickFrame, tick: number, sx: number, sy: number): void {
-  const wx = frame.toWorldX(sx);
-  const wy = frame.toWorldY(sy);
-  worldToTile(wx, wy, scratch);
-  target.tick = tick;
-  target.sx = sx;
-  target.sy = sy;
-  target.wx = wx;
-  target.wy = wy;
-  target.gx = scratch.gx;
-  target.gy = scratch.gy;
+export abstract class CoordEvent {
+  tick = 0;
+  sx = 0;
+  sy = 0;
+  wx = 0;
+  wy = 0;
+  claimed = false;
+
+  /**
+   * Declared here and *installed in the constructor*, as own enumerable accessors rather than
+   * prototype getters.
+   *
+   * `{ ...event }` is the copy this package's docs ask a caller to make, and spread reads own
+   * enumerable properties only — a prototype getter is invisible to it. A tile that silently
+   * vanishes when an event is copied would be a worse trap than the one this seam closes.
+   */
+  declare readonly gx: number;
+  /** See {@link CoordEvent.gx}. */
+  declare readonly gy: number;
+  /** See {@link CoordEvent.gx}. */
+  declare readonly onGround: boolean;
+
+  #picker: TilePicker;
+  #tileX = 0;
+  #tileY = 0;
+  #state = UNRESOLVED;
+
+  constructor(picker: TilePicker) {
+    this.#picker = picker;
+    Object.defineProperty(this, 'gx', {
+      enumerable: true,
+      get: (): number => {
+        this.#resolve();
+        return this.#tileX;
+      },
+    });
+    Object.defineProperty(this, 'gy', {
+      enumerable: true,
+      get: (): number => {
+        this.#resolve();
+        return this.#tileY;
+      },
+    });
+    Object.defineProperty(this, 'onGround', {
+      enumerable: true,
+      get: (): boolean => {
+        this.#resolve();
+        return this.#state === ON_GROUND;
+      },
+    });
+  }
+
+  /**
+   * Aim this event at a screen point, through the camera as it stood when the tick opened.
+   *
+   * Everything derived from the pointer is set here or invalidated here; there is one place to
+   * look when an event resolves somewhere surprising, and one place a fix has to go.
+   */
+  place(frame: TickFrame, tick: number, sx: number, sy: number): void {
+    this.tick = tick;
+    this.sx = sx;
+    this.sy = sy;
+    this.wx = frame.toWorldX(sx);
+    this.wy = frame.toWorldY(sy);
+    this.#state = UNRESOLVED;
+  }
+
+  /** Take this gesture or action. Handlers not yet run will not see it. */
+  claim(): void {
+    this.claimed = true;
+  }
+
+  /** `NaN` rather than the sea-level answer when there is no ground: a tile index that is not a
+   *  number cannot be mistaken for the tile the player asked for, and the whole finding behind
+   *  this seam is a wrong tile that was plausible. */
+  #resolve(): void {
+    if (this.#state !== UNRESOLVED) return;
+    if (this.#picker.resolve(this.wx, this.wy, scratch)) {
+      this.#tileX = scratch.gx;
+      this.#tileY = scratch.gy;
+      this.#state = ON_GROUND;
+      return;
+    }
+    this.#tileX = Number.NaN;
+    this.#tileY = Number.NaN;
+    this.#state = OFF_GROUND;
+  }
 }
 
 /**
@@ -241,63 +362,30 @@ export function fill(target: Coords, frame: TickFrame, tick: number, sx: number,
  * A class rather than an object literal so that the shape is monomorphic from the first
  * allocation: V8 keeps one hidden class for it, and the per-move path never sees a shape check.
  */
-export class TapGestureEvent implements TapGesture {
+export class TapGestureEvent extends CoordEvent implements TapGesture {
   type: 'tap' | 'longpress' = 'tap';
   pointerType: PointerKind = 'mouse';
-  tick = 0;
-  sx = 0;
-  sy = 0;
-  wx = 0;
-  wy = 0;
-  gx = 0;
-  gy = 0;
   heldMs = 0;
-  claimed = false;
-  claim(): void {
-    this.claimed = true;
-  }
 }
 
 /** The reused dragstart/drag/dragend event. See {@link TapGestureEvent}. */
-export class DragGestureEvent implements DragGesture {
+export class DragGestureEvent extends CoordEvent implements DragGesture {
   type: 'dragstart' | 'drag' | 'dragend' = 'dragstart';
   pointerType: PointerKind = 'mouse';
-  tick = 0;
-  sx = 0;
-  sy = 0;
-  wx = 0;
-  wy = 0;
-  gx = 0;
-  gy = 0;
   dx = 0;
   dy = 0;
   vx = 0;
   vy = 0;
-  claimed = false;
-  claim(): void {
-    this.claimed = true;
-  }
 }
 
 /** The reused zoom event. See {@link TapGestureEvent}. */
-export class ZoomGestureEvent implements ZoomGesture {
+export class ZoomGestureEvent extends CoordEvent implements ZoomGesture {
   readonly type = 'zoom';
   pointerType: PointerKind = 'mouse';
-  tick = 0;
-  sx = 0;
-  sy = 0;
-  wx = 0;
-  wy = 0;
-  gx = 0;
-  gy = 0;
   dx = 0;
   dy = 0;
   scale = 1;
   source: ZoomSource = 'wheel';
-  claimed = false;
-  claim(): void {
-    this.claimed = true;
-  }
 }
 
 /**
@@ -309,21 +397,10 @@ export class ZoomGestureEvent implements ZoomGesture {
  * `action` is set to a declared name immediately before every delivery, so the narrowing a
  * caller's handler sees is real — {@link AnyActionHandler} is where that is written down.
  */
-export class ActionEventImpl implements ActionEvent<string> {
+export class ActionEventImpl extends CoordEvent implements ActionEvent<string> {
   action = '';
   source: 'pointer' | 'key' = 'pointer';
   binding: ActionBinding = 'tap';
-  tick = 0;
-  sx = 0;
-  sy = 0;
-  wx = 0;
-  wy = 0;
-  gx = 0;
-  gy = 0;
-  claimed = false;
-  claim(): void {
-    this.claimed = true;
-  }
 }
 
 /**

@@ -131,7 +131,11 @@ export { DepthSorter, pickSorted } from './depth.js';
 export { TileGrid, tileSourceOf } from './tilemap.js';
 export type { TileSource, MutableTileSource, TileGridOptions } from './tilemap.js';
 
-export { heightAt, slopeAt, unitsToPx, pxToUnits } from './height.js';
+// `worldToTileOnHeights` is the camera-free half of terrain picking. `screenToTileOnHeights`
+// below is the same march with a camera in front of it; this one exists because the caller that
+// needs it most — `@latticekit/input` — resolves against the transform it froze when the tick
+// opened rather than against a live camera, and there is no honest camera to hand in.
+export { heightAt, slopeAt, unitsToPx, pxToUnits, worldToTileOnHeights } from './height.js';
 export type { HeightField } from './height.js';
 
 // ── footprints and anchors ───────────────────────────────────────────────────────

@@ -2455,7 +2455,7 @@
         "docs/SEAMS.md"
       ],
       "dependsOn": [],
-      "status": "todo",
+      "status": "done",
       "owner": null,
       "acceptance": [
         "every ActionEvent carries gx/gy computed as though the ground were flat, and there is no way to hand input a HeightField so that it is not",
@@ -2465,7 +2465,7 @@
         "decide the seam: either input takes an optional HeightField and gx/gy become terrain-aware, or ActionEvent stops offering gx/gy where a height field exists and the caller is routed to an iso call that requires one",
         "whichever is chosen, the flat answer must not be the silent default on sloped ground"
       ],
-      "notes": "Filed by examples/terraces, the first consumer of iso.height. The most serious correctness finding of the gallery phase: a silent wrong answer on the kit’s most common interaction."
+      "notes": "Filed by examples/terraces, the first consumer of iso.height. The most serious correctness finding of the gallery phase: a silent wrong answer on the kit’s most common interaction. Closed 2026-08-18: input takes an optional terrain declaration; omitted now emits one flat-ground-pick diagnostic the first time a coordinate is read. iso gained worldToTileOnHeights."
     },
     {
       "id": "K45",
@@ -2743,7 +2743,7 @@
         "packages/iso/src/path.ts"
       ],
       "dependsOn": [],
-      "status": "todo",
+      "status": "done",
       "owner": null,
       "acceptance": [
         "the octile heuristic carries no weight term, so any TileCost above 1 makes the estimate inadmissible-by-underestimate and slides A* toward Dijkstra",
@@ -2751,7 +2751,7 @@
         "weights are this package’s own documented way to express \"shorter but harder\", so the feature and the performance of the feature disagree",
         "scaling the estimate by the map’s minimum weight is admissible and free"
       ],
-      "notes": "Filed by examples/clay, the first exhibit to re-plan against a map that changes under it. Forced the exhibit to bake its cost grid into a Uint8Array to afford re-planning at all."
+      "notes": "Filed by examples/clay, the first exhibit to re-plan against a map that changes under it. Forced the exhibit to bake its cost grid into a Uint8Array to afford re-planning at all. Closed 2026-08-18: PathOptions.minWeight scales the octile estimate; 6.8x on a uniform-weighted map, optimality checked against FlowField."
     },
     {
       "id": "K59",

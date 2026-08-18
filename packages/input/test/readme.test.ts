@@ -22,6 +22,7 @@ describe('the README example', () => {
     const input = createHeadlessInput({
       camera,
       step: fixedStep(60), //                          or `step: loop` in a game
+      terrain: 'flat', //                              this world is a plane, and says so
       actions: { collect: ['tap', 'key:Space'] }, //   two sources, one handler
       focus: (at) => {
         at.x = 400; //                     where the keyboard aims: the selection,
@@ -68,6 +69,7 @@ describe('the README example', () => {
     const again = createHeadlessInput({
       camera: createCamera(800, 600),
       step: fixedStep(60),
+      terrain: 'flat',
       actions: { collect: ['tap', 'key:Space'] },
       focus: (at) => {
         at.x = 400;

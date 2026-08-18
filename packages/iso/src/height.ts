@@ -21,6 +21,8 @@
  */
 
 import { lerp } from '@latticekit/core';
+import { HALF_H, HALF_W } from './projection.js';
+import type { Tile } from './projection.js';
 import type { TileSource } from './tilemap.js';
 
 /**
@@ -120,6 +122,123 @@ export function heightAt(field: HeightField, gx: number, gy: number): number {
   // `heights.get(gx, gy) * stepPx` bit for bit at whole coordinates, which in turn is what
   // lets a placement test and a draw call agree about whether a corner is level.
   return lerp(lerp(h00, h10, fx), lerp(h01, h11, fx), fy) * field.stepPx;
+}
+
+/**
+ * How finely the terrain march refines its answer once it has a bracket: `2⁻¹²` of the bracket,
+ * which is a fifth of a thousandth of a tile at any sane `stepPx`.
+ *
+ * A fixed iteration count rather than a tolerance, because the same point must resolve to the
+ * same tile on a slow phone and a fast desktop, and a loop that stops when it is "close enough"
+ * stops after a different number of steps when the arithmetic is the same but the clock is not —
+ * that is a replay divergence with no stack trace.
+ */
+const MARCH_REFINEMENTS = 12;
+
+/** Height of the terrain surface at the world point that a raised point `t` above the ground
+ *  would project onto, minus `t`. Zero exactly where the screen ray meets the ground. */
+function surfaceGap(field: HeightField, wx: number, wy: number, t: number): number {
+  const y = wy + t;
+  return heightAt(field, (wx / HALF_W + y / HALF_H) / 2, (y / HALF_H - wx / HALF_W) / 2) - t;
+}
+
+/**
+ * The tile whose **terrain surface** is drawn at a world point, or `false` if the ray that
+ * arrives there never meets the ground.
+ *
+ * The camera-free half of picking, and the reason it exists as its own function rather than
+ * inside `screenToTileOnHeights`: **the camera is not part of this question.** Once a caller has
+ * a world point, the march is pure heightfield geometry, and the one caller that most needs it —
+ * `@latticekit/input` — deliberately does *not* hold a live camera at the moment it resolves.
+ * Every event it delivers resolves through the camera as it stood when the tick opened, so a
+ * handler that recenters the view cannot move where a later event in the same bucket landed.
+ * Passing it the live camera would reintroduce exactly that bug; passing it a fabricated one
+ * would be a lie about which transform froze.
+ *
+ * ## Why a march at all
+ *
+ * The projection stops being invertible once terrain has height: raising a point by `HALF_H`
+ * world pixels and moving it one unit of `gx + gy` further from the viewer land on *the same*
+ * screen pixel, so world → (grid, z) is one equation short of solvable and `worldToTile` will
+ * confidently return the flat-ground answer — the tile the ray crosses at sea level, which on a
+ * hill is many tiles from the one under the player's finger.
+ *
+ * So a world point corresponds to a whole family of candidate ground positions, one per
+ * elevation `t`, and larger `t` means a candidate nearer the viewer. The surface the player can
+ * *see* is the nearest one, so the march starts at `maxHeightPx` and works down in steps of one
+ * grid unit of travel, takes the first elevation at which the terrain reaches the ray, then
+ * refines the bracket by bisection — the terrain is bilinear and therefore continuous, which is
+ * what makes bisection sound here.
+ *
+ * **`screenToTileOnHeights` is this function with a camera in front of it**, and is where a
+ * caller who has a live camera and a screen pixel should go. The two must agree exactly, tile
+ * for tile, on every input; until `hittest.ts` is reduced to `camera → world → here`, that
+ * agreement is pinned by a test rather than by construction — `packages/input/test/terrain.test.ts`
+ * § *the two marches are one march*.
+ *
+ * @param maxHeightPx The tallest terrain on the map, in world pixels, which bounds where the
+ *   march starts. Pass it: too small and the march begins below a peak and misses it, too large
+ *   and every pick scans ground that is not there. Negative or non-finite throws.
+ * @returns `true` with `out` filled, or `false` — leaving `out` untouched — when the ray leaves
+ *   the field before it meets ground, or lands where `heights.has` says there is no map. `false`
+ *   rather than a plausible tile, because a tap on the sky that selects the shore is worse than
+ *   a tap that does nothing. **A source whose `has` answers `true` everywhere can only report
+ *   the first of those**, which is correct for an unbounded procedural world and is why no
+ *   caller should treat `true` as proof that a tile exists in *its* own map.
+ */
+export function worldToTileOnHeights(
+  field: HeightField,
+  wx: number,
+  wy: number,
+  maxHeightPx: number,
+  out: Tile,
+): boolean {
+  if (!(Number.isFinite(maxHeightPx) && maxHeightPx >= 0)) {
+    throw new RangeError(
+      `worldToTileOnHeights: expected maxHeightPx to be a finite number >= 0, got ${String(maxHeightPx)}`,
+    );
+  }
+
+  // One step per grid unit of travel along the ray: HALF_H world pixels of elevation move the
+  // candidate ground point exactly one unit of `gx + gy` towards the viewer, so no tile of the
+  // march can be skipped.
+  let hi = maxHeightPx;
+  let gapHi = surfaceGap(field, wx, wy, hi);
+  let lo = hi;
+  let gapLo = gapHi;
+  if (gapHi < 0) {
+    const steps = Math.ceil(maxHeightPx / HALF_H);
+    let found = false;
+    for (let i = 1; i <= steps; i++) {
+      // The final step is written as an exact zero rather than `max - steps*max/steps`, which is
+      // not reliably exact in floating point and would leave the ground plane a hair above where
+      // it is.
+      lo = i === steps ? 0 : maxHeightPx - (i * maxHeightPx) / steps;
+      gapLo = surfaceGap(field, wx, wy, lo);
+      if (gapLo >= 0) {
+        found = true;
+        break;
+      }
+      hi = lo;
+      gapHi = gapLo;
+    }
+    if (!found) return false;
+    // Bisect the bracket. `gapLo >= 0 > gapHi` and the surface is continuous, so the crossing is
+    // between them and stays between them at every step.
+    for (let i = 0; i < MARCH_REFINEMENTS; i++) {
+      const mid = lo + (hi - lo) / 2;
+      if (surfaceGap(field, wx, wy, mid) >= 0) lo = mid;
+      else hi = mid;
+    }
+  }
+
+  const y = wy + lo;
+  const gx = Math.floor((wx / HALF_W + y / HALF_H) / 2);
+  const gy = Math.floor((y / HALF_H - wx / HALF_W) / 2);
+  if (!field.heights.has(gx, gy)) return false;
+  out.gx = gx;
+  out.gy = gy;
+  return true;
 }
 
 /**

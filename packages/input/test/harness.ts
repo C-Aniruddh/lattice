@@ -104,6 +104,12 @@ export function harness<A extends string = never>(
   const view = options?.camera ?? camera();
   const input = createHeadlessInput<A>({
     step: options?.hz === undefined ? STEP_60 : fixedStep(options.hz),
+    // Declared, and true: every camera in this file looks at a plane, so every tile these tests
+    // assert is the flat-ground answer *on purpose*. Before the spread, so a test about terrain
+    // overrides it — and stating it here is what keeps the `flat-ground-pick` diagnostic out of
+    // forty tests that are about something else. `terrain.test.ts` is where the undeclared case
+    // is exercised deliberately.
+    terrain: 'flat',
     ...options,
     camera: view,
   } as HeadlessInputOptions<A>);

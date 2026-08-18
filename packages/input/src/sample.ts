@@ -111,7 +111,12 @@ export type DiagnosticCode =
   | 'touch-action-overridden'
   | 'unknown-key-code'
   | 'pointer-events-none'
-  | 'buffer-overflow';
+  | 'buffer-overflow'
+  // Raised the first time a coordinate is read on a system that never declared its ground. It
+  // is the one mistake in this package that nothing downstream can detect — the tile is real,
+  // it is next to the right one, and it moves with the pointer — so the only defence is to say
+  // that nobody answered the question. `terrain: 'flat'` is the answer that silences it.
+  | 'flat-ground-pick';
 
 /**
  * A problem worth a sentence, not a throw.

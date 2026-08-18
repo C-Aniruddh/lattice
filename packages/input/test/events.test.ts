@@ -12,14 +12,20 @@
 import { describe, expect, it } from 'vitest';
 import { createCamera, screenToTile } from '@latticekit/iso';
 import type { GridPoint } from '@latticekit/iso';
-import { TickFrame, fill } from '../src/events.js';
+import { TapGestureEvent, TickFrame } from '../src/events.js';
+import { TilePicker } from '../src/terrain.js';
 import { down, harness, move, up, watch } from './harness.js';
 
 describe('TickFrame', () => {
   it('agrees with iso.screenToTile at every zoom and every pan', () => {
     const camera = createCamera(800, 600);
     const frame = new TickFrame();
-    const mine = { tick: 0, sx: 0, sy: 0, wx: 0, wy: 0, gx: 0, gy: 0 };
+    // Flat, declared: this test is about the frozen transform and the flooring, and the whole
+    // point of the declaration is that the flat answer is only ever given to someone who asked
+    // for it.
+    const picker = new TilePicker(() => undefined);
+    picker.set('flat');
+    const mine = new TapGestureEvent(picker);
     const theirs: GridPoint = { gx: 0, gy: 0 };
     for (const [zoom, cx, cy] of [
       [1, 0, 0],
@@ -32,7 +38,7 @@ describe('TickFrame', () => {
       frame.capture(camera);
       for (let sx = -80; sx <= 880; sx += 37) {
         for (let sy = -80; sy <= 680; sy += 41) {
-          fill(mine, frame, 7, sx, sy);
+          mine.place(frame, 7, sx, sy);
           screenToTile(camera, sx, sy, theirs);
           expect([mine.gx, mine.gy]).toEqual([theirs.gx, theirs.gy]);
           expect(mine.wx).toBe(camera.toWorldX(sx));

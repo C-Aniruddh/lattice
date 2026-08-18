@@ -19,6 +19,7 @@ const input = createInput({
   element: canvas,
   camera,
   step: loop, //                                   the loop itself, so the step cannot drift
+  terrain: 'flat', //                              or { field, maxHeightPx } if the ground rises
   actions: { collect: ['tap', 'key:Space'], build: ['key:KeyB'] },
 });
 input.onAction('collect', (a) => collectAt(state, a.gx, a.gy));
@@ -52,6 +53,54 @@ literal above it.
 
 ---
 
+## The ground, and why `gx`/`gy` depend on it
+
+`terrain` is the one option with no safe default, so it is the one option worth reading about
+before you write any of the others.
+
+Screen → grid is the exact inverse of the projection **on the plane `z = 0`**, and on no other
+plane. Raise a point by `HALF_H` world pixels and it lands on precisely the same screen pixel as
+the point one unit of `gx + gy` further from the viewer at sea level — so a pixel does not name a
+tile, it names a *family* of them, one per elevation. Without a heightfield this package answers
+with the sea-level member of that family. On level ground that is the right answer. On a hillside
+it is a real tile, next to the right one, moving smoothly with the pointer, and **wrong**:
+`examples/terraces` measures 281 px and 14–16 tiles of it on its own slope, and it is worse than
+static in `examples/clay`, where the visitor raises the ground under their own cursor and a brush
+driven by `event.gx` walks off the far side of the hill while their hand holds still.
+
+```ts
+const input = createInput({
+  element: canvas,
+  camera,
+  step: loop,
+  terrain: { field: hill, maxHeightPx: hill.tallestUnits * hill.stepPx },
+});
+
+input.onAction('build', (a) => {
+  if (!a.onGround) return; //          the tap was on the sky, and gx/gy are NaN
+  place(state, a.gx, a.gy); //         the tile the player can see, not the one at sea level
+});
+```
+
+| you pass | `gx`/`gy` resolve | `onGround` |
+|---|---|---|
+| `{ field, maxHeightPx }` | on the terrain, marched by `iso` | `false` where the ray leaves the map — a tap on the sky |
+| `'flat'` | on the plane `z = 0` | always `true`: off the map is still a number, and `iso` decides what is in bounds |
+| nothing | the plane `z = 0`, **and one `flat-ground-pick` diagnostic** the first time a coordinate is read | always `true` |
+
+The third row is the point. This package cannot see your terrain — it has no map, no registry and
+no way to acquire one — so it cannot detect the mistake, and nothing downstream can either. What
+it *can* tell is that nobody ever said. `'flat'` is that statement, it costs one word, and it is
+the difference between an answer you chose and an answer you inherited.
+
+**`maxHeightPx` is where the march starts**: the tallest terrain on the map, in world pixels. Too
+low and the search begins below a peak and misses it; too high and every pick scans ground that is
+not there. Change it, or the whole declaration, with `input.setTerrain(...)` — the field is held
+rather than copied, so ground the player raises this frame is ground the next event resolves on,
+and a map generated after the input system was bound is one call away.
+
+---
+
 ## The same thing, with no browser, run end to end
 
 Everything below runs in Node with no DOM and no shim, and is executed by
@@ -65,6 +114,7 @@ const camera = createCamera(800, 600); //          CSS pixels, centered on (0, 0
 const input = createHeadlessInput({
   camera,
   step: fixedStep(60), //                          or `step: loop` in a game
+  terrain: 'flat', //                              this world is a plane, and says so
   actions: { collect: ['tap', 'key:Space'] }, //   two sources, one handler
   focus: (at) => {
     at.x = 400; //                                 where the keyboard aims: the game's
@@ -148,7 +198,7 @@ createVerifier(storedLog, { kit, game, inputs: createLog(input), digest });
 | | |
 |---|---|
 | **One stream** | A game never learns which device it is being played on. "Collect" is one handler, not three. |
-| **Tile coordinates** | Every event carries `sx/sy` (screen), `wx/wy` (world) and `gx/gy` (tile), resolved once, through the camera as it stood when the tick opened. |
+| **Tile coordinates** | Every event carries `sx/sy` (screen), `wx/wy` (world) and `gx/gy` (tile), resolved once, through the camera as it stood when the tick opened **and the ground the system was told about**. |
 | **Bucketed to ticks** | A tap cannot be dropped by a slow frame or fired twice on a fast one, because *ticks* deliver and each sample is in exactly one bucket. |
 | **One object** | `input.dispose()` unbinds every listener, every child scope, every pointer capture, and any key the player was holding. |
 
@@ -362,7 +412,20 @@ Apple Silicon, Node 24. Full table in [`docs/PERFORMANCE.md`](../../docs/PERFORM
 | `tick` — an empty bucket, which is most ticks | 14.5 M/s | ~69 ns |
 | `tick` — a realistic frame: 8 coalesced moves delivered as drags | 1.41 M/s | ~708 ns |
 
-A realistic input frame is **0.009% of an 8 ms budget**. Three million moves through three
+A realistic input frame is **0.009% of an 8 ms budget**.
+
+**What the ground costs**, measured on the same machine against a 192 px hill — twelve steps down
+the lattice and twelve bisections per pick:
+
+| path | flat | on terrain |
+|---|---:|---:|
+| `tick` — 8 coalesced moves | ~1.4 µs | ~2.0 µs |
+| `hoverTile` | ~32 ns | ~107 ns |
+
+That is **~75 ns per event**, and it is per *event* rather than per entity: the tile is resolved
+on the first read of `gx`/`gy` and held until the event object is aimed at the next pointer
+position, so a handler that reads it four times marches once and a game that never reads it does
+not march at all. Three million moves through three
 thousand ticks, with a forced GC either side, retain **zero bytes**: the sample buffer owns its
 slots for the life of the system and overwrites them in place, and the gesture handed to a
 handler is the same object every time. Copy what you keep.
