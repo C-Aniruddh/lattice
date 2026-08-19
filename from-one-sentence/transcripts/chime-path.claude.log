@@ -1,0 +1,13 @@
+Here it is — **http://localhost:5183**
+
+![Chime Path](/tmp/lattice-shot/final.png)
+
+**Tap the trail to hang a chime; tap it again to tune it.** The wind sweeps up the path in gusts and rings them in the order they hang, so the row of them is a phrase — the strip along the bottom is what the mountain is currently playing.
+
+A few things worth knowing:
+
+- It's on **5183**, not the usual 5173 — another project's dev server already had that port, and I moved rather than kill something that isn't mine.
+- **I couldn't use the Chrome extension** (it isn't connected here), so I drove a headless Chrome myself to look at every iteration. What I've verified with my own eyes and measurements: the frame is clean at dusk and at midnight, the console has no errors, chimes survive a reload, "Take them down" clears them *and* the path still saves afterwards, and the audio context reaches `running` with voices actually scheduled — though I have no way to hear whether the tuning sounds good. That last one is yours to judge.
+- Frame budget on this machine, headless: worst gap 25.9 ms against a 18.9 ms cadence — a ratio of 1.37, under the 1.5 that means dropped frames. About 4,100 terrain tiles and 426 solids per frame at the opening zoom.
+
+Two things I fixed that were quietly wrong rather than visibly broken: the distance haze was rendering fully opaque because `withAlpha` takes 0–1 and I was handing it a byte, and the wind bed was being re-anchored sixty times a second, so the ambience was permanently chasing a target it never reached.

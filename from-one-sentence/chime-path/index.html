@@ -1,0 +1,110 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Chime Path</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0a0d18; overscroll-behavior: none; }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; width: 100%; height: 100%; }
+
+  .hud {
+    position: absolute; inset: 0;
+    font: 400 14px/1.45 ui-rounded, "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    color: var(--lattice-ink-on, #f2ede2);
+    -webkit-font-smoothing: antialiased;
+    text-shadow: 0 1px 3px rgba(0,0,0,.55);
+  }
+
+  /* ── the plate, top left ─────────────────────────────────────────── */
+  .plate {
+    position: absolute; left: 22px; top: 20px;
+    display: grid; grid-template-columns: auto auto; gap: 2px 18px;
+    padding: 14px 20px 13px;
+    background: color-mix(in srgb, var(--lattice-night, #10142c) 62%, transparent);
+    border: 1px solid color-mix(in srgb, var(--lattice-warn, #e8b33c) 22%, transparent);
+    border-radius: 3px;
+    backdrop-filter: blur(7px);
+    transition: background-color 1.4s linear, border-color 1.4s linear;
+  }
+  .plate .k {
+    font-size: 10px; letter-spacing: .17em; text-transform: uppercase;
+    color: color-mix(in srgb, var(--lattice-warn, #e8b33c) 70%, #fff);
+    opacity: .82; align-self: center;
+  }
+  .plate .v { font-size: 21px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+  .title {
+    grid-column: 1 / -1; margin: 0 0 8px;
+    font-size: 11px; letter-spacing: .34em; text-transform: uppercase; font-weight: 600;
+    color: color-mix(in srgb, var(--lattice-warn, #e8b33c) 80%, #fff); opacity: .9;
+  }
+
+  /* ── the wind bar ────────────────────────────────────────────────── */
+  .gust { grid-column: 1 / -1; height: 3px; margin-top: 9px; background: rgba(255,255,255,.12); border-radius: 2px; overflow: hidden; }
+  .gust i { display: block; height: 100%; width: 0; background: var(--lattice-warn, #e8b33c); transform-origin: left; }
+
+  .clear {
+    grid-column: 1 / -1; margin-top: 11px;
+    font: inherit; font-size: 10px; letter-spacing: .17em; text-transform: uppercase;
+    padding: 6px 0 5px; border-radius: 2px; cursor: pointer;
+    color: color-mix(in srgb, var(--lattice-warn, #e8b33c) 78%, #fff);
+    background: transparent;
+    border: 1px solid color-mix(in srgb, var(--lattice-warn, #e8b33c) 26%, transparent);
+    transition: background-color .2s ease, color .2s ease, opacity .2s ease;
+  }
+  .clear:hover:not([disabled]) { background: color-mix(in srgb, var(--lattice-warn, #e8b33c) 16%, transparent); }
+  .clear[disabled] { opacity: .3; cursor: default; }
+
+  /* ── panels and toasts ───────────────────────────────────────────── */
+  .lattice-panel, .lattice-modal {
+    padding: 22px 26px; max-width: 30rem; border-radius: 3px;
+    background: color-mix(in srgb, var(--lattice-night, #10142c) 94%, transparent);
+    border: 1px solid color-mix(in srgb, var(--lattice-warn, #e8b33c) 24%, transparent);
+    color: var(--lattice-ink-on, #f2ede2);
+  }
+  .lattice-scrim { background: rgba(4, 6, 14, .62); }
+
+  /* ── the melody strip, along the bottom ──────────────────────────── */
+  .strip {
+    position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%);
+    display: flex; align-items: flex-end; gap: 5px;
+    max-width: min(1000px, 88vw); flex-wrap: wrap; justify-content: center;
+  }
+  .strip .note {
+    min-width: 26px; padding: 5px 7px 4px;
+    font-size: 11px; letter-spacing: .06em; text-align: center;
+    font-variant-numeric: tabular-nums;
+    background: color-mix(in srgb, var(--lattice-night, #10142c) 58%, transparent);
+    border: 1px solid rgba(255,255,255,.12);
+    border-bottom: 2px solid color-mix(in srgb, var(--lattice-warn, #e8b33c) 35%, transparent);
+    border-radius: 2px;
+    transition: background-color .5s ease, color .5s ease, transform .18s ease, border-color .5s ease;
+  }
+  .strip .note.lit {
+    background: var(--lattice-warn, #e8b33c); color: #241a06;
+    border-color: var(--lattice-warn, #e8b33c);
+    transform: translateY(-5px);
+    transition: transform .06s ease, background-color .06s ease;
+    text-shadow: none;
+  }
+  .strip .empty { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; opacity: .5; padding-bottom: 6px; }
+
+  /* ── the one line of instruction ─────────────────────────────────── */
+  .keys {
+    position: absolute; right: 22px; bottom: 12px;
+    margin: 0; font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+    opacity: .38; white-space: nowrap;
+  }
+  .hint {
+    position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
+    margin: 0; font-size: 11px; letter-spacing: .13em; text-transform: uppercase;
+    opacity: .55; white-space: nowrap;
+  }
+
+  .toast, .lattice-toast {
+    padding: 9px 15px; margin-top: 8px; border-radius: 3px; font-size: 12px; letter-spacing: .05em;
+    background: color-mix(in srgb, var(--lattice-night, #10142c) 80%, transparent);
+    border: 1px solid rgba(255,255,255,.16);
+  }
+</style>
+<div id="app"></div>
+<script type="module" src="/src/main.ts"></script>

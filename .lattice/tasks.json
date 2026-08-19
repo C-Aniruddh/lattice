@@ -2942,6 +2942,34 @@
         "this is the counterpart to the ink slot finding: that one made a fill unreadable, this one makes text unreadable, and both are invisible to a compiler"
       ],
       "notes": "Found by the round-three blind run. The most capable agent, with the loop running, still missed it — which is the argument for a number over an opinion. Closed 2026-08-18, verified in the tree: skills/hud states 4.5 as a number and points at the harness legibility row; paletteVars case quantified."
+    },
+    {
+      "id": "E3",
+      "phase": "ship",
+      "role": "lattice-scribe",
+      "title": "from-one-sentence/ is evidence — preserved as built, and not to be tidied",
+      "package": "from-one-sentence",
+      "paths": [
+        "from-one-sentence/README.md",
+        "from-one-sentence/chime-path/**",
+        "from-one-sentence/evenfall-orchard/**",
+        "from-one-sentence/before-the-bell/**"
+      ],
+      "dependsOn": [
+        "V1"
+      ],
+      "status": "done",
+      "owner": "lattice-scribe",
+      "acceptance": [
+        "three games built by three vendors' agents from one sentence each, in an empty directory, with no access to this repository. Chime Path (Claude), Evenfall Orchard (Codex), Before the Bell (Grok)",
+        "DO NOT EDIT THE GAME SOURCE. Not src/, not index.html, not tsconfig.json, not the lockfiles. Their whole value is that nobody designed them and nobody polished them. A tidy-up is a deletion of the evidence, not an improvement to it",
+        "DO NOT convert @latticekit/* to workspace:*. Every lockfile resolves to registry.npmjs.org at 0.1.0, and that is the artifact — it is what a stranger's install produces. A local path would make these ordinary in-repo examples",
+        "DO NOT add them to the root workspaces array. Membership would make a root npm install resolve @latticekit/* to packages/* and perform exactly the conversion above, silently, as a side effect",
+        "the two known defects stay: Evenfall Orchard's day cycle goes 84% near-black at one phase (#181820, verified today), and Chime Path's five HUD nodes measure 1.58-2.53 contrast under a 4.5 floor. Both are named in from-one-sentence/README.md. A record that hides its blemishes is not a record",
+        "they are not gallery exhibits and are not bound by the line rule or GALLERY.md section Scale. npm run gallery reports nineteen and must keep reporting nineteen",
+        "the only change made to them was the --port number in each dev script, because Chime Path shipped on 5183 and the other two both on 5173. They are 5210, 5211 and 5212 now"
+      ],
+      "notes": "Moved out of /tmp/lattice-e2e-v3 on 2026-08-18 and preserved verbatim. All three build (tsc --noEmit && vite build) and serve; all three pass anything/framing/motion/console under tools/looking/look.mjs, and Chime Path fails legibility on purpose because that failure is the record. Session transcripts and the round-three brief are in from-one-sentence/transcripts/. Deliberately outside npm run verify — the reasoning, and the accepted residual risk that they can rot unnoticed, is written out in from-one-sentence/README.md."
     }
   ]
 }
