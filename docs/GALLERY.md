@@ -568,6 +568,53 @@ is easy to measure.
 
 ---
 
+## What eight strangers found in this document
+
+Eight exhibits were built from this document by three vendors' agents — Codex, Grok and Claude —
+each given only its own row, the standard, and the tools. None was allowed to read an existing
+exhibit's source, because that tests pattern-matching rather than the spec.
+
+Seven of the eight passed every row of the harness on their own. **The more valuable output was
+what they could not answer**, and it is recorded here because a spec is only as good as its
+readability by someone who did not write it. Everyone inside this repository already knows these
+answers, which is exactly why nobody here could find them.
+
+### The one all eight hit
+
+**`examples/_shared` is referenced throughout this document and is not shipped.** `bootstrap`,
+the control panel, `createBucket` and `knobs` appear in these pages as though a reader has them.
+A reader who installs the packages does not: that directory lives in this repository and nowhere
+else. Grok rebuilt it from scratch, Claude vendored it, and Codex wrote *"I did not fabricate an
+external shared directory."*
+
+Eight independent readers, three vendors, one wall. Until it ships or the document stops assuming
+it, every sentence that names it is a sentence a stranger cannot act on.
+
+### The ones worth fixing next
+
+| what they asked | why it is a real hole |
+|---|---|
+| **"Same seed, same world" is clear; "the same pixel" is not** — for a scene that animates, at what elapsed time? | Two agents resolved it independently and differently. Replay chose *state digest + a camera that is a function of the tick*; Orbit chose *identical seed, URL and session time*. The kit's headline claim is ambiguous in its own gallery |
+| **Static markup is art, yet the overlay must be `@latticekit/ui`** | Rule 7 and the line rule pull against each other, and nothing says which wins. Orbit counted its HUD as logic "conservatively", which is the right instinct and should not have been needed |
+| **Extent measures the world's bounding rect; fill measures the opening frame** | Two rows of one table, measured against two different things. Harbor noticed; nobody here had |
+| **"Tall thin objects" has no aspect ratio, "a mid laptop" has no reference machine** | Both are judgements dressed as thresholds. Harbor picked 0.045–0.055 tiles and compared its worst gap against 16.7 ms, and had to say so because the document would not |
+| **Where does art that *reads* state become logic?** | Migration's crates branch on `state.version` to choose a colour. The test says art. The boundary is drawn nowhere, and that exhibit leans on it hard |
+| **Severity assumes every consumer has a player** | `persist` maps `refusing-newer` to a modal someone must acknowledge. Migration has no player and no session to lose, so a refusal is one wreck among many |
+| **`?cost=0` describes an embedder that does not exist** | From inside a standalone exhibit the contract is unobservable. Three agents implemented it anyway, on faith |
+
+### And a prediction that expired
+
+`K29` recorded that a swaying flag could go edge-on and that `isoWall` would refuse it — then
+argued it could not happen, because `noise2` returns exactly zero at only 397k of 14M lattice
+samples. That reasoning was sound and the conclusion was wrong: the exception had been throwing
+in Lamp Road, on the landing page, for as long as the hero has been up.
+
+**"It cannot happen today" is a prediction, and predictions expire.** The fix removes the
+possibility rather than re-betting the odds — the sway moves one axis, and a run that is constant
+on the other cannot be edge-on whatever the noise does.
+
+---
+
 ## The control panel
 
 **Every exhibit ships a slider panel that exposes the real parameters underneath it.**

@@ -188,8 +188,13 @@ export const site = defineSprite({
   animate(pen, gx, gy, v, rng, zPx) {
     const z = pxToLevels(zPx);
     const phase = rng.next() * 20;
+    // The sway moves ONE axis. It used to move both in proportion, which is edge-on exactly when
+    // sway is 0 — and `isoWall` refuses an edge-on wall rather than painting nothing. K29 argued
+    // that could not happen because `noise2` would have to return exactly 0; it returns exactly 0
+    // at 397k of 14M lattice samples, and this shipped the exception into the hero on the landing
+    // page. A run that is constant on one axis cannot be edge-on, whatever the noise does.
     const sway = noise2(0x9c2, phase, pen.t * 0.9) * 0.1;
-    isoWall(pen, gx + 0.28, gy + 0.72, gx + 0.28 + sway, gy + 0.72 + sway * 1.6, z + 1.18, z + 1.62, 'ok', 'ink');
+    isoWall(pen, gx + 0.28, gy + 0.72, gx + 0.28 + 0.34, gy + 0.72 + sway, z + 1.18, z + 1.62, 'ok', 'ink');
     // The bubble: a dark disc, a bright ring, a soft halo, on a small bob.
     const bob = noise2(0x4d1, phase, pen.t * 0.7) * 0.16;
     const p = at(pen, gx + 0.34, gy + 0.66, z + 2.2 + bob);
