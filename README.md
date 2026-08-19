@@ -1,18 +1,31 @@
-# Lattice
+<div align="center">
 
-> The grid underneath.
+<a href="https://lattice.aniruddh.tech"><img src="https://lattice.aniruddh.tech/og.png" alt="A valley at dusk rendered by Lattice: an isometric hillside with a lit shrine and a road of lamps" width="860"></a>
+
+### The grid underneath.
+
+**Type one sentence and get an isometric game you can play in a browser.**
 
 [![verify](https://img.shields.io/github/actions/workflow/status/C-Aniruddh/lattice/ci.yml?branch=main&label=verify)](https://github.com/C-Aniruddh/lattice/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/%40latticekit%2Fcore?label=npm&color=cb3837)](https://www.npmjs.com/package/@latticekit/core)
 [![license](https://img.shields.io/github/license/C-Aniruddh/lattice)](LICENSE)
 [![site](https://img.shields.io/badge/site-lattice.aniruddh.tech-0b7285)](https://lattice.aniruddh.tech)
 
-**Type one sentence and get an isometric game you can play in a browser.** `/lattice` is a
-plugin for coding agents. Under it are nine TypeScript packages with no dependencies and no
-asset files — no images, no audio, no fonts — because there is nothing to load: every building
-is drawn from one color and every sound is built from oscillators.
+**[▶ Nineteen worlds, running &rarr;](https://lattice.aniruddh.tech)**
 
-### **[▶ Nineteen worlds, running, at lattice.aniruddh.tech](https://lattice.aniruddh.tech)**
+</div>
+
+---
+
+`/lattice` is a plugin for coding agents. Under it are nine TypeScript packages with no
+dependencies and no asset files — no images, no audio, no fonts — because there is nothing to
+load: every building is drawn from one color and every sound is built from oscillators.
+
+<!-- The image above is not an exception to "no asset files". It is not a drawing and nobody
+     opened a paint program: it is a real frame of examples/demo, captured headless at dusk by
+     site/tools/og.mjs and served from the site rather than committed here. The README used to
+     open with a bare `# Lattice` over a red badge, which is what a project looks like when it
+     cannot show you anything. This one can, so it does. -->
 
 ---
 
@@ -89,10 +102,18 @@ measure. Every one of them carries its author's own notes on what the spec faile
 eight of them had to invent a bootstrap that `examples/_shared` provides and does not ship. The
 three games above are the ones whose source is unedited; an exhibit is not making that claim.
 
-Which is the plain fact about this repository: **it was largely built by agents.** 112 of its 116
-commits carry an agent co-author trailer — `git log --format=%B | grep -c 'Co-Authored-By: Claude'`
-— and the eight exhibits and three games above are in the tree so that the claim can be checked
-against source rather than believed.
+Which is the plain fact about this repository: **it was largely built by agents.** All but a
+handful of its commits carry an agent co-author trailer, and the count is deliberately not written
+down here — it changes with every push, and a number that goes stale on the next commit is worse
+than no number. Run it instead:
+
+```sh
+git log --format=%B | grep -c 'Co-Authored-By:'   # agent-co-authored
+git rev-list --count HEAD                          # total
+```
+
+The eight exhibits and three games above are in the tree so the claim can be checked against
+source rather than believed.
 
 ---
 

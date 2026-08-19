@@ -704,10 +704,10 @@ const footer = () => `<footer class="shell">
   <!--
     The colophon is gone. "lerpPalette(DUSK, NIGHT, scroll), repainted 345 times so far" was the
     page narrating its own scroll animation to a reader who was doing the scrolling, which is the
-    copy doctrine's exact failure committed in the footer. One credit line replaces it.
+    copy doctrine's exact failure committed in the footer. One credit line replaces it, and it
+    credits the tool rather than a person: the kit is the work, not the byline.
   -->
-  <p class="credit">Created with vibes by <a href="https://aniruddh.tech">Aniruddh Chandratre</a>,
-  and <a href="https://claude.com/claude-code">Claude Code</a>.</p>
+  <p class="credit">Created with vibes, and <a href="https://claude.com/claude-code">Claude Code</a>.</p>
 </footer>`;
 
 /* ── the landing page ──────────────────────────────────────────────────────────────────── */
