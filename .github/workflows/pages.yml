@@ -1,0 +1,64 @@
+name: pages
+
+# The landing page, built and published to lattice.aniruddh.tech.
+#
+# It builds rather than serving a committed folder, because `site/dist` is generated: the
+# reference is read out of the packages' own type declarations, `llms.txt` and `api.json` come
+# from `.lattice/kit.json`, and nineteen exhibits plus three games are compiled from source.
+# Committing that output would be committing a build, and it would go stale the first time
+# somebody changed a package and forgot.
+#
+# Deliberately separate from `verify`. That workflow is the gate and runs on every branch and
+# pull request; this one publishes, and publishing on a pull request would mean any fork could
+# rewrite the site. It also does not gate on `verify` — a red suite should not take the page
+# down, and a page that only deploys when nine packages are green is a page nobody can fix
+# in a hurry.
+
+on:
+  push: { branches: [main] }
+  workflow_dispatch:
+
+# One deploy at a time, and a newer push wins rather than queueing behind an older one.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      # `site/tools/build.mjs` needs the packages built first: the reference reads
+      # `packages/*/dist/index.d.ts`, and the exhibits import the built packages.
+      - run: npm run build
+      - run: node site/tools/build.mjs
+      # The custom domain, written into the artifact rather than only into the repository
+      # setting. A CNAME that lives only in Settings is a setting one wrong click can clear
+      # with no diff and no history; this one is in the tree and shows up in a review.
+      - run: echo 'lattice.aniruddh.tech' > site/dist/CNAME
+      # GitHub Pages serves a Jekyll build unless told not to, and Jekyll drops any path
+      # beginning with an underscore. Nothing here starts with one today, and the file costs
+      # nothing against the day something does.
+      - run: touch site/dist/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: site/dist }
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
