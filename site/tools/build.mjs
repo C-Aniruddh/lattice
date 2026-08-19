@@ -41,6 +41,7 @@ import { readFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
+import { injectAnalytics } from './analytics.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const site = join(here, '..');
@@ -51,20 +52,20 @@ const sentence = JSON.parse(readFileSync(join(site, 'data/one-sentence.json'), '
 const only = process.argv.slice(2).filter((a) => !a.startsWith('-'));
 const step = (n, what) => console.log(`\n[33m${n}[0m ${what}`);
 
-step('1/5', 'typecheck site/ against packages/*/dist');
+step('1/6', 'typecheck site/ against packages/*/dist');
 execFileSync('npx', ['tsc', '-p', join(site, 'tsconfig.json')], { stdio: 'inherit', cwd: repo });
 
-step('2/5', 'generate index.html, llms.txt, api.json');
+step('2/6', 'generate index.html, llms.txt, api.json');
 execFileSync('node', [join(here, 'build-page.mjs')], { stdio: 'inherit', cwd: repo });
 
-step('3/5', 'bundle the page');
+step('3/6', 'bundle the page');
 // The one place `dist/` is cleared. Vite's own `emptyOutDir` is off for the page build so that
 // rebuilding just the page cannot silently delete the nineteen exhibits sitting under `dist/x/`.
 if (only.length === 0) rmSync(join(site, 'dist'), { recursive: true, force: true });
 await build({ configFile: join(site, 'vite.config.ts') });
 
 const exhibits = [gallery.hero, ...gallery.live].filter((x) => only.length === 0 || only.includes(x.dir));
-step('4/5', `bundle ${exhibits.length} exhibit${exhibits.length === 1 ? '' : 's'} into dist/x/`);
+step('4/6', `bundle ${exhibits.length} exhibit${exhibits.length === 1 ? '' : 's'} into dist/x/`);
 for (const x of exhibits) {
   await build({
     configFile: false,
@@ -81,7 +82,7 @@ for (const x of exhibits) {
 }
 
 const games = sentence.games.filter((g) => only.length === 0 || only.includes(g.dir));
-step('5/5', `bundle ${games.length} game${games.length === 1 ? '' : 's'} from one sentence into dist/g/`);
+step('5/6', `bundle ${games.length} game${games.length === 1 ? '' : 's'} from one sentence into dist/g/`);
 for (const g of games) {
   await build({
     configFile: false,
@@ -96,5 +97,9 @@ for (const g of games) {
   });
   console.log(`   [32m✓[0m /g/${g.dir}/  — ${g.name}, by ${g.agent}, unedited`);
 }
+
+step('6/6', 'stamp the analytics tag into every built page');
+const stamped = injectAnalytics(join(site, 'dist'));
+console.log(`   \x1b[32m✓\x1b[0m ${stamped} page${stamped === 1 ? '' : 's'} stamped`);
 
 console.log('\nsite/dist is ready. `npx vite preview --config site/vite.config.ts`\n');
