@@ -161,10 +161,11 @@ describe('the tile on sloped ground is not the tile on the plane', () => {
   });
 
   it('the two marches are one march — `iso`\'s camera-space wrapper and the world-space call agree', () => {
-    // `hittest.screenToTileOnHeights` holds its own copy of the march until it is reduced to
-    // `camera → world → worldToTileOnHeights`. Two copies of a bisection are two things that can
-    // drift, and the drift would show up as a tap that disagrees with a hover. Pinned here
-    // rather than hoped for; see `height.ts`.
+    // `hittest.screenToTileOnHeights` is now `camera → world → worldToTileOnHeights`, so there
+    // is one march rather than two copies of a bisection that could drift. This stays because a
+    // composition can be unpicked, and because it is the only check that crosses the seam: it
+    // asks the question through `input`'s frozen transform, which a refactor inside `iso` has no
+    // way to see. The drift it guards against would show as a tap disagreeing with a hover.
     const field = fieldOf(5, (gx, gy) => ((gx + 32) * 3 + (gy + 32) * 2) % 23);
     const view = camera();
     const a: Tile = { gx: 0, gy: 0 };

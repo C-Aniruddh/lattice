@@ -171,10 +171,12 @@ function surfaceGap(field: HeightField, wx: number, wy: number, t: number): numb
  * what makes bisection sound here.
  *
  * **`screenToTileOnHeights` is this function with a camera in front of it**, and is where a
- * caller who has a live camera and a screen pixel should go. The two must agree exactly, tile
- * for tile, on every input; until `hittest.ts` is reduced to `camera → world → here`, that
- * agreement is pinned by a test rather than by construction — `packages/input/test/terrain.test.ts`
- * § *the two marches are one march*.
+ * caller who has a live camera and a screen pixel should go. That is now true by construction
+ * rather than by agreement: the wrapper is `camera.toWorldX`, `camera.toWorldY`, and this call.
+ * The cross-package pin in `packages/input/test/terrain.test.ts` § *the two marches are one
+ * march* is kept anyway, because it is the test that would notice if anyone unpicked the
+ * composition — and `input` resolving through a *frozen* transform is exactly the case a
+ * refactor inside `iso` cannot see.
  *
  * @param maxHeightPx The tallest terrain on the map, in world pixels, which bounds where the
  *   march starts. Pass it: too small and the march begins below a peak and misses it, too large
