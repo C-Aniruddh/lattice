@@ -20,19 +20,20 @@
     "build": "tsc --build",
     "clean": "tsc --build --clean && rm -rf packages/*/dist",
     "typecheck": "tsc --build --dry --force && tsc -p tsconfig.check.json",
-    "test": "vitest run",
+    "test": "vitest run --reporter=default --reporter=json --outputFile=.lattice/.test-counts.json",
     "test:watch": "vitest",
     "bench": "vitest bench --run",
     "cover": "vitest run --coverage",
     "lint": "node tools/lint.mjs",
-    "verify": "npm run build && npm run lint && npm run docs && npm run skills && npm run test && npm run gallery && npm run looking",
+    "verify": "npm run build && npm run lint && npm run docs && npm run skills && npm run test && npm run measured && npm run gallery && npm run looking",
     "dev": "npm run dev --workspace=@latticekit/demo",
     "size": "node tools/size.mjs",
     "gallery": "node tools/gallery.mjs",
     "docs": "node tools/check-docs.mjs",
     "skills": "node tools/check-skills.mjs",
     "skills:published": "node tools/check-skills.mjs --published",
-    "looking": "node tools/looking/verify.mjs"
+    "looking": "node tools/looking/verify.mjs",
+    "measured": "node site/tools/check-measured.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

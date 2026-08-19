@@ -45,7 +45,7 @@
  */
 
 /** The kit version this package was built as part of. */
-export const VERSION = '0.1.0';
+export const VERSION = '0.1.1';
 
 // ── the vocabulary and the table ────────────────────────────────────────────────
 export { ATTACK_SEC, BUS_NAMES, MAX_VOICES, RAMP_SEC, SEMITONE, validateSounds } from './sounds.js';

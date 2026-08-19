@@ -2,139 +2,178 @@
 
 > The grid underneath.
 
-**A TypeScript kit for isometric, deterministic, zero-asset games.** Nine small libraries that
-compose: the projection and the camera, a fixed-step loop, procedural art on a `Surface` it does
-not own, synthesized sound, saves that survive a version bump, and an idle economy solved in
-closed form rather than ticked.
+[![verify](https://img.shields.io/github/actions/workflow/status/C-Aniruddh/lattice/ci.yml?branch=main&label=verify)](https://github.com/C-Aniruddh/lattice/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/%40latticekit%2Fcore?label=npm&color=cb3837)](https://www.npmjs.com/package/@latticekit/core)
+[![license](https://img.shields.io/github/license/C-Aniruddh/lattice)](LICENSE)
+[![site](https://img.shields.io/badge/site-lattice.aniruddh.tech-0b7285)](https://lattice.aniruddh.tech)
 
-There are no images, no audio files and no fonts anywhere in it, because there is nothing to
-load: every building is drawn from one color, every sound is built from oscillators, and the
-whole kit weighs less than a photograph with **no dependency outside itself**.
+**Type one sentence and get an isometric game you can play in a browser.** `/lattice` is a
+plugin for coding agents. Under it are nine TypeScript packages with no dependencies and no
+asset files — no images, no audio, no fonts — because there is nothing to load: every building
+is drawn from one color and every sound is built from oscillators.
 
-| | |
-|---|---|
-| **nine packages** | `core` `iso` `draw` `loop` `input` `audio` `persist` `sim` `ui` — a DAG, and it points one way |
-| **zero dependencies** | not on npm, not on the DOM unless the package name says so. One `npm i`, nothing transitive |
-| **zero assets** | art is procedural, sound is synthesized. A Lattice game is a few dozen kilobytes and recolorable at runtime |
-| **12 kB per package** | a hard gzipped budget checked by `npm run size`, with every exception written down and argued in `kit.json` |
-| **2,599 tests** | across 97 files, including contract tests sited *above* the packages, where the interesting bugs live |
-| **deterministic** | seed + input log → the same pixel. Checked by a test that fails when it is not true — see below |
+### **[▶ Nineteen worlds, running, at lattice.aniruddh.tech](https://lattice.aniruddh.tech)**
 
 ---
 
-## What it looks like
+## Start here
 
-A valley at dusk. Tap a tile and a lamp goes up there, and the night opens around it. This is the
-whole program — there is no scene file, no asset pipeline and no build step beyond `tsc`.
+Install the plugin in the agent you already use:
 
-```ts
-import { DepthSorter, createCamera } from '@latticekit/iso';
-import {
-  BASE_SLOTS, VARIANT_ZERO, beginFrame, createCanvas2dSurface, createLightField,
-  createPalette, defineSprite, drawSprite, endFrame, isoTile, renderFrame, spriteHeightPx,
-} from '@latticekit/draw';
-import type { Variant } from '@latticekit/draw';
-import { browserFrames, createLoop } from '@latticekit/loop';
-import { createInput } from '@latticekit/input';
+| | |
+|---|---|
+| **Claude Code** | `/plugin marketplace add C-Aniruddh/lattice` &nbsp;then&nbsp; `/plugin install lattice@lattice` |
+| **Codex** | `codex plugin marketplace add C-Aniruddh/lattice` &nbsp;then&nbsp; `codex plugin add lattice@lattice` |
+| **Grok** | `grok plugin install C-Aniruddh/lattice` |
 
-// A sprite is a footprint and a function. `massing` draws the object; `emit` is the light it
-// throws, which runs only when the frame is actually dark.
-const lamp = defineSprite({
-  id: 'lamp',
-  w: 1,
-  d: 1,
-  massing: (s) => {
-    s.post(0, 0, 0, 3, 'metal');           // coordinates are relative to the footprint
-    s.glow(0.5, 0.5, 3, 'warn', 0.4, 0.9); // the fixture
-    s.shadow(0, 0, 1, 1);                  // what grounds it
-  },
-  emit: (field, gx, gy) => field.add(gx + 0.5, gy + 0.5, 0, 3, 0.9, 'warn'),
-});
+Then type one sentence:
 
-const canvas = document.querySelector('canvas');
-if (canvas === null) throw new Error('index.html needs a <canvas>');
-
-const camera = createCamera(canvas.clientWidth, canvas.clientHeight);
-camera.centerOnTile(8, 8);
-
-const surface = createCanvas2dSurface(canvas);   // the only object that knows what a canvas is
-const palette = createPalette(BASE_SLOTS);
-const light = createLightField(surface);
-const order = new DepthSorter(256);
-const lamps: { gx: number; gy: number; v: Variant }[] = [];   // your state. the kit holds none
-
-const loop = createLoop({
-  clock: { now: () => performance.now() },       // the one global clock read in the whole app
-  frames: browserFrames(),                       // rAF paints; an interval ticks when hidden
-});
-
-const input = createInput({
-  element: canvas,
-  camera,                    // drag pans it, wheel zooms about the pointer, both for free
-  step: loop,                // the loop itself — a literal here mistimes every gesture
-  actions: { place: ['tap', 'key:KeyL'] },       // one handler, two devices
-});
-
-input.onAction('place', (a) => {
-  lamps.push({ gx: a.gx, gy: a.gy, v: { ...VARIANT_ZERO, seed: lamps.length } });
-});
-
-loop.onUpdate((_dt, tick) => input.tick(tick));  // gestures arrive on ticks, never on frames
-loop.onRender((_alpha, time, nowMs) => {
-  input.frame(nowMs);
-  const pen = beginFrame({ surface, camera, palette, t: time, clear: 'sky', light });
-  light.begin(pen, 0.7, 'night');                // 0 is full day, and then it costs nothing
-
-  order.clear();
-  for (const l of lamps) order.add(l.gx, l.gy, 1, 1, spriteHeightPx(lamp, l.v));
-
-  renderFrame(pen, {
-    terrain: (p, visible) => {
-      for (let gy = visible.gy0; gy <= visible.gy1; gy++) {
-        for (let gx = visible.gx0; gx <= visible.gx1; gx++) isoTile(p, gx, gy, 'ground');
-      }
-    },
-    solids: (p, sorted) => {
-      // Sorted and culled already. Walk it forwards; the tap that picks walks it backwards.
-      for (let i = 0; i < sorted.count; i++) {
-        const l = lamps[sorted.indexAt(i)];
-        if (l !== undefined) drawSprite(p, lamp, l.gx, l.gy, l.v);
-      }
-    },
-  }, order);
-
-  endFrame(pen);
-});
-
-loop.start();
+```
+/lattice a game where you plant an orchard and each evening choose to harvest or let it grow
 ```
 
-Three things in there are the design rather than the API.
+The plugin picks the archetype, installs the packages in the order that works, writes the game,
+gets a screen up in the first minute, then **opens it in a browser and looks at it** —
+screenshots it, judges it against a harness, fixes what is wrong, repeats. The only other thing
+it may ask you is permission: to build blind when it cannot drive a browser, or to write into a
+folder that already has your files in it. Everything else it decides, and says which way it
+decided in one line.
 
-**`a.gx, a.gy` is a tile.** No game written on this kit converts a pointer position into a grid
-cell, because the conversion has to happen through the camera *as it stood when the tick opened*
-and a game that does it in a handler does it through the camera as it stands now — which is a
-different tile, on any frame where the map was moving.
+It tells you when it is working blind rather than quietly doing it, because a suite that passes
+over a black screen is a failure this project has already shipped once.
 
-**The sorted list is walked forwards, and picked backwards.** There is exactly one sorted list in
-the kit, `iso` owns it, and `renderFrame` calls `sort()` itself immediately before handing it
-over — so there is no window in which a caller holds a sorted order and is tempted to improve it.
-Partitioning it (all the shadows, then all the bodies) is a *stable* reorder that looks harmless
-and makes a player tap one building and open the one behind it.
+### What you get
 
-**`lamps` is yours.** No registry, no entity system, no scene graph, no component store. The
-kit hands back a permutation over the array you already had.
+| | |
+|---|---|
+| **a running game** | a real page on a dev server, yours to keep and to edit. No engine account, no editor, no runtime |
+| **no assets to make** | art is procedural and sound is synthesized. Nothing to draw, license, or pack |
+| **no sprite sheet to hallucinate** | there is no asset path to invent, because there are no assets. An agent cannot reference an image that was never supposed to exist |
+| **the same result twice** | seed + input log → the same pixel, so a fix stays fixed |
+| **12 skills, 34 named traps** | the parent that owns `/lattice` and eleven specialists. The traps are failures that compile, run, and produce a plausible-looking wrong game — written down so the agent does not re-discover them on your time |
 
-> `docs/GUIDE.md` builds this out into a real game, in the order you will need it: the frame, the
-> first building, input, time, the economy, saving, sound, and how to test all of it in Node.
+[`docs/SKILLS.md`](docs/SKILLS.md) is the design: what the flow does, what it must never do, and
+what it is allowed to decide for you.
+
+---
+
+## Three games nobody designed
+
+Each was built by a **different vendor's agent**, in an empty directory, from one sentence, with
+no access to this repository — it installed `@latticekit/*` from npm like anyone else. The source
+is unedited, blemishes included, and two of the three carry a named defect the record states
+rather than hides.
+
+| game | agent | the sentence it was given | |
+|---|---|---|---|
+| **Before the Bell** | Grok | *place stalls and open gates to pull the crowd to your bakery before the market closes* | [play](https://lattice.aniruddh.tech/g/before-the-bell/) |
+| **Chime Path** | Claude | *hang chimes along a mountain path and tune each one, so the wind plays them in order as walkers pass* | [play](https://lattice.aniruddh.tech/g/chime-path/) |
+| **Evenfall Orchard** | Codex | *plant an orchard and each evening choose to harvest or let it grow, and it keeps growing while the tab is closed* | [play](https://lattice.aniruddh.tech/g/evenfall-orchard/) |
+
+Source and the full provenance — the verbatim prompts, the transcripts, what was verified by
+hand, and the one thing that was changed — are in [`from-one-sentence/`](from-one-sentence).
+
+## The gallery
+
+Nineteen worlds: eighteen exhibits and the hero, each one proof of a capability that would
+otherwise be a claim. **[See them running →](https://lattice.aniruddh.tech)**
+
+**Eight of the eighteen were built by agents from the written spec alone** — Codex built Harbor,
+Wayfinding, Builder and Orbit; Grok built Idle and Instrument; Claude built Replay and Migration.
+Each was given one row of the exhibit table, the standard, and the tools, and was **not** allowed
+to read another exhibit's source: the test was whether the specification is followable, not
+whether an agent can pattern-match. Seven of the eight passed every row of the looking harness
+unaided; the exception was Replay, on legibility, for a text node too small for the check to
+measure. Every one of them carries its author's own notes on what the spec failed to say, in its
+`README.md`, verbatim — and each says what changed on the way into this repository, because all
+eight of them had to invent a bootstrap that `examples/_shared` provides and does not ship. The
+three games above are the ones whose source is unedited; an exhibit is not making that claim.
+
+Which is the plain fact about this repository: **it was largely built by agents.** 112 of its 116
+commits carry an agent co-author trailer — `git log --format=%B | grep -c 'Co-Authored-By: Claude'`
+— and the eight exhibits and three games above are in the tree so that the claim can be checked
+against source rather than believed.
+
+---
+
+## Or use the packages directly
+
+Nine of them, published in lockstep. Every one brings only the ones below it in the DAG, and
+nothing from outside the kit.
+
+```bash
+npm i @latticekit/iso     # brings @latticekit/core, and nothing else
+```
+
+This is a whole Lattice program — a surface, a camera, a palette, a loop, and a world drawn
+inside it. It is [the file the landing page runs beside its own source](https://lattice.aniruddh.tech/example/).
+
+```ts
+import { createCamera } from '@latticekit/iso';
+import { BASE_SLOTS, beginFrame, createCanvas2dSurface, createPalette, endFrame, isoBox } from '@latticekit/draw';
+import { browserFrames, createLoop } from '@latticekit/loop';
+
+const surface = createCanvas2dSurface(document.body.appendChild(document.createElement('canvas')));
+const camera = createCamera(innerWidth, innerHeight, { zoom: 0.62 }), palette = createPalette(BASE_SLOTS);
+
+createLoop({ clock: { now: () => performance.now() }, frames: browserFrames(), render: (_alpha, t) => {
+  const pen = beginFrame({ surface, camera, palette, t, clear: 'sky' });   // erase, then paint the sky
+  // Back to front is just the loop order in a 2:1 projection, so this city needs no depth sort.
+  for (let gy = -7; gy < 7; gy++) for (let gx = -7; gx < 7; gx++) isoBox(pen, gx, gy, 1, 1, { color: 'metal', h: 2 + 5 * Math.sin(t + (gx + gy) * 0.4) ** 2 });
+  endFrame(pen);
+} }).start();
+```
+
+Three things about a Lattice game are the design rather than the API, and they are what
+[`docs/GUIDE.md`](docs/GUIDE.md) builds out in the order you will need it:
+
+- **A tap arrives as a tile, never as a pixel.** No game on this kit converts a pointer position
+  into a grid cell, because the conversion has to happen through the camera *as it stood when the
+  tick opened*, and a game that does it in a handler does it through the camera as it stands now
+  — a different tile on any frame where the map was moving.
+- **The sorted list is walked forwards, and picked backwards.** There is one sorted list, `iso`
+  owns it, and `renderFrame` sorts immediately before handing it over, so no caller ever holds
+  one and is tempted to improve it. Partitioning it — all the shadows, then all the bodies — is a
+  *stable* reorder that looks harmless and makes a player tap one building and open the one
+  behind it.
+- **Your entities stay yours.** No registry, no entity system, no scene graph, no component
+  store. The kit hands back a permutation over the array you already had.
+
+### The nine packages
+
+They form a DAG and it points one way. `core` imports nothing; nothing imports `ui`.
+
+```
+core ─┬─▶ iso ──┬─▶ draw ─┬─▶ ui
+      ├─▶ loop  │         │
+      ├─▶ sim   └─────────┤
+      ├─▶ persist         │
+      ├─▶ input ──────────┘
+      └─▶ audio
+```
+
+| package | what it is for | environment |
+|---|---|---|
+| [`core`](packages/core) | seeded rng, stateless hashing, noise, maths, easing, typed events, pools, formatting | isomorphic |
+| [`iso`](packages/iso) | the three coordinate spaces, camera, depth sort, tile maps, footprints, hit-testing, paths | isomorphic |
+| [`draw`](packages/draw) | a `Surface` with a Canvas2D backend, color derivation, and the isometric solid kit | browser + headless |
+| [`loop`](packages/loop) | wall-clock loop, fixed-step simulation, schedulers on two timelines, tweens, replay | isomorphic |
+| [`input`](packages/input) | pointer/touch/keyboard into one replayable stream of intents, in tile coordinates | browser |
+| [`audio`](packages/audio) | WebAudio synthesis from declarative recipes, voice limiting, buses, a music deck | browser |
+| [`persist`](packages/persist) | versioned saves, an explicit migration chain, injected storage, integrity | isomorphic |
+| [`sim`](packages/sim) | idle-economy maths in closed form: cost curves, flow, offline accrual, capacity | isomorphic |
+| [`ui`](packages/ui) | DOM overlay primitives — panels, toasts, number rolls. Deliberately not a framework | browser |
+
+[`.lattice/kit.json`](.lattice/kit.json) is the same table, machine-readable, with every
+package's exports and invariants. [`/api.json`](https://lattice.aniruddh.tech/api.json) and
+[`/llms.txt`](https://lattice.aniruddh.tech/llms.txt) are the versions an agent reads.
 
 ---
 
 ## Determinism is checked, not claimed
 
 Every kit says it is deterministic. The claim is only worth something if something breaks when it
-stops being true, so here it is, in `packages/loop/test/replay.test.ts` (an excerpt, not a
-whole program):
+stops being true, so here it is, in `packages/loop/test/replay.test.ts`:
 
 ```ts ignore
 update(dt, tick) {
@@ -145,20 +184,17 @@ update(dt, tick) {
 ```
 
 A session is recorded through a real loop, then replayed against the same game with that one line
-armed. The replay reports the tick where it first disagreed. With the flip off, `divergedAt` is
-`-1`; with it on, it is `63` — the first checkpoint, because 64 coin flips have happened by the
-time it is compared and the odds of all 64 landing tails are `2⁻⁶⁴`, about 5.4 × 10⁻²⁰. A suite
-run once a second since the formation of the Earth would not have seen it. That is not a flaky
-test; it is a certain one with the arithmetic written down beside it.
+armed. With the flip off, `divergedAt` is `-1`; with it on, it is `63` — the first checkpoint,
+because 64 coin flips have happened by the time it is compared and the odds of all 64 landing
+tails are `2⁻⁶⁴`, about 5.4 × 10⁻²⁰. A suite run once a second since the formation of the Earth
+would not have seen it. That is not a flaky test; it is a certain one with the arithmetic written
+down beside it. The falsification runs in **both** directions and both are asserted, which is the
+part usually skipped: a test that only ever fails proves nothing about the case it is meant to
+catch.
 
-The falsification runs in both directions and both are asserted, which is the part usually
-skipped: a test that only ever fails proves nothing about the case it is supposed to catch. There
-is a control that the same build replayed against itself never diverges, so the flip is the only
-variable.
-
-`Math.random()`, `Date.now()` and `performance.now()` are banned inside every package's `src/` and
-`npm run lint` enforces it. Randomness arrives as a seeded `Rng` the caller owns; time arrives as
-a parameter.
+`Math.random()`, `Date.now()` and `performance.now()` are banned inside every package's `src/`
+and `npm run lint` enforces it. Randomness arrives as a seeded `Rng` the caller owns; time
+arrives as a parameter.
 
 ### The two-tier rule, which is the thing most kits get wrong by not knowing it exists
 
@@ -187,34 +223,8 @@ never as the `#rrggbb` it derives to, because the derivation needs `cbrt`.
 
 ## Numbers, not convictions
 
-Two of the more useful things in `docs/PERFORMANCE.md` are decisions that went the other way from
-the intuition.
-
-### A sprite cache that was measured and deleted
-
-`draw`'s RFC listed a sprite bitmap cache as provisional and named deleting it as a clean outcome.
-Then it was measured:
-
-| | 400 sprites of 42 draw calls each |
-|---|---:|
-| direct path, every sprite drawn from its massing | 2.14 ms |
-| **a perfect cache: key, lookup and blit, 100% hits, no misses** | **0.04 ms** |
-| the most a cache could ever save | 2.10 ms, of an 8 ms budget |
-
-So the honest comparison was never "2.14 ms versus nothing". It was 2.14 ms versus 0.04 ms **plus
-four new ways to render something stale** — zoom buckets, palette revisions, blit snapping, and a
-don't-fill-while-moving rule that exists because filling during a pinch is strictly *worse* than
-having no cache at all — plus 8 MiB of resident bitmaps on a phone. The module is not built.
-
-The condition under which it reopens is a row in the same table rather than a footnote, so whoever
-hits it can point at the number: a thousand buildings of that complexity is 5.40 ms, 68% of the
-budget, and that is where a cache would start to earn what it costs.
-
-### Out-parameters are not faster, and that is not why they exist
-
-Rule 7 says the hot path allocates nothing. Every vector signature therefore takes an output
-parameter, which costs every call site something real. Comparing mean throughput says the rule is
-wrong:
+The rule that the hot path allocates nothing costs every call site an output parameter, and
+comparing mean throughput says the rule is wrong:
 
 | operation | ops/sec | max latency |
 |---|---:|---:|
@@ -222,78 +232,35 @@ wrong:
 | out-parameter add, identical work | 40,714,999 | **0.0274 ms** |
 
 Allocating wins the mean by about 25%, and that is not measurement error — V8's nursery is a bump
-allocator and an object that dies in the same iteration is nearly free.
+allocator and an object that dies in the same iteration is nearly free. **Look at the second
+column.** The allocating form's worst observed call is 85× slower: that is the garbage collector,
+showing up exactly where a mean cannot see it, and a 2.3 ms pause inside an 8 ms budget is not a
+slow frame, it is a dropped one. A game protects its frame-time tail, not its mean.
 
-**Look at the second column.** The allocating form's worst observed call is **85× slower**. That
-is the garbage collector, showing up exactly where a mean cannot see it, and a 2.3 ms pause inside
-an 8 ms budget is not a slow frame, it is a dropped one — arriving in a burst, so the player sees
-a hitch rather than a lower frame rate. A game protects its frame-time tail, not its mean. Anyone
-relaxing the rule because "allocation is cheap now" is right about the mean and wrong about the
-only number that matters.
-
----
-
-## The nine packages
-
-They form a DAG and it points one way. `core` imports nothing; nothing imports `ui`.
-
-```
-core ─┬─▶ iso ──┬─▶ draw ─┬─▶ ui
-      ├─▶ loop  │         │
-      ├─▶ sim   └─────────┤
-      ├─▶ persist         │
-      ├─▶ input ──────────┘
-      └─▶ audio
-```
-
-| package | what it is for | environment |
-|---|---|---|
-| [`core`](packages/core) | seeded rng, stateless hashing, noise, maths, easing, typed events, pools, formatting | isomorphic |
-| [`iso`](packages/iso) | the three coordinate spaces, camera, depth sort, tile maps, footprints, hit-testing, paths | isomorphic |
-| [`draw`](packages/draw) | a `Surface` with a Canvas2D backend, color derivation, and the isometric solid kit | browser + headless |
-| [`loop`](packages/loop) | wall-clock loop, fixed-step simulation, schedulers on two timelines, tweens, replay | isomorphic |
-| [`input`](packages/input) | pointer/touch/keyboard into one replayable stream of intents, in tile coordinates | browser |
-| [`audio`](packages/audio) | WebAudio synthesis from declarative recipes, voice limiting, buses, a music deck | browser |
-| [`persist`](packages/persist) | versioned saves, an explicit migration chain, injected storage, integrity | isomorphic |
-| [`sim`](packages/sim) | idle-economy maths in closed form: cost curves, flow, offline accrual, capacity | isomorphic |
-| [`ui`](packages/ui) | DOM overlay primitives — panels, toasts, number rolls. Deliberately not a framework | browser |
-
-`.lattice/kit.json` is the same table, machine-readable, with every package's exports and
-invariants — read it before you read source.
-
----
-
-## Status
-
-**All nine packages are complete and published**, and the gallery ships ten exhibits plus the
-hero. The gate is `npm run verify` — build, lint, docs, the whole suite and the line rule — and
-nothing lands red. CI runs it on Node 20, 22 and 24, and then runs the suite **twice in separate
-processes and diffs the recorded streams**, because a stray `Date.now()` or a `Set` iteration
-order is exactly what a single run cannot catch.
-
-What is deliberately absent is written down per package — `iso` has no entity system, `draw` has
-no bezier paths, `input` has no gamepad and says why in four sentences — and those absences are
-the part of the design most likely to be argued with, which is why each one carries its reasoning.
+[`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) has the rest, including the sprite bitmap cache that
+was measured and then not built — a perfect cache, 100% hits, saves 2.10 ms of an 8 ms budget and
+buys four new ways to render something stale — and the row that says at what scale it reopens.
 
 ---
 
 ## Is this ready?
 
-Not for everything, and the honest answer has three parts: what is stable, what is not, and what
-will break before `1.0`. Today is **v0.1.0**, published to npm and installable now.
+Today is **v0.1.1**, all nine packages, on npm. The honest answer has three parts: what is
+stable, what is not, and what will break before `1.0`.
 
 | this | status | why you can check it |
 |---|---|---|
-| the 524 exported symbols | **stable in shape** | `npm run lint` fails the build if a package exports a name `.lattice/kit.json` does not list, so the API reference cannot drift from the code. |
-| behavior of everything exported | **tested** | 2,599 tests across 97 files, 90% statements per package and 100% on everything in `core`, enforced rather than aspired to. |
-| the layering and the determinism rule | **enforced** | `Math.random()`, `Date.now()` and `performance.now()` are lint errors inside a package. CI also runs the whole suite twice and diffs the results. |
-| the size of each package | **budgeted** | a gzip budget per package, 12 kB by default, with every override written down and argued for in the manifest. |
-| function *signatures* | **may change** | nothing has shipped to a registry, so nothing has been used by anybody outside this repository yet. That is the whole reason the version starts with a zero. |
-| the `/lattice` plugin | **specified, not shipped** | the flow is `docs/SKILLS.md`, which is a specification and says so. Read it as a promise about a design, not about a build. |
-| the gallery | **10 of 18** | the brief specifies eighteen exhibits and one hero. The eight that are not built are named below, and in `/llms.txt` and `/api.json`. |
-| the API reference | **names, not signatures** | it answers "which package, which symbol" and never "how do I call it", because the manifest carries no types. Generating from the `.d.ts` files is a tool this project has not written. |
+| the 527 exported symbols | **stable in shape** | `npm run lint` fails the build if a package exports a name `.lattice/kit.json` does not list, so the reference cannot drift from the code |
+| behavior of everything exported | **tested** | 2,648 tests across 100 files. `npm run cover` reports 99.82% of statements and 100% of functions against a 90% floor. Coverage is not part of the gate, so run it rather than trusting this line |
+| the layering and the determinism rule | **enforced** | the clock and the random source are lint errors inside a package. CI also runs the whole suite twice in separate processes and diffs the recorded streams, because a stray `Date.now()` or a `Set` iteration order is what a single run cannot catch |
+| the size of each package | **budgeted** | 83.02 kB gzipped for all nine. 12 kB per package by default, with `draw` at 12.5 and `input` at 16, each override argued in the manifest rather than raised quietly |
+| the `/lattice` plugin | **shipped** | it installs and runs in Claude Code, Codex and Grok. The three games above came out of it |
+| the gallery | **complete** | eighteen exhibits and the hero, all nineteen built and running on the site |
+| function *signatures* | **may change** | the first publish was 2026-08-18 and nobody outside this repository has depended on them yet. That is the whole reason the version starts with a zero |
+| the API reference | **generated, not hand-kept** | [`/reference/`](https://lattice.aniruddh.tech/reference/) is read out of the packages' own `.d.ts` files at build time |
+| a browser test matrix | **absent** | CI runs the suite in Node on 20.19, 22 and 24. The browser floor below is read off the compiler target and the built output, not off a test run |
 
-## Versioning, and what a breaking change means here
+### Versioning, and what a breaking change means here
 
 Semver, with the pre-1.0 rule stated rather than assumed: **a minor bump may break source
 compatibility, a patch never does.** The nine packages version and publish **in lockstep** — one
@@ -308,10 +275,11 @@ Two kinds of breakage matter here and only one of them is about code:
 - **Artifact breaks** — a change that makes something already *written down* invalid. A save file,
   a replay log, a shareable seed. These are silent, and they are the ones this kit spends its rules
   on: `persist` refuses a version mismatch by name instead of guessing, `stepMs` is a compatibility
-  constant because it appears in every recorded session, and `docs/SEAMS.md` is the list of every
-  place the two are connected. A change of this kind ships with a migration or it does not ship.
+  constant because it appears in every recorded session, and [`docs/SEAMS.md`](docs/SEAMS.md) is
+  the list of every place the two are connected. A change of this kind ships with a migration or
+  it does not ship.
 
-## What it needs from a browser
+### What it needs from a browser
 
 It is **Canvas2D**, and that is the whole rendering story: no WebGL, no WebGPU, no WebAssembly, no
 workers, and no `OffscreenCanvas` — `draw`'s backend uses a detached `<canvas>` deliberately,
@@ -325,10 +293,7 @@ present in the built output is private class fields and `Array.prototype.at`, wh
 at roughly **Chrome 92, Edge 92, Firefox 90 and Safari 15.4** — spring 2022. Older targets transpile
 the packages like any other dependency; they ship as ES modules and nothing in them is pre-minified.
 
-> That floor is read off the built output and the compiler target, *not* off a browser test matrix.
-> CI runs the suite in Node on 20.19, 22 and 24; there is no browser matrix yet. So the claim is
-> "it requires nothing those browsers lack", which is checkable, rather than "it is tested there
-> every commit", which would not be true.
+---
 
 ## Why not Phaser, Pixi or Three
 
@@ -344,38 +309,27 @@ a complete engine with scenes, physics, input, audio and a loader, a decade of d
 every agent has already read, and a community that has answered your question. *If you want a game
 engine, use Phaser.*
 
-Three things here are not on that list. It is **deterministic by rule** rather than by discipline —
-the clock and the random source are banned inside every package and the linter fails the build over
-them — which is what makes a replay land on the same pixel and a seed a link you can send. It has
-**no asset pipeline at all**, because a solid is one color with its faces derived and a sound is
-synthesized from a declaration, so there is nothing to load, nothing to license, nothing to pack,
-and a recolor is a runtime value. And it is **written to be handed to an agent**: the manifest, the
+Three things here are not on that list. It is **deterministic by rule** rather than by discipline,
+which is what makes a replay land on the same pixel and a seed a link you can send. It has **no
+asset pipeline at all**, so there is nothing to load, nothing to license, nothing to pack, and a
+recolor is a runtime value. And it is **written to be handed to an agent**: the manifest, the
 invariants, the cross-package contracts and the traps that cost this project real time are all
-machine-readable at `/api.json`, which is a thing you can check in ten seconds rather than a claim.
+machine-readable at [`/api.json`](https://lattice.aniruddh.tech/api.json), which is a thing you
+can check in ten seconds rather than a claim.
 
 If none of those three is worth anything to you, the honest recommendation is Phaser.
 
 ---
 
-
----
-
----
-
-## Getting started
+## Working on it
 
 ```bash
 git clone https://github.com/C-Aniruddh/lattice
 cd lattice
 npm install
-npm run verify     # build + lint + test. nothing lands red
+npm run verify     # build, lint, docs, skills, tests, gallery, looking. nothing lands red
 npm run dev        # the demo game, on :5173
-```
-
-Or install what you need. Every package brings only the ones below it in the DAG:
-
-```bash
-npm i @latticekit/iso     # brings @latticekit/core, and nothing else
+npm run size       # per-package gzipped size against the budget
 ```
 
 | if you want | read |
@@ -383,13 +337,15 @@ npm i @latticekit/iso     # brings @latticekit/core, and nothing else
 | to build a game with it | **[`docs/GUIDE.md`](docs/GUIDE.md)** — start to finish, in order |
 | a whole game, wired, at real scale | [`examples/demo/src/`](examples/demo/src) |
 | to know which package owns a thing | [`.lattice/kit.json`](.lattice/kit.json), then that package's `README.md` |
-| to work *on* it, as a human or an agent | **[`AGENTS.md`](AGENTS.md)** — the ten non-negotiables, and they are not a style guide |
+| to work *on* it, as a human or an agent | **[`AGENTS.md`](AGENTS.md)** — the eleven non-negotiables, and they are not a style guide |
 | the numbers behind any performance claim | [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) |
 | why two packages split a responsibility the way they did | [`docs/SEAMS.md`](docs/SEAMS.md) |
 | to send a pull request | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
+| what changed in a release | [`CHANGELOG.md`](CHANGELOG.md) |
+| to report something that should not be public | [`SECURITY.md`](SECURITY.md) |
 
 ---
 
 ## License
 
-MIT.
+MIT. See [`LICENSE`](LICENSE).

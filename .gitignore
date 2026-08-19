@@ -7,3 +7,6 @@ coverage/
 .lattice/reports/
 .lattice/doccheck/
 dist-ts/
+
+# Written by `npm test` so `npm run measured` can check the recorded counts without a second run.
+.lattice/.test-counts.json

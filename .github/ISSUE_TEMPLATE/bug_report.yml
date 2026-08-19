@@ -1,0 +1,50 @@
+name: Bug report
+description: Something behaves differently from what it says it does.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **The reproduction is the report.** The kit is deterministic, so a seed plus an input log
+        is enough to reproduce anything — which is precisely why determinism is rule one.
+
+        If this is a security issue, do not file it here. See [SECURITY.md](https://github.com/C-Aniruddh/lattice/blob/main/SECURITY.md).
+
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options:
+        - a @latticekit package
+        - the /lattice plugin or a skill
+        - the landing page or an exhibit
+        - the repo tooling (verify, lint, size, looking)
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: e.g. `@latticekit/iso@0.1.1`, or the plugin and the agent it ran in.
+      placeholder: "@latticekit/iso@0.1.1, Node 22, Chrome 140"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: >
+        A seed and the inputs, a snippet that compiles, or a repository. If you can make it fail
+        in Node, that is the most useful form it can take.
+      render: typescript
+    validations:
+      required: true

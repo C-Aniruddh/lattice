@@ -17,6 +17,7 @@
  * Run: `node site/tools/build-page.mjs`
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { checkDerivable } from './check-measured.mjs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildApiModel, crossCheck } from './api-model.mjs';
@@ -29,6 +30,7 @@ const repo = join(site, '..');
 const read = (p) => JSON.parse(readFileSync(p, 'utf8'));
 const kit = read(join(repo, '.lattice/kit.json'));
 const measured = read(join(site, 'data/measured.json'));
+
 const gallery = read(join(site, 'data/exhibits.json'));
 const example = readFileSync(join(site, 'example/hello.ts'), 'utf8');
 
@@ -983,26 +985,22 @@ ${fanout
       node, and one narrow glyph in a five-pixel box reports a luminance range of 0.003 at a contrast of 7.2. It was
       not hard to read. It was too small to measure.</p>
 
-      <h3>The half that was worth more than the exhibits</h3>
-      <p>Every one of them reports, verbatim in its own <code>README</code>, the places this document could not be
-      acted on without a guess &mdash; and all ${word(fanoutCount).toLowerCase()} found the same one:
-      <code>examples/_shared</code> &mdash; the bootstrap and the control panel these pages are written as though a
-      reader already has &mdash; exists only in this repository. Everyone here already knew that, which is exactly why
-      nobody here could find it.</p>
+      <!-- The mark says who built the exhibit. It does not say the file is untouched, and this
+           clause is what keeps it from implying so: every one of the eight changed on the way in,
+           one of them substantially.
 
-      <!-- The mark says who built the exhibit. It does not say the file is untouched, and this is
-           the sentence that keeps it from implying so: every one of the eight changed on the way
-           in, one of them substantially. Leaving that out would make eight tiles claim slightly
-           more than is true, which is the one thing this section cannot afford. -->
-      <p class="note">Each of the ${word(fanoutCount).toLowerCase()} changed on the way into this repository and its
-      <code>README</code> says how &mdash; mostly a hand-rolled boot, or a vendored copy of that same missing
-      directory, resolving to the real one; in Wayfinding's case the composition, rebuilt here.
-      The other ${word(gallery.live.length - fanoutCount).toLowerCase()} and the world at the top of
-      this page were built here, with a person in the loop; a tile with no mark on it claims nothing more than that.
-      What all ${word(fanoutCount).toLowerCase()} of them found is collected in
-      <a href="${src('docs/GALLERY.md#what-eight-strangers-found-in-this-document')}">what
-      ${word(fanoutCount).toLowerCase()} strangers found in this document</a>. This is the reading the plugin above is
-      for.</p>
+           What stood here was two more paragraphs — the examples/_shared finding, and an
+           enumeration of what each of the eight had to change. Both were true and neither was for
+           a visitor. The finding is a bug report against our own brief; it is written up at length
+           in GALLERY.md, which is where somebody who wants it goes. The enumeration explained the
+           marks on the tiles, which is the page explaining itself rather than showing anything.
+           The section's claim is already made by the headline, the lede and eight live links; the
+           only thing under it that had to survive is the half-sentence that stops eight tiles from
+           claiming more than is true. -->
+      <p class="note">Each of the ${word(fanoutCount).toLowerCase()} changed on the way in and its
+      <code>README</code> says how. What all ${word(fanoutCount).toLowerCase()} of them found missing in the brief is
+      collected in <a href="${src('docs/GALLERY.md#what-eight-strangers-found-in-this-document')}">what
+      ${word(fanoutCount).toLowerCase()} strangers found in this document</a>.</p>
     </div>
   </section>
 
@@ -1625,8 +1623,8 @@ this file:
 Add \`@latticekit/audio\`, \`@latticekit/persist\`, \`@latticekit/sim\` and \`@latticekit/ui\` as you need them.
 There are no peer dependencies and nothing transitive.
 
-Neither works for a stranger yet: nothing is published to npm and the repository is private until
-launch. This file, /api.json and /kit.json are served now and are the whole kit.
+Both work today: all nine packages are on the public npm registry at ${kit.version}, and the
+repository is public. This file, /api.json and /kit.json are served alongside them.
 
 ## The rules that bind every package
 
@@ -1654,7 +1652,7 @@ launch. This file, /api.json and /kit.json are served now and are the whole kit.
 
 ## Is this ready? What is stable and what is not
 
-Version ${kit.version}. Nothing is published to npm yet.
+Version ${kit.version}, published to npm as \`@latticekit/*\`.
 
 Stable: the ${commas(fig('publicSymbols'))} exported names (\`npm run lint\` fails the build if a package exports a name
 \`.lattice/kit.json\` does not list); their behavior (${commas(fig('tests'))} tests, ${(kit.budgets.coverageStatements * 100).toFixed(0)}% statements per package,
@@ -1837,8 +1835,14 @@ const api = {
   install: {
     plugin: Object.fromEntries(plugin.map((p) => [p.tab, p.lines.map((l) => l.cmd)])),
     libraries: 'npm i @latticekit/core @latticekit/iso @latticekit/draw @latticekit/loop @latticekit/input',
-    published: false,
-    note: 'Nothing is on npm and the repository is private until launch. Both commands are the shape of the install rather than a working one today.',
+    /** Not a literal. Three places on this page state whether the kit is installable — this
+     *  block, and two sentences in /llms.txt — and they were written as three independent
+     *  literals saying `false`. They stayed wrong through a release and a public repository,
+     *  telling every agent that read /api.json that the packages it was being told to install
+     *  did not exist. There is one fact here and it is the version the manifests carry. */
+    published: true,
+    publishedVersion: kit.version,
+    note: `All nine packages are on the public npm registry at ${kit.version}. Both commands work as written.`,
   },
   measured: measured.figures,
   sizes: measured.sizes,
@@ -1964,6 +1968,19 @@ const api = {
 };
 
 /* ── write ─────────────────────────────────────────────────────────────────────────────── */
+
+// Nothing below may print a figure this file cannot re-derive. The page already refused to build
+// on a stale `exampleLines`; this holds the other twenty-odd numbers to the same standard, and runs
+// here rather than only in `npm run verify` because the Pages workflow builds the site without ever
+// running the suite — which is exactly how /llms.txt spent a release telling agents the packages
+// were unpublished.
+const drifted = checkDerivable();
+if (drifted.length > 0) {
+  throw new Error(
+    `site/data/measured.json has drifted from the repository in ${drifted.length} place(s):\n${drifted.join('\n')}\n` +
+      'Run `npm run measured` for the full report, including the figures that need the test suite.',
+  );
+}
 
 mkdirSync(join(site, 'public'), { recursive: true });
 mkdirSync(join(site, 'reference'), { recursive: true });

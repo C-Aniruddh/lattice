@@ -1,0 +1,17 @@
+blank_issues_enabled: true
+contact_links:
+  - name: See it running
+    url: https://lattice.aniruddh.tech
+    about: Nineteen worlds on canvases, three games built from one sentence, and the API reference.
+
+  - name: How to build a game with it
+    url: https://github.com/C-Aniruddh/lattice/blob/main/docs/GUIDE.md
+    about: Start to finish, in order — the frame, the first building, input, time, economy, saving, sound.
+
+  - name: Which package owns what
+    url: https://lattice.aniruddh.tech/api.json
+    about: The manifest an agent reads — exports, invariants, cross-package contracts, and the traps.
+
+  - name: Report a vulnerability
+    url: https://github.com/C-Aniruddh/lattice/blob/main/SECURITY.md
+    about: Privately, by email. Not as a public issue.

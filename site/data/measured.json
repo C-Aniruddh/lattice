@@ -1,13 +1,13 @@
 {
-  "$comment": "Every number the landing page prints, with the command that produced it. Nothing on the page may state a figure that is not in this file or read live off the running kit. If you cannot name the command, the number does not go on the page. Measured 2026-08-17 at 9ccacae.",
-  "commit": "9ccacae",
-  "measuredOn": "2026-08-17",
+  "$comment": "Every number the landing page prints, with the command that produced it. Nothing on the page may state a figure that is not in this file or read live off the running kit. If you cannot name the command, the number does not go on the page. `npm run measured` re-runs every command here and fails the build when this file disagrees with the repository \u2014 the rule above was stated from the first day and drifted anyway, in nine figures, because nothing re-ran the commands.",
+  "commit": "cbd48bd",
+  "measuredOn": "2026-08-18",
   "machine": "Apple Silicon, Node v24.18",
   "figures": {
     "packages": {
       "value": 9,
       "unit": "",
-      "source": ".lattice/kit.json — packages"
+      "source": ".lattice/kit.json \u2014 packages"
     },
     "dependencies": {
       "value": 0,
@@ -17,85 +17,85 @@
     "assetFiles": {
       "value": 0,
       "unit": "",
-      "source": "find packages -type f -not -path '*/node_modules/*' -not -path '*/dist/*' -not -path '*/coverage/*' — 207 .ts, 19 .json, 9 .md, nothing else"
+      "source": "find packages -type f -not -path '*/node_modules/*' -not -path '*/dist/*' -not -path '*/coverage/*' \u2014 207 .ts, 19 .json, 9 .md, nothing else"
     },
     "tests": {
-      "value": 2599,
+      "value": 2648,
       "unit": "",
-      "source": "npx vitest run — 2599 passed (2599)"
+      "source": "npx vitest run \u2014 2648 passed (2648)"
     },
     "testFiles": {
-      "value": 97,
+      "value": 100,
       "unit": "",
-      "source": "npx vitest run — 97 passed (97)"
+      "source": "npx vitest run \u2014 100 passed (100)"
     },
     "publicSymbols": {
-      "value": 524,
+      "value": 527,
       "unit": "",
-      "source": "unique names across .lattice/kit.json packages.*.exports (raw sum 540; VERSION appears in eight)"
+      "source": "unique names across .lattice/kit.json packages.*.exports (raw sum 544; VERSION appears in eight)"
     },
     "gzipTotal": {
-      "value": 81.72,
+      "value": 83.02,
       "unit": "kB",
-      "source": "npm run size — total 81.72 kB, exclusive backends charged at the heaviest, never summed"
+      "source": "npm run size \u2014 total 83.02 kB, exclusive backends charged at the heaviest, never summed"
     },
     "frameBudget": {
       "value": 8,
       "unit": "ms",
-      "source": ".lattice/kit.json — budgets.maxFrameBudgetMs"
+      "source": ".lattice/kit.json \u2014 budgets.maxFrameBudgetMs"
     },
     "spriteDraw": {
       "value": "2.14 ms",
       "unit": "",
-      "source": "docs/PERFORMANCE.md:318 — 400 sprites x 42 ops, dpr 3: 2.14 ms mean, 2.24 ms p99, 27% of the budget"
+      "source": "docs/PERFORMANCE.md:318 \u2014 400 sprites x 42 ops, dpr 3: 2.14 ms mean, 2.24 ms p99, 27% of the budget"
     },
     "coverageFloor": {
       "value": 90,
       "unit": "%",
-      "source": ".lattice/kit.json — budgets.coverageStatements 0.9, coverageCore 1.0"
+      "source": ".lattice/kit.json \u2014 budgets.coverageStatements 0.9, coverageCore 1.0"
     },
     "exhibits": {
       "value": 18,
       "unit": "",
-      "source": "site/data/exhibits.json — live[], one row per exhibit, plus the hero at hero{}, which is nineteen worlds in all. Each is a directory under examples/, built into /x/<name>/ by site/tools/build.mjs and served as a page of its own; open any of them and it is running, not a picture."
+      "source": "site/data/exhibits.json \u2014 live[], one row per exhibit, plus the hero at hero{}, which is nineteen worlds in all. Each is a directory under examples/, built into /x/<name>/ by site/tools/build.mjs and served as a page of its own; open any of them and it is running, not a picture."
     },
     "exampleLines": {
       "value": 10,
       "unit": "",
-      "source": "grep -cvE '^[[:space:]]*($|//|/*|*)' site/example/hello.ts — docs/GALLERY.md's own line rule, applied to the whole program printed in Getting started and running beside it. site/tools/build-page.mjs re-counts the file at build time and fails the build if this number has drifted from it."
+      "source": "grep -cvE '^[[:space:]]*($|//|/*|*)' site/example/hello.ts \u2014 docs/GALLERY.md's own line rule, applied to the whole program printed in Getting started and running beside it. site/tools/build-page.mjs re-counts the file at build time and fails the build if this number has drifted from it."
     },
     "skills": {
       "value": 12,
       "unit": "",
-      "source": "find skills -name SKILL.md | wc -l — twelve directories under skills/, each carrying one SKILL.md: the parent that owns /lattice, plus eleven specialists it loads (starting, art, world, economy, input, sound, saving, hud, determinism, performance, traps). The parent is counted because it is a skill and not a wrapper — it is the one that fires on a from-scratch build."
+      "source": "find skills -name SKILL.md | wc -l \u2014 twelve directories under skills/, each carrying one SKILL.md: the parent that owns /lattice, plus eleven specialists it loads (starting, art, world, economy, input, sound, saving, hud, determinism, performance, traps). The parent is counted because it is a skill and not a wrapper \u2014 it is the one that fires on a from-scratch build."
     },
     "traps": {
-      "value": 32,
+      "value": 34,
       "unit": "",
-      "source": "grep -c '^### ' skills/traps/SKILL.md — one heading per named failure that compiles, runs, and produces a plausible-looking broken game. Each carries the wrong version as well as the right one, because recognizing the wrong one is the job."
+      "source": "grep -c '^### ' skills/traps/SKILL.md \u2014 one heading per named failure that compiles, runs, and produces a plausible-looking broken game. Each carries the wrong version as well as the right one, because recognizing the wrong one is the job."
     },
     "pageFrame": {
       "value": "live",
       "unit": "",
-      "source": "read off this page's own @latticekit/loop while you look at it: worstGapMs, the longest wall gap between two painted frames in the last ten seconds, with every world above it running on the same main thread. The only figure in this strip that was not measured on one machine on one day — it is measuring yours. It reads 'warming' for the first three seconds of a loop and an em dash in a background tab, because 0.0 ms means requestAnimationFrame stopped rather than that anything got faster."
+      "source": "read off this page's own @latticekit/loop while you look at it: worstGapMs, the longest wall gap between two painted frames in the last ten seconds, with every world above it running on the same main thread. The only figure in this strip that was not measured on one machine on one day \u2014 it is measuring yours. It reads 'warming' for the first three seconds of a loop and an em dash in a background tab, because 0.0 ms means requestAnimationFrame stopped rather than that anything got faster."
     }
   },
   "sizes": [
     {
       "package": "core",
-      "gzipKb": 7.26,
+      "gzipKb": 7.4,
       "budgetKb": 12
     },
     {
       "package": "iso",
-      "gzipKb": 11.28,
+      "gzipKb": 11.47,
       "budgetKb": 12
     },
     {
       "package": "draw",
       "gzipKb": 12.33,
       "budgetKb": 12.5,
-      "note": "exclusive backends, charged at the heaviest: canvas2d 12.33 charged, record 11.30, shared 10.19"
+      "note": "exclusive backends, charged at the heaviest: canvas2d 12.33 charged, record 11.31, shared 10.19"
     },
     {
       "package": "loop",
@@ -104,8 +104,9 @@
     },
     {
       "package": "input",
-      "gzipKb": 14.43,
-      "budgetKb": 15
+      "gzipKb": 15.39,
+      "budgetKb": 16,
+      "note": "override 16 kB, argued in .lattice/kit.json \u2014 budgets.overrides.input"
     },
     {
       "package": "audio",

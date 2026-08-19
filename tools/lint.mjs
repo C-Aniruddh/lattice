@@ -16,7 +16,7 @@
  *   node tools/lint.mjs --fix     rewrite the generated parts of kit.json, then check
  */
 
-import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -401,6 +401,37 @@ for (const [id] of Object.entries(kit.packages)) {
   }
 
   observedExports.set(id, [...publishedNames(srcDir)].sort());
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7b. VERSION says what the manifest says
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Eight packages export `VERSION`, documented as "the kit version this package was built as part
+// of". Nothing checked it, so 0.1.1 shipped to npm with all eight still saying '0.1.0' — the
+// published tarball of @latticekit/iso@0.1.1 contains `export const VERSION = '0.1.0'`. A caller
+// branching on it gets a wrong answer with no way to notice, which is the whole reason the constant
+// is a hand-written literal rather than generated: a literal is the cheap part, and keeping it true
+// is the part that needs a gate.
+
+for (const [id] of Object.entries(kit.packages)) {
+  const indexPath = join(ROOT, 'packages', id, 'src/index.ts');
+  if (!existsSync(indexPath)) continue;
+  const source = readFileSync(indexPath, 'utf8');
+  const declared = source.match(/export const VERSION = '([^']*)'/);
+  if (!declared) continue; // core does not export it; not every package has to
+
+  const manifest = JSON.parse(readFileSync(join(ROOT, 'packages', id, 'package.json'), 'utf8')).version;
+  if (declared[1] !== manifest) {
+    const line = source.slice(0, declared.index).split('\n').length;
+    fail(
+      `packages/${id}/src/index.ts`,
+      line,
+      'version',
+      `exports VERSION = '${declared[1]}' while package.json says '${manifest}'. ` +
+        'The constant is what a caller reads at runtime, so it is the one that has to be right.',
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -48,7 +48,7 @@
  */
 
 /** The kit version this package was built as part of. */
-export const VERSION = '0.1.0';
+export const VERSION = '0.1.1';
 
 // ── time as a parameter ─────────────────────────────────────────────────────────
 //

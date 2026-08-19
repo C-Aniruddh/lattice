@@ -1,0 +1,41 @@
+name: Feature request
+description: Something the kit should be able to do and cannot.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Every export is a promise to keep it working, so the useful question is not *would this be
+        nice* but *what could you not build without it*. Absences here are usually deliberate and
+        written down — each package's `README.md` says what it does not do and why.
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to build?
+      description: The game, the screen, the moment. Not the API you had in mind for it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: What did you try, and where did it stop?
+      description: >
+        If it composes from what already exists, that is the answer and it is a faster one. If it
+        does not, say why not — that is the part a maintainer cannot work out for themselves.
+    validations:
+      required: true
+
+  - type: input
+    id: package
+    attributes:
+      label: Which package would own it?
+      description: A guess is fine. `.lattice/kit.json` is the map, and `docs/SEAMS.md` explains the splits.
+      placeholder: iso
+
+  - type: markdown
+    attributes:
+      value: |
+        A whole **new package** needs an RFC in `docs/rfc/` before code — see
+        [CONTRIBUTING.md](https://github.com/C-Aniruddh/lattice/blob/main/CONTRIBUTING.md).
