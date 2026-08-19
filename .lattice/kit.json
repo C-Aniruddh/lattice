@@ -287,7 +287,8 @@
         "worldToGrid",
         "worldToGridX",
         "worldToGridY",
-        "worldToTile"
+        "worldToTile",
+        "worldToTileOnHeights"
       ],
       "invariants": [
         "Three coordinate spaces — grid, world, screen — never conflated. Every conversion is a named function taking an output parameter.",
@@ -531,6 +532,7 @@
         "step",
         "recognize",
         "actions",
+        "terrain",
         "events",
         "cameracontrol",
         "scope",
@@ -557,6 +559,7 @@
         "GestureProfile",
         "GridPoint",
         "HeadlessInputOptions",
+        "HeightField",
         "InputLog",
         "InputOptions",
         "InputRecording",
@@ -569,6 +572,8 @@
         "RawSample",
         "ReplayCursor",
         "TapGesture",
+        "Terrain",
+        "TerrainOption",
         "VERSION",
         "Vec2",
         "ZoomGesture",
@@ -584,7 +589,8 @@
       "invariants": [
         "Input never learns what is in the world. No option, method or callback takes state, a rect, a pickable flag or a hit — so there is nowhere to cache a hit box and nothing that would read one.",
         "Gestures are delivered on simulation ticks, never on frames, and never from a clock this package read itself.",
-        "Every event carries the tile it resolved to, through the camera as it stood when the tick opened.",
+        "Every event carries the tile it resolved to, through the camera as it stood when the tick opened and the ground as the caller declared it. A declared height field is marched; \"flat\" is the plane, stated; and an omitted declaration is still the plane but says so once, the first time a coordinate is read, because a picked tile that is silently wrong on a slope is the failure this seam exists to prevent.",
+        "Off the map the coordinates are NaN and onGround is false, never a sea-level fallback. A number that is wrong and plausible is worse than one that is unmistakably absent, and a throw would crash the ordinary gesture of dragging the sky.",
         "Zoom is anchored to the pointer, and zoom is not publicly assignable — zoomAt is the only mutator, so skipping the anchoring is unavailable rather than discouraged.",
         "There is no free-function binder. Listeners come only from a scope, so an unowned listener cannot be constructed.",
         "A tick sees a bucket closed before it started. Mid-tick arrivals go to the next bucket; overflow collapses moves and never drops a down, up, cancel, key or wheel."

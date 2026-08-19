@@ -1,0 +1,22 @@
+{
+  "name": "@latticekit/example-migration",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MIGRATION — a gallery exhibit. A v1 save opened by a v5 build, stepping the chain in front of you.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5201",
+    "build": "vite build",
+    "preview": "vite preview --port 5302"
+  },
+  "$comment": "Seven of nine, and the subject is `@latticekit/persist`: five sealed builds of one chain, a real store, a real checksum, and a real recognizer at every rung. `sim` and `audio` are absent because an archive yard has no economy and no sound.",
+  "dependencies": {
+    "@latticekit/core": "^0.1.0",
+    "@latticekit/draw": "^0.1.0",
+    "@latticekit/input": "^0.1.1",
+    "@latticekit/iso": "^0.1.1",
+    "@latticekit/loop": "^0.1.0",
+    "@latticekit/persist": "^0.1.0",
+    "@latticekit/ui": "^0.1.0"
+  }
+}

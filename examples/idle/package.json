@@ -1,0 +1,22 @@
+{
+  "name": "@latticekit/example-idle",
+  "version": "0.1.0",
+  "private": true,
+  "description": "IDLE — a gallery exhibit. Cost curves and buy-max in closed form, then fourteen hours of offline in one frame.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5187",
+    "build": "vite build",
+    "preview": "vite preview --port 5287"
+  },
+  "$comment": "Seven of nine, and the subject is `sim`: `costOfNext`, `bulkCost`, `maxBuyable` and one `advanceOver` that resolves fourteen hours in a single step rather than fourteen hours of ticks. `persist` is absent deliberately — the absence is a button, not a save — and `audio` for the AudioContext-gesture reason every other exhibit gives.",
+  "dependencies": {
+    "@latticekit/core": "^0.1.0",
+    "@latticekit/draw": "^0.1.0",
+    "@latticekit/input": "^0.1.1",
+    "@latticekit/iso": "^0.1.1",
+    "@latticekit/loop": "^0.1.0",
+    "@latticekit/sim": "^0.1.0",
+    "@latticekit/ui": "^0.1.0"
+  }
+}

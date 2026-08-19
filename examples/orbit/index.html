@@ -1,0 +1,24 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Orbit — Lattice gallery</title>
+<style>
+  :root { color-scheme: dark; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #030716; overscroll-behavior: none; }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  .hud { position: fixed; inset: 0; color: #eaf8ff; text-shadow: 0 1px 12px #02050d; }
+  .title { position: absolute; left: 24px; top: 20px; padding: 10px 12px 12px; letter-spacing: .24em; font-size: 13px; font-weight: 800; background: #061021e8; border-left: 2px solid #72e6ff; }
+  .title strong { display: block; margin-top: 8px; font: 300 clamp(28px, 5vw, 62px)/.9 system-ui, sans-serif; letter-spacing: -.06em; }
+  .readout { position: absolute; right: 28px; top: 28px; min-width: 176px; padding: 13px 15px; border: 1px solid #5bc8dc66; background: #071226e8; box-shadow: 0 18px 60px #000b; }
+  .readout div { display: flex; justify-content: space-between; gap: 24px; margin: 5px 0; font-size: 11px; letter-spacing: .08em; color: #9bc6d5; }
+  .readout output { color: #effcff; font-variant-numeric: tabular-nums; }
+  /* The two sliders this exhibit built by hand now live in examples/_shared's controlPanel, which
+     brings its own stylesheet. What is left here is the exhibit's own art direction and nothing
+     else, which is the seam the line rule draws between an overlay's appearance and its wiring. */
+  .hint { position: absolute; right: 28px; bottom: 28px; color: #d7f7ff; font-size: 11px; letter-spacing: .1em; }
+  @media (max-width: 680px) { .readout { top: auto; bottom: 24px; } .hint { right: 18px; bottom: 14px; } }
+</style>
+<div id="app"></div>
+<script type="module" src="/src/main.ts"></script>

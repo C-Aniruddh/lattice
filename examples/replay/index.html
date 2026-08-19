@@ -1,0 +1,265 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Replay — the same seed and log land on the same pixel</title>
+<style>
+  /* @art — the whole appearance of this exhibit, per docs/GALLERY.md § The line rule:
+     "the CSS in index.html: art, uncounted, like every other art line."
+     The HUD's structure is below it and is uncounted for the same reason: a fixed tree of
+     elements, written once, with fixed labels and classes. Every number inside it is written
+     by src/hud.ts, which is logic. */
+
+  :root {
+    --plate: color-mix(in srgb, var(--lattice-night, #10142c) 78%, #000 22%);
+    --edge: color-mix(in srgb, var(--lattice-metal, #4a5262) 42%, transparent);
+    --accent: var(--lattice-warn, #d6a53f);
+    --good: var(--lattice-ok, #4fae61);
+    --bad: var(--lattice-bad, #c04038);
+    /* Raised from #e9eef6 / #8d9bb3, and `--faint` replaces a literal that appeared in
+       three rules. The first build measured **six nodes between 3.34 and 3.63** against this
+       exhibit's near-black plate — over the harness's floor of 3 and under the 4.5 the `hud`
+       skill teaches as the number to design to — and every one of them was explanatory prose,
+       which is the worst place to spend the shortfall: a reader who cannot make out the sentence
+       explaining the proof has not been shown the proof. One token rather than three literals, so
+       there is one place the pair can be re-measured. */
+    --text: #eef2f9;
+    --dim: #a6b4cc;
+    --faint: #93a1ba;
+    color-scheme: dark;
+  }
+
+  html, body { margin: 0; height: 100%; background: #070a14; overscroll-behavior: none; }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; width: 100%; height: 100%; }
+
+  #hud {
+    position: absolute; inset: 0;
+    font: 500 12px/1.45 ui-monospace, "IBM Plex Mono", "SF Mono", Menlo, monospace;
+    color: var(--text);
+    letter-spacing: 0.02em;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Plates. The background tracks draw's palette through paletteVars, so the overlay
+     darkens with the marsh instead of glowing in dusk colors over a night scene. */
+  .plate {
+    position: absolute;
+    background: color-mix(in srgb, var(--plate) 93%, transparent);
+    border: 1px solid var(--edge);
+    border-radius: 3px;
+    padding: 10px 12px;
+    backdrop-filter: blur(9px);
+    transition: background-color 900ms linear, border-color 900ms linear;
+  }
+
+  .id { top: 18px; left: 18px; max-width: 300px; }
+  .id h1 {
+    margin: 0 0 2px; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.34em; color: var(--accent);
+  }
+  .id p { margin: 0; color: var(--dim); font-size: 11px; letter-spacing: 0.01em; }
+  .id .seed { margin-top: 6px; color: var(--faint); font-size: 10px; }
+
+  .read { top: 18px; right: 18px; min-width: 214px; }
+  .read dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 2px 14px; }
+  .read dt { color: var(--dim); font-size: 10px; letter-spacing: 0.16em; }
+  .read dd {
+    margin: 0; text-align: right; font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum"; color: var(--text);
+  }
+  .read dd.hex { color: var(--accent); letter-spacing: 0.06em; }
+  .read .rule { grid-column: 1 / -1; height: 1px; background: var(--edge); margin: 5px 0; }
+
+  /* The deck: the timeline, the verdict, and the two buttons. */
+  .deck {
+    left: 18px; right: 18px; bottom: 18px;
+    display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center;
+    padding: 12px 14px;
+  }
+
+  .verdict {
+    display: flex; align-items: center; gap: 9px;
+    padding: 5px 11px 5px 9px; border-radius: 2px; white-space: nowrap;
+    border: 1px solid var(--edge); background: rgba(0,0,0,0.35);
+  }
+  .verdict .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); }
+  .verdict b { font-weight: 600; letter-spacing: 0.18em; font-size: 11px; }
+  .verdict span { color: var(--dim); font-size: 10.5px; letter-spacing: 0.01em; }
+  @keyframes pulse { 50% { opacity: 0.28; } }
+
+  /* The bar. `ui` ships no slider, deliberately — "write a plain element, style it in your
+     sheet" — so this is a native range with the whole of its appearance here, in the half of
+     the exhibit that is not counted. Underneath it: one tick per checkpoint, a green bar for
+     how many of them have been checked and agreed, and a red one for where they stopped. */
+  .track { position: relative; height: 34px; }
+  .track .rail {
+    position: absolute; left: 0; right: 0; top: 15px; height: 3px;
+    background: rgba(255,255,255,0.09); border-radius: 2px;
+  }
+  .track .pips {
+    position: absolute; left: 0; right: 0; top: 7px; height: 7px;
+    background: repeating-linear-gradient(90deg,
+      rgba(255,255,255,0.26) 0 1.5px, transparent 1.5px 5.55%);
+  }
+  .track .checked, .track .broken {
+    position: absolute; top: 21px; height: 3px; border-radius: 2px;
+    transition: width 90ms linear;
+  }
+  .track .checked { left: 0; width: 0; background: var(--good); }
+  .track .broken { right: 0; width: 0; background: var(--bad); }
+
+  .track input {
+    position: absolute; inset: 6px 0 auto; width: 100%; height: 22px;
+    margin: 0; background: none; -webkit-appearance: none; appearance: none;
+    cursor: ew-resize; touch-action: none;
+  }
+  .track input:disabled { cursor: default; }
+  .track input::-webkit-slider-runnable-track { height: 22px; background: none; }
+  .track input::-moz-range-track { height: 22px; background: none; }
+  .track input::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 11px; height: 22px; border: none; border-radius: 2px;
+    background: var(--text); box-shadow: 0 0 10px rgba(233,238,246,0.55);
+  }
+  .track input:disabled::-webkit-slider-thumb { opacity: 0.35; box-shadow: none; }
+  .track input::-moz-range-thumb {
+    width: 11px; height: 22px; border: none; border-radius: 2px;
+    background: var(--text); box-shadow: 0 0 10px rgba(233,238,246,0.55);
+  }
+  .track input:disabled::-moz-range-thumb { opacity: 0.35; box-shadow: none; }
+  .track input:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .acts { display: flex; gap: 8px; }
+  .acts button {
+    font: inherit; font-size: 11px; letter-spacing: 0.14em;
+    color: var(--text); background: rgba(255,255,255,0.05);
+    border: 1px solid var(--edge); border-radius: 2px;
+    padding: 7px 13px; cursor: pointer;
+    transition: background-color 140ms linear, color 140ms linear, border-color 140ms linear;
+  }
+  .acts button:hover { background: rgba(255,255,255,0.12); }
+  .acts button.primary { border-color: color-mix(in srgb, var(--accent) 60%, transparent); color: var(--accent); }
+  .acts button[disabled] { opacity: 0.3; cursor: default; }
+
+  .note {
+    grid-column: 1 / -1; margin: 2px 0 0; color: var(--dim); font-size: 10.5px;
+    letter-spacing: 0.01em; max-width: 78ch;
+  }
+  .note code { color: var(--text); font-size: 10.5px; }
+
+  /* Which sentence and which word are showing is a consequence of one attribute the exhibit
+     sets. The prose itself never changes and never carries a number, so it is appearance. */
+  .note, .w { display: none; }
+  #hud[data-state="live"] .w.live, #hud:not([data-state="live"]) .w.done { display: inline; }
+  #hud[data-state="live"] .note.live, #hud[data-state="match"] .note.match,
+  #hud[data-state="part"] .note.match,
+  #hud[data-state="fail"] .note.fail, #hud[data-state="deny"] .note.deny { display: block; }
+  #hud[data-state="live"] .w.live, #hud[data-state="match"] .w.match,
+  #hud[data-state="part"] .w.part,
+  #hud[data-state="fail"] .w.fail, #hud[data-state="deny"] .w.deny { display: inline; }
+  #hud[data-state="live"] .dot { background: var(--accent); animation: pulse 1.6s ease-in-out infinite; }
+  #hud[data-state="live"] .verdict .w { color: var(--accent); }
+  #hud[data-state="match"] .dot, #hud[data-state="part"] .dot { background: var(--good); }
+  #hud[data-state="match"] .verdict .w, #hud[data-state="part"] .verdict .w { color: var(--good); }
+  #hud[data-state="fail"] .dot, #hud[data-state="deny"] .dot { background: var(--bad); }
+  #hud[data-state="fail"] .verdict .w, #hud[data-state="deny"] .verdict .w { color: var(--bad); }
+  /* The identity plate's own word, on the same one attribute. */
+  .id .seed .w { color: var(--faint); }
+
+  /* The control panel. Every row drives a real kit parameter and every row has a wrong end. */
+  .panel { right: 18px; top: 208px; width: 214px; }
+  .panel h2 {
+    margin: 0 0 8px; font-size: 10px; font-weight: 600;
+    letter-spacing: 0.2em; color: var(--dim);
+  }
+  .panel label { display: block; margin-bottom: 9px; }
+  .panel .name { display: flex; justify-content: space-between; gap: 8px; color: var(--dim); font-size: 10px; }
+  .panel .name b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .panel select {
+    width: 100%; margin: 5px 0 0; font: inherit; font-size: 10.5px;
+    color: var(--text); background: rgba(0,0,0,0.35); border: 1px solid var(--edge);
+    border-radius: 2px; padding: 5px 6px; cursor: pointer;
+  }
+  .panel select:not([value=""]) { border-color: color-mix(in srgb, var(--bad) 55%, transparent); }
+  .panel .why { margin: 6px 0 0; color: var(--faint); font-size: 10px; line-height: 1.4; }
+
+  @media (max-width: 900px) {
+    .panel { display: none; }
+    .read { min-width: 0; }
+  }
+</style>
+
+<div id="app"></div>
+
+<div id="hud" data-state="live">
+  <div class="plate id">
+    <h1>REPLAY</h1>
+    <p>Tap the marsh to seed a bloom. Then scrub the tape: every frame is recomputed from the seed and the log, never remembered.</p>
+    <!-- The separator lives inside each word rather than between them. A bare "·" is its own text
+         node, and the looking harness measures a text node's rectangle: a single narrow glyph in a
+         five-pixel box is almost entirely plate, so it reports a luminance range of 0.003 and fails
+         the legibility row at a contrast of 7.2. Nothing about it was hard to read; it was too
+         small to measure. -->
+    <p class="seed">seed <b id="seed">—</b><span class="w live"> · recording</span><span class="w match"> · proving</span><span class="w part"> · proving</span><span class="w fail"> · proving</span><span class="w deny"> · refused</span></p>
+  </div>
+
+  <div class="plate read">
+    <dl>
+      <dt>TICK</dt><dd id="r-tick">0</dd>
+      <dt>BLOOM</dt><dd id="r-lit">0</dd>
+      <dt>SEEDS</dt><dd id="r-seeds">0</dd>
+      <div class="rule"></div>
+      <dt>DIGEST</dt><dd id="r-digest" class="hex">—</dd>
+      <dt>TAPE</dt><dd id="r-bytes">—</dd>
+      <dt>RE-RUN</dt><dd id="r-cost">—</dd>
+      <div class="rule cost-row"></div>
+      <dt class="cost-row">WORST FRAME</dt><dd class="cost-row" id="r-worst">—</dd>
+    </dl>
+  </div>
+
+  <div class="plate panel">
+    <h2>THE KIT, LIVE</h2>
+    <label>
+      <span class="name">the build replaying the tape</span>
+      <select id="k-build">
+        <option value="">is the one that recorded it</option>
+        <option value="slop">moved input's tapSlopPx to 14</option>
+        <option value="hz">moved loop's hz to 50</option>
+        <option value="drift">has a Math.random() in its rules</option>
+      </select>
+    </label>
+    <p class="why">The first two are refused by <code>persist</code> before the first tick, by
+      name: the same finger movements under a different threshold are a different session, and a
+      tape keyed by tick index means nothing if a tick is a different length. The third is
+      refused by nothing, which is what the driver is for.</p>
+  </div>
+
+  <div class="plate deck">
+    <div class="verdict">
+      <i class="dot"></i>
+      <b class="w live">RECORDING</b><b class="w match">MATCHED</b><b class="w part">AGREEING</b>
+      <b class="w fail">DIVERGED</b><b class="w deny">REFUSED</b>
+      <span id="v-detail">the tape is open</span>
+    </div>
+    <div class="track">
+      <div class="rail"></div>
+      <div class="pips"></div>
+      <div class="checked" id="checked"></div>
+      <div class="broken" id="broken"></div>
+      <input id="track" type="range" min="0" max="1080" step="1" value="0">
+    </div>
+    <div class="acts">
+      <button id="seal" class="primary"><b class="w live">SEAL &amp; PROVE</b><b class="w done">NEW TAKE</b></button>
+    </div>
+    <p class="note live">Tap the marsh to seed a bloom. Every sample is going on the tape,
+      bucketed by tick index — and so is the camera, which is what decides what a tap meant.</p>
+    <p class="note match">Drag the bar. Every frame you see was recomputed from the seed and the
+      log just now, from tick zero — nothing here was remembered.</p>
+    <p class="note fail">The bloom you are looking at is not the bloom you watched. The bug is
+      between the end of the green bar and the start of the red one.</p>
+    <p class="note deny">The tape is readable, and this build does not reproduce the conditions
+      it was recorded under, so <code>persist</code> declined to run it. A refusal is never a pass.</p>
+  </div>
+</div>
+
+<script type="module" src="/src/main.ts"></script>

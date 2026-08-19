@@ -1,0 +1,22 @@
+{
+  "name": "@latticekit/example-instrument",
+  "version": "0.1.0",
+  "private": true,
+  "description": "INSTRUMENT — a gallery exhibit. Sound with no files: a board that shows the synthesis as it plays.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5198",
+    "build": "vite build",
+    "preview": "vite preview --port 5298"
+  },
+  "$comment": "Seven of nine, and this is the exhibit whose subject is `@latticekit/audio`. Nothing is loaded: every note is oscillators built at runtime, and the picture is `Audio.onScheduled`'s VoicePlan rather than an AnalyserNode. `sim` and `persist` are absent because a hall of pipes has no economy and nothing outlives the tab.",
+  "dependencies": {
+    "@latticekit/audio": "^0.1.0",
+    "@latticekit/core": "^0.1.0",
+    "@latticekit/draw": "^0.1.0",
+    "@latticekit/input": "^0.1.1",
+    "@latticekit/iso": "^0.1.1",
+    "@latticekit/loop": "^0.1.0",
+    "@latticekit/ui": "^0.1.0"
+  }
+}

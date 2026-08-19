@@ -1,0 +1,21 @@
+{
+  "name": "@latticekit/example-orbit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ORBIT — a gallery exhibit. No ground at all: platforms, stars, and a cold palette.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5180",
+    "build": "vite build",
+    "preview": "vite preview --port 5280"
+  },
+  "$comment": "Six of nine. `sim`, `persist` and `audio` are absent: there is no economy in orbit, nothing here outlives the tab, and the silence is the palette. The one idea is `draw.palette` — that a kit whose defaults are grass and daylight recolors to a cold void without a single new primitive.",
+  "dependencies": {
+    "@latticekit/core": "^0.1.0",
+    "@latticekit/draw": "^0.1.0",
+    "@latticekit/input": "^0.1.1",
+    "@latticekit/iso": "^0.1.1",
+    "@latticekit/loop": "^0.1.0",
+    "@latticekit/ui": "^0.1.0"
+  }
+}

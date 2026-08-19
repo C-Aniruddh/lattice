@@ -1,0 +1,21 @@
+{
+  "name": "@latticekit/example-harbor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HARBOR — a gallery exhibit. Tall thin objects and depth sorting: masts, cranes, and a jetty over water.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5179",
+    "build": "vite build",
+    "preview": "vite preview --port 5279"
+  },
+  "$comment": "Six of nine. `sim` and `persist` are absent because a harbor with no economy and nothing that outlives the tab needs neither; `audio` is absent for the reason every other exhibit gives — the gallery still has no shared answer for the gesture that unlocks an AudioContext, and a working harbor is the exhibit that most wants a gull and a hull creak. `loop` and `input` arrive through examples/_shared's bootstrap and are named here because they are what this runs on.",
+  "dependencies": {
+    "@latticekit/core": "^0.1.0",
+    "@latticekit/draw": "^0.1.0",
+    "@latticekit/input": "^0.1.1",
+    "@latticekit/iso": "^0.1.1",
+    "@latticekit/loop": "^0.1.0",
+    "@latticekit/ui": "^0.1.0"
+  }
+}

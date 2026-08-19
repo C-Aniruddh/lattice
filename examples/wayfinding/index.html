@@ -1,0 +1,40 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Wayfinding — Lattice Gallery</title>
+<style>
+  :root { color-scheme: dark; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  html,body { margin:0; height:100%; overflow:hidden; background:#07131d; overscroll-behavior:none; }
+  #app { position:fixed; inset:0; }
+  canvas { display:block; width:100%; height:100%; cursor:crosshair; }
+  .hud { position:absolute; inset:22px auto auto 22px; width:min(360px,calc(100vw - 44px));
+    color:#f5fbff; background:#07131d; border:1px solid #68e4ff88; border-left:4px solid #ffb84d;
+    box-shadow:0 18px 60px #00101bcc; padding:16px 18px; pointer-events:none; }
+  .eyebrow { color:#68e4ff; font-size:11px; letter-spacing:.24em; text-transform:uppercase; }
+  h1 { margin:7px 0 5px; font:700 clamp(24px,4vw,40px)/1 sans-serif; letter-spacing:-.04em; }
+  .instruction { margin:0; color:#d8e6ec; font-size:13px; line-height:1.45; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:13px; }
+  .stat { border-top:1px solid #557182; padding-top:8px; }
+  .label { display:block; color:#9db4be; font-size:9px; letter-spacing:.14em; }
+  .value { display:block; margin-top:3px; color:#fff; font-size:14px; font-weight:700; }
+  .pulse { animation:flash .42s ease-out; }
+  @keyframes flash { 50% { color:#ffca68; transform:translateY(-2px); } }
+  .legend { position:absolute; right:22px; bottom:22px; padding:10px 13px; color:#eef8fb;
+    background:#07131de8; border:1px solid #527080; font-size:11px; pointer-events:none; }
+  .legend b { color:#ffca68; }
+  @media(max-width:600px){ .legend{display:none}.hud{inset:12px 12px auto;width:auto} }
+</style>
+<div id="app"></div>
+<div id="hud-static" hidden>
+  <section class="hud">
+    <span class="eyebrow">Live shared field</span><h1>WAYFINDING</h1>
+    <p class="instruction">Tap the amber blocks to close a route. Every walker reads the rebuilt field on the next step.</p>
+    <div class="stats">
+      <div class="stat"><span class="label">CROWD</span><span class="value" id="crowd">—</span></div>
+      <div class="stat"><span class="label">FIELD</span><span class="value" id="field">—</span></div>
+      <div class="stat"><span class="label">WORST GAP</span><span class="value" id="cost">—</span></div>
+    </div>
+  </section>
+  <aside class="legend"><b>AMBER</b> tap to reroute · drag to explore</aside>
+</div>
+<script type="module" src="/src/main.ts"></script>

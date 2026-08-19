@@ -984,9 +984,9 @@
         "under 250 lines, most of it art; seed comes from the URL",
         "stresses iso — report where it fought back and the logic-to-art split"
       ],
-      "status": "todo",
-      "owner": null,
-      "notes": ""
+      "status": "done",
+      "owner": "lattice-designer",
+      "notes": "Closed 2026-08-18. Built by Codex in the eight-exhibit fan-out, from docs/GALLERY.md alone and without reading any existing exhibit's source; moved into examples/harbor as a workspace member on port 5179. 75 logic / 63 art against the 200 cap, all five looking rows pass at 1440x900 (22% modal frame, 26% border). The hand-rolled boot was replaced by examples/_shared's bootstrap, which owns the performance.now() the kit bans in exhibit source; terrain: 'flat' was already declared correctly by the agent. Its spec-gap notes are kept verbatim in the README."
     },
     {
       "id": "G5",
@@ -1007,9 +1007,9 @@
         "under 250 lines, most of it art; seed comes from the URL",
         "stresses draw — report where it fought back and the logic-to-art split"
       ],
-      "status": "todo",
-      "owner": null,
-      "notes": ""
+      "status": "done",
+      "owner": "lattice-designer",
+      "notes": "Closed 2026-08-18. Built by Codex in the fan-out, from docs/GALLERY.md alone and without reading any existing exhibit's source; moved into examples/orbit on port 5180. 72 logic / 96 art, all five looking rows pass (30% modal frame, 23% border, 524 colors on a deliberately near-black scene). Hand-rolled boot and hand-rolled slider panel replaced by _shared's bootstrap and controlPanel; its two exhibit knobs survive as panel rows. terrain: 'flat' already declared, and it is the row where that declaration means most — there is no surface anywhere in the exhibit. Spec-gap notes verbatim in the README."
     },
     {
       "id": "G6",
@@ -1076,9 +1076,9 @@
         "under 250 lines, most of it art; seed comes from the URL",
         "stresses iso — report where it fought back and the logic-to-art split"
       ],
-      "status": "todo",
-      "owner": null,
-      "notes": ""
+      "status": "done",
+      "owner": "lattice-designer",
+      "notes": "Closed 2026-08-18. Built by Codex in the fan-out, from docs/GALLERY.md alone and without reading any existing exhibit's source; moved into examples/wayfinding on port 5184. The mechanic is intact and the composition was rebuilt: the agent's build PASSED the framing row at 57% modal / 59% border against a 60% threshold while reading as a clumped crowd on a flat repeating texture, because the row measures the modal colour and a tiled texture defeats that test without doing any of the work Scale asks for. Now 20% / 23%, with a colonnade, a sorted divider wall, varied paving, contour rings of the field itself, and 640 walkers spread across the concourse. The harness was NOT changed — that is filed separately. 142 logic / 131 art. Two real bugs found on the way: the opening rect read tileBounds as two corners when it takes an origin and a size, and the route test compared cost % 6144 < 2200 against a field whose largest cost is under 2,000, so it was true almost everywhere."
     },
     {
       "id": "G9",
@@ -1099,9 +1099,9 @@
         "under 250 lines, most of it art; seed comes from the URL",
         "stresses iso input — report where it fought back and the logic-to-art split"
       ],
-      "status": "todo",
-      "owner": null,
-      "notes": ""
+      "status": "done",
+      "owner": "lattice-designer",
+      "notes": "Closed 2026-08-18. Built by Codex in the fan-out, from docs/GALLERY.md alone and without reading any existing exhibit's source; moved into examples/builder on port 5185. 79 logic / 43 art, all five looking rows pass (30% modal frame, 19% border). Boot replaced by _shared's bootstrap — its own resize passed devicePixelRatio straight past createCanvas2dSurface's maxPixelRatio clamp, which bootstrap.fit exists to prevent. Panel added, headed by tapSlop because on this exhibit that knob is the subject. terrain: 'flat' was already declared correctly. One thing left alone and recorded in the README: the opening frame still puts two of the yard's corners in shot, which is Scale's edges row and which the harness cannot see."
     },
     {
       "id": "G10",
@@ -1122,9 +1122,9 @@
         "under 250 lines, most of it art; seed comes from the URL",
         "stresses sim — report where it fought back and the logic-to-art split"
       ],
-      "status": "todo",
-      "owner": null,
-      "notes": ""
+      "status": "done",
+      "owner": "lattice-designer",
+      "notes": "Closed 2026-08-18. Built by Grok in the fan-out, from docs/GALLERY.md alone and without reading any existing exhibit's source; moved into examples/idle on port 5187. 159 logic / 475 art, all five looking rows pass (9% modal frame, 1% border, 12% motion). It had REBUILT examples/_shared beside its own src/ because the directory is referenced by the spec and not shipped; the copy was byte-identical to the real one except for bootstrap.ts, which was a 50-line-older snapshot with no terrain support at all. That is why this exhibit could not declare its ground. The copy is deleted, the imports resolve to the real _shared, and boot.setTerrain({ field, maxHeightPx }) is now called after the valley is generated — this exhibit has a real height field with a river cut through it. Absolute @latticekit/* Vite aliases into a plugin install directory removed."
     },
     {
       "id": "G11",
@@ -1145,9 +1145,9 @@
         "under 250 lines, most of it art; seed comes from the URL",
         "stresses loop persist input — report where it fought back and the logic-to-art split"
       ],
-      "status": "todo",
-      "owner": null,
-      "notes": ""
+      "status": "done",
+      "owner": "lattice-designer",
+      "notes": "Closed 2026-08-18. Built by Claude in the fan-out, from docs/GALLERY.md and docs/SEAMS.md alone and without reading any existing exhibit's source; moved into examples/replay on port 5200. 197 logic / 438 art. The legibility FAILURE is fixed: six nodes measured 3.34-3.63 against the harness floor of 3 and the 4.5 the hud skill teaches, all of them explanatory prose; three CSS literals became two tokens and the darkest of 28 nodes now measures 6.86, with no node under WCAG AA. A seventh node failed for an unrelated reason worth keeping: a bare middot separator is its own text node, and one narrow glyph in a five-pixel box reports a luminance range of 0.003 at a contrast of 7.2 — not hard to read, too small to measure. Its own boot and its own ?cost=0 reimplementation were replaced by _shared's bootstrap and costNode, which closes the agent's second finding from the other side. One subtlety is documented in main.ts: bootstrap runs input.tick before every exhibit handler, so a camera that is a function of the tick has to be set one tick early or live and replay resolve taps against views a quarter of a pixel apart. terrain: { field, maxHeightPx } was already declared. It ships no controlPanel on purpose — every knobs row that moves a gesture threshold rebuilds the input system, which would detach the tape from the session recording it."
     },
     {
       "id": "G12",
@@ -1168,9 +1168,9 @@
         "under 250 lines, most of it art; seed comes from the URL",
         "stresses persist — report where it fought back and the logic-to-art split"
       ],
-      "status": "todo",
-      "owner": null,
-      "notes": ""
+      "status": "done",
+      "owner": "lattice-designer",
+      "notes": "Closed 2026-08-18. Built by Claude in the fan-out, from docs/GALLERY.md and docs/SEAMS.md alone and without reading any existing exhibit's source; moved into examples/migration on port 5201 (5194 belongs to endless). 196 logic / 363 art, all five looking rows pass (6% modal frame, 2% border, 4,258 colors). It had VENDORED examples/_shared beside its own src/; all seven files were byte-identical to the real ones, nothing was forked, and the copy is deleted. boot.setTerrain was already called even though nothing in the exhibit reads a tile coordinate — the agent asked in writing whether that was owed and did it anyway. Its own README is the fullest report of the eight and is kept as it wrote it, with ten kit findings; the largest is that a riser wall whose base runs along gx - gy is edge-on and renders zero pixels wide, which nothing in iso, draw or GALLERY.md says."
     },
     {
       "id": "G13",
@@ -1191,9 +1191,9 @@
         "under 250 lines, most of it art; seed comes from the URL",
         "stresses audio — report where it fought back and the logic-to-art split"
       ],
-      "status": "todo",
-      "owner": null,
-      "notes": ""
+      "status": "done",
+      "owner": "lattice-designer",
+      "notes": "Closed 2026-08-18. Built by Grok in the fan-out, from docs/GALLERY.md alone and without reading any existing exhibit's source; moved into examples/instrument on port 5198. 130 logic / 318 art, all five looking rows pass (10% modal frame, 3.08% motion, clean console). It had vendored examples/_shared beside its own src/; seven of the eight files were byte-identical and the eighth, knobs.ts, was a 91-line-older snapshot missing the sim offline-curve controls — which is why the agent reported that knobs.ts 'still claims setMaxVoices does not exist'. It reads the stale copy's doc; the real file has been correct for some time. The copy is deleted and the file: dependencies pointing at absolute paths on the build machine are gone. terrain: 'flat' was already declared and is right: the hall's floor is a plane and MAX_HEIGHT_PX there is how tall a pipe is, not a height field."
     },
     {
       "id": "G99",

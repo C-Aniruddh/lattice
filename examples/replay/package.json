@@ -1,0 +1,22 @@
+{
+  "name": "@latticekit/example-replay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "REPLAY — a gallery exhibit. Record, scrub, and prove it: the same seed and log land on the same pixel.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5200",
+    "build": "vite build",
+    "preview": "vite preview --port 5300"
+  },
+  "$comment": "Seven of nine. `sim` has no economy to run and `audio` would start making noise before a visitor has touched anything, which the gallery has no shared answer for yet. The other five are the exhibit: `input` records, `persist` stores and verifies, `loop` drives, and `iso`/`draw`/`ui` put it on screen. `persist` is used for a replay log rather than for progress — nothing here outlives the tab, because the store's adapter is memoryStorage().",
+  "dependencies": {
+    "@latticekit/core": "^0.1.0",
+    "@latticekit/draw": "^0.1.0",
+    "@latticekit/input": "^0.1.1",
+    "@latticekit/iso": "^0.1.1",
+    "@latticekit/loop": "^0.1.0",
+    "@latticekit/persist": "^0.1.0",
+    "@latticekit/ui": "^0.1.0"
+  }
+}

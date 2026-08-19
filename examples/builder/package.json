@@ -1,0 +1,21 @@
+{
+  "name": "@latticekit/example-builder",
+  "version": "0.1.0",
+  "private": true,
+  "description": "BUILDER — a gallery exhibit. Placement: footprints, a ghost, validity, and the tap-to-tile seam.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5185",
+    "build": "vite build",
+    "preview": "vite preview --port 5285"
+  },
+  "$comment": "Six of nine, and the two that matter are `iso` and `input` meeting at one seam — the pixel a finger landed on becoming the tile a footprint is tested against. `sim`, `persist` and `audio` are absent because a yard with no economy, no save and no sound is the smallest thing that shows that seam.",
+  "dependencies": {
+    "@latticekit/core": "^0.1.0",
+    "@latticekit/draw": "^0.1.0",
+    "@latticekit/input": "^0.1.1",
+    "@latticekit/iso": "^0.1.1",
+    "@latticekit/loop": "^0.1.0",
+    "@latticekit/ui": "^0.1.0"
+  }
+}

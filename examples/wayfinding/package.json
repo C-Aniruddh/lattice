@@ -1,0 +1,21 @@
+{
+  "name": "@latticekit/example-wayfinding",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WAYFINDING — a gallery exhibit. A flow field re-routing a moving crowd the instant the map changes.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5184",
+    "build": "vite build",
+    "preview": "vite preview --port 5284"
+  },
+  "$comment": "Six of nine. The exhibit is `iso.path`'s FlowField and nothing else: one field, four hundred and twenty readers, and a map that changes under all of them in the same frame. `sim`, `persist` and `audio` have nothing to do here.",
+  "dependencies": {
+    "@latticekit/core": "^0.1.0",
+    "@latticekit/draw": "^0.1.0",
+    "@latticekit/input": "^0.1.1",
+    "@latticekit/iso": "^0.1.1",
+    "@latticekit/loop": "^0.1.0",
+    "@latticekit/ui": "^0.1.0"
+  }
+}

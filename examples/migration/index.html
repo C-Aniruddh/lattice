@@ -1,0 +1,89 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Migration — a Lattice exhibit</title>
+<style>
+  /*
+   * The overlay's whole appearance. `@latticekit/ui` ships no stylesheet at all — it writes
+   * structure, `pointer-events`, and the `--lattice-*` custom properties `hud.ts` pushes from
+   * `draw`'s live palette. Everything below is this exhibit's art direction for the DOM half,
+   * exactly as `crates.ts` is for the canvas half, and every line of it is uncounted art.
+   *
+   * Two colors carry the whole readout and neither is authored here: `--lattice-line` is the
+   * paint on the decks and `--lattice-bad` is the mark under a refused save — the same two values
+   * the canvas draws those things in, because both come from the palette rather than from a
+   * stylesheet that has to be kept in step with it. That is the cross-package promise
+   * GALLERY.md rule 7 exists to exercise.
+   */
+  html, body { margin: 0; height: 100%; background: #aec4cf; overscroll-behavior: none; }
+
+  .lattice-ui {
+    --paper: #f7f3ea;
+    --dim: #a9a89c;
+    --card: color-mix(in srgb, var(--lattice-ink, #1a2029) 87%, transparent);
+    --edge: color-mix(in srgb, var(--paper) 15%, transparent);
+    --good: var(--lattice-ok, #63bd6a);
+    --bad: var(--lattice-bad, #e0523c);
+    --gold: var(--lattice-warn, #ffc23a);
+    --cut: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+    font: 600 12.5px/1.4 ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+    color: var(--paper);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  /* A plate with two opposite corners cut, so the cards read as terraces rather than as chat
+     bubbles. `clip-path` clips the border with everything else, so the hairline has to be a
+     second clipped layer inset by a pixel — `::before`, not `::after`, which would paint over
+     the card's own text. */
+  .card { position: relative; padding: 12px 15px; background: var(--edge); clip-path: var(--cut); }
+  .card::before { content: ''; position: absolute; inset: 1px; clip-path: var(--cut); background: var(--card); }
+  .card > * { position: relative; }
+
+  .dock { position: absolute; display: flex; flex-direction: column; gap: 9px; }
+  .dock-left { left: 18px; top: 18px; max-width: 372px; }
+  .dock-right { right: 18px; top: 18px; max-width: 400px; }
+
+  .brief h1 { margin: 0 0 6px; font-size: 11px; font-weight: 800; letter-spacing: .26em; color: var(--gold); }
+  .brief .line { margin: 0; font-size: 13px; line-height: 1.47; color: var(--paper); }
+  .brief .hint { margin: 8px 0 0; font-size: 11px; color: var(--dim); letter-spacing: .02em; }
+
+  /* The ladder. One row per deck, one row per rung, top down — the same order as the yard, so a
+     visitor never has to invert anything to match the card to the ground. */
+  .ladder { padding: 10px 15px 12px; }
+  .step, .rung { display: flex; gap: 9px; align-items: baseline; padding: 3px 7px; transition: background-color .25s linear, color .25s linear, opacity .25s linear; }
+  .step b { color: var(--paper); font-weight: 800; letter-spacing: .06em; min-width: 30px; }
+  .step span { color: var(--dim); font-size: 10.5px; }
+  .step[data-on='1'] { background: color-mix(in srgb, var(--gold) 88%, transparent); }
+  .step[data-on='1'] b, .step[data-on='1'] span { color: #17202a; }
+  .step[data-on='-1'] { opacity: .3; }
+  .rung { font-size: 10.5px; color: var(--dim); border-left: 2px solid color-mix(in srgb, var(--paper) 22%, transparent); margin-left: 13px; }
+  .rung b { color: color-mix(in srgb, var(--paper) 62%, transparent); font-weight: 800; min-width: 26px; }
+  .rung[data-on='2'] { color: color-mix(in srgb, var(--good) 90%, transparent); border-left-color: var(--good); }
+  .rung[data-on='2'] b { color: var(--good); }
+  .rung[data-on='1'] { color: var(--paper); border-left-color: var(--gold); background: color-mix(in srgb, var(--gold) 16%, transparent); }
+  .rung[data-on='1'] b { color: var(--gold); }
+
+  .cap { display: block; font-size: 9.5px; letter-spacing: .2em; color: var(--dim); margin: 2px 0 5px; }
+  .bytes, .state {
+    display: block; font-size: 10.5px; line-height: 1.5; word-break: break-all; user-select: text;
+    color: var(--lattice-glass, #a8cede); background: color-mix(in srgb, #000 30%, transparent);
+    padding: 7px 8px; margin-bottom: 9px;
+  }
+  .state { color: var(--gold); }
+  .rows { display: flex; flex-direction: column; gap: 2px; font-size: 10.5px; color: var(--dim); margin-bottom: 9px; }
+  .rows b { font-weight: 800; color: var(--paper); font-variant-numeric: tabular-nums; }
+  .verdict { margin: 0; font-size: 11px; line-height: 1.45; color: var(--good); }
+  .verdict[data-bad='1'] { color: var(--bad); }
+  .reasons { font-size: 10.5px; color: color-mix(in srgb, var(--bad) 62%, var(--paper)); margin-bottom: 8px; font-variant-numeric: tabular-nums; }
+  .worstrow { margin: 0; }
+  .worstrow b[data-slow='1'] { color: var(--bad); }
+
+  @media (prefers-reduced-motion: reduce) { .step, .rung { transition: none; } }
+  @media (max-width: 1180px) {
+    .dock-left { max-width: calc(100vw - 36px); }
+    .dock-right { top: auto; bottom: 16px; right: 18px; max-width: 340px; }
+  }
+</style>
+<div id="app"></div>
+<script type="module" src="/src/main.ts"></script>

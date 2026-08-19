@@ -1,0 +1,21 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Harbor — Lattice Gallery</title>
+<style>
+  :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #66b9d1; overscroll-behavior: none; }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  .harbor-hud { position: fixed; inset: 0; padding: 28px; box-sizing: border-box; color: #f8f4df; text-shadow: 0 2px 8px #082635; }
+  .placard { width: max-content; max-width: calc(100vw - 56px); padding: 16px 19px; border-left: 4px solid var(--lattice-warn, #ffc857); background: rgba(7, 28, 39, .91); box-shadow: 0 12px 35px rgba(1, 14, 24, .32); }
+  h1 { margin: 0; font: 800 29px/1 ui-sans-serif, system-ui; letter-spacing: .15em; text-transform: uppercase; }
+  .subtitle { margin: 8px 0 0; color: #d8edf1; font-size: 13px; letter-spacing: .08em; }
+  .readouts { position: fixed; right: 28px; top: 28px; display: grid; gap: 7px; justify-items: end; }
+  .readout { padding: 8px 11px; background: rgba(7, 28, 39, .91); color: #f8f4df; font: 700 13px/1.2 ui-monospace, monospace; letter-spacing: .04em; }
+  .hint { position: fixed; left: 28px; bottom: 28px; padding: 9px 13px; background: rgba(7, 28, 39, .88); color: #f8f4df; font-size: 13px; }
+  @media (max-width: 650px) { .harbor-hud { padding: 16px; } .readouts { top: auto; right: 16px; bottom: 16px; } .hint { display: none; } h1 { font-size: 23px; } }
+</style>
+<div id="app"></div>
+<script type="module" src="/src/main.ts"></script>

@@ -1,0 +1,93 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Instrument — a Lattice exhibit</title>
+<style>
+  /*
+   * The overlay's whole appearance. `@latticekit/ui` ships no stylesheet. Every color
+   * resolves through a custom property `hud.ts` pushes from `draw`'s live palette, so the
+   * plate darkens with the workshop instead of glowing in daylight over a dusk scene.
+   * Fallbacks are the opening brass hall, so the first paint is right before a frame runs.
+   */
+  html, body { margin: 0; height: 100%; background: #140c14; overscroll-behavior: none; }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; width: 100%; height: 100%; }
+
+  .lattice-ui {
+    --paper: #f4efe4;
+    --dim: #b7a894;
+    --glow: var(--lattice-teal, #2eb8b0);
+    --hot: var(--lattice-ember, #e07a3a);
+    --brass: var(--lattice-brass, #c4893a);
+    --card: color-mix(in srgb, var(--lattice-ink, #1a120c) 78%, transparent);
+    --edge: color-mix(in srgb, var(--brass) 28%, transparent);
+    --cut: polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px),
+                   calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px);
+    font: 600 13px/1.35 ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+    color: var(--paper);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  .card { position: relative; padding: 13px 16px; background: var(--edge); clip-path: var(--cut); }
+  .card::before {
+    content: ''; position: absolute; inset: 1px; clip-path: var(--cut);
+    background: var(--card); transition: background-color 1.2s linear;
+  }
+  .card > * { position: relative; }
+
+  .dock { position: absolute; display: flex; gap: 10px; }
+  .dock-left { left: 18px; top: 18px; flex-direction: column; align-items: flex-start; max-width: 420px; }
+  .dock-right { right: 18px; top: 18px; flex-direction: column; align-items: stretch; min-width: 220px; }
+
+  .brief-title {
+    margin: 0 0 7px; font-size: 13px; font-weight: 800; letter-spacing: .22em;
+    color: var(--paper); transition: color 1.2s linear;
+  }
+  .brief-line { margin: 0; font-size: 14px; line-height: 1.45; color: var(--paper); }
+
+  /* Pulses by shifting the ember, never by opacity — opacity pulled both ink and plate toward
+     the canvas and look.mjs measured contrast 1.8 against a floor of 3. */
+  .wake {
+    margin: 10px 0 0; font-size: 13px; font-weight: 800; letter-spacing: .08em; color: var(--hot);
+    animation: breathe 2.2s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { color: #e09048; }
+    50% { color: #ffd9a0; }
+  }
+
+  .meter { display: grid; gap: 4px; }
+  .asking { font-size: 11px; font-weight: 800; letter-spacing: .16em; color: var(--glow); }
+  .recipe { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--paper); }
+  .row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .voices { font-size: 11px; letter-spacing: .08em; color: var(--dim); }
+  .worst { font-size: 10.5px; letter-spacing: .07em; color: var(--dim); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wake { animation: none; color: #ffd9a0; }
+  }
+  @media (max-width: 700px) {
+    .dock-left { max-width: calc(100vw - 36px); }
+    .dock-right { top: auto; bottom: 24px; right: 18px; min-width: 0; }
+    .brief-line { font-size: 13px; }
+  }
+</style>
+<div id="app"></div>
+<div id="hud" hidden>
+  <div class="dock dock-left">
+    <section class="card brief">
+      <h1 class="brief-title">INSTRUMENT</h1>
+      <p class="brief-line">Every note is oscillators. Nothing is loaded. Tap a pipe — the board draws the voice it just scheduled.</p>
+      <p class="wake">Tap a pipe — nothing sounds until you do</p>
+    </section>
+  </div>
+  <div class="dock dock-right">
+    <section class="card meter">
+      <span class="asking">ASLEEP</span>
+      <span class="recipe">—</span>
+      <div class="row"><span class="voices">0 voices</span><span class="worst"></span></div>
+    </section>
+  </div>
+</div>
+<script type="module" src="/src/main.ts"></script>
