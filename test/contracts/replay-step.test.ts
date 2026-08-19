@@ -134,6 +134,40 @@ describe('both packages reject the same mismatch', () => {
   });
 });
 
+describe('the number survives being written down', () => {
+  // The static half of the contract, and the reason it is a *compatibility* constant rather
+  // than a configuration one: `stepMs` is a field of a file, not only a property of a running
+  // loop. A log is JSON on somebody's disk, written by one build and read by another, possibly
+  // in another engine — so the question is not whether the two loops agree in memory but
+  // whether the number that reaches the file is the same number and is still exact when it
+  // comes back.
+  //
+  // The kit already has a worked example of that going wrong: `Infinity` is a perfectly Tier A
+  // arithmetic result and it serializes to `null` with a valid checksum, which nothing
+  // downstream can detect. A step derived from a bad `hz` is exactly the shape that produces
+  // one, and it must not be storable.
+  it('round-trips through a sealed log without losing a digit', () => {
+    const stepMs = stepMsOf(60);
+    const recorder = createRecorder<number>({
+      kit: '0.1.0',
+      game: 'contract',
+      rng: createRng(7).snapshot(),
+      startTick: 0,
+      digest: (n: number) => n,
+    });
+    recorder.mark(0, 3);
+    const log = recorder.stop(1, 3, { version: 1, stepMs, profile: 'default' });
+
+    const onDisk = JSON.stringify(log);
+    const readBack = JSON.parse(onDisk) as typeof log;
+    expect(readBack.inputs.stepMs).toBe(stepMs);
+    expect(Number.isFinite(readBack.inputs.stepMs)).toBe(true);
+    // The value a reader of the file sees, spelled out. If this line has to be re-blessed, every
+    // log ever written has been invalidated and the change is a migration, not a refactor.
+    expect(onDisk).toContain('"stepMs":16.667');
+  });
+});
+
 describe('the number is a compatibility constant', () => {
   // Not a style note: this value is written into every recorded session. Changing `hz` is a
   // breaking change to every log ever produced, and the two packages agreeing on that is the

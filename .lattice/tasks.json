@@ -845,9 +845,9 @@
         "the six-point silhouette test asserts iso is the definition and draw is the conformer",
         "the tick-index test spans loop, input and persist in one assertion"
       ],
-      "status": "todo",
-      "owner": null,
-      "notes": ""
+      "status": "done",
+      "owner": "lattice-auditor",
+      "notes": "Four files in test/contracts/. paint-order.test.ts and silhouette.test.ts are new; replay-step.test.ts and tick-index.test.ts existed and were completed — tick-index promised a third property (a session recorded through input, driven by loop, verified by persist) in its own header and never delivered it, and replay-step had no static check that stepMs survives being written to a file. Two breaking edits were made in packages and reverted after watching them go red: snapping in world units rather than device units at beginFrame (whole workspace green except silhouette.test.ts), and walking pickSorted forwards (caught here and in iso). FINDING, unfixed and routed: a recording started mid-game cannot be verified. loop.replay always starts its index at 0 and has no startTick; input.replayCursor deliberately rebases to the driver's index; persist stores absolute ticks plus a startTick field. Joined, a log recorded from tick 40 yields matched:false with divergence:null AND refused:null — a verdict that names nothing, against ReplayVerdict's own rule that the field which differed is named. Not encoded as a test, because a test asserting the current behavior would pin the defect."
     },
     {
       "id": "D2",
@@ -2970,6 +2970,30 @@
         "the only change made to them was the --port number in each dev script, because Chime Path shipped on 5183 and the other two both on 5173. They are 5210, 5211 and 5212 now"
       ],
       "notes": "Moved out of /tmp/lattice-e2e-v3 on 2026-08-18 and preserved verbatim. All three build (tsc --noEmit && vite build) and serve; all three pass anything/framing/motion/console under tools/looking/look.mjs, and Chime Path fails legibility on purpose because that failure is the record. Session transcripts and the round-three brief are in from-one-sentence/transcripts/. Deliberately outside npm run verify — the reasoning, and the accepted residual risk that they can rot unnoticed, is written out in from-one-sentence/README.md."
+    },
+    {
+      "id": "K62",
+      "phase": "gaps",
+      "role": "lattice-architect",
+      "title": "A recording started mid-game cannot be verified, and the verdict names nothing",
+      "package": "loop",
+      "paths": [
+        "packages/loop/src/replay.ts",
+        "packages/input/src/record.ts",
+        "packages/persist/src/**"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "three packages hold three positions on where a replay index starts: loop.replay always starts at 0 and has no startTick; input.replayCursor deliberately rebases to the driver index and names a mid-game recording as the case where they differ; persist stores absolute ticks and requires startTick",
+        "probed on a session recorded from tick 40 for 12 ticks: loop reports ticks 12, checkpoints 0, divergedAt -1; persist reports matched false, checkpointsChecked 0, divergence null, refused null",
+        "matched:false with no divergence and no refusal violates ReplayVerdict own rule that a refusal is never a pass and the field that differed is named. Nothing is named",
+        "it fails safe rather than reporting a confident wrong answer, and it fails silently, and two packages advertise a path the third makes unverifiable",
+        "deliberately not encoded as a test: a test asserting the current behaviour would pin the defect",
+        "owner is most likely loop, as the package that cannot express a non-zero starting index. Alternatives: persist rebases checkpoint ticks by startTick, or input and persist agree startTick is always 0"
+      ],
+      "notes": "Found by C12 while writing the four cross-package contract tests — a contract this repository has asserted since its design phase, tested for the first time on 2026-08-19, and found already broken at the seam none of the three suites can see."
     }
   ]
 }
