@@ -1,6 +1,6 @@
 {
   "name": "@latticekit/iso",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Isometric space: the projection, the camera, depth sorting, tile maps, footprints, hit-testing, and grid pathfinding.",
   "license": "MIT",
   "publishConfig": {
