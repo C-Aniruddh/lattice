@@ -5,6 +5,7 @@
   "version": "0.1.1",
   "license": "MIT",
   "repository": "https://github.com/C-Aniruddh/lattice",
+  "homepage": "https://lattice.aniruddh.tech",
   "scope": "@latticekit",
   "budgets": {
     "coverageStatements": 0.9,

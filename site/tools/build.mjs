@@ -41,7 +41,7 @@ import { readFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
-import { injectAnalytics } from './analytics.mjs';
+import { injectAnalytics, injectSocial } from './stamp.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const site = join(here, '..');
@@ -98,7 +98,9 @@ for (const g of games) {
   console.log(`   [32m✓[0m /g/${g.dir}/  — ${g.name}, by ${g.agent}, unedited`);
 }
 
-step('6/6', 'stamp the analytics tag into every built page');
+step('6/6', 'stamp the analytics tag and the share card into every built page');
+const carded = injectSocial(join(site, 'dist'));
+console.log(`   \x1b[32m✓\x1b[0m ${carded} page${carded === 1 ? '' : 's'} given a share card`);
 const stamped = injectAnalytics(join(site, 'dist'));
 console.log(`   \x1b[32m✓\x1b[0m ${stamped} page${stamped === 1 ? '' : 's'} stamped`);
 

@@ -35,6 +35,10 @@ const gallery = read(join(site, 'data/exhibits.json'));
 const example = readFileSync(join(site, 'example/hello.ts'), 'utf8');
 
 const REPO_URL = kit.repository;
+/** The address the page is served from. Also what `.github/workflows/pages.yml` writes to
+ *  `CNAME`, read from here rather than typed there, because `og:image` has to be absolute
+ *  and a second copy of a domain is a second thing to forget on the day it moves. */
+const SITE_URL = kit.homepage;
 /** `owner/repo`, which is the shorthand all three plugin installers take. Derived rather than
  *  typed, so the install commands cannot drift from the repository the rest of the page links to. */
 const REPO_SLUG = REPO_URL.replace(/^https:\/\/github\.com\//, '');
@@ -561,13 +565,37 @@ const fanoutCount = fanout.reduce((n, v) => n + v.built.length, 0);
  * this"*. It is a route now, linked from the rail and the footer, and `appType: 'mpa'` in
  * `vite.config.ts` means it is a real document rather than a client-side tab.
  */
-const head = ({ title, description, extra = '' }) => `<meta charset="utf-8">
+const head = ({ title, description, path = '/', extra = '' }) => `<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#181410">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 12 60 28 32 44 4 28Z' fill='%23e0a13c'/%3E%3Cpath d='M32 20 46 28 32 36 18 28Z' fill='%23181410'/%3E%3C/svg%3E">
+
+<link rel="canonical" href="${SITE_URL}${path}">
+
+<!-- The share card.
+     The page shipped with none of these, so every link to it on Hacker News, X, Reddit, Slack,
+     Discord and Bluesky rendered as a bare blue line of text. For a project whose entire argument
+     is *look at this*, a link with no picture is the worst first impression available, and for
+     most people who ever encounter it, it is the only impression.
+     og.png is a real frame of /x/demo/ at dusk, captured headless at 1200x630 by
+     site/tools/og.mjs. Not a mockup: what a stranger sees before the click is what they get
+     after it. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Lattice">
+<meta property="og:url" content="${SITE_URL}${path}">
+<meta property="og:title" content="${esc(title)}">
+<meta property="og:description" content="${esc(description)}">
+<meta property="og:image" content="${SITE_URL}/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A valley at dusk rendered by Lattice: an isometric hillside with a lit shrine, a road of lamps, and the words 'Isometric games made easy'.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${esc(title)}">
+<meta name="twitter:description" content="${esc(description)}">
+<meta name="twitter:image" content="${SITE_URL}/og.png">
 
 <!-- Machine-readable mirrors of everything below. An agent should read these instead of this page. -->
 <link rel="alternate" type="application/json" href="/api.json" title="The kit as JSON: packages, exports, invariants, budgets, measured figures">
@@ -1421,6 +1449,7 @@ function packagePage(pkg) {
 ${head({
     title: `${p.name} — Lattice API reference`,
     description: `${p.purpose} Every exported symbol of ${p.name} with its signature, its parameters and the comment above it in the source.`,
+    path: `/reference/${pkg}/`,
     extra: '<script type="module" src="/src/reference.ts"></script>',
   })}
 </head>
@@ -1490,6 +1519,7 @@ const referenceHtml = `<!doctype html>
 ${head({
   title: 'Lattice API reference — every public symbol, with its signature',
   description: `Every exported symbol of the nine Lattice packages — ${commas(symbolCount)} of them — generated from the built type declarations: real signatures, parameters, and the doc comment above each one in the source.`,
+  path: '/reference/',
   extra: '<script type="module" src="/src/reference.ts"></script>',
 })}
 </head>

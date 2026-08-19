@@ -45,7 +45,10 @@ jobs:
       # The custom domain, written into the artifact rather than only into the repository
       # setting. A CNAME that lives only in Settings is a setting one wrong click can clear
       # with no diff and no history; this one is in the tree and shows up in a review.
-      - run: echo 'lattice.aniruddh.tech' > site/dist/CNAME
+      # Read from the manifest, not typed here. og:image has to be an absolute URL, so the page
+      # needs this domain too; typed in both places it becomes two things to change on the day it
+      # moves, and the one that gets missed fails silently as a card that will not load.
+      - run: node -e "require('fs').writeFileSync('site/dist/CNAME', new URL(require('./.lattice/kit.json').homepage).host)"
       # GitHub Pages serves a Jekyll build unless told not to, and Jekyll drops any path
       # beginning with an underscore. Nothing here starts with one today, and the file costs
       # nothing against the day something does.
