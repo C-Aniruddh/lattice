@@ -91,7 +91,11 @@ export class Pool<T> {
     this.#reset = options.reset;
     this.#max = options.max;
     this.#checked = options.checked ?? false;
-    if (options.initial !== undefined) this.preallocate(options.initial);
+    // Labelled, because the caller wrote `initial` and has never heard of `preallocate`.
+    // Non-negotiable 9 is about the reader of the message, not the writer of the code: a
+    // constructor that reports its own delegation names a method that appears nowhere in the
+    // stack the caller is looking at.
+    if (options.initial !== undefined) this.preallocate(options.initial, 'new Pool({ initial })');
   }
 
   /**
@@ -161,18 +165,25 @@ export class Pool<T> {
    * The first explosion of the session is the worst moment to allocate four hundred
    * particles, and it is also the moment the player is most likely to be watching.
    *
+   * @param label - what to call the mistake if `count` is wrong. Defaults to this method,
+   * which is right when the caller called this method — and wrong when something else
+   * delegated here on their behalf, as the constructor does for `initial`. A caller who
+   * wrote `initial` and is shown `pool.preallocate` has to read this file to find out what
+   * they did; a caller with their own pool of pools can pass `'sparks.grow'` and be told.
+   * The default is exactly the message it has always been, so a test that pins it still
+   * pins it.
    * @throws RangeError if `count` is not a non-negative integer, or if it would push the pool
    * past `max` — which is a sizing mistake, and better found at load than mid-frame.
    */
-  preallocate(count: number): void {
+  preallocate(count: number, label = 'pool.preallocate'): void {
     if (!Number.isInteger(count) || count < 0) {
       throw new RangeError(
-        `pool.preallocate: expected a non-negative integer count, got ${String(count)}`,
+        `${label}: expected a non-negative integer count, got ${String(count)}`,
       );
     }
     if (this.#max !== undefined && this.#created + count > this.#max) {
       throw new RangeError(
-        `pool.preallocate: ${count} more instances would exceed capacity ${this.#max} (${this.#created} already created)`,
+        `${label}: ${count} more instances would exceed capacity ${this.#max} (${this.#created} already created)`,
       );
     }
     for (let i = 0; i < count; i += 1) {

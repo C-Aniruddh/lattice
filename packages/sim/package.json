@@ -1,6 +1,6 @@
 {
   "name": "@latticekit/sim",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Idle-economy mathematics in closed form: cost curves, the flow integrator, offline accrual, and capacity gating.",
   "license": "MIT",
   "publishConfig": {
@@ -35,6 +35,6 @@
     "sim"
   ],
   "dependencies": {
-    "@latticekit/core": "^0.1.0"
+    "@latticekit/core": "^0.1.1"
   }
 }

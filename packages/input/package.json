@@ -35,7 +35,7 @@
     "input"
   ],
   "dependencies": {
-    "@latticekit/core": "^0.1.0",
-    "@latticekit/iso": "^0.1.0"
+    "@latticekit/core": "^0.1.1",
+    "@latticekit/iso": "^0.1.1"
   }
 }

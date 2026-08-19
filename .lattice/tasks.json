@@ -500,9 +500,9 @@
         "determinism verified across a fresh process, not just twice in one",
         "findings ranked worst-first with a reproduction each"
       ],
-      "status": "todo",
-      "owner": null,
-      "notes": ""
+      "status": "done",
+      "owner": "lattice-auditor",
+      "notes": "Findings in docs/audit/core.md — 9 findings: 0 high, 2 medium, 7 low. Filed as L1–L7. Worst: rng.float(-MAX_VALUE, MAX_VALUE) returns Infinity and, on a draw of exactly 0, NaN — the two values its own guard doc says it exists to prevent, because the bounds are checked and the span is not. PoolOptions is write-only against non-negotiable 11. Pool.release accepts a foreign instance and both counters then lie, so a max-2 pool hands out three. tools/lint.mjs cannot see `a ** b`, and there is a live undeclared Tier B site at packages/audio/src/voice.ts:84 — routed. Held: every easing endpoint is exact under Object.is, noise stays in range over 300k samples, every vec2 out-parameter is aliasing-safe, fmtCompact held six characters over ~1.4M evaluations, Rng snapshot/derive are exact. NOT tested: cross-engine bit identity (one V8 only), allocation as a measurement rather than a shape."
     },
     {
       "id": "C2",
@@ -632,9 +632,9 @@
         "determinism verified across a fresh process, not just twice in one",
         "findings ranked worst-first with a reproduction each"
       ],
-      "status": "todo",
-      "owner": null,
-      "notes": ""
+      "status": "done",
+      "owner": "lattice-auditor",
+      "notes": "Findings in docs/audit/persist.md — 12 findings: 2 high, 4 medium, 6 low. Filed as L8–L16. Worst two are the same shape from opposite ends of the envelope: the checksum covers `d` and not v/t/n, so a one-character edit to `v` either bricks the store read-only forever (unquarantined, message blames the deploy) or re-runs the whole migration chain and doubles a currency with failure:null; and Infinity/NaN/-0 are laundered to null on the write path with a valid checksum, which SEAMS names and core ships expectSerializable for and persist never calls. persist/test contains zero occurrences of Infinity. Held: every chain hole refused, all seven failure reasons reachable as values with no throw, reset() ordering genuinely closed, the replay verdict cannot be green without checking. NOT tested: anything a real browser does — browser.ts was exercised against plain objects in Node, which is what its own suite does, so both traps it exists for are argued rather than observed."
     },
     {
       "id": "C8",
@@ -2994,6 +2994,349 @@
         "owner is most likely loop, as the package that cannot express a non-zero starting index. Alternatives: persist rebases checkpoint ticks by startTick, or input and persist agree startTick is always 0"
       ],
       "notes": "Found by C12 while writing the four cross-package contract tests — a contract this repository has asserted since its design phase, tested for the first time on 2026-08-19, and found already broken at the seam none of the three suites can see."
+    },
+    {
+      "id": "L1",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "rng.float checks its bounds and not its span, so it returns the Infinity its own doc exists to prevent",
+      "package": "core",
+      "paths": [
+        "packages/core/src/rng.ts"
+      ],
+      "dependsOn": [],
+      "status": "done",
+      "owner": "lattice-builder",
+      "acceptance": [
+        "createRng('x').float(-Number.MAX_VALUE, Number.MAX_VALUE) returns Infinity; with a draw of exactly 0 the same expression is NaN, because min + 0 * Infinity is NaN",
+        "both bounds pass expectFinite — max - min is what overflows, and nothing checks it",
+        "the method's own doc says it throws 'unless both bounds are finite' precisely because 'an infinite bound would produce Infinity or NaN, and JSON.stringify writes both as null — a value that vanishes from a save with the checksum still matching'",
+        "a check that passes when it should fail, in the package that owns determinism, on the exact value SEAMS names as undetectable downstream",
+        "fix is one line: expectFinite(max - min, 'rng.float(max - min)') after the two bound checks"
+      ],
+      "notes": "C1. docs/audit/core.md § CORE-1. No call site in the kit reaches it — medium rather than low because the guard is specifically the one claiming to close this door."
+    },
+    {
+      "id": "L2",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "PoolOptions is write-only, against non-negotiable 11",
+      "package": "core",
+      "paths": [
+        "packages/core/src/pool.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "max, checked, initial, create and reset all go into new Pool({…}) and none comes back out; size and free are derived counters, not the options",
+        "a debug overlay drawing 'particles: 312 / 512' must hold its own copy of 512, which is the shadow copy the rule exists to remove",
+        "settability is a separate question — max is a cost value read on the acquire path — but reading it back is free and has no counter-argument",
+        "same defect as K14 (iso camera), K18 (audio), K19 and K34 (draw); core is the package all four sit on"
+      ],
+      "notes": "C1. docs/audit/core.md § CORE-2."
+    },
+    {
+      "id": "L3",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "Pool.release accepts an instance the pool never made, and both counters then lie",
+      "package": "core",
+      "paths": [
+        "packages/core/src/pool.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "release() pushes whatever it is handed onto the free list without incrementing #created, so after one foreign release size is 2, free is 3, and size - free is -1",
+        "free's own doc says 'size - free is how many are out'; a negative answer means the leak assertion the module is built around has stopped working",
+        "max stops bounding: a pool with max 2 hands out three instances, and max's doc is the argument that it must not",
+        "checked: true does not catch it — indexOf finds nothing, because the foreign object is not yet on the free list, and checked's doc calls what it catches 'the single nastiest bug this module can cause'",
+        "the module already says a released instance must not be touched again; what it does not say is that a wrong release corrupts the counters rather than being ignored"
+      ],
+      "notes": "C1. docs/audit/core.md § CORE-3. Caller discipline, but the symptom presents nowhere near the release that caused it."
+    },
+    {
+      "id": "L4",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "The Pool constructor reports the caller’s mistake under a method the caller never called",
+      "package": "core",
+      "paths": [
+        "packages/core/src/pool.ts",
+        "packages/core/test/pool.test.ts"
+      ],
+      "dependsOn": [],
+      "status": "done",
+      "owner": "lattice-builder",
+      "acceptance": [
+        "new Pool({ create, initial: -1 }) throws 'pool.preallocate: expected a non-negative integer count, got -1' — the word `initial` appears nowhere, and `preallocate` appears nowhere in the caller's code",
+        "same for new Pool({ max: 2, initial: 5 }), which reports capacity arithmetic under preallocate",
+        "create and max are validated in the constructor and read correctly; initial is the one delegated, and the delegation leaks the callee’s name",
+        "non-negotiable 9: an error names the caller’s mistake, never a message that only makes sense with the source open beside it",
+        "packages/core/test/pool.test.ts:184 pins the message verbatim for a direct preallocate(-1) call, which is correct — so the fix is a label parameter, not a change to preallocate’s own message. The constructor case is asserted with toThrow(RangeError) alone, so the wrong label is untested exactly where it is wrong"
+      ],
+      "notes": "C1. docs/audit/core.md § CORE-4. A test currently defends the defect in one direction and is silent in the other."
+    },
+    {
+      "id": "L5",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "rng.weighted overflows its total silently and then always returns the last row",
+      "package": "core",
+      "paths": [
+        "packages/core/src/rng.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "rng.weighted([1e308, 1e308, 1e308]) returns index 2 on every one of twenty consecutive draws — three equal weights, one outcome, forever",
+        "total saturates to Infinity, target = next() * Infinity is Infinity, every target < accumulated test is false, and the loop falls through to `return last`",
+        "the doc enumerates three throw conditions — empty, a negative or non-finite entry, sums to zero — and the fourth, sums above the finite range, is missing",
+        "a deterministic wrong distribution is worse than a non-deterministic one: it will never be caught by a repeated run",
+        "sim explicitly declines to cap measured quantities (“1e40 is a perfectly good double”), so a huge weight is not absurd in this genre"
+      ],
+      "notes": "C1. docs/audit/core.md § CORE-5. Low: I could not construct a weight table in this repo that reaches it."
+    },
+    {
+      "id": "L6",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "The -0 defense is applied in two places and skipped in the five that produce one",
+      "package": "core",
+      "paths": [
+        "packages/core/src/math.ts",
+        "packages/core/src/vec2.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "noise.unsignZero and v2Perp’s `0 - ay` both exist because JSON.stringify(-0) is \"0\" and a persisted value would come back different from the one that went in",
+        "v2Scale(out, {x:0,y:0}, -1) yields -0 on both components — reflecting a zero velocity on a bounce is the plausible route",
+        "lerp(-0,-0,1), moveTowards(0,-0,1), clamp(-0,-5,5) and v2Lerp over -0 endpoints all return -0",
+        "hashNumber(-0) === hashNumber(0), so a hashed digest is unaffected; the damage is confined to Object.is and strict-equality comparisons, and to persist, which never calls expectSerializable at all (see L9)",
+        "decide whether the defense is the callee’s job (unsignZero everywhere a zero can be signed) or the boundary’s (expectSerializable at the write) — a defense applied in two of seven places reads to the next author as one that is not needed"
+      ],
+      "notes": "C1. docs/audit/core.md § CORE-6. This is a decision, not a patch; that is why it is a task."
+    },
+    {
+      "id": "L7",
+      "phase": "gaps",
+      "role": "lattice-architect",
+      "title": "The Tier B linter cannot see the operator form of pow, and there is a live undeclared site",
+      "package": "*",
+      "paths": [
+        "tools/lint.mjs",
+        "packages/audio/src/voice.ts"
+      ],
+      "dependsOn": [],
+      "status": "done",
+      "owner": "lattice-architect",
+      "acceptance": [
+        "the rule is one regex over Math.(sin|cos|tan|asin|acos|atan|atan2|pow|exp|log|log2|log10|cbrt|hypot|sinh|cosh|tanh); `a ** b` is Number::exponentiate, which ECMA-262 defines as implementation-approximated — identical standing to Math.pow — and matches nothing",
+        "Math.expm1, Math.log1p, Math.asinh, Math.acosh and Math.atanh are also unlisted and also implementation-approximated",
+        "packages/audio/src/voice.ts:84 is a live undeclared Tier B site today: `hz * SEMITONE ** semitones`. It is a frequency and never reaches a save, so the consequence is nil and the rule is not",
+        "AGENTS.md: the marker exists “so that every one of them is greppable, so an auditor can ask of each in turn whether it ever reaches a save file” — the operator form is not greppable by the mechanism the constitution names",
+        "found only by writing a second scanner; a rule whose enforcement has a hole is a rule that is followed until the first hurry"
+      ],
+      "notes": "C1. docs/audit/core.md § CORE-8. Routed out of core: the defect is in tools/ and the live site is in audio/, neither of which the auditor owned."
+    },
+    {
+      "id": "L8",
+      "phase": "gaps",
+      "role": "lattice-architect",
+      "title": "The checksum covers the payload and not the envelope, so v, t and n are unprotected",
+      "package": "persist",
+      "paths": [
+        "packages/persist/src/store.ts",
+        "packages/persist/src/integrity.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "store.ts justifies `d` being a string with “the checksum then covers the exact bytes read”; it covers the exact bytes of the payload, and the three header fields that decide which migrations run, how much offline time is owed, and who wins a cross-tab race sit outside it",
+        "v tampered up (one character, checksum untouched): reason future, quarantined false, status refusing-newer, writable false, every save skipped not-writable for the life of the install, rejected() null, and the message asserts “the player has an older deploy” — which is false and sends the reader to the deploy pipeline",
+        "v tampered down: the save re-runs the whole chain. With the loose recognizers migrate.ts advises, gold 100 comes back 200 with source save, failure null, migratedFrom 1 — a double migration no layer detects",
+        "t tampered: elapsedSince reports 19,676 days of offline gap with failure null; elapsedSince is deliberately unclamped from above because the cap is sim’s decision",
+        "fix shape: checksum `${v}|${t}|${n}|${d}`. It is a format change, so it needs its own rung and a read-both-ways window — which is why this is an architect task and not a builder one",
+        "a cheaper partial fix that needs no format change is L15 (bound v)"
+      ],
+      "notes": "C7. docs/audit/persist.md § PERSIST-1. The checksum is currently a payload checksum wearing an envelope checksum’s job description."
+    },
+    {
+      "id": "L9",
+      "phase": "gaps",
+      "role": "lattice-architect",
+      "title": "Infinity, NaN and -0 are laundered by the write path with a valid checksum, and nothing in the package looks",
+      "package": "persist",
+      "paths": [
+        "packages/persist/src/store.ts",
+        "packages/persist/test/store.test.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "store.save({ gold: Infinity, ratio: NaN, neg: -0 }) reports written true; the disk holds \"gold\":null,\"ratio\":null,\"neg\":0 with a valid checksum; open() returns source save, failure null",
+        "SEAMS.md names this exact value as the one that “does not survive being written down… with a valid checksum, so no layer downstream can detect it”",
+        "core ships expectSerializable for it and says where the check belongs: “at the moment of writing rather than the moment of reading”. persist imports isSerializable and applies it only to the envelope’s own t and n in inspect(). envelopeText() applies neither to the payload",
+        "the whole defense is delegated to a game-written recognizer on the read path, one save too late — by which time the real value is gone",
+        "Infinity appears zero times across packages/persist/test/*.ts; the only place in the repo that gets it right is examples/migration/src/chain.ts, a game-layer recognizer in an exhibit built to demonstrate the trap",
+        "this is a policy decision, not a one-liner: walking the whole state every four seconds costs real time on a phone. Candidates: refuse in envelopeText with a new WriteFailure.reason; compare JSON.parse(d) against the input; or StoreOptions.strictNumbers defaulting on in development. Someone has to choose — today nobody has"
+      ],
+      "notes": "C7. docs/audit/persist.md § PERSIST-2. The hardest failure in the kit to diagnose from a bug report, in the one package positioned to make it impossible."
+    },
+    {
+      "id": "L10",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "A non-finite now() writes an envelope the store reads back as malformed, and the message blames a third party",
+      "package": "persist",
+      "paths": [
+        "packages/persist/src/store.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "with now: () => Infinity, save() reports written true and the disk holds \"t\":null",
+        "the next open() degrades to fresh with reason malformed and the message “Something else has written to this key” — the store produced a save only it could have produced, cannot read it, and reports it as somebody else’s doing",
+        "inspect() applies asEpochMillis on the way in and validates t with isSerializable; envelopeText() writes t: now() raw",
+        "createStore already validates that now is a function; it does not validate what it returns, at the one call per write where it costs one comparison",
+        "StoreOptions.now is typed Now so this needs a cast or an untyped JavaScript caller — which is exactly the population expectSerializable, asEpochMillis and expectObject are each documented for"
+      ],
+      "notes": "C7. docs/audit/persist.md § PERSIST-3. Every subsequent boot degrades to fresh and quarantines the evidence."
+    },
+    {
+      "id": "L11",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "The autosave interval is measured on the calendar clock, so a backwards clock jump stalls it silently",
+      "package": "persist",
+      "paths": [
+        "packages/persist/src/store.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "Autosave.tick() subtracts two EpochMillis and compares against minWriteIntervalMs; core/time.ts says an EpochMillis “can also jump backwards… anything that subtracts two of these must tolerate a negative result”, and tick() does not",
+        "reproduced: after a -1h step, ten consecutive tick() calls across ten simulated minutes all return false, status stays ok, writable stays true, lastWrite still shows the previous success, and the disk does not change",
+        "the stall lasts as long as the jump; setting a clock forward to skip a build timer and then back is a first-class idle-game behavior, and time.ts names it",
+        "not high only because flush() is on a different path — installFlushTriggers still writes on visibilitychange and pagehide, so the loss is bounded to a crash or a kill. Nothing reports the condition",
+        "the fix is not a monotonic clock — a second clock in this package would break the one-clock rule. Treat a negative elapsed as “the interval has passed”: at - lastAttemptAt < minWriteIntervalMs && at >= lastAttemptAt"
+      ],
+      "notes": "C7. docs/audit/persist.md § PERSIST-4."
+    },
+    {
+      "id": "L12",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "StoreOptions, AutosaveOptions and RecorderOptions are all write-only, against non-negotiable 11",
+      "package": "persist",
+      "paths": [
+        "packages/persist/src/store.ts",
+        "packages/persist/src/replay.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "StoreOptions has 13 fields and Store reads back two of them (key, and version via chain.head). minWriteIntervalMs, maxBytes, conflict, quarantine, checksum, adapter, chain, fresh, now, onFailure and onWriteError are all unreadable",
+        "AutosaveOptions.schedule is not on Autosave; RecorderOptions’ six fields are not on Recorder",
+        "durable is the sharpest case: a game wants to tell a private-mode player at the door, which is the package’s own argument for the field, and cannot ask until after open() — or must decode it out of status, which encodes two other conditions and is documented as being masked by them",
+        "minWriteIntervalMs is the second: a settings panel offering “save every N seconds” must hold its own copy of N, and two copies drift",
+        "settability is separate and mostly answers baked — chain, adapter and key are identity; checksum is record. The finding is only about reading, where there is no counter-argument",
+        "fourth package with this defect after K14, K18, K19/K34"
+      ],
+      "notes": "C7. docs/audit/persist.md § PERSIST-5."
+    },
+    {
+      "id": "L13",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "createRecorder validates the two options that cannot hurt and neither of the two that can",
+      "package": "persist",
+      "paths": [
+        "packages/persist/src/replay.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "a Digest returning Infinity is a legal Tier A result — SEAMS says so — and becomes null once the log is stored, so the verifier reports divergence { expected: null, actual: Infinity } over a run that did not diverge",
+        "Divergence.expected is typed number and is not one; replay.ts’s own header says a report nobody should trust “puts the determinism claim back where it started while looking like it has been tested”",
+        "digests run on 1 tick in 600, so expectSerializable(digest(state), ’recorder.digest’) costs nothing measurable",
+        "RecorderOptions.rng is not validated either: { seed: -1, state: 1e21 } is sealed into a log and surfaces much later as “Rng.fromSnapshot: expected uint32 seed and state”, naming core’s function rather than the option that was wrong (non-negotiable 9)",
+        "replay.ts calls rng the thing that makes a replay work, and it is the only recorder option not checked, while digest-is-a-function and checkpointEvery-is-a-positive-integer both are",
+        "Recorder.mark also accepts a fractional or negative tick, which no verifier can ever match because mark compares checkpoint.tick !== tick exactly; SEAMS pins the tick index as starting at 0 and incrementing by exactly one"
+      ],
+      "notes": "C7. docs/audit/persist.md § PERSIST-6 and § PERSIST-8. Distinct from K62, which covers matched:false with nothing named for a mid-game recording."
+    },
+    {
+      "id": "L14",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "With conflict: 'refuse', a tab that loses once can never write again",
+      "package": "persist",
+      "paths": [
+        "packages/persist/src/store.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "sequence only advances on a successful write and conflicted() compares against it, so once another tab is ahead the losing store is permanently mute: five consecutive save() calls all return skipped conflict",
+        "the losing store reports status ok and writable true the whole time, while writing nothing, forever",
+        "the only recovery is open(), which replaces the live state with what is on disk — so a game following the documentation has no non-destructive path back",
+        "the option’s doc explains what ’refuse’ detects and stops there; the missing half is what a game is supposed to do on the second conflict",
+        "the argument for detection-not-locking is right and is not what this asks to change"
+      ],
+      "notes": "C7. docs/audit/persist.md § PERSIST-7."
+    },
+    {
+      "id": "L15",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "The envelope’s v is unbounded, so damage to it is indistinguishable from a newer deploy",
+      "package": "persist",
+      "paths": [
+        "packages/persist/src/store.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "Number.isInteger(1e21) is true, so \"v\":1e21 and \"v\":2**53 both pass inspect() and read as future — permanently read-only, nothing quarantined",
+        "core ships expectSafeInteger for exactly the “this number has left the exactly-representable integers” case and it is not applied here",
+        "a sanity bound on v — 0 <= v <= head + some slack — turns most corruptions of that field into malformed, which is quarantined and does degrade to fresh",
+        "cheap, needs no format change, and closes the worst half of L8(a) on its own"
+      ],
+      "notes": "C7. docs/audit/persist.md § PERSIST-9."
+    },
+    {
+      "id": "L16",
+      "phase": "gaps",
+      "role": "lattice-builder",
+      "title": "An autosave armed before open() re-arms forever, and quarantine keeps only the last bad boot",
+      "package": "persist",
+      "paths": [
+        "packages/persist/src/store.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "owner": null,
+      "acceptance": [
+        "makeAutosave calls arm() regardless of phase, so a handle created on a store in phase new schedules a write, the write reports closed, and the callback re-arms — a fresh timer every cycle for the life of the page",
+        "not a leak of any size, but the package’s own position is that “a package that creates a timer is a package that owns a leak”, and stop() is the only exit with nothing telling a caller they need it",
+        "separately: quarantine writes to one key, so a boot loop over a broken save overwrites the first piece of evidence on the second boot — while Rejected’s doc argues that degrading without keeping the bytes “destroys the only copy of the bug that just ate a player’s campus”",
+        "both are small; they are filed together because they are the same file and the same review"
+      ],
+      "notes": "C7. docs/audit/persist.md § PERSIST-11 and § PERSIST-10."
     }
   ]
 }

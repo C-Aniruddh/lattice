@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
  *
  * The gallery is served from `/x/<exhibit>/` and each of those is a **separate Vite build** —
  * see `site/tools/build.mjs`. They are not entry points here, because an exhibit is a page in
- * its own right with its own module graph, and rolling eleven of them into one bundle would
+ * its own right with its own module graph, and rolling nineteen of them into one bundle would
  * defeat the whole point of a tile that is not paid for until it is looked at.
  */
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -84,8 +84,8 @@ export default defineConfig({
       },
     },
     // **False on purpose.** The gallery is built into `dist/x/<exhibit>/` by
-    // `site/tools/build.mjs` after this step, and an `emptyOutDir: true` here deletes all eleven
-    // of them the next time somebody rebuilds only the page — which reads as ten tiles that
+    // `site/tools/build.mjs` after this step, and an `emptyOutDir: true` here deletes all nineteen
+    // of them the next time somebody rebuilds only the page — which reads as eighteen tiles that
     // suddenly 404 and no error anywhere. `build.mjs` clears `dist/` itself, once, up front.
     emptyOutDir: false,
     target: 'es2022',

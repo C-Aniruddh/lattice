@@ -2,7 +2,7 @@
   "$comment": "The machine-readable index of the kit. Agents read this before reading source. Every package MUST keep its `exports` and `invariants` current; `npm run lint` fails the build if a package exports a symbol that is not listed here.",
   "name": "lattice",
   "tagline": "The grid underneath.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "repository": "https://github.com/C-Aniruddh/lattice",
   "scope": "@latticekit",

@@ -69,7 +69,10 @@ ui.mount(el('div', { class: 'hud' },
     el('div', {}, 'SEED', el('output', {}, boot.seed.toUpperCase())),
     el('div', {}, 'VISIBLE', visible),
     costNode(el('div', {}, 'WORST GAP', worst)),
-    el('div', {}, 'CADENCE', cadence)),
+    // Cadence is suppressed with the gap beside it. It reads as a property of the exhibit and is
+    // a property of the visitor's display — the one number on this page that says more about the
+    // reader's hardware than about the kit, which is exactly what ?cost=0 exists to withhold.
+    costNode(el('div', {}, 'CADENCE', cadence))),
   el('div', { class: 'hint' }, 'DRAG TO CROSS THE VOID · SCROLL TO DIVE')));
 applyPalette(ui, paletteVars(boot.palette));
 ui.every(() => {

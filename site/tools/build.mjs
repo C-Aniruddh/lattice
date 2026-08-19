@@ -7,7 +7,7 @@
  * npx vite preview --config site/vite.config.ts
  * ```
  *
- * Four steps, in this order and for a reason:
+ * Five steps, in this order and for a reason:
  *
  * 1. **Typecheck `site/`.** The page prints `site/example/hello.ts` as its worked example, so a
  *    signature that moved in the kit has to fail the page's build rather than quietly turn its
@@ -17,9 +17,24 @@
  * 3. **Build the page.**
  * 4. **Build each exhibit into `dist/x/<name>/`**, as a page of its own with its own module
  *    graph. `emptyOutDir` is false from here on, because step 3 already owns `dist/`.
+ * 5. **Build the three games in `from-one-sentence/` into `dist/g/<name>/`.**
  *
- * Nothing outside `site/` is written. The exhibits are built from their own directories with an
- * inline config, so no file under `examples/` is touched.
+ * ## Why the games are a separate step and a separate route
+ *
+ * They are not exhibits and the page never says they are: an exhibit was built inside this
+ * repository against `docs/GALLERY.md`, and each of these three was built in an empty directory
+ * by an agent that had never seen this repository, from one sentence. `/x/` is the gallery;
+ * `/g/` is that record. Two routes rather than one is the cheapest way to keep the two claims
+ * from being mistaken for each other in a URL a visitor can read.
+ *
+ * **And each is built from its own directory, so it resolves `@latticekit/*` through its own
+ * `node_modules`** — which its lockfile pins to the registry tarballs, not to `packages/*`. That
+ * is the artifact: what a stranger's install produced. `from-one-sentence/README.md` § Keep the
+ * registry dependencies is why it must not be "fixed" to a workspace resolution, and building
+ * them from here rather than adding them to the workspace is what keeps that true.
+ *
+ * Nothing outside `site/` is written. Every game and exhibit is built from its own directory with
+ * an inline config, so no file under `examples/` or `from-one-sentence/` is touched.
  */
 import { execFileSync } from 'node:child_process';
 import { readFileSync, rmSync } from 'node:fs';
@@ -31,24 +46,25 @@ const here = dirname(fileURLToPath(import.meta.url));
 const site = join(here, '..');
 const repo = join(site, '..');
 const gallery = JSON.parse(readFileSync(join(site, 'data/exhibits.json'), 'utf8'));
+const sentence = JSON.parse(readFileSync(join(site, 'data/one-sentence.json'), 'utf8'));
 
 const only = process.argv.slice(2).filter((a) => !a.startsWith('-'));
 const step = (n, what) => console.log(`\n[33m${n}[0m ${what}`);
 
-step('1/4', 'typecheck site/ against packages/*/dist');
+step('1/5', 'typecheck site/ against packages/*/dist');
 execFileSync('npx', ['tsc', '-p', join(site, 'tsconfig.json')], { stdio: 'inherit', cwd: repo });
 
-step('2/4', 'generate index.html, llms.txt, api.json');
+step('2/5', 'generate index.html, llms.txt, api.json');
 execFileSync('node', [join(here, 'build-page.mjs')], { stdio: 'inherit', cwd: repo });
 
-step('3/4', 'bundle the page');
+step('3/5', 'bundle the page');
 // The one place `dist/` is cleared. Vite's own `emptyOutDir` is off for the page build so that
-// rebuilding just the page cannot silently delete the eleven exhibits sitting under `dist/x/`.
+// rebuilding just the page cannot silently delete the nineteen exhibits sitting under `dist/x/`.
 if (only.length === 0) rmSync(join(site, 'dist'), { recursive: true, force: true });
 await build({ configFile: join(site, 'vite.config.ts') });
 
 const exhibits = [gallery.hero, ...gallery.live].filter((x) => only.length === 0 || only.includes(x.dir));
-step('4/4', `bundle ${exhibits.length} exhibit${exhibits.length === 1 ? '' : 's'} into dist/x/`);
+step('4/5', `bundle ${exhibits.length} exhibit${exhibits.length === 1 ? '' : 's'} into dist/x/`);
 for (const x of exhibits) {
   await build({
     configFile: false,
@@ -62,6 +78,23 @@ for (const x of exhibits) {
     },
   });
   console.log(`   [32m✓[0m /x/${x.dir}/`);
+}
+
+const games = sentence.games.filter((g) => only.length === 0 || only.includes(g.dir));
+step('5/5', `bundle ${games.length} game${games.length === 1 ? '' : 's'} from one sentence into dist/g/`);
+for (const g of games) {
+  await build({
+    configFile: false,
+    root: join(repo, 'from-one-sentence', g.dir),
+    base: `/g/${g.dir}/`,
+    logLevel: 'warn',
+    build: {
+      outDir: join(site, 'dist/g', g.dir),
+      emptyOutDir: true,
+      target: 'es2022',
+    },
+  });
+  console.log(`   [32m✓[0m /g/${g.dir}/  — ${g.name}, by ${g.agent}, unedited`);
 }
 
 console.log('\nsite/dist is ready. `npx vite preview --config site/vite.config.ts`\n');

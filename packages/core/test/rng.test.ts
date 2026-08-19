@@ -274,6 +274,75 @@ describe('Rng.float', () => {
     expect(() => rng.float(Number.NaN, 1)).toThrow(/rng.float\(min\).*NaN/);
     expect(() => rng.float(1, 0)).toThrow(/expected max >= min/);
   });
+
+  /**
+   * CORE-1. The guard checked the two bounds and not the quantity that has to be finite.
+   *
+   * Both arguments below pass `expectFinite` on their own; their difference does not, and
+   * `min + next() * Infinity` is `Infinity` on every draw. Before the fix this returned that
+   * `Infinity` rather than throwing — so the assertion that bites is `toThrow`, and the
+   * assertion on the *returned* value below is what keeps it honest if the throw is ever
+   * softened into a clamp.
+   */
+  it('rejects a span that overflows, though both bounds are finite', () => {
+    const rng = createRng('float-span');
+    const huge = Number.MAX_VALUE;
+    for (const [min, max] of [
+      [-huge, huge],
+      [-1e308, 1e308],
+      [-huge, 1e308],
+      [-1e308, 1.7e308],
+    ] as const) {
+      expect(Number.isFinite(min)).toBe(true);
+      expect(Number.isFinite(max)).toBe(true);
+      expect(() => rng.float(min, max)).toThrow(RangeError);
+      expect(() => rng.float(min, max)).toThrow(/expected max - min to be finite/);
+    }
+  });
+
+  /**
+   * The other half of CORE-1, and the reason it is worth a second test: on a draw of exactly
+   * `0` — one call in 2^32 — the old arithmetic was `0 * Infinity`, which is `NaN` rather
+   * than `Infinity`. Rather than contrive that draw, pin the property that makes it
+   * unreachable: the span check runs *before* a draw is consumed, so no draw value, zero
+   * included, can reach the multiply.
+   */
+  it('consumes no draw when it refuses, so no draw value can reach the multiply', () => {
+    const rng = createRng('float-span-cursor');
+    const before = rng.snapshot();
+    expect(() => rng.float(-Number.MAX_VALUE, Number.MAX_VALUE)).toThrow(RangeError);
+    expect(rng.snapshot()).toEqual(before);
+  });
+
+  /**
+   * The generalization. `Infinity` and `NaN` are the two values `SEAMS.md` names as
+   * undetectable downstream — `JSON.stringify` writes both as `null`, and a save keeps a
+   * valid checksum over the hole — so this asserts the shape of the contract rather than the
+   * four bound pairs above: over the whole exponent range, `float` either returns a finite
+   * number inside its bounds or it refuses.
+   */
+  it('returns a finite number or throws, at every magnitude', () => {
+    const rng = createRng('float-magnitudes');
+    for (let exponent = 0; exponent <= 308; exponent += 1) {
+      const bound = Number(`1e${exponent}`);
+      for (const [min, max] of [
+        [-bound, bound],
+        [0, bound],
+        [-bound, 0],
+      ] as const) {
+        let value: number | undefined;
+        try {
+          value = rng.float(min, max);
+        } catch (error) {
+          expect(error).toBeInstanceOf(RangeError);
+          continue;
+        }
+        expect(Number.isFinite(value)).toBe(true);
+        expect(value).toBeGreaterThanOrEqual(min);
+        expect(value).toBeLessThanOrEqual(max);
+      }
+    }
+  });
 });
 
 describe('Rng.bool', () => {

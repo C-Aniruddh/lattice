@@ -52,7 +52,7 @@ const coarse = matchMedia('(pointer: coarse)').matches;
 /** `saveData` is the only honest signal a page gets that it is on a metered or slow connection.
  *  It is absent on Safari, which is why it is read defensively rather than relied on. */
 const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
-/** Auto-running eleven worlds is the page's whole argument, and it is still not worth doing to
+/** Auto-running nineteen worlds is the page's whole argument, and it is still not worth doing to
  *  somebody who asked for stillness or is paying by the megabyte. Both get a button instead. */
 const askFirst = reduceMotion || saveData;
 
@@ -734,16 +734,21 @@ const near = new IntersectionObserver((entries) => {
 }, { rootMargin: '80px 0px', threshold: [0, 0.05, 0.25, 0.5, 0.75, 1] });
 
 /**
- * Every scaled world on the page: the ten gallery tiles, and the ten-line example running beside
- * its own listing in Getting started.
+ * Every scaled world on the page: the eighteen gallery tiles, the three games in `/one-sentence`,
+ * and the ten-line example running beside its own listing in Getting started.
  *
- * The `.demo` is in this list rather than beside it deliberately. It is the same thing a tile is —
- * a real page in an iframe whose loop this page starts and stops — so it belongs to the same
- * budget, sorted by the same distance from the reader's eye. Handing it a loop of its own would be
- * an eleventh scene that no policy could evict, on the page whose argument is that it never runs
- * more than two at once.
+ * The `.demo` and the `.game`s are in this list rather than beside it deliberately. Each is the
+ * same thing a tile is — a real page in an iframe whose loop this page starts and stops — so they
+ * belong to the same budget, sorted by the same distance from the reader's eye. Handing any of
+ * them a loop of its own would be a scene no policy could evict, on the page whose argument is
+ * that it never runs more than two at once.
+ *
+ * The three games are `data-unmanaged`: they were built by agents that had never seen this
+ * repository, so they call nothing of `examples/_shared` and park no `__latticeBoot`. That does
+ * not exempt them from the budget — it only means their pause is an unmount and their poster is
+ * the frame they last painted. See {@link Scene.managed}.
  */
-for (const host of document.querySelectorAll<HTMLElement>('.tile, .demo')) {
+for (const host of document.querySelectorAll<HTMLElement>('.tile, .demo, .game')) {
   const scene = new Scene(host, { scaled: true });
   tiles.push(scene);
   host.dataset['state'] = scene.idleState;

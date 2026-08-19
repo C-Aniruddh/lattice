@@ -1,6 +1,6 @@
 {
   "name": "@latticekit/draw",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "The rendering layer: a Surface interface with a Canvas2D backend, color derivation, and the isometric solid kit that makes procedural art read as designed.",
   "license": "MIT",
   "publishConfig": {
@@ -35,7 +35,7 @@
     "draw"
   ],
   "dependencies": {
-    "@latticekit/core": "^0.1.0",
-    "@latticekit/iso": "^0.1.0"
+    "@latticekit/core": "^0.1.1",
+    "@latticekit/iso": "^0.1.1"
   }
 }

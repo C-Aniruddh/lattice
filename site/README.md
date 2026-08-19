@@ -11,15 +11,19 @@ invent. Every fact the old page led with is still here and every one of them is 
 that argument rather than a spec sheet.
 
 The hero is a **split**: the words in one column, `examples/demo` live and playable in the other,
-full viewport, with no type over the world at all. The ten gallery tiles are the ten exhibits, live,
-at their own viewports, scaled into a grid, each captioned with the ordinary sentence it would be
-asked for and tagged with the capability it proves. The backdrop is drawn with `@latticekit/draw`,
+full viewport, with no type over the world at all. The eighteen gallery tiles are the eighteen
+exhibits, live, at their own viewports, scaled into a grid, each captioned with the ordinary
+sentence it would be asked for and tagged with the capability it proves — and the eight that an
+outside agent built carry a `Built by <vendor>` mark opposite that tag. Above the gallery, three
+more live worlds that are **not** exhibits: the games in `from-one-sentence/`, each under the exact
+sentence that produced it. The backdrop is drawn with `@latticekit/draw`,
 the page's color scheme is `lerpPalette(DUSK, NIGHT, scrollProgress)`, and no frame cost is printed
 anywhere a visitor can see one — see *The frame cost* below.
 
 **The order**, and it is the argument in sequence: masthead with a dated announcement chip → the
-hero → the proof strip → `/gallery`, which is the centre → `/how`, which is why the agent gets it
-right → `/example` → a closing band → the footer. The API reference is a route of its own at
+hero → the proof strip → `/one-sentence`, where a typed sentence sits over the game it produced →
+`/gallery`, which is the centre → `/built`, which is who built the eight marked tiles and how →
+`/why`, which is why the agent gets it right → `/what` → `/start` → a closing band → the footer. The API reference is a route of its own at
 `/reference/`: at 2,255 px it was the second-largest object on a page a newcomer has four seconds
 for, and it is content for somebody who has already adopted this. It is ten documents now: an
 index at `/reference/` and one per package at `/reference/<pkg>/`.
@@ -34,7 +38,7 @@ to `site/`.
 
 ```bash
 npm run build                                  # at the repo root, first — the page bundles dist/
-node site/tools/build.mjs                      # typecheck, generate, bundle page, bundle exhibits
+node site/tools/build.mjs                      # typecheck, generate, page, exhibits, the three games
 npx vite preview --config site/vite.config.ts  # http://localhost:5171
 ```
 
@@ -54,7 +58,8 @@ is served from `dist/x/` and only exists after a build, so the tiles are empty i
 | `tools/doc-html.mjs` | the doc comments' markdown — tables, fenced code, `{@link}` — rendered |
 | `src/meter.ts` | the one guard every live frame figure on the page is printed through |
 | `data/measured.json` | every number the page prints, each with the command that produced it |
-| `data/exhibits.json` | the gallery, as data. Adding an exhibit is one row here and nothing else |
+| `data/exhibits.json` | the gallery, as data. Adding an exhibit is one row here and nothing else; `by` on a row is the vendor whose agent built it, and it is the only thing the tile mark says |
+| `data/one-sentence.json` | the three games in `from-one-sentence/`, their verbatim prompts, and the defects left in them. Not exhibits, not in the gallery manifest, and served from `/g/<name>/` rather than `/x/<name>/` |
 | `example/hello.ts` | the worked example the page prints, typechecked on every build |
 
 **The API reference is generated from the built type declarations** — `packages/*/dist/**/*.d.ts`,
@@ -102,7 +107,7 @@ survives is what a visitor cannot see: how to install it, what it costs, what it
 | *"Nothing here is a screenshot."*, as a heading and as a claim | nowhere. Eleven worlds moving say it, and announcing that a thing is real is what an unreal thing does |
 | the **"Is this ready?"** section, and its `Ready?` nav item | `data/readiness-for-readme.md`, verbatim, **for somebody to move into the repository README** — that move is outstanding. The machine-readable `readiness`, `browsers` and `alternatives` keys are untouched in `/api.json` and `/llms.txt`, because the doctrine is about what a human is made to read |
 | the **test count** and the **public-symbol count** in the proof strip | `/api.json` and `/llms.txt` only. Nobody adopts a library for its test count; working is the assumed baseline |
-| **"Eighteen specified. Ten built."**, the named list of eight unbuilt exhibits, and **"The plugin is not built yet"** as a section's closing sentence | `data/readiness-for-readme.md`, `/llms.txt` and `/api.json`. Three separate places were telling a first-time visitor what had *not* been built, under ten worlds that were running — the same page-length apology the doctrine deleted once already, regrown. The gallery heading is **"Ten worlds, running right now."** and the plugin's status is stated **once**, factually, beside the three files that *are* shipped |
+| **"Eighteen specified. Ten built."**, the named list of eight unbuilt exhibits, and **"The plugin is not built yet"** as a section's closing sentence | nowhere: the gallery is complete, so there is nothing left to score. The heading is **"Eighteen worlds, running right now."**, `pending` in the manifest is empty and every sentence the build printed from it now prints nothing. The plugin's status is still stated **once**, factually, in `/what`, beside the three files that *are* shipped |
 | the **five-step `/lattice` flow** | `docs/SKILLS.md`, which is where it already was. It walked a build sequence no visitor can run, one section under a hero that must not imply the plugin works |
 | the **`npm i` line in the hero** | the closing band, as a tabbed terminal. The thing a person installs is the plugin; a five-package npm command is not the hero's business |
 
@@ -113,12 +118,10 @@ matters, which is that there is nothing to draw, nothing to license and no path 
 first two cells are **drawn as one claim** (`data-pair` in the markup) because `81.72 kB` alone
 invites *"so what"* and next to `0 asset files` it says *the whole game is code*.
 
-The rest is what a visitor is deciding on: what it drags in, how many of these actually run, **how
-much of it they have to write themselves** (`exampleLines`, counted off `example/hello.ts` with
-`docs/GALLERY.md`'s own line rule and asserted against `measured.json` at build time), and **what a
-frame costs** — the last cell is `live`, read off the page's own loop through `src/meter.ts`, and
-is the one figure here that is measuring the reader's machine rather than the author's. Every cell
-keeps its provenance popover.
+The rest is what a visitor is deciding on: what it drags in, how many libraries there are, and the
+two that are the product — the **skills** and the **traps written down**. No cell measures the
+reader's machine any more; every one is a stored measurement with the command that produced it, and
+each keeps its provenance popover.
 
 ## The gallery is the argument, not an exhibit of it
 
@@ -129,8 +132,16 @@ somebody would ask for that world in**, in ordinary voice with no jargon in it. 
 
 The tags scanned down the grid **are the feature list**, which is why this page never writes one —
 and every entry in it is standing over the thing it names, running. The prompt is set larger than
-the exhibit's name on purpose: a visitor is not choosing between ten exhibits, they are deciding
-whether a sentence is enough.
+the exhibit's name on purpose: a visitor is not choosing between eighteen exhibits, they are
+deciding whether a sentence is enough.
+
+**Eight tiles carry a second, quieter mark opposite the tag: `Built by Codex`, `Built by Grok`,
+`Built by Claude`.** Those eight were built from `docs/GALLERY.md` alone by agents that were not
+allowed to read another exhibit's source, and `/built` is where the method, the harness result and
+what those agents could not answer are stated. A tile with **no** mark claims nothing more than
+what is true of it: it was built in this repository with a person in the loop. If the distinction
+cannot be made accurately, it must not be made at all — which is why the unmarked tiles say
+nothing rather than carrying a second badge.
 
 **There is deliberately no prompt input box.** Bolt and Lovable both take a sentence in the hero and
 wall you at a sign-in with nothing rendered; an input that cannot produce a game is worse than no
@@ -171,10 +182,36 @@ input, and it is the exact vaporware signal this page cannot afford while the pl
   auto` is why it is a variable face rather than a static cut. Everything else on the page is IBM
   Plex and stays that way.
 
+## From one sentence, which is not the gallery
+
+`from-one-sentence/` holds three games — `before-the-bell`, `chime-path`, `evenfall-orchard` — each
+built by a different vendor's agent **in an empty directory, from one sentence, with no access to
+this repository**. They are built into `dist/g/<name>/` by step 5 of `tools/build.mjs`, from their
+own directories, so each resolves `@latticekit/*` through its own `node_modules` — which its
+lockfile pins to the **registry tarballs**, not to `packages/*`. That resolution is the artifact.
+Do not add them to the workspace and do not convert their dependencies; `from-one-sentence/README.md`
+§ *Not npm workspace members* is why.
+
+Three rules for this section, and each of them is the section:
+
+- **`/g/` and not `/x/`.** A URL a visitor can read should not call an unedited agent's game an
+  exhibit. `/x/` is the gallery and is bound by `docs/GALLERY.md`; `/g/` is a record of what one
+  sentence produced.
+- **The prompt is printed complete.** Never trimmed to fit a column. An edited prompt makes the
+  world under it worth nothing.
+- **The word *unedited* has to stay true.** Two of the three ship a real, measured defect — a
+  near-black phase, HUD text under the contrast floor — and the page names both rather than
+  choosing a kinder frame. A page that shows unedited output and says so is believed.
+
+They are `data-unmanaged` scenes: they call nothing from `examples/_shared`, so this page cannot
+reach their loops. That costs them the preload slot — they are running or a held frame of their own
+last paint, never *mounted and stopped* — and it means `?cost=0` is not sent to them, which is
+right, because none of them prints a frame figure at all. That was checked rather than assumed.
+
 ## The rules this page is built against
 
-- **Fast on a phone, and never at the expense of something on screen.** At most two exhibit loops
-  run at once, one below 900 px of viewport. A tile off screen is `loop.stop()`ed, not throttled.
+- **Fast on a phone, and never at the expense of something on screen.** At most two scene loops
+  run at once, one below 900 px of viewport, across all twenty-three live worlds on the page — the hero, eighteen tiles, three games and the ten-line example. A tile off screen is `loop.stop()`ed, not throttled.
   Both policies sort on **distance from the viewport**, and the first rule beats the budget:
   *nothing intersecting the viewport is ever evicted.* Whatever is left is spent one screen ahead.
   An evicted tile keeps its own last painted frame rather than reverting to the placeholder, so

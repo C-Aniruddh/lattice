@@ -1,0 +1,68 @@
+{
+  "$comment": "The three games in `from-one-sentence/`, as data. These are NOT exhibits and they are deliberately in their own file rather than as rows in `exhibits.json`: an exhibit is bound by docs/GALLERY.md's line rule and § Scale and was built by somebody who could read this repository, and every one of these three was built in an empty directory by an agent that could not. `sentence` is the prompt that produced the game, verbatim and complete — it is the whole claim, so it is never trimmed to fit a layout. `defect` is a real, measured blemish left in the source on purpose; a record that hides its blemishes is not a record. `size` and `packages` come from `from-one-sentence/README.md`, which is where the provenance, the verification and the reason these keep their registry dependencies are written down. `params` is a query the game's OWN code reads — Before the Bell supports `?demo`, which places two stalls and opens a gate, so the embed opens on the game being played rather than on an untouched square. It is the game's parameter, not an edit to it, and nothing here may pass a parameter a game does not already implement. `lead` is the one the page opens on.",
+  "$source": "from-one-sentence/README.md",
+  "games": [
+    {
+      "dir": "before-the-bell",
+      "name": "Before the Bell",
+      "agent": "Grok",
+      "lead": true,
+      "port": 5212,
+      "sentence": "a game where you place stalls and open gates to pull the crowd to your bakery before the market closes",
+      "size": "1,482 lines over 9 modules",
+      "packages": [
+        "audio",
+        "core",
+        "draw",
+        "input",
+        "iso",
+        "loop",
+        "ui"
+      ],
+      "defect": "",
+      "params": "demo=1"
+    },
+    {
+      "dir": "chime-path",
+      "name": "Chime Path",
+      "agent": "Claude",
+      "lead": false,
+      "port": 5210,
+      "sentence": "a game where you hang chimes along a mountain path and tune each one, so the wind plays them in order as walkers pass",
+      "size": "1,341 lines over 6 modules",
+      "packages": [
+        "audio",
+        "core",
+        "draw",
+        "input",
+        "iso",
+        "loop",
+        "persist",
+        "ui"
+      ],
+      "defect": "five HUD nodes ship under the contrast floor, and the agent that drove a browser still missed them",
+      "params": ""
+    },
+    {
+      "dir": "evenfall-orchard",
+      "name": "Evenfall Orchard",
+      "agent": "Codex",
+      "lead": false,
+      "port": 5211,
+      "sentence": "a game where you plant an orchard and each evening choose to harvest or let it grow, and it keeps growing while the tab is closed",
+      "size": "73 lines in one module",
+      "packages": [
+        "core",
+        "draw",
+        "input",
+        "iso",
+        "loop",
+        "persist",
+        "sim",
+        "ui"
+      ],
+      "defect": "one phase of its day is 84% one near-black color, which its author never saw",
+      "params": ""
+    }
+  ]
+}

@@ -58,6 +58,79 @@ const adapters = [];
  */
 const TIER_B_MODULES = new Set(['math', 'vec2']);
 
+/**
+ * Every `Math` function ECMA-262 leaves *implementation-approximated*.
+ *
+ * The list is the spec's, not a taste: each of these is defined as "an implementation-
+ * approximated Number value", so two conforming engines may differ in the last bit. The five
+ * that were missing until L7 — `expm1`, `log1p`, `asinh`, `acosh`, `atanh` — have exactly the
+ * same standing as `pow`, and were absent for no reason other than that nobody had used one
+ * yet. A list that only names the functions already in the codebase is not a rule; it is a
+ * record of the past.
+ */
+const TIER_B_MATH =
+  'sin|cos|tan|asin|acos|atan|atan2|pow|exp|expm1|log|log1p|log2|log10|cbrt|hypot|sinh|cosh|tanh|asinh|acosh|atanh';
+
+/**
+ * A Tier B site, in either of the two forms the language offers.
+ *
+ * **`a ** b` is `Number::exponentiate`**, and ECMA-262 gives it the identical treatment it
+ * gives `Math.pow`: implementation-approximated, and free to disagree in the last bit. For as
+ * long as this rule was a regex over `Math.*` alone, the operator form was invisible to it —
+ * so a site could be spelled two ways, one of which the constitution's own enforcement could
+ * not see. That is worse than an unenforced rule, because a clean run reads as evidence.
+ *
+ * The lookarounds keep `/**`, `**​/` and `***` out of it. Comments and string literals are
+ * already blanked by `strip`, so what reaches here is code; the lookarounds are for the
+ * doc-comment delimiters that survive a *partial* strip and cost nothing to exclude.
+ *
+ * **No exemption for `2 ** 32`-style constant folding, deliberately.** The tempting carve-out
+ * is "both operands are integer literals, so the result is exact" — but the spec grants no
+ * such case, and this kit's whole Tier A/Tier B split is an argument from what the spec
+ * *promises* rather than from what V8 currently *does*. The house has already answered this
+ * question once, in `audio/src/sounds.ts`: the semitone ratio is "a literal and not
+ * `Math.pow(2, 1 / 12)` because `pow` is Tier B". `core` does the same with
+ * `const TWO_32 = 4294967296`. Writing the number is the fix, and it costs nothing.
+ */
+const TIER_B_SITE = new RegExp(String.raw`\b(Math\.(?:${TIER_B_MATH}))\b|(?<![*/])(\*\*=?)(?![*/])`);
+
+/**
+ * The rule that checks the rule.
+ *
+ * L7 was not a bug in the linter's *logic*; it was a pattern that had quietly stopped
+ * covering the thing it was named after, and nothing anywhere could notice — a clean lint run
+ * looked exactly the same before and after the hole opened. So the pattern is pinned here,
+ * against the spellings that must match and the ones that must not, and the linter refuses to
+ * run at all if it has been narrowed. Two microseconds on every `npm run verify`, in exchange
+ * for the class of defect where enforcement silently stops enforcing.
+ */
+const TIER_B_FIXTURES = [
+  ['const y = Math.pow(b, k);', true],
+  ['const y = b ** k;', true],
+  ['total **= growth;', true],
+  ['const y = Math.expm1(x);', true],
+  ['const y = Math.log1p(x);', true],
+  ['const y = Math.atanh(x);', true],
+  ['const y = Math.asinh(x) + Math.acosh(x);', true],
+  ['const scale = 2 ** 32;', true],
+  ['const d = Math.sqrt(x * x + y * y);', false],
+  ['const d = Math.imul(a, b) >>> 0;', false],
+  ['const n = a * b - c / d;', false],
+  ['/**', false],
+  [' */', false],
+  ['/** doc */', false],
+];
+for (const [source, expected] of TIER_B_FIXTURES) {
+  if (TIER_B_SITE.test(source) !== expected) {
+    console.error(
+      `lint: the Tier B pattern no longer ${expected ? 'matches' : 'ignores'} \`${source}\` — ` +
+        'a determinism rule that cannot see a determinism site is worse than no rule, because ' +
+        'the clean run reads as evidence. Fix TIER_B_SITE before fixing anything else.',
+    );
+    process.exit(1);
+  }
+}
+
 /** Every `.ts` file under a directory, sorted so output is stable across machines. */
 function walk(dir) {
   const out = [];
@@ -239,8 +312,13 @@ for (const [id] of Object.entries(kit.packages)) {
       //    around that. They are required to *declare themselves*: mark the site `@tier-b`
       //    and the result becomes greppable, so an auditor can ask of every one of them
       //    whether it ever reaches a save file.
-      const transcendental = line.match(/\bMath\.(sin|cos|tan|asin|acos|atan|atan2|pow|exp|log|log2|log10|cbrt|hypot|sinh|cosh|tanh)\b/);
+      //
+      //    Both spellings count. `a ** b` is `Number::exponentiate` and is approximated by
+      //    exactly the same clause as `Math.pow`; see TIER_B_SITE for why there is no
+      //    exemption for constant folding, and TIER_B_FIXTURES for what pins the pattern.
+      const transcendental = line.match(TIER_B_SITE);
       if (transcendental) {
+        const site = transcendental[1] ?? '`**` (Number::exponentiate)';
         //    In `core`, the escape hatch is narrower still. Layer 0 is what every other
         //    package's determinism rests on, so a Tier B site here is not merely declared —
         //    it is enumerated. Two modules may hold one, and the rest of the package may
@@ -248,9 +326,9 @@ for (const [id] of Object.entries(kit.packages)) {
         const enumerated = id === 'core' && !TIER_B_MODULES.has(basename(file, '.ts'));
         const window = rawLines.slice(Math.max(0, n - 4), n + 1).join('\n');
         if (enumerated) {
-          fail(rel, at, 'determinism', `Math.${transcendental[1]} in @latticekit/core outside ${[...TIER_B_MODULES].join('/')} — layer 0 is what every other package's determinism rests on, and its Tier B sites are enumerated rather than self-declared`);
+          fail(rel, at, 'determinism', `${site} in @latticekit/core outside ${[...TIER_B_MODULES].join('/')} — layer 0 is what every other package's determinism rests on, and its Tier B sites are enumerated rather than self-declared`);
         } else if (!window.includes('@tier-b')) {
-          fail(rel, at, 'determinism', `Math.${transcendental[1]} is not correctly rounded by spec — mark the site \`@tier-b\` (presentation only, never hashed or persisted) or use Tier A arithmetic`);
+          fail(rel, at, 'determinism', `${site} is not correctly rounded by spec — mark the site \`@tier-b\` (presentation only, never hashed or persisted) or use Tier A arithmetic`);
         }
       }
 

@@ -227,7 +227,16 @@ describe('fbm2', () => {
     }
   });
 
-  it('stays within [-1, 1] at every octave count and gain — invariant 16', () => {
+  // Twelve octave/gain pairs at 200,000 samples each is 2.4 million `fbm2` calls, and at eight
+  // octaves each call is eight `noise2`. That is the work this invariant is worth — a bound you
+  // sample lightly is a bound you have not tested — but it takes several seconds, and vitest's
+  // default timeout is five. Alone it passes; under a full-suite run sharing cores with ninety-nine
+  // other files it does not, so the suite failed on machine load rather than on the code.
+  //
+  // The timeout is therefore stated rather than inherited. Reducing the sample count would have
+  // made it green by making it weaker, which is how the heap test in `sim` came to pass with a
+  // real regression in it.
+  it('stays within [-1, 1] at every octave count and gain — invariant 16', { timeout: 60_000 }, () => {
     for (const octaves of [1, 2, 4, 8]) {
       for (const gain of [0.1, 0.5, 0.9]) {
         const rng = createRng(`fbm-${octaves}-${gain}`);

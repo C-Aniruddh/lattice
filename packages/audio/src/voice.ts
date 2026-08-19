@@ -78,9 +78,15 @@ export function createVoiceRequest(): VoiceRequest {
  * `@tier-b` — this is `pow` by another name, and ECMA-262 does not require it to be correctly
  * rounded, so two engines may disagree in the last bit. That is fine here and only here:
  * a frequency is a pixel, never a hash and never a save. Nothing in this package writes a
- * pitch to storage, and the deck's determinism rests on `hash3` over integers, not on this.
+ * pitch to storage — the only thing `audio` persists is `MixerState`, which is gains and
+ * mutes — and the deck's determinism rests on `hash3` over integers, not on this.
+ *
+ * The marker is repeated at the call site below rather than left here alone, because the
+ * linter reads a five-line window above the site and this paragraph sits outside it. A
+ * declaration a machine cannot see is a comment, not a declaration.
  */
 export function detuned(hz: number, semitones: number): number {
+  // @tier-b: `**` is Number::exponentiate — presentation only, never hashed or persisted.
   return semitones === 0 ? hz : hz * SEMITONE ** semitones;
 }
 

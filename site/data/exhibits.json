@@ -1,5 +1,5 @@
 {
-  "$comment": "The gallery, as data. `tag` is the capability the exhibit is the proof of, and `prompt` is the one sentence that would ask for the world above it — ordinary user voice, no jargon, because the gallery is the page's argument that a sentence is enough. Every `caption` is the exhibit's OWN panel subtitle, verbatim, and every `fact` is a number the exhibit itself measured and printed — file and line in `factFrom`. Adding an exhibit is a row here and nothing else. `docs/GALLERY.md` specifies eighteen rows; ten are built. The eight that are not are named in `site/data/readiness-for-readme.md` rather than on the page.",
+  "$comment": "The gallery, as data. `tag` is the capability the exhibit is the proof of, and `prompt` is the one sentence that would ask for the world above it — ordinary user voice, no jargon, because the gallery is the page's argument that a sentence is enough. Every `caption` is the exhibit's OWN panel subtitle, verbatim, and every `fact` is a number the exhibit itself measured and printed — file and line in `factFrom`. `by` is the vendor whose agent built that exhibit from `docs/GALLERY.md` alone, and it is the only thing the tile mark says; a row with no `by` was built inside this repository with a person in the loop, and the /built section is where that distinction is stated rather than implied. Adding an exhibit is a row here and nothing else. `docs/GALLERY.md` specifies eighteen exhibits and one hero; all nineteen are built, and `pending` is empty rather than deleted so the build still has a shape to print if the list ever grows again.",
   "hero": {
     "dir": "demo",
     "name": "Lamp Road",
@@ -91,17 +91,67 @@
       "tileParams": ""
     },
     {
-      "dir": "terraces",
-      "name": "Terraces",
-      "seed": "contour",
-      "tag": "ELEVATION PICKING",
-      "prompt": "stepped terraces on a hillside where I can click on any level and hit the one I meant",
-      "caption": "Elevation, and why a tap needs the terrain.",
-      "idea": "On ground with height the obvious screen-to-tile conversion is wrong, and it is wrong by more the higher you climb.",
-      "fact": "the naive pick misses by 1,400 px at the ridge",
-      "factFrom": "examples/terraces/README.md:41",
+      "dir": "harbor",
+      "name": "Harbor",
+      "seed": "harbor",
+      "by": "Codex",
+      "tag": "DEPTH SORTING",
+      "prompt": "a harbor at dusk with tall masts and cranes, and a long jetty out over the water",
+      "caption": "Tall thin objects, one depth order.",
+      "idea": "A mast is a twentieth of a tile wide and twelve storeys high, and only its base says where it belongs. One DepthSorter holds every hull, crane and the ninety-two-tile jetty.",
+      "fact": "197 objects, one depth order",
+      "factFrom": "examples/harbor/README.md:92",
       "leans": [
-        "iso.height"
+        "iso.depth"
+      ],
+      "packages": [
+        "core",
+        "iso",
+        "draw",
+        "loop",
+        "input",
+        "ui"
+      ],
+      "tileParams": ""
+    },
+    {
+      "dir": "wayfinding",
+      "name": "Wayfinding",
+      "seed": "concourse",
+      "by": "Codex",
+      "tag": "FLOW FIELD",
+      "prompt": "a crowded hall where I can close a gate and watch everyone find another way round",
+      "caption": "One field, six hundred and forty readers, one rebuild.",
+      "idea": "There is no per-walker path. Closing a crossing rebuilds one field, and every walker's next read returns a different answer — so a map change costs the same whatever the crowd is.",
+      "fact": "640 walkers, one rebuild",
+      "factFrom": "examples/wayfinding/src/main.ts:207",
+      "leans": [
+        "iso.path"
+      ],
+      "packages": [
+        "core",
+        "iso",
+        "draw",
+        "loop",
+        "input",
+        "ui"
+      ],
+      "tileParams": ""
+    },
+    {
+      "dir": "builder",
+      "name": "Builder",
+      "seed": "731",
+      "by": "Codex",
+      "tag": "PLACEMENT",
+      "prompt": "a yard where I drop a workshop down and it tells me when it will not fit",
+      "caption": "Footprints, a ghost, validity, and the tap-to-tile seam.",
+      "idea": "One predicate between the pixel a finger landed on and the six tiles it would occupy. The ghost, the color under it and the refusal are all that same boolean.",
+      "fact": "1,444 yard tiles, 66 obstacles",
+      "factFrom": "examples/builder/README.md:84",
+      "leans": [
+        "iso",
+        "input"
       ],
       "packages": [
         "core",
@@ -135,6 +185,105 @@
         "ui"
       ],
       "tileParams": "lightScale=0.3"
+    },
+    {
+      "dir": "orbit",
+      "name": "Orbit",
+      "seed": "polaris-7",
+      "by": "Codex",
+      "tag": "NO GROUND",
+      "prompt": "stations turning in space with stars behind them and no ground anywhere",
+      "caption": "No ground at all — platforms, stars, a cold palette.",
+      "idea": "No TileGrid, no terrain pass and no height field. Every platform's angle is a closed-form function of t, and three star bands carry the depth the ground usually would.",
+      "fact": "214 sorted objects, no ground",
+      "factFrom": "examples/orbit/README.md:94",
+      "leans": [
+        "draw.palette"
+      ],
+      "packages": [
+        "core",
+        "iso",
+        "draw",
+        "loop",
+        "input",
+        "ui"
+      ],
+      "tileParams": ""
+    },
+    {
+      "dir": "replay",
+      "name": "Replay",
+      "seed": "20250818",
+      "by": "Claude",
+      "tag": "SEEDED REPLAY",
+      "prompt": "a marsh I can record, wind back, and prove came out the same",
+      "caption": "Tap the marsh to seed a bloom. Then scrub the tape: every frame is recomputed from the seed and the log, never remembered.",
+      "idea": "The bar re-runs from tick zero on every pointer move, checks each checkpoint as it passes, and can come back red — a check that cannot fail proves nothing.",
+      "fact": "1,081 ticks re-run in 1.5 ms",
+      "factFrom": "examples/replay/README.md:179",
+      "leans": [
+        "loop",
+        "persist",
+        "input"
+      ],
+      "packages": [
+        "core",
+        "iso",
+        "draw",
+        "loop",
+        "input",
+        "persist",
+        "ui"
+      ],
+      "tileParams": ""
+    },
+    {
+      "dir": "terraces",
+      "name": "Terraces",
+      "seed": "contour",
+      "tag": "ELEVATION PICKING",
+      "prompt": "stepped terraces on a hillside where I can click on any level and hit the one I meant",
+      "caption": "Elevation, and why a tap needs the terrain.",
+      "idea": "On ground with height the obvious screen-to-tile conversion is wrong, and it is wrong by more the higher you climb.",
+      "fact": "the naive pick misses by 1,400 px at the ridge",
+      "factFrom": "examples/terraces/README.md:41",
+      "leans": [
+        "iso.height"
+      ],
+      "packages": [
+        "core",
+        "iso",
+        "draw",
+        "loop",
+        "input",
+        "ui"
+      ],
+      "tileParams": ""
+    },
+    {
+      "dir": "instrument",
+      "name": "Instrument",
+      "seed": "overtone",
+      "by": "Grok",
+      "tag": "SYNTHESIS, DRAWN",
+      "prompt": "a hall of pipes I can play, where I can see the sound being made",
+      "caption": "Sound with no files.",
+      "idea": "The ribbon in the air is Audio.onScheduled — what the synthesizer was asked to make, drawn before it is audible. An analyser would draw the speaker instead.",
+      "fact": "60 recipes, 0 bytes of audio",
+      "factFrom": "examples/instrument/README.md:37",
+      "leans": [
+        "audio"
+      ],
+      "packages": [
+        "core",
+        "iso",
+        "draw",
+        "loop",
+        "input",
+        "audio",
+        "ui"
+      ],
+      "tileParams": ""
     },
     {
       "dir": "endless",
@@ -185,18 +334,18 @@
       "tileParams": ""
     },
     {
-      "dir": "resonance",
-      "name": "Resonance",
-      "seed": "hollow",
-      "tag": "SYNTHESIZED SOUND",
-      "prompt": "a puzzle in a ruin where every gate hums a chord and I answer it by ear",
-      "caption": "Answer the chord.",
-      "idea": "A puzzle you solve by ear. Every gate hums a chord; you carry six tuned strings and no audio files exist.",
-      "fact": "6 ms attack on a struck string",
-      "factFrom": "examples/resonance/README.md:29",
+      "dir": "idle",
+      "name": "Idle",
+      "seed": "foundry",
+      "by": "Grok",
+      "tag": "IDLE ECONOMY",
+      "prompt": "a little brick works that keeps earning while I am away",
+      "caption": "Fourteen hours, one step.",
+      "idea": "The price of the next kiln is b·r^k evaluated rather than accumulated, so buy-max is arithmetic; a fourteen-hour absence is one advanceOver between two frames.",
+      "fact": "28,285 s credited in one step",
+      "factFrom": "examples/idle/README.md:98",
       "leans": [
-        "audio",
-        "draw.light"
+        "sim"
       ],
       "packages": [
         "core",
@@ -204,10 +353,10 @@
         "draw",
         "loop",
         "input",
-        "audio",
+        "sim",
         "ui"
       ],
-      "tileParams": "lightScale=0.3"
+      "tileParams": ""
     },
     {
       "dir": "city",
@@ -231,6 +380,56 @@
         "ui"
       ],
       "tileParams": "lightScale=0.35"
+    },
+    {
+      "dir": "migration",
+      "name": "Migration",
+      "seed": "archive",
+      "by": "Claude",
+      "tag": "SAVE MIGRATION",
+      "prompt": "an old save file opened by five newer versions of the same game",
+      "caption": "A v1 save opened by a v5 build, one rung at a time.",
+      "idea": "Four migrations declared once, and five sealed builds fall out of the same chain. A crate that a build refuses topples back over the rung it failed, named.",
+      "fact": "750 saves on the ladder",
+      "factFrom": "examples/migration/README.md:114",
+      "leans": [
+        "persist"
+      ],
+      "packages": [
+        "core",
+        "iso",
+        "draw",
+        "loop",
+        "input",
+        "persist",
+        "ui"
+      ],
+      "tileParams": ""
+    },
+    {
+      "dir": "resonance",
+      "name": "Resonance",
+      "seed": "hollow",
+      "tag": "SYNTHESIZED SOUND",
+      "prompt": "a puzzle in a ruin where every gate hums a chord and I answer it by ear",
+      "caption": "Answer the chord.",
+      "idea": "A puzzle you solve by ear. Every gate hums a chord; you carry six tuned strings and no audio files exist.",
+      "fact": "6 ms attack on a struck string",
+      "factFrom": "examples/resonance/README.md:29",
+      "leans": [
+        "audio",
+        "draw.light"
+      ],
+      "packages": [
+        "core",
+        "iso",
+        "draw",
+        "loop",
+        "input",
+        "audio",
+        "ui"
+      ],
+      "tileParams": "lightScale=0.3"
     },
     {
       "dir": "errand",
@@ -259,39 +458,7 @@
       "tileParams": ""
     }
   ],
-  "pending": [
-    {
-      "name": "Harbor",
-      "idea": "tall thin objects and depth sorting — masts, cranes, a jetty over water"
-    },
-    {
-      "name": "Orbit",
-      "idea": "no ground at all: platforms, stars, a cold palette"
-    },
-    {
-      "name": "Wayfinding",
-      "idea": "a flow field re-routing a moving crowd the instant the map changes"
-    },
-    {
-      "name": "Builder",
-      "idea": "placement: footprints, a ghost, validity, and the tap-to-tile seam"
-    },
-    {
-      "name": "Idle",
-      "idea": "cost curves and buy-max in closed form, then fourteen hours of offline in one frame"
-    },
-    {
-      "name": "Replay",
-      "idea": "record, scrub, and prove it: the same seed and log land on the same pixel"
-    },
-    {
-      "name": "Migration",
-      "idea": "a v1 save opened by a v5 build, stepping the chain in front of you"
-    },
-    {
-      "name": "Instrument",
-      "idea": "sound with no files — a board that shows the synthesis as it plays"
-    }
-  ],
-  "$order": "Heavy and light alternate down the grid on purpose. Two columns means two tiles run at once, and Crowd (900 walkers) beside Clay (10,247 draw calls over a live height field) was measured at a 23.3 ms worst gap where the same pair split across rows is 20.2 ms. The gallery's running budget is a layout decision, not only a code one."
+  "pending": [],
+  "$order": "Heavy and light alternate down the grid on purpose. Two columns means two tiles run at once, and Crowd (900 walkers) beside Clay (10,247 draw calls over a live height field) was measured at a 23.3 ms worst gap where the same pair split across rows is 20.2 ms. The gallery running budget is a layout decision, not only a code one. The eight agent-built rows are interleaved rather than appended for the same reason, and for one more: eight of them in a block at the foot of the grid would be a second gallery, and they are not — they are exhibits, held to the same standard, standing beside the others.",
+  "$updated": "2026-08-18"
 }

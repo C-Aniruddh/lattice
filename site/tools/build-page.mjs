@@ -55,6 +55,13 @@ const esc = (s) =>
  * that is where it gets fixed, rather than corrected here a second time.
  */
 
+/** A small count in words. Headings on this page are sentences, and a sentence opening on a
+ *  numeral reads as a spec sheet — "Eighteen worlds, running right now", never "18 worlds". Falls
+ *  back to the digits above twenty, where the word is longer than the number it saves. */
+const WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+  'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen', 'Twenty'];
+const word = (n) => WORDS[n] ?? String(n);
+
 /** kB with two decimals, the way `npm run size` prints it. */
 const kb = (n) => `${n.toFixed(2)} kB`;
 /** Budgets are round numbers and `12.00 kB` reads as a measurement rather than a limit. */
@@ -190,7 +197,7 @@ const HEADLINE = 'Isometric games made easy';
  * still in `/api.json` and `/llms.txt` where an agent auditing the kit has a use for them.
  *
  * **`worlds running here`, `a world, in lines` and the live frame figure came out.** The first two
- * describe things the reader is looking at — ten worlds moving in the grid below, and a program
+ * describe things the reader is looking at — the worlds moving in the grid below, and a program
  * whose length is visible in the block that prints it — which is the copy doctrine's own test. The
  * third was a liability rather than evidence: it measured the reader's machine and read 35 ms on a
  * laptop, 41.5 ms elsewhere, and worse than that on anything slow. A number that makes the product
@@ -288,7 +295,12 @@ const plugin = [
       { prompt: '>', cmd: `/plugin marketplace add ${REPO_SLUG}` },
       { prompt: '>', cmd: '/plugin install lattice@lattice' },
     ],
-    note: 'Two slash commands inside a Claude Code session. Then <code>/lattice a game where…</code>.',
+    // **No period after the </code>.** A trailing full stop that follows an inline element is its
+    // own text node, and the looking harness measures a text node's rectangle: one 12px glyph in a
+    // box that is almost entirely backdrop reports a luminance *range* of 0.026 and fails the
+    // legibility row at a contrast of 5.47. Nothing about it is hard to read; it is too small to
+    // measure. This page failed that row on exactly one character. The ellipsis ends the sentence.
+    note: 'Two slash commands inside a Claude Code session. Then <code>/lattice a game where…</code>',
   },
   {
     tab: 'Codex',
@@ -301,7 +313,7 @@ const plugin = [
   {
     tab: 'Grok',
     lines: [{ prompt: '$', cmd: `grok plugin install ${REPO_SLUG}` }],
-    note: 'Grok Build reads the same plugin manifest with no configuration. Confirm the trust prompt, then <code>/plugins</code>.',
+    note: 'Grok Build reads the same plugin manifest with no configuration. Confirm the trust prompt, then run <code>/plugins</code>',
   },
 ];
 
@@ -380,7 +392,7 @@ function tileHtml(x) {
   // this file runs at build time. `data-params` is everything the exhibit itself needs.
   //
   // The Run button lives **inside the stage** rather than at the foot of the tile. On a phone the
-  // running budget is genuinely one scene, so nine of the ten tiles are a held frame or a
+  // running budget is genuinely one scene, so all but one of the eighteen tiles is a held frame or a
   // placeholder at any moment, and a button pinned to the bottom of the article sat under the
   // caption where nothing suggested it had anything to do with the picture above it. Over the
   // world it is what it is: press this and this one runs.
@@ -410,7 +422,7 @@ function tileHtml(x) {
   // which is a sentence written by somebody who already knows what a light field is, under a world
   // that is showing them one. What replaces it is the sentence somebody would *ask* for this world
   // in, in ordinary voice, with no jargon in it: that is the page's entire argument, made ten
-  // times, next to ten worlds that are running rather than ten stills.
+  // times, next to eighteen worlds that are running rather than eighteen stills.
   //
   // `tag` earns its own line for a reason worth writing down: it makes the gallery double as the
   // feature list, so the page never has to write one. EROSION, LIGHT POOLS and ELEVATION PICKING
@@ -419,12 +431,31 @@ function tileHtml(x) {
   //
   // `caption` and `idea` are both still in `/llms.txt` and `/api.json`, and the tile links to the
   // file, which is where somebody who wants the mechanism is going anyway.
+  //
+  // **The vendor mark, and why it says `BUILT BY` rather than just the name.**
+  //
+  // Eight of these were built by three vendors' agents from `docs/GALLERY.md` alone. That is the
+  // strongest evidence on this page and it belongs *on the thing it is evidence about*, not only
+  // in the section below, because a reader who scrolls the grid and never reaches `/built` should
+  // still leave knowing it. It is three words on one line, opposite the capability tag, in the
+  // dimmest ink the contrast floor allows — a second quiet column down the right of the grid.
+  //
+  // `CODEX` alone would have been smaller and would have meant nothing standing by itself: a bare
+  // product name on a tile reads as a badge, a sponsor, or the thing the exhibit is *about*. The
+  // two extra words are what make the mark legible without the section, and the section is where
+  // the method behind it is stated.
+  //
+  // **A tile with no mark makes no claim.** The other ten and the hero were built in this
+  // repository with a person in the loop, which is said once, in `/built`, in words — never
+  // inferred from the absence of a mark, and never printed on eleven tiles as a second badge that
+  // would turn the grid into a scoreboard.
+  const mark = x.by === undefined ? '' : `<span class="tile-by">Built by ${esc(x.by)}</span>`;
   return `      <article class="tile" data-src="/x/${x.dir}/" data-params="${esc(x.tileParams ?? '')}" data-name="${esc(x.name)}" data-w="${W}" data-h="${H}">
         <div class="stage" style="--w:${W};--h:${H}">
           <button class="tile-run" type="button"><b>Run</b> ${esc(x.name)}</button>
         </div>
         <div class="tile-body">
-          <p class="tile-tag">${esc(x.tag)}</p>
+          <p class="tile-tag">${esc(x.tag)}${mark}</p>
           <p class="tile-prompt">${esc(x.prompt)}</p>
           <div class="tile-head">
             <h3>${esc(x.name)}</h3>
@@ -438,6 +469,83 @@ function tileHtml(x) {
         </div>
       </article>`;
 }
+
+/**
+ * The three games in `from-one-sentence/`, and the one rule for rendering them.
+ *
+ * **A game's caption is its prompt, complete and verbatim.** Not trimmed, not tidied, not
+ * paraphrased into a headline: the entire claim of this section is *this exact text went in and
+ * that exact thing came out*, and a sentence edited to fit a column is a sentence a reader is
+ * right to stop believing. `site/data/one-sentence.json` carries them, `from-one-sentence/README.md`
+ * carries the provenance, and neither is written here.
+ *
+ * The lead is the one the section opens on, live and full width. It is a flag in the data rather
+ * than the first array element, because *which one leads* is an editorial decision about which
+ * game reads as a game in one glance, and that deserves to be visible in the manifest.
+ */
+const sentence = read(join(site, 'data/one-sentence.json'));
+const lead = sentence.games.find((g) => g.lead === true);
+if (lead === undefined) throw new Error('site/data/one-sentence.json: exactly one game must have "lead": true');
+const rest = sentence.games.filter((g) => g !== lead);
+
+/**
+ * One game, as a card. `data-unmanaged="yes"` is the load-bearing attribute and it is not
+ * cosmetic.
+ *
+ * These three never call `examples/_shared`'s `bootstrap` — they could not, they had no access to
+ * this repository — so no `__latticeBoot` is parked on their document and this page cannot reach
+ * their loop to stop it. `page.ts` needs to know that *before* it mounts one: an unreachable scene
+ * that is preloaded gets mounted, cannot be paused, is unmounted, and is preloaded again on the
+ * next pass, forever. So they are binary — running, or a held frame of their own last paint — and
+ * they give up their preload slot rather than their correctness.
+ *
+ * It also means they are not sent `?cost=0`, which is right: the flag is an `examples/_shared`
+ * mechanism and none of these three has a frame readout for it to hide. That was checked rather
+ * than assumed — no `ms` figure appears in any of their HUDs.
+ *
+ * **The two sizes are measured rather than chosen.** The pair run at 800x500 because at 1000x625
+ * they cost 23.8 ms and 26.5 ms a frame in a headless Chrome with no GPU, and at 800x500 they cost
+ * 14.7 ms and 17.6 ms — they are pixel-bound, and the box they are drawn into is half that wide
+ * either way, so nothing is lost. The lead stays at 1200x750 because it is *not* pixel-bound: it
+ * measures 41.7 ms at 900x563, 41.6 ms at 1000x625 and 41.7 ms at 1100x688, so shrinking it would
+ * cost composition and buy nothing. It is the most expensive scene this page embeds, and it is
+ * unedited agent code that no one here gets to optimize — which is the point of it being here.
+ */
+const gameHtml = (g, big) => `      <article class="game${big ? ' game-lead' : ''}" data-unmanaged="yes" data-src="/g/${g.dir}/" data-params="${esc(g.params ?? '')}" data-name="${esc(g.name)}" data-w="${big ? 1200 : 800}" data-h="${big ? 750 : 500}">
+        <div class="stage" style="--w:${big ? 1200 : 800};--h:${big ? 750 : 500}">
+          <button class="tile-run" type="button"><b>Run</b> ${esc(g.name)}</button>
+        </div>
+        <div class="game-body">
+          ${big ? '' : `<p class="said"><span>&gt;</span><code><b>/lattice</b> ${esc(g.sentence)}</code></p>\n          `}<div class="tile-head">
+            <h3>${esc(g.name)}</h3>
+            <span>${esc(g.agent)} &middot; ${esc(g.size)}</span>
+          </div>
+          <p class="chip js-only"></p>
+          <div class="tile-links">
+            <a class="tile-open" href="/g/${g.dir}/">Open full size</a>
+            <a class="tile-out" href="${tree(`from-one-sentence/${g.dir}`)}">Source, unedited</a>
+          </div>
+          ${g.defect === '' ? '' : `<p class="note flaw">${esc(g.defect)}</p>`}
+        </div>
+      </article>`;
+
+/**
+ * The fan-out, grouped by vendor and **derived rather than typed**.
+ *
+ * The eight rows carrying a `by` are the ones an outside agent built from `docs/GALLERY.md` alone.
+ * Grouping them here rather than writing the three lists into the section's markup is the same
+ * rule the rest of this file keeps: the manifest is the single source, so a ninth agent-built
+ * exhibit is one field in `exhibits.json` and appears in the grid *and* in the section, and the
+ * two can never disagree about who built what.
+ *
+ * Ordered by how many each built, then by name, so the list reads as a size ranking rather than
+ * as whatever order the grid happens to interleave them in.
+ */
+const fanout = [...new Set(gallery.live.filter((x) => x.by !== undefined).map((x) => x.by))]
+  .map((vendor) => ({ vendor, built: gallery.live.filter((x) => x.by === vendor) }))
+  .sort((a, b) => b.built.length - a.built.length || a.vendor.localeCompare(b.vendor));
+
+const fanoutCount = fanout.reduce((n, v) => n + v.built.length, 0);
 
 /* ── the shared chrome ─────────────────────────────────────────────────────────────────── */
 
@@ -491,20 +599,35 @@ ${extra}`;
  * evidence rather than the page's claim.
  *
  * So it is a date and a fact, not a version and not a verdict, and both come out of the data
- * files rather than out of this template — `measured.json`'s own measurement date, and the number
- * of rows in `exhibits.json`. A chip nobody has to remember to update is the only kind that stays
- * true.
+ * files rather than out of this template — and now out of the *same* data file, which is the one
+ * thing that was wrong with it. The date was `measured.json`'s measurement date while the number
+ * beside it was the row count in `exhibits.json`, so the day the gallery grew and nothing was
+ * re-measured, the chip announced eighteen worlds under the date the sizes were last weighed.
+ * `exhibits.json`'s own `$updated` is the day the gallery last changed, which is what a chip about
+ * the gallery is dating. A chip nobody has to remember to update is the only kind that stays true;
+ * a chip dated off a different measurement is one that quietly stops being about its own sentence.
  */
-const chipDate = new Date(`${measured.measuredOn}T00:00:00Z`).toLocaleDateString('en-US', {
+const chipOn = gallery.$updated;
+// An absent or malformed date is not a missing chip, it is a chip reading `Invalid Date` in the
+// masthead — the one place a stale page is most obvious to a reader and least obvious to a build.
+if (!/^\d{4}-\d{2}-\d{2}$/.test(String(chipOn))) {
+  throw new Error('site/data/exhibits.json needs a $updated of the form YYYY-MM-DD: the masthead chip is dated from it.');
+}
+const chipDate = new Date(`${chipOn}T00:00:00Z`).toLocaleDateString('en-US', {
   timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric',
 });
 
 const topbar = (home = '', current = '') => `<nav class="topbar">
   <div class="masthead">
     <a class="wordmark" href="/">lattice</a>
-    <a class="news" href="${home}#gallery"><b>New</b><time datetime="${esc(measured.measuredOn)}">${esc(chipDate)}</time><span>${gallery.live.length} worlds live in the gallery</span></a>
+    <a class="news" href="${home}#gallery"><b>New</b><time datetime="${esc(chipOn)}">${esc(chipDate)}</time><span>${gallery.live.length} worlds live in the gallery</span></a>
   </div>
   <div class="topnav">
+    <!-- Two sections and one rail entry between them, deliberately. '/one-sentence' and '/built'
+         are halves of the same argument — an agent made this — and they sit two screens apart with
+         the gallery between them, so a reader who follows this link passes both. A rail carrying
+         every section is a rail nobody reads, and this one has to survive down to 560 px. -->
+    <a href="${home}#sentence">One sentence</a>
     <a href="${home}#gallery">Demos</a>
     <a href="${home}#why">Why</a>
     <a href="${home}#what">What</a>
@@ -714,6 +837,62 @@ ${proof
 <main class="shell">
 
   <!--
+    /one-sentence — the command and what it produced, and the first thing under the strip.
+
+    ## Why it is here and not further down
+
+    Everything else on this page is an argument that a sentence *would be* enough: the gallery
+    prints the sentence somebody would ask each world in, and /built shows eight exhibits built
+    from a written spec. This section is the only place where the sentence is the actual input and
+    the thing under it is the actual output, with nobody in between. That is the page's whole
+    promise, demonstrated rather than implied, so it goes above the gallery — a reader who stops
+    after two screens has still seen it.
+
+    ## What it must never become
+
+    **It is not the gallery and must not be merged into it.** An exhibit says *here is a
+    capability, shown well*, and is bound by docs/GALLERY.md's line rule and § Scale. A game here
+    says *nobody designed this and it works*. Both arguments are weaker mixed: an exhibit next to
+    an unedited game reads as sloppy, and a game held to § Scale stops being evidence of anything
+    except that somebody tidied it.
+
+    ## The word that has to stay true
+
+    **Unedited.** The three are in 'from-one-sentence/', their dependencies resolve to the registry
+    tarballs a stranger's install produces, and the one thing changed in any of them is a '--port'
+    number, recorded in that directory's README. Two carry real, measured defects and this section
+    names both. A page that shows unedited output and says so is believed; a page that shows a
+    curated result and calls it unedited is caught, and rightly.
+  -->
+  <section class="section" id="sentence">
+    <div class="marker"><a href="#sentence">/one-sentence</a></div>
+    <div class="body">
+      <p class="eyebrow">From one sentence</p>
+      <h2>This went in. This came out.</h2>
+      <!-- The prompt, complete. It is long, it wraps, and it is not shortened: an edited prompt
+           is the one thing that would make the world under it worth nothing. -->
+      <p class="said said-lead"><span>&gt;</span><code><b>/lattice</b> ${esc(lead.sentence)}</code></p>
+
+      <div class="games games-lead">
+${gameHtml(lead, true)}
+      </div>
+
+      <p class="lede">${esc(lead.agent)}'s agent, in an empty directory, with the packages from npm and no access to this
+      repository. Nobody here designed it, named a file or fixed a bug &mdash; the source is unedited, and these are not
+      gallery exhibits: nothing in them was held to a line rule and nothing was tidied.</p>
+
+      <h3>Two more, the same way</h3>
+      <div class="games games-pair">
+${rest.map((g) => gameHtml(g, false)).join('\n')}
+      </div>
+
+      <p class="note">All three, their transcripts, what was verified by hand and the defects left in:
+      <a href="${src('from-one-sentence/README.md')}"><code>from-one-sentence/</code></a>. The
+      ${fig('packages')} packages they installed are the ones on npm, at the version their lockfiles pin.</p>
+    </div>
+  </section>
+
+  <!--
     The gallery is the centre of the page now, not an exhibit of it.
 
     Phaser's relaunched page pairs a verbatim user sentence with a capability tag against each
@@ -727,14 +906,15 @@ ${proof
     The heading no longer scores the project. "Eighteen specified. Ten built." was one of three
     separate places telling a first-time visitor what had not been built, under ten worlds that
     were running; 'docs/GALLERY.md' deleted that pattern once already as "a page-length apology"
-    and it had regrown. The eight are in site/data/readiness-for-readme.md, /llms.txt and
-    /api.json, which is where somebody auditing the project looks.
+    and it had regrown. There is nothing left to score: the brief specifies eighteen exhibits and
+    one hero, and all nineteen are built. 'pending' in the manifest is empty, so the sentence that
+    used to print it prints nothing, and the count in the heading is the count of rows.
   -->
   <section class="section" id="gallery">
     <div class="marker"><a href="#gallery">/gallery</a></div>
     <div class="body">
       <p class="eyebrow">The gallery</p>
-      <h2>${['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen'][gallery.live.length] ?? String(gallery.live.length)} worlds, running right now.</h2>
+      <h2>${word(gallery.live.length)} worlds, running right now.</h2>
       <p class="lede">Under each one is the sentence it would be asked for. Above it is that world, live in your
       browser &mdash; a directory under <code>examples/</code>, under 200 lines of logic, seeded from its own URL.</p>
 
@@ -744,6 +924,85 @@ ${proof
       <div class="grid">
 ${gallery.live.map(tileHtml).join('\n')}
       </div>
+    </div>
+  </section>
+
+  <!--
+    /built — the fan-out, and the one claim on this page no competitor can answer.
+
+    ## Why it is its own section and not part of the gallery
+
+    'docs/GALLERY.md' holds an exhibit to a standard: one idea, under 200 lines of logic, § Scale's
+    framing, a control panel, a cost row. What a tile argues is *here is a capability, shown well.*
+    What this section argues is a different thing entirely — **nobody in this repository designed
+    these, and they meet that standard anyway** — and the two weaken each other if they are made
+    into one. So the grid says who built each world in three words, and the method, the result and
+    the price of it are here, once, in the section a reader arrives at having just scrolled past
+    eight of them.
+
+    ## What is deliberately not here
+
+    **The three games built blind from one sentence are not on this page.** Three agents were given
+    a sentence apiece with no repository access and returned a playable game each; the games are
+    not in this repository, two of the three directories no longer exist, and what survives is a
+    log and one screenshot in a temp directory. Putting that on the page would mean either a claim
+    a visitor cannot check or the first picture on a page whose entire rule is that it has none.
+    Neither is worth it while the artifacts are unreachable, and it is routed in the report rather
+    than softened into a sentence here. Nothing on this page may be a thing the reader cannot open.
+
+    ## And what it must not become
+
+    This section is evidence for what the plugin is *for*. It is not evidence that the plugin
+    works, which is a different run and has not happened. That status is stated once on this page,
+    in /what, beside the three files that are shipped, and it stays there — a second statement of
+    it here would be the "page-length apology" the copy doctrine deleted, rebuilt one section
+    higher.
+  -->
+  <section class="section" id="built">
+    <div class="marker"><a href="#built">/built</a></div>
+    <div class="body">
+      <p class="eyebrow">The fan-out</p>
+      <h2>${word(fanoutCount)} exhibits, ${word(fanout.length).toLowerCase()} vendors, one written spec.</h2>
+      <p class="lede">${word(fanoutCount)} of the worlds above were built by agents from
+      ${word(fanout.length).toLowerCase()} different companies, each given one row of
+      <a href="${src('docs/GALLERY.md')}">the gallery brief</a>, the standard it is held to, and the tools &mdash; and
+      none of them allowed to read another exhibit's source, because an agent that can copy its neighbour tests the
+      neighbour rather than the writing. ${word(fanoutCount - 1)} of the ${word(fanoutCount).toLowerCase()} passed
+      every row of the looking harness unaided.</p>
+
+      <ul class="vendors">
+${fanout
+  .map(
+    (v) => `        <li><b>${esc(v.vendor)}</b><span>${v.built
+      .map((x) => `<a href="/x/${x.dir}/">${esc(x.name)}</a>`)
+      .join('')}</span></li>`,
+  )
+  .join('\n')}
+      </ul>
+      <p class="note">The exception was Replay, on legibility: a bare <code>&middot;</code> separator is its own text
+      node, and one narrow glyph in a five-pixel box reports a luminance range of 0.003 at a contrast of 7.2. It was
+      not hard to read. It was too small to measure.</p>
+
+      <h3>The half that was worth more than the exhibits</h3>
+      <p>Every one of them reports, verbatim in its own <code>README</code>, the places this document could not be
+      acted on without a guess &mdash; and all ${word(fanoutCount).toLowerCase()} found the same one:
+      <code>examples/_shared</code> &mdash; the bootstrap and the control panel these pages are written as though a
+      reader already has &mdash; exists only in this repository. Everyone here already knew that, which is exactly why
+      nobody here could find it.</p>
+
+      <!-- The mark says who built the exhibit. It does not say the file is untouched, and this is
+           the sentence that keeps it from implying so: every one of the eight changed on the way
+           in, one of them substantially. Leaving that out would make eight tiles claim slightly
+           more than is true, which is the one thing this section cannot afford. -->
+      <p class="note">Each of the ${word(fanoutCount).toLowerCase()} changed on the way into this repository and its
+      <code>README</code> says how &mdash; mostly a hand-rolled boot, or a vendored copy of that same missing
+      directory, resolving to the real one; in Wayfinding's case the composition, rebuilt here.
+      The other ${word(gallery.live.length - fanoutCount).toLowerCase()} and the world at the top of
+      this page were built here, with a person in the loop; a tile with no mark on it claims nothing more than that.
+      What all ${word(fanoutCount).toLowerCase()} of them found is collected in
+      <a href="${src('docs/GALLERY.md#what-eight-strangers-found-in-this-document')}">what
+      ${word(fanoutCount).toLowerCase()} strangers found in this document</a>. This is the reading the plugin above is
+      for.</p>
     </div>
   </section>
 
@@ -875,11 +1134,25 @@ ${packageNames
         </table>
       </div>
 
+      <!--
+        The plugin's status, stated once on this page, and it changed today.
+
+        It used to read "**That run has not happened.**", which was true when it was written and is
+        no longer: the repository is public, the nine packages are on the registry, and three
+        agents have since been handed one sentence each in an empty directory and returned a
+        playable game — they are at the top of this page, unedited. docs/SKILLS.md § The honest
+        tension asks for exactly one thing here, that the page advertise the property that is true
+        today and never the promise, so the sentence moves rather than being deleted: what is
+        untested now is a *stranger* doing it, on a machine that is not this one.
+
+        Whoever edits this next: it stays one factual sentence, it stays in this section, and it
+        never becomes the closing word of one.
+      -->
       <p class="note">Written down in <a href="${src('docs/SKILLS.md')}">docs/SKILLS.md</a>, which also holds the bar
       this is held to and the one test that decides whether it shipped: somebody who has never seen this repository
       installs the plugin, types one sentence about a game, touches nothing else, and ends up looking at that game in a
-      browser. <strong>That run has not happened.</strong> Until it does, what is true today is the ${fig('packages')} libraries, the
-      ${fig('skills')} skills, and the ${gallery.live.length} worlds above &mdash; every one of them built with the kit.</p>
+      browser. <strong>Three of those runs are at the top of this page.</strong> What is untested is a stranger doing
+      it, on a machine that is not ours.</p>
     </div>
   </section>
 
@@ -1388,8 +1661,11 @@ Stable: the ${commas(fig('publicSymbols'))} exported names (\`npm run lint\` fai
 ${(kit.budgets.coverageCore * 100).toFixed(0)}% in core); the layering and the determinism rule, both lint-enforced; the per-package size budgets.
 
 Not stable: function signatures, because nothing has shipped to a registry and nothing outside this
-repository uses them yet; the \`/lattice\` plugin, which is specified in docs/SKILLS.md and not built;
-the gallery, which is ${gallery.live.length} of ${gallery.live.length + gallery.pending.length} exhibits.
+repository uses them yet; the \`/lattice\` plugin, which is specified in docs/SKILLS.md and not built.${
+  gallery.pending.length === 0
+    ? ''
+    : `\nThe gallery is ${gallery.live.length} of ${gallery.live.length + gallery.pending.length} exhibits.`
+}
 
 Versioning: semver, with the pre-1.0 rule stated — a minor bump may break source compatibility, a
 patch never does. The nine packages version and publish in lockstep, one number for the whole kit.
@@ -1467,9 +1743,43 @@ Each exhibit is a complete, runnable page under \`examples/\`, under 200 lines o
 from its URL, with a control panel exposing the kit parameters it uses.
 
 - **${gallery.hero.name}** (the hero) — ${gallery.hero.caption} — \`examples/${gallery.hero.dir}\` — uses ${gallery.hero.packages.join(', ')}
-${gallery.live.map((x) => `- **${x.name}** — ${x.caption} ${x.idea} — \`examples/${x.dir}\` — measured: ${x.fact} (${x.factFrom})`).join('\n')}
+${gallery.live.map((x) => `- **${x.name}** — ${x.caption} ${x.idea} — \`examples/${x.dir}\` — measured: ${x.fact} (${x.factFrom})${x.by === undefined ? '' : ` — built by ${x.by} from docs/GALLERY.md alone`}`).join('\n')}
 
-Specified but not yet built: ${gallery.pending.map((p) => `${p.name} (${p.idea})`).join('; ')}.
+${
+  gallery.pending.length === 0
+    ? `All ${gallery.live.length} specified exhibits are built, plus the hero.`
+    : `Specified but not yet built: ${gallery.pending.map((p) => `${p.name} (${p.idea})`).join('; ')}.`
+}
+
+## From one sentence — three games nobody here designed
+
+Not exhibits, not bound by the gallery's rules, and not written in this repository. Each of these
+was built by a different vendor's agent in an **empty directory**, from **one sentence**, with the
+\`@latticekit/*\` packages installed from the public npm registry and no access to this repository.
+The source is unedited: the only change made to any of them is the \`--port\` in the dev script.
+
+${sentence.games
+  .map(
+    (g) =>
+      `- **${g.name}** (${g.agent}) — *"${g.sentence}"* — \`from-one-sentence/${g.dir}\` — ${g.size}; uses ${g.packages.join(', ')}${g.defect === '' ? '' : `. Known defect, left in: ${g.defect}`}`,
+  )
+  .join('\n')}
+
+Two of the three carry a real defect and both are recorded rather than fixed, because a record that
+hides its blemishes is not a record. \`from-one-sentence/README.md\` has the provenance, the
+transcripts, what was verified by hand, and why these must keep their registry dependencies rather
+than being converted to workspace ones.
+
+### The fan-out
+
+${fanoutCount} of the ${gallery.live.length} were built by ${fanout.length} vendors' agents — ${fanout.map((v) => `${v.vendor} (${v.built.map((x) => x.name).join(', ')})`).join('; ')} —
+each given only its own row of docs/GALLERY.md, the standard, and the tools, and none of them
+allowed to read an existing exhibit's source. ${fanoutCount - 1} of the ${fanoutCount} passed every row of the looking
+harness unaided; the exception was Replay, on legibility, for a text node too small for the pass to
+measure. Every one of the ${fanoutCount} carries its author's own list of the places the document could not be
+acted on, verbatim in its README, and all ${fanoutCount} hit the same wall: \`examples/_shared\` — the bootstrap
+and the control panel those pages assume — lives in this repository and is not shipped. The
+collected findings are docs/GALLERY.md § What eight strangers found in this document.
 
 ## Traps that cost this project real time
 
@@ -1566,7 +1876,13 @@ const api = {
     notStable: [
       'function signatures: nothing has shipped to a registry, so nothing outside this repository uses them yet',
       'the /lattice plugin: specified in docs/SKILLS.md, not built',
-      `the gallery: ${gallery.live.length} of ${gallery.live.length + gallery.pending.length} exhibits`,
+      // The gallery was a row here while it was 10 of 18. It is complete — eighteen exhibits and
+      // the hero — so the row is gone rather than reworded to say so: a readiness list is what is
+      // *not* settled, and a finished item announcing that it is finished is the same apology the
+      // page's copy doctrine deletes, in the file an agent reads.
+      ...(gallery.pending.length === 0
+        ? []
+        : [`the gallery: ${gallery.live.length} of ${gallery.live.length + gallery.pending.length} exhibits`]),
     ],
     versioning: {
       scheme: 'semver',
@@ -1611,6 +1927,38 @@ const api = {
     hero: { ...gallery.hero, source: tree(`examples/${gallery.hero.dir}`), live: `/x/${gallery.hero.dir}/` },
     exhibits: gallery.live.map((x) => ({ ...x, source: tree(`examples/${x.dir}`), live: `/x/${x.dir}/` })),
     specifiedNotBuilt: gallery.pending,
+    /**
+     * The fan-out, in the file an agent reads, because it is the strongest claim in this manifest
+     * and a `by` field scattered across eighteen rows is not a claim, it is data somebody has to
+     * assemble. `builtBy` is that assembly and nothing more — it is derived from those same rows.
+     */
+    fanOut: {
+      claim: `${fanoutCount} of the ${gallery.live.length} exhibits were built by ${fanout.length} vendors' agents from docs/GALLERY.md alone`,
+      method:
+        "each agent was given only its own row of the exhibits table, the whole standard, and the tools, and was not allowed to read an existing exhibit's source — the test was whether the written spec is followable, not whether an agent can pattern-match",
+      harness: `${fanoutCount - 1} of ${fanoutCount} passed every row of the looking harness unaided; the exception was Replay, on legibility, for a text node too small for the pass to measure`,
+      builtBy: Object.fromEntries(fanout.map((v) => [v.vendor, v.built.map((x) => x.dir)])),
+      whatTheyFound:
+        'every one of the eight carries its author\'s own spec-gap notes verbatim in its README, and all eight hit the same wall: examples/_shared — the bootstrap and the control panel these documents assume a reader has — lives in this repository and is not shipped. Collected in docs/GALLERY.md § What eight strangers found in this document',
+      builtHere: `the other ${gallery.live.length - fanoutCount} exhibits and the hero were built in this repository with a person in the loop`,
+    },
+  },
+  /**
+   * The three games in `from-one-sentence/`, which are **not** part of the gallery and are a
+   * sibling key rather than a section of it for that reason. An exhibit was built inside this
+   * repository against `docs/GALLERY.md`; each of these was built in an empty directory by an
+   * agent that had never seen it. `sentence` is the complete prompt, never trimmed.
+   */
+  fromOneSentence: {
+    claim: 'one sentence in, a playable game out, in an empty directory with no access to this repository',
+    method:
+      'each game was built by a different vendor\'s agent from the one sentence below, with @latticekit/* installed from the public npm registry. The source is unedited; the only change made to any of them is the --port in its dev script',
+    record: src('from-one-sentence/README.md'),
+    games: sentence.games.map((g) => ({
+      ...g,
+      source: tree(`from-one-sentence/${g.dir}`),
+      live: `/g/${g.dir}/`,
+    })),
   },
   example: { path: 'site/example/hello.ts', source: src('site/example/hello.ts'), code: example },
 };

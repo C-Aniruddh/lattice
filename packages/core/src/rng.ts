@@ -191,9 +191,16 @@ export class Rng {
   /**
    * A float in [min, max), or exactly `min` when the bounds are equal.
    *
-   * @throws RangeError unless both bounds are finite and `max >= min`. An infinite bound
-   *   would produce `Infinity` or `NaN`, and `JSON.stringify` writes both as `null` — a
-   *   value that vanishes from a save with the checksum still matching.
+   * **The quantity that has to be finite is the span, not the bounds.** Checking the two
+   * bounds and stopping there is a guard that passes at exactly the moment it should fire:
+   * `float(-Number.MAX_VALUE, Number.MAX_VALUE)` has two perfectly finite arguments whose
+   * difference overflows, and `min + next() * Infinity` is `Infinity` on every draw — or
+   * `NaN` on a draw of exactly 0, since `0 * Infinity` is `NaN`. That is the worst possible
+   * value to produce here: `JSON.stringify` writes both as `null`, so the number vanishes
+   * from a save with the checksum still matching and no layer downstream can see it happen.
+   *
+   * @throws RangeError unless both bounds are finite, `max >= min`, and `max - min` is
+   *   itself finite.
    */
   float(min: number, max: number): number {
     expectFinite(min, 'rng.float(min)');
@@ -201,7 +208,13 @@ export class Rng {
     if (max < min) {
       throw new RangeError(`rng.float: expected max >= min, got [${min}, ${max})`);
     }
-    return min + this.next() * (max - min);
+    const span = max - min;
+    if (!Number.isFinite(span)) {
+      throw new RangeError(
+        `rng.float: expected max - min to be finite, got [${min}, ${max}) — a span of ${String(span)}. Both bounds are finite and their difference is not, so the result would be Infinity, or NaN on a draw of exactly 0; halve the bounds, or draw a unit float and scale it yourself.`,
+      );
+    }
+    return min + this.next() * span;
   }
 
   /**

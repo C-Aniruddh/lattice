@@ -18,6 +18,22 @@ const sparkOptions = (extra?: Partial<PoolOptions<Spark>>): PoolOptions<Spark> =
   ...extra,
 });
 
+/**
+ * The message a call threw, as a string, or a sentinel that reads correctly in a diff.
+ *
+ * Returning `'did not throw'` rather than throwing keeps the failure output about the
+ * message under test: a `toContain` against that sentinel says what was expected and what
+ * happened, where an escaped error says only that something else went wrong.
+ */
+const messageOf = (call: () => unknown): string => {
+  try {
+    call();
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  return 'did not throw';
+};
+
 describe('Pool acquire and release', () => {
   it('creates on demand and counts what it has ever created', () => {
     const pool = new Pool(sparkOptions());
@@ -201,6 +217,53 @@ describe('Pool.preallocate', () => {
 
   it('refuses an initial larger than max at construction', () => {
     expect(() => new Pool({ ...sparkOptions(), max: 4, initial: 10 })).toThrow(RangeError);
+  });
+
+  /**
+   * CORE-4, and non-negotiable 9: an error names the caller's mistake.
+   *
+   * The constructor delegates `initial` to `preallocate`, and the delegation used to leak the
+   * callee's name — a caller who wrote `initial: -1` was told about `pool.preallocate`, a
+   * method that appears nowhere in their code and a word that appears nowhere in their
+   * options. The assertion that bites is the `not.toContain`: a message can perfectly well
+   * name `initial` and still name the wrong thing beside it, and only one of those two halves
+   * was ever wrong.
+   *
+   * The direct-call message is unchanged and is still pinned three tests above; that is why
+   * the fix is a label parameter and not an edit to `preallocate`'s own message.
+   */
+  it('reports a bad initial under the constructor, never under preallocate', () => {
+    for (const message of [
+      messageOf(() => new Pool({ ...sparkOptions(), initial: -1 })),
+      messageOf(() => new Pool({ ...sparkOptions(), initial: 2.5 })),
+      messageOf(() => new Pool({ ...sparkOptions(), max: 4, initial: 10 })),
+    ]) {
+      expect(message).toContain('initial');
+      expect(message).not.toContain('preallocate');
+    }
+  });
+
+  it('says what was wrong with the initial, not only where', () => {
+    expect(messageOf(() => new Pool({ ...sparkOptions(), initial: -1 }))).toBe(
+      'new Pool({ initial }): expected a non-negative integer count, got -1',
+    );
+    expect(messageOf(() => new Pool({ ...sparkOptions(), max: 4, initial: 10 }))).toBe(
+      'new Pool({ initial }): 10 more instances would exceed capacity 4 (0 already created)',
+    );
+  });
+
+  /**
+   * The label is a parameter and not a constructor-only secret, because the next caller to
+   * need it is a game that grows its own pool and wants the mistake filed under its name.
+   */
+  it('lets a caller name its own pool', () => {
+    const pool = new Pool({ ...sparkOptions(), max: 4 });
+    expect(messageOf(() => pool.preallocate(-1, 'sparks.grow'))).toBe(
+      'sparks.grow: expected a non-negative integer count, got -1',
+    );
+    expect(messageOf(() => pool.preallocate(10, 'sparks.grow'))).toBe(
+      'sparks.grow: 10 more instances would exceed capacity 4 (0 already created)',
+    );
   });
 });
 
