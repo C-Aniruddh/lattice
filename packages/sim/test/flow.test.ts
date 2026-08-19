@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import { defineEconomy, zeroStocks } from '../src/graph.js';
 import type { Economy } from '../src/graph.js';
@@ -337,19 +339,73 @@ describe('integrate — the closed form', () => {
     ).toContain('sim.integrate: this Flow was made for a different economy');
   });
 
-  it('does not grow the heap over a hundred thousand projections (I21)', () => {
-    const eco = chain();
-    const flow = buildFlow(eco, zeroStocks(eco), NO_GATES, createFlow(eco));
-    const start = { campus: 2, cluster: 5, agent: 1, researcher: 0 };
-    const out = zeroStocks(eco);
-    for (let i = 0; i < 20_000; i += 1) integrate(eco, start, flow, i, out);
-    const before = process.memoryUsage().heapUsed;
-    for (let i = 0; i < 100_000; i += 1) integrate(eco, start, flow, i, out);
-    const grown = process.memoryUsage().heapUsed - before;
-    // A single 4-key object per call is ~80 bytes; 100,000 of them is 8 MB of live-then-dead
-    // objects, and enough of that survives a scavenge to show. 2 MB is a bound a genuinely
-    // allocation-free path clears by two orders of magnitude and a per-call allocation does not.
-    expect(grown).toBeLessThan(2_000_000);
+  /**
+   * I21, as a source check rather than a heap measurement.
+   *
+   * **What the heap version was actually measuring.** It ran a hundred thousand projections
+   * between two `heapUsed` readings and required the difference to stay under 2 MB. That
+   * difference is not the allocation the invariant is about — it is how full the nursery
+   * happened to be when the second reading was taken, and V8 decides that. The same commit read
+   * 3.07 MB on Node 22 and passed on 20.19 and 24 in the same CI run: same code, same inputs,
+   * different collector schedule, different verdict.
+   *
+   * **And forcing a collection would not rescue it**, which is the part worth stating so nobody
+   * tries. The objects a regressed `integrate` would create are dead the instant the call
+   * returns, so a forced GC collects every one of them and `heapUsed` lands exactly where it
+   * started — the instrument becomes stable by becoming blind. A garbage-collection *count*
+   * survives that argument but not this environment: module loading and the runner are
+   * collecting too. Both were the reasoning `@latticekit/iso` and `@latticekit/draw` wrote down
+   * when they settled on this instrument, and `core`'s `math.ts` check says the same thing in
+   * one line. A check that goes red when the code is right teaches people to ignore it.
+   *
+   * So: read the bodies of the functions I21 names and check that no allocating syntax appears
+   * in them. It is deterministic, it names the offending token, and it catches the mistake that
+   * actually happens — somebody writes `const scratch = { … }` inside the Taylor loop — at the
+   * moment it is written rather than three collector schedules later. What it does not catch is
+   * an allocation smuggled in through a callee's return value; the companion to it is the
+   * behavioral assertion two tests above, that `integrate` returns the very `out` it was handed.
+   */
+  it('allocates nothing per projection (I21)', () => {
+    const source = readFileSync(fileURLToPath(new URL('../src/flow.ts', import.meta.url)), 'utf8');
+    const code = source
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/[^\n]*/g, '')
+      // An error path allocates an `Error` by definition, and it ends the projection rather than
+      // running inside one. Dropped before the bodies are cut, so a `throw` cannot unbalance them.
+      .replace(/throw[\s\S]*?\);/g, '');
+
+    /** A named function's body, brace-matched from the first `{` after its name. */
+    function bodyOf(name: string): string {
+      const at = code.indexOf(`function ${name}`);
+      expect(at, `${name}: not found in flow.ts`).toBeGreaterThanOrEqual(0);
+      const open = code.indexOf('{', at);
+      let braces = 0;
+      for (let i = open; i < code.length; i += 1) {
+        if (code[i] === '{') braces += 1;
+        else if (code[i] === '}') {
+          braces -= 1;
+          if (braces === 0) return code.slice(open + 1, i);
+        }
+      }
+      throw new Error(`${name}: unbalanced body`);
+    }
+
+    // The list is the point: it is what "the hot path" means for this package, written where a
+    // reviewer can disagree with it. `integrate` and `ratesOf` are the per-frame pair; `buildFlow`
+    // runs on every purchase and every gate change; `slot` and `expectMatched` are what all three
+    // call. `createFlow` is deliberately absent — it is the one allocation, once, before the first
+    // frame, and its own doc comment says so.
+    const hotPath = ['slot', 'expectMatched', 'buildFlow', 'integrate', 'ratesOf'];
+    // `{ x, y }` returned once per projection is a collector pause with a pleasant API; so is a
+    // closure allocated per call. A body that stops matching would turn this into a loop over
+    // nothing, so every body is required to be non-trivial first.
+    const allocating = /\bnew\b|=>|\bfunction\b|[=(:,]\s*[{[]|\breturn\s*[{[]/;
+    for (const name of hotPath) {
+      const body = bodyOf(name);
+      expect(body.trim().length, `${name}: empty body — the matcher stopped matching`).toBeGreaterThan(20);
+      const found = allocating.exec(body);
+      expect(found?.[0] ?? null, `${name} allocates (${found?.[0] ?? ''})`).toBe(null);
+    }
   });
 });
 
