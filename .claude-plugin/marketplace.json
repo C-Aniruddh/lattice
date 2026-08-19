@@ -11,7 +11,7 @@
       "name": "lattice",
       "source": "./",
       "description": "Build an isometric game from one sentence. Run /lattice followed by your idea — the plugin picks the shape, installs the kit, wires it, and opens the game in a browser so someone actually looks at it.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Lattice",
         "url": "https://github.com/C-Aniruddh/lattice"

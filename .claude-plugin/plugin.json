@@ -1,7 +1,7 @@
 {
   "name": "lattice",
   "displayName": "Lattice",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Build an isometric game from one sentence. /lattice <your idea> picks the shape, installs the kit, wires it, gets to a running screen, then opens it in a browser and looks at it.",
   "author": {
     "name": "Lattice",
