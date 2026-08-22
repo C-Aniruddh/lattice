@@ -32,7 +32,7 @@
  * looking at what they just did. So neither write here is on the frame anything changes. A stage
  * change is written from the dialog's **DOM click handler** — off the frame path entirely, with a
  * modal panel over the scene — and everything else is a coalescing autosave on `loop.real`, at most
- * once a second. The envelope is about sixty bytes and the HUD prints its size, because the whole
+ * once a second. The envelope is under a hundred bytes and the HUD prints its exact size, because
  * argument for a three-number save is that it is small enough to write while somebody is watching.
  */
 import { asEpochMillis, type EpochMillis } from '@latticekit/core';

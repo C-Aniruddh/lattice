@@ -439,8 +439,8 @@
       "prompt": "a small village game where I walk around, talk to people, take things and save",
       "caption": "Walk, talk, take, use, save. The whole genre, small enough to read.",
       "idea": "Five verbs and deliberately no sixth. The save envelope is about sixty bytes and the HUD prints its size.",
-      "fact": "a ~60-byte save envelope",
-      "factFrom": "examples/errand/src/main.ts:35",
+      "fact": "an 87-byte save envelope",
+      "factFrom": "examples/errand/src/hud.ts:81",
       "leans": [
         "iso.path",
         "ui",

@@ -116,7 +116,7 @@ export function openErrand(seed: string, now: Now): Store<Save> {
     // about ninety seconds — contains several writes, and **long enough that the clock beside it
     // visibly climbs**: at the 1000 ms this started on, the readout said "0s ago" for ever, which
     // proves a save is happening and proves nothing about when. `Autosave` has no dirty check, so a
-    // player standing still still writes the same eighty-eight bytes on every tick; the interval is
+    // player standing still still writes the same envelope on every tick; the interval is
     // the only lever a game has over that, and it is filed as a finding.
     minWriteIntervalMs: 3000,
   });
