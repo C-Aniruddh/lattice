@@ -28,7 +28,7 @@
       "caption": "Nine hundred walkers, one expression, no per-walker state.",
       "idea": "A walker's position is pathSample(route, ((phi*i + t*v) mod 1) * arcLength). There is no walker struct.",
       "fact": "0 bytes of state per walker",
-      "factFrom": "examples/crowd/src/hud.ts:74",
+      "factFrom": "examples/crowd/src/hud.ts:75",
       "leans": [
         "iso.path"
       ],
@@ -172,7 +172,7 @@
       "caption": "Pools that meet without a seam.",
       "idea": "The light field costs its buffer, not its light count — which is why the price is flat from 104 pools to 704.",
       "fact": "704 light pools",
-      "factFrom": "examples/caverns/README.md:98",
+      "factFrom": "examples/caverns/README.md:100",
       "leans": [
         "draw.light"
       ],
