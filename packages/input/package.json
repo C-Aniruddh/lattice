@@ -22,10 +22,10 @@
   "sideEffects": false,
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/C-Aniruddh/lattice.git",
+    "url": "git+https://github.com/plausibleventures/lattice.git",
     "directory": "packages/input"
   },
-  "homepage": "https://github.com/C-Aniruddh/lattice/tree/main/packages/input",
+  "homepage": "https://github.com/plausibleventures/lattice/tree/main/packages/input",
   "keywords": [
     "lattice",
     "gamedev",

@@ -38,4 +38,4 @@ body:
     attributes:
       value: |
         A whole **new package** needs an RFC in `docs/rfc/` before code — see
-        [CONTRIBUTING.md](https://github.com/C-Aniruddh/lattice/blob/main/CONTRIBUTING.md).
+        [CONTRIBUTING.md](https://github.com/plausibleventures/lattice/blob/main/CONTRIBUTING.md).

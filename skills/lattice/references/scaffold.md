@@ -58,7 +58,7 @@ machine. Say one sentence and take the next action yourself:
 Then, if `git` is present:
 
 ```bash
-git clone --depth 1 https://github.com/C-Aniruddh/lattice /tmp/lattice-kit
+git clone --depth 1 https://github.com/plausibleventures/lattice /tmp/lattice-kit
 cd /tmp/lattice-kit && npm install && npm run build
 for p in core iso draw loop input ui sim persist audio; do (cd packages/$p && npm pack --pack-destination /tmp/lattice-tgz); done
 ```

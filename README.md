@@ -6,9 +6,9 @@
 
 **Type one sentence and get an isometric game you can play in a browser.**
 
-[![verify](https://img.shields.io/github/actions/workflow/status/C-Aniruddh/lattice/ci.yml?branch=main&label=verify)](https://github.com/C-Aniruddh/lattice/actions/workflows/ci.yml)
+[![verify](https://img.shields.io/github/actions/workflow/status/plausibleventures/lattice/ci.yml?branch=main&label=verify)](https://github.com/plausibleventures/lattice/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/%40latticekit%2Fcore?label=npm&color=cb3837)](https://www.npmjs.com/package/@latticekit/core)
-[![license](https://img.shields.io/github/license/C-Aniruddh/lattice)](LICENSE)
+[![license](https://img.shields.io/github/license/plausibleventures/lattice)](LICENSE)
 [![site](https://img.shields.io/badge/site-lattice.plausible.ventures-0b7285)](https://lattice.plausible.ventures)
 
 **[▶ Nineteen worlds, running &rarr;](https://lattice.plausible.ventures)**
@@ -35,9 +35,9 @@ Install the plugin in the agent you already use:
 
 | | |
 |---|---|
-| **Claude Code** | `/plugin marketplace add C-Aniruddh/lattice` &nbsp;then&nbsp; `/plugin install lattice@lattice` |
-| **Codex** | `codex plugin marketplace add C-Aniruddh/lattice` &nbsp;then&nbsp; `codex plugin add lattice@lattice` |
-| **Grok** | `grok plugin install C-Aniruddh/lattice` |
+| **Claude Code** | `/plugin marketplace add plausibleventures/lattice` &nbsp;then&nbsp; `/plugin install lattice@lattice` |
+| **Codex** | `codex plugin marketplace add plausibleventures/lattice` &nbsp;then&nbsp; `codex plugin add lattice@lattice` |
+| **Grok** | `grok plugin install plausibleventures/lattice` |
 
 Then type one sentence:
 
@@ -345,7 +345,7 @@ If none of those three is worth anything to you, the honest recommendation is Ph
 ## Working on it
 
 ```bash
-git clone https://github.com/C-Aniruddh/lattice
+git clone https://github.com/plausibleventures/lattice
 cd lattice
 npm install
 npm run verify     # build, lint, docs, skills, tests, gallery, looking. nothing lands red

@@ -4,7 +4,7 @@
 > intents in tile coordinates**, bucketed to simulation ticks, behind **one object** that unbinds
 > all of it.
 
-Part of **[Lattice](https://github.com/C-Aniruddh/lattice)** — the grid underneath.
+Part of **[Lattice](https://github.com/plausibleventures/lattice)** — the grid underneath.
 
 ```bash
 npm i @latticekit/input

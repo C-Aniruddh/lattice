@@ -3,7 +3,7 @@
 > Idle-economy mathematics in closed form: cost curves, the flow integrator, offline accrual,
 > capacity gating, and the instant a stock runs out.
 
-Part of **[Lattice](https://github.com/C-Aniruddh/lattice)** — the grid underneath.
+Part of **[Lattice](https://github.com/plausibleventures/lattice)** — the grid underneath.
 
 ```bash
 npm i @latticekit/sim

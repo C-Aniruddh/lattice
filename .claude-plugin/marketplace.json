@@ -4,7 +4,7 @@
   "description": "Lattice — the grid underneath. Type one sentence about a game and get an isometric, deterministic, zero-asset game you can play in a browser.",
   "owner": {
     "name": "Lattice",
-    "url": "https://github.com/C-Aniruddh/lattice"
+    "url": "https://github.com/plausibleventures/lattice"
   },
   "plugins": [
     {
@@ -14,10 +14,10 @@
       "version": "0.1.1",
       "author": {
         "name": "Lattice",
-        "url": "https://github.com/C-Aniruddh/lattice"
+        "url": "https://github.com/plausibleventures/lattice"
       },
-      "homepage": "https://github.com/C-Aniruddh/lattice",
-      "repository": "https://github.com/C-Aniruddh/lattice",
+      "homepage": "https://github.com/plausibleventures/lattice",
+      "repository": "https://github.com/plausibleventures/lattice",
       "license": "MIT",
       "category": "development",
       "keywords": [

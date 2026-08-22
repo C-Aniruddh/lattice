@@ -2,7 +2,7 @@
 
 > One color and one grid footprint into a stylised isometric solid, on a surface it does not own.
 
-Part of **[Lattice](https://github.com/C-Aniruddh/lattice)** — the grid underneath.
+Part of **[Lattice](https://github.com/plausibleventures/lattice)** — the grid underneath.
 
 ```bash
 npm i @latticekit/draw

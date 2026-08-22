@@ -3,7 +3,7 @@
 > Deterministic primitives. Seeded randomness, stateless hashing, noise, maths, easing,
 > vectors, typed events, pools, lifetimes, validation and formatting.
 
-Layer 0 of **[Lattice](https://github.com/C-Aniruddh/lattice)**. Zero dependencies, zero DOM,
+Layer 0 of **[Lattice](https://github.com/plausibleventures/lattice)**. Zero dependencies, zero DOM,
 runs unchanged in Node. Everything else in the kit is built on this package, and this package
 is built on nothing.
 
@@ -194,4 +194,4 @@ allocation winning the *mean* by 25% — the argument is entirely in the tail.
 
 ---
 
-MIT. Part of [Lattice](https://github.com/C-Aniruddh/lattice) — the grid underneath.
+MIT. Part of [Lattice](https://github.com/plausibleventures/lattice) — the grid underneath.

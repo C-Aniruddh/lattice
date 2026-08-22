@@ -3,7 +3,7 @@
 > Time. A wall-clock game loop with fixed-step simulation and interpolated rendering, plus
 > scheduling, tweens and frame statistics.
 
-Part of **[Lattice](https://github.com/C-Aniruddh/lattice)** — the grid underneath.
+Part of **[Lattice](https://github.com/plausibleventures/lattice)** — the grid underneath.
 
 ```bash
 npm i @latticekit/loop

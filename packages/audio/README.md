@@ -2,7 +2,7 @@
 
 > Sound without assets: WebAudio synthesis from a declarative table, with voice limiting, buses, a continuous bed and an opt-in sequencer.
 
-Part of **[Lattice](https://github.com/C-Aniruddh/lattice)** — the grid underneath.
+Part of **[Lattice](https://github.com/plausibleventures/lattice)** — the grid underneath.
 
 ```bash
 npm i @latticekit/audio

@@ -5,7 +5,7 @@ page, and it is why there is no SLA on it.
 
 ## Reporting a vulnerability
 
-**[Open a private advisory](https://github.com/C-Aniruddh/lattice/security/advisories/new)** —
+**[Open a private advisory](https://github.com/plausibleventures/lattice/security/advisories/new)** —
 GitHub's private vulnerability reporting is enabled on this repository, so the report, the
 discussion and the draft fix all stay between us until there is a release. Please do not open a
 public issue for anything that would give someone a working exploit before there is a fix.

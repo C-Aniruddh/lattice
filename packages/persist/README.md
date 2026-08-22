@@ -2,7 +2,7 @@
 
 > Saves that survive: versioned state, an explicit migration chain, pluggable storage, debounced writes and integrity checks.
 
-Part of **[Lattice](https://github.com/C-Aniruddh/lattice)** — the grid underneath.
+Part of **[Lattice](https://github.com/plausibleventures/lattice)** — the grid underneath.
 
 ```bash
 npm i @latticekit/persist

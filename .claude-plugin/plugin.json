@@ -5,10 +5,10 @@
   "description": "Build an isometric game from one sentence. /lattice <your idea> picks the shape, installs the kit, wires it, gets to a running screen, then opens it in a browser and looks at it.",
   "author": {
     "name": "Lattice",
-    "url": "https://github.com/C-Aniruddh/lattice"
+    "url": "https://github.com/plausibleventures/lattice"
   },
-  "homepage": "https://github.com/C-Aniruddh/lattice",
-  "repository": "https://github.com/C-Aniruddh/lattice",
+  "homepage": "https://github.com/plausibleventures/lattice",
+  "repository": "https://github.com/plausibleventures/lattice",
   "license": "MIT",
   "keywords": [
     "game",

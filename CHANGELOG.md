@@ -104,6 +104,6 @@ Shipped alongside, in the repository rather than the registry: **the `/lattice` 
 twelve skills** — the parent that owns the command plus eleven specialists, and the named traps,
 which are the failures that compile, run, and produce a plausible-looking wrong game.
 
-[Unreleased]: https://github.com/C-Aniruddh/lattice/commits/main
+[Unreleased]: https://github.com/plausibleventures/lattice/commits/main
 [0.1.1]: https://www.npmjs.com/package/@latticekit/core/v/0.1.1
 [0.1.0]: https://www.npmjs.com/package/@latticekit/core/v/0.1.0

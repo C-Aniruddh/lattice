@@ -3,7 +3,7 @@
 > DOM overlay primitives — a pointer-transparent overlay, an element builder, panels, toasts,
 > number rolls, floating feedback and canvas thumbnails. Deliberately **not** a framework.
 
-Part of **[Lattice](https://github.com/C-Aniruddh/lattice)** — the grid underneath.
+Part of **[Lattice](https://github.com/plausibleventures/lattice)** — the grid underneath.
 
 ```bash
 npm i @latticekit/ui
