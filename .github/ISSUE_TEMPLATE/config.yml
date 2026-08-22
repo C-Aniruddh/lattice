@@ -1,7 +1,7 @@
 blank_issues_enabled: true
 contact_links:
   - name: See it running
-    url: https://plausible.ventures
+    url: https://lattice.plausible.ventures
     about: Nineteen worlds on canvases, three games built from one sentence, and the API reference.
 
   - name: How to build a game with it
@@ -9,7 +9,7 @@ contact_links:
     about: Start to finish, in order — the frame, the first building, input, time, economy, saving, sound.
 
   - name: Which package owns what
-    url: https://plausible.ventures/api.json
+    url: https://lattice.plausible.ventures/api.json
     about: The manifest an agent reads — exports, invariants, cross-package contracts, and the traps.
 
   - name: Report a vulnerability

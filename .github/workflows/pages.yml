@@ -1,6 +1,6 @@
 name: pages
 
-# The landing page, built and published to plausible.ventures.
+# The landing page, built and published to lattice.plausible.ventures.
 #
 # It builds rather than serving a committed folder, because `site/dist` is generated: the
 # reference is read out of the packages' own type declarations, `llms.txt` and `api.json` come
