@@ -5,9 +5,10 @@ page, and it is why there is no SLA on it.
 
 ## Reporting a vulnerability
 
-**Email [aniruddh.chandratre@gmail.com](mailto:aniruddh.chandratre@gmail.com)** with `lattice
-security` in the subject. Please do not open a public issue for anything that would give someone
-a working exploit before there is a fix.
+**[Open a private advisory](https://github.com/C-Aniruddh/lattice/security/advisories/new)** —
+GitHub's private vulnerability reporting is enabled on this repository, so the report, the
+discussion and the draft fix all stay between us until there is a release. Please do not open a
+public issue for anything that would give someone a working exploit before there is a fix.
 
 Include whatever you have. The most useful report here is the same one the rest of the project
 asks for: **the reproduction is the report.** Because the kit is deterministic, a seed plus an

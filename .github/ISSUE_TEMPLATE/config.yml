@@ -14,4 +14,4 @@ contact_links:
 
   - name: Report a vulnerability
     url: https://github.com/C-Aniruddh/lattice/blob/main/SECURITY.md
-    about: Privately, by email. Not as a public issue.
+    about: Privately, as a GitHub security advisory. Not as a public issue.
