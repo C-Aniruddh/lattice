@@ -42,6 +42,48 @@ function voice(over: Partial<VoiceRequest> = {}): VoiceRequest {
   });
 }
 
+describe("a voice's gain is silent before it is scheduled", () => {
+  /**
+   * The regression this file exists to hold.
+   *
+   * `createGain()` returns a node whose `gain` is **1**, and `setValueAtTime(0, start)` does not
+   * retroactively silence the frames before `start`. When `start * sampleRate` lands a hair above
+   * an integer — `1.1 * 48000 === 52800.00000000001`, where `ceil` and `round` disagree — the
+   * source's first frame and the automation's first frame resolve to different samples, and one
+   * frame of the source passes at unity gain.
+   *
+   * A sine at phase zero is zero and survives it. A noise burst is one sample at full scale,
+   * measured at 0.72 against neighbours of 0.005, firing on roughly one start time in ten. That
+   * is a click, in every hat and thunk and footstep in every game built on this package, and it
+   * is the shape of defect that gets reported as "there's a crackle sometimes" and never
+   * reproduced.
+   *
+   * The bed path in `render.ts` has always defended itself with an outright `gain.value = 0`. The
+   * one-shot path did not. This asserts they now agree.
+   */
+  it('writes zero outright rather than trusting the schedule', () => {
+    const { fake, renderer } = setup();
+    renderer.play(voice({ start: 1.1, wave: 'noise' }));
+    const voiceGain = fake.nodes
+      .filter((node): node is FakeGain => node instanceof FakeGain)
+      .find((node) => node.gain.events.some((event) => event.kind === 'linear'));
+    expect(voiceGain, 'the voice gain node was not found').toBeDefined();
+    expect(voiceGain!.gain.writes[0]).toBe(0);
+  });
+
+  it('does so before any automation is scheduled on it', () => {
+    const { fake, renderer } = setup();
+    renderer.play(voice({ start: 1.1, wave: 'noise' }));
+    const voiceGain = fake.nodes
+      .filter((node): node is FakeGain => node instanceof FakeGain)
+      .find((node) => node.gain.events.some((event) => event.kind === 'linear'));
+    // The direct write has to land first. A zero written after the ramps were queued would leave
+    // the same gap open, and would look identical in a snapshot of the final value.
+    expect(voiceGain!.gain.writes.length).toBeGreaterThan(0);
+    expect(voiceGain!.gain.events[0]).toEqual({ kind: 'set', value: 0, at: 1.1 });
+  });
+});
+
 describe('the bus graph', () => {
   it('is four gain nodes: master into the device, three buses into master', () => {
     const { fake } = setup();

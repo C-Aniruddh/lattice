@@ -188,6 +188,15 @@ export function createRenderer(context: AudioContext): Renderer {
       const end = Math.max(request.end, peak + GAIN_FLOOR);
 
       const gain = context.createGain();
+      // Silent on arrival, for the same reason the bed below is. `createGain()` hands back a node
+      // whose `gain` is **1**, and scheduling `setValueAtTime(0, start)` does not retroactively
+      // silence the frames before `start`. When `start * sampleRate` lands a hair above an integer
+      // — `1.1 * 48000 === 52800.00000000001` — the source's first frame and the automation's
+      // first frame resolve to different samples, and one frame of the source passes at unity.
+      // A sine at phase zero is zero and survives it; a noise burst is one sample at full scale,
+      // which is a click. Measured at 0.72 against neighbours of 0.005, on about one start time
+      // in ten.
+      gain.gain.value = 0;
       gain.gain.setValueAtTime(0, start);
       gain.gain.linearRampToValueAtTime(Math.max(request.gain, GAIN_FLOOR), peak);
       gain.gain.exponentialRampToValueAtTime(GAIN_FLOOR, end);

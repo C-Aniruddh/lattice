@@ -26,17 +26,37 @@ export interface ParamEvent {
 
 /** An `AudioParam` that remembers what was asked of it. */
 export class FakeParam {
-  value = 0;
+  #value: number;
+  /** Scheduled automation, in the order it was requested. */
   readonly events: ParamEvent[] = [];
+  /**
+   * Direct assignments to `.value`, which automation does not record and which is exactly where
+   * the one-shot gain leak lived. Kept apart from `events` so that assertions counting scheduled
+   * automation are unaffected by a node also being set outright.
+   */
+  readonly writes: number[] = [];
+
+  constructor(initial = 0) {
+    this.#value = initial;
+  }
+
+  get value(): number {
+    return this.#value;
+  }
+
+  set value(next: number) {
+    this.writes.push(next);
+    this.#value = next;
+  }
 
   setValueAtTime(value: number, at: number): void {
     this.events.push({ kind: 'set', value, at });
-    this.value = value;
+    this.#value = value;
   }
 
   linearRampToValueAtTime(value: number, at: number): void {
     this.events.push({ kind: 'linear', value, at });
-    this.value = value;
+    this.#value = value;
   }
 
   exponentialRampToValueAtTime(value: number, at: number): void {
@@ -44,12 +64,12 @@ export class FakeParam {
       throw new RangeError('exponentialRampToValueAtTime: cannot ramp to zero — this is the spec violation trap 1 names');
     }
     this.events.push({ kind: 'exponential', value, at });
-    this.value = value;
+    this.#value = value;
   }
 
   setTargetAtTime(value: number, at: number, seconds: number): void {
     this.events.push({ kind: 'target', value, at, seconds });
-    this.value = value;
+    this.#value = value;
   }
 }
 
@@ -114,9 +134,17 @@ export class FakeBufferSource extends FakeSource {
   loop = false;
 }
 
-/** A gain node. */
+/**
+ * A gain node.
+ *
+ * `gain` starts at **1**, because that is what the Web Audio spec says `createGain()` returns and
+ * a double that starts at 0 is a double that cannot fail the way the platform fails. It began at
+ * 0 here, which is why the suite was blind to a full-scale sample leaking out of the one-shot
+ * path for as long as it did: every test agreed with the code because both had assumed the safe
+ * default. A fake is only worth its cost while it is wrong in the same places as the real thing.
+ */
 export class FakeGain extends FakeNode {
-  readonly gain = new FakeParam();
+  readonly gain = new FakeParam(1);
 }
 
 /** A biquad filter. */
