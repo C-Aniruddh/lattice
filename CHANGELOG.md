@@ -89,7 +89,7 @@ a reader is most likely to be looking for:
   their defects named rather than fixed.
 - **The four cross-package seams got contract tests** for the first time, sited above the
   packages, and one of them was already broken.
-- **The landing page went live** at [lattice.aniruddh.tech](https://lattice.aniruddh.tech),
+- **The landing page went live** at [plausible.ventures](https://plausible.ventures),
   with `/llms.txt` and `/api.json` for agents.
 
 ## [0.1.0] — 2026-08-18

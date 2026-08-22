@@ -23,7 +23,7 @@ import { readdirSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/** The measurement ID for lattice.aniruddh.tech. */
+/** The measurement ID for plausible.ventures. */
 const MEASUREMENT_ID = 'G-297ZBRFQ2G';
 
 const TAG = `<!-- Google tag (gtag.js) -->

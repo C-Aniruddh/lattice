@@ -1,6 +1,6 @@
 <div align="center">
 
-<a href="https://lattice.aniruddh.tech"><img src="https://lattice.aniruddh.tech/og.png" alt="A valley at dusk rendered by Lattice: an isometric hillside with a lit shrine and a road of lamps" width="860"></a>
+<a href="https://plausible.ventures"><img src="https://plausible.ventures/og.png" alt="A valley at dusk rendered by Lattice: an isometric hillside with a lit shrine and a road of lamps" width="860"></a>
 
 ### The grid underneath.
 
@@ -9,9 +9,9 @@
 [![verify](https://img.shields.io/github/actions/workflow/status/C-Aniruddh/lattice/ci.yml?branch=main&label=verify)](https://github.com/C-Aniruddh/lattice/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/%40latticekit%2Fcore?label=npm&color=cb3837)](https://www.npmjs.com/package/@latticekit/core)
 [![license](https://img.shields.io/github/license/C-Aniruddh/lattice)](LICENSE)
-[![site](https://img.shields.io/badge/site-lattice.aniruddh.tech-0b7285)](https://lattice.aniruddh.tech)
+[![site](https://img.shields.io/badge/site-plausible.ventures-0b7285)](https://plausible.ventures)
 
-**[▶ Nineteen worlds, running &rarr;](https://lattice.aniruddh.tech)**
+**[▶ Nineteen worlds, running &rarr;](https://plausible.ventures)**
 
 </div>
 
@@ -79,9 +79,9 @@ rather than hides.
 
 | game | agent | the sentence it was given | |
 |---|---|---|---|
-| **Before the Bell** | Grok | *place stalls and open gates to pull the crowd to your bakery before the market closes* | [play](https://lattice.aniruddh.tech/g/before-the-bell/) |
-| **Chime Path** | Claude | *hang chimes along a mountain path and tune each one, so the wind plays them in order as walkers pass* | [play](https://lattice.aniruddh.tech/g/chime-path/) |
-| **Evenfall Orchard** | Codex | *plant an orchard and each evening choose to harvest or let it grow, and it keeps growing while the tab is closed* | [play](https://lattice.aniruddh.tech/g/evenfall-orchard/) |
+| **Before the Bell** | Grok | *place stalls and open gates to pull the crowd to your bakery before the market closes* | [play](https://plausible.ventures/g/before-the-bell/) |
+| **Chime Path** | Claude | *hang chimes along a mountain path and tune each one, so the wind plays them in order as walkers pass* | [play](https://plausible.ventures/g/chime-path/) |
+| **Evenfall Orchard** | Codex | *plant an orchard and each evening choose to harvest or let it grow, and it keeps growing while the tab is closed* | [play](https://plausible.ventures/g/evenfall-orchard/) |
 
 Source and the full provenance — the verbatim prompts, the transcripts, what was verified by
 hand, and the one thing that was changed — are in [`from-one-sentence/`](from-one-sentence).
@@ -89,7 +89,7 @@ hand, and the one thing that was changed — are in [`from-one-sentence/`](from-
 ## The gallery
 
 Nineteen worlds: eighteen exhibits and the hero, each one proof of a capability that would
-otherwise be a claim. **[See them running →](https://lattice.aniruddh.tech)**
+otherwise be a claim. **[See them running →](https://plausible.ventures)**
 
 **Eight of the eighteen were built by agents from the written spec alone** — Codex built Harbor,
 Wayfinding, Builder and Orbit; Grok built Idle and Instrument; Claude built Replay and Migration.
@@ -127,7 +127,7 @@ npm i @latticekit/iso     # brings @latticekit/core, and nothing else
 ```
 
 This is a whole Lattice program — a surface, a camera, a palette, a loop, and a world drawn
-inside it. It is [the file the landing page runs beside its own source](https://lattice.aniruddh.tech/example/).
+inside it. It is [the file the landing page runs beside its own source](https://plausible.ventures/example/).
 
 ```ts
 import { createCamera } from '@latticekit/iso';
@@ -186,8 +186,8 @@ core ─┬─▶ iso ──┬─▶ draw ─┬─▶ ui
 | [`ui`](packages/ui) | DOM overlay primitives — panels, toasts, number rolls. Deliberately not a framework | browser |
 
 [`.lattice/kit.json`](.lattice/kit.json) is the same table, machine-readable, with every
-package's exports and invariants. [`/api.json`](https://lattice.aniruddh.tech/api.json) and
-[`/llms.txt`](https://lattice.aniruddh.tech/llms.txt) are the versions an agent reads.
+package's exports and invariants. [`/api.json`](https://plausible.ventures/api.json) and
+[`/llms.txt`](https://plausible.ventures/llms.txt) are the versions an agent reads.
 
 ---
 
@@ -278,7 +278,7 @@ stable, what is not, and what will break before `1.0`.
 | the `/lattice` plugin | **shipped** | it installs and runs in Claude Code, Codex and Grok. The three games above came out of it |
 | the gallery | **complete** | eighteen exhibits and the hero, all nineteen built and running on the site |
 | function *signatures* | **may change** | the first publish was 2026-08-18 and nobody outside this repository has depended on them yet. That is the whole reason the version starts with a zero |
-| the API reference | **generated, not hand-kept** | [`/reference/`](https://lattice.aniruddh.tech/reference/) is read out of the packages' own `.d.ts` files at build time |
+| the API reference | **generated, not hand-kept** | [`/reference/`](https://plausible.ventures/reference/) is read out of the packages' own `.d.ts` files at build time |
 | a browser test matrix | **absent** | CI runs the suite in Node on 20.19, 22 and 24. The browser floor below is read off the compiler target and the built output, not off a test run |
 
 ### Versioning, and what a breaking change means here
@@ -335,7 +335,7 @@ which is what makes a replay land on the same pixel and a seed a link you can se
 asset pipeline at all**, so there is nothing to load, nothing to license, nothing to pack, and a
 recolor is a runtime value. And it is **written to be handed to an agent**: the manifest, the
 invariants, the cross-package contracts and the traps that cost this project real time are all
-machine-readable at [`/api.json`](https://lattice.aniruddh.tech/api.json), which is a thing you
+machine-readable at [`/api.json`](https://plausible.ventures/api.json), which is a thing you
 can check in ten seconds rather than a claim.
 
 If none of those three is worth anything to you, the honest recommendation is Phaser.
